@@ -1,12 +1,14 @@
+plugins {
+    id "com.android.application"
+    id "org.jetbrains.kotlin.android"
+    id "org.jetbrains.kotlin.kapt"
+}
+
 repositories {
     google()
     mavenCentral()
     maven { url 'https://jitpack.io' }
 }
-
-apply plugin: 'com.android.application'
-apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-kapt'
 
 android {
     namespace 'ru.orangesoftware.financisto'
@@ -101,4 +103,9 @@ dependencies {
     testImplementation 'junit:junit:4.12'
     testImplementation 'androidx.test:core:1.2.0'
     testImplementation 'org.robolectric:robolectric:4.2.1'
+}
+
+kapt {
+    keepJavacAnnotationProcessors = true
+    showProcessorStats = true
 }
