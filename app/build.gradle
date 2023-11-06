@@ -39,12 +39,6 @@ android {
         }
     }
 
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
-
-
     testOptions {
         unitTests {
             returnDefaultValues = true
@@ -108,4 +102,15 @@ dependencies {
 kapt {
     keepJavacAnnotationProcessors = true
     showProcessorStats = true
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(8)
+//        vendor = JvmVendorSpec.ADOPTIUM
+    }
+}
+kotlin {
+    jvmToolchain(8)
+//    (this as JavaToolchainSpec).languageVersion.set(JavaLanguageVersion.of(8))
 }
