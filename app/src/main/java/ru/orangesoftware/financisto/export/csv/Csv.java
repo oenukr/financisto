@@ -58,7 +58,7 @@ import java.util.List;
  */
 public class Csv {
     public static class Writer {
-        private Appendable appendable;
+        private final Appendable appendable;
 
         private char delimiter = ';';
 
@@ -140,7 +140,7 @@ public class Csv {
 
     public static class Reader {
         private static final String impossibleString = "$#%^&*!xyxb$#%&*!^";
-        private BufferedReader reader;
+        private final BufferedReader reader;
 
         private char delimiter = ';';
         private boolean preserveSpaces = true;
@@ -189,7 +189,7 @@ public class Csv {
                     line = null;
                 } else {
                     token += line.substring(0, nextDelimiterIndex);
-                    line = unmarkDoubleQuotes(line.substring(nextDelimiterIndex + 1, line.length()));
+                    line = unmarkDoubleQuotes(line.substring(nextDelimiterIndex + 1));
                 }
 
                 result.add(unescape(token));

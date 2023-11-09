@@ -17,6 +17,7 @@ import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -68,7 +69,7 @@ public class QifImport extends FullDatabaseImport {
 
     public void doImport() throws IOException {
         long t0 = System.currentTimeMillis();
-        QifBufferedReader r = new QifBufferedReader(new BufferedReader(new InputStreamReader(new FileInputStream(options.filename), "UTF-8")));
+        QifBufferedReader r = new QifBufferedReader(new BufferedReader(new InputStreamReader(new FileInputStream(options.filename), StandardCharsets.UTF_8)));
         QifParser parser = new QifParser(r, options.dateFormat);
         parser.parse();
         long t1 = System.currentTimeMillis();

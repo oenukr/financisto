@@ -16,6 +16,7 @@ import android.widget.Toast;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -33,7 +34,7 @@ import ru.orangesoftware.financisto.utils.CurrencyCache;
  */
 public class CurrencySelector {
 
-    public static interface OnCurrencyCreatedListener {
+    public interface OnCurrencyCreatedListener {
         void onCreated(long currencyId);
     }
 
@@ -113,7 +114,7 @@ public class CurrencySelector {
 
     private List<List<String>> readCurrenciesFromAsset() {
         try {
-            InputStreamReader r = new InputStreamReader(context.getAssets().open("currencies.csv"), "UTF-8");
+            InputStreamReader r = new InputStreamReader(context.getAssets().open("currencies.csv"), StandardCharsets.UTF_8);
             try {
                 Csv.Reader csv = new Csv.Reader(r).delimiter(',').ignoreComments(true).ignoreEmptyLines(true);
                 List<List<String>> allLines = new ArrayList<List<String>>();

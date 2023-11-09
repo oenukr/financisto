@@ -41,7 +41,7 @@ import ru.orangesoftware.financisto.R;
  */
 public class QuickActionGrid extends QuickActionWidget {
 
-    private GridView mGridView;
+    private final GridView mGridView;
 
     public QuickActionGrid(Context context) {
         super(context);
@@ -112,7 +112,7 @@ public class QuickActionGrid extends QuickActionWidget {
         setWidgetSpecs(popupY, onTop);
     }
 
-    private OnItemClickListener mInternalItemClickListener = new OnItemClickListener() {
+    private final OnItemClickListener mInternalItemClickListener = new OnItemClickListener() {
         public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
             getOnQuickActionClickListener().onQuickActionClicked(QuickActionGrid.this, position);
             if (getDismissOnClick()) {

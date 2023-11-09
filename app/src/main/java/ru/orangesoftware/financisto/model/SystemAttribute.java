@@ -30,7 +30,7 @@ public enum SystemAttribute implements LocalizableEnum {
 	public final long id;
 	public final int titleId;
 	
-	private SystemAttribute(long id, int titleId) {
+	SystemAttribute(long id, int titleId) {
 		this.id = id;
 		this.titleId = titleId;
 	}

@@ -103,7 +103,7 @@ public class ReportDataByPeriod {
 	/**
 	 * The data points of the report (period x monthly result)
 	 */
-	private List<PeriodValue> values = new ArrayList<PeriodValue>();
+	private final List<PeriodValue> values = new ArrayList<PeriodValue>();
 	
 	/**
 	 * Constructor for report data builder that considers filters in a given period.
@@ -397,7 +397,7 @@ public class ReportDataByPeriod {
 	 */
 	public int[] getAccountsByCurrency(Currency currency, SQLiteDatabase db)
 	{
-		int accounts[] = new int[0];
+		int[] accounts = new int[0];
 		
 		String where = AccountColumns.CURRENCY_ID+"=?";
 		Cursor c = null;

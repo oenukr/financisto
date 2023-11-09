@@ -331,7 +331,7 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     public long insertOrUpdate(Transaction transaction) {
-        return insertOrUpdate(transaction, Collections.<TransactionAttribute>emptyList());
+        return insertOrUpdate(transaction, Collections.emptyList());
     }
 
     public long insertOrUpdate(Transaction transaction, List<TransactionAttribute> attributes) {

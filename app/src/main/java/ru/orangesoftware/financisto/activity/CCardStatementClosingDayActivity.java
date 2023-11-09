@@ -76,7 +76,7 @@ public class CCardStatementClosingDayActivity extends Activity {
 			month = intent.getIntExtra(PERIOD_MONTH, cal.get(Calendar.MONTH));
 			year = intent.getIntExtra(PERIOD_YEAR, cal.get(Calendar.YEAR));
 			// verify if exists a custom closing day in database
-			periodKey = Integer.parseInt(Integer.toString(month) + Integer.toString(year));
+			periodKey = Integer.parseInt(Integer.toString(month) + year);
 
 			regularClosingDay = intent.getIntExtra(REGULAR_CLOSING_DAY, 0);
 		}

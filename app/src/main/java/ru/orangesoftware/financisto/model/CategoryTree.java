@@ -59,7 +59,7 @@ public class CategoryTree<T extends CategoryEntity<T>> implements Iterable<T> {
         roots.add(0, category);
     }
 
-    public static interface NodeCreator<T> {
+    public interface NodeCreator<T> {
 
         T createNode(Cursor c);
     }

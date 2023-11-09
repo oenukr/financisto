@@ -65,7 +65,7 @@ public class RecurUtils {
 		private final int layoutId;
 		private final int titleId;
 		
-		private RecurInterval(int layoutId, int titleId) {
+		RecurInterval(int layoutId, int titleId) {
 			this.layoutId = layoutId;
 			this.titleId = titleId;
 		}
@@ -131,7 +131,7 @@ public class RecurUtils {
 		private final int layoutId;
 		private final int titleId;
 		
-		private RecurPeriod(int layoutId, int titleId) {
+		RecurPeriod(int layoutId, int titleId) {
 			this.layoutId = layoutId;
 			this.titleId = titleId;
 		}
@@ -199,12 +199,11 @@ public class RecurUtils {
 
 		public String toString(Context context) {
 			DateFormat df = DateUtils.getShortDateFormat(context);
-			StringBuilder sb = new StringBuilder();
-			sb.append(context.getString(R.string.recur_repeat_starts_on)).append(" ");
-			sb.append(df.format(new Date(startDate))).append(", ");
-			sb.append(context.getString(interval.titleId)).append(", ");
-			sb.append(period.toSummary(context, periodParam));
-			return sb.toString();
+            String sb = context.getString(R.string.recur_repeat_starts_on) + " " +
+                    df.format(new Date(startDate)) + ", " +
+                    context.getString(interval.titleId) + ", " +
+                    period.toSummary(context, periodParam);
+			return sb;
 		}
 		
 		//public abstract long getNextRecur(long currentDate);
@@ -270,7 +269,7 @@ public class RecurUtils {
 		}
 	}
 
-	public static enum DayOfWeek {
+	public enum DayOfWeek {
 		SUN(R.id.daySun), 
 		MON(R.id.dayMon), 
 		TUE(R.id.dayTue), 
@@ -281,7 +280,7 @@ public class RecurUtils {
 		
 		public final int checkboxId;
 		
-		private DayOfWeek(int checkboxId) {
+		DayOfWeek(int checkboxId) {
 			this.checkboxId = checkboxId;
 		}
 		

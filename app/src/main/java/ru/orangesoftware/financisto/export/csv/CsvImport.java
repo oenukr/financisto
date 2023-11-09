@@ -36,8 +36,8 @@ public class CsvImport {
     private final DatabaseAdapter db;
     private final CsvImportOptions options;
     private final Account account;
-    private char decimalSeparator;
-    private char groupSeparator;
+    private final char decimalSeparator;
+    private final char groupSeparator;
     private ProgressListener progressListener;
 
     public CsvImport(DatabaseAdapter db, CsvImportOptions options) {

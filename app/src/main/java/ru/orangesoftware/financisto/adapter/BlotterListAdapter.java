@@ -57,12 +57,12 @@ public class BlotterListAdapter extends ResourceCursorAdapter {
     protected final Utils u;
     protected final DatabaseAdapter db;
 
-    private final int colors[];
+    private final int[] colors;
 
     private boolean allChecked = true;
     private final HashMap<Long, Boolean> checkedItems = new HashMap<Long, Boolean>();
 
-    private boolean showRunningBalance;
+    private final boolean showRunningBalance;
 
     public BlotterListAdapter(Context context, DatabaseAdapter db, Cursor c) {
         this(context, db, R.layout.blotter_list_item, c, false);

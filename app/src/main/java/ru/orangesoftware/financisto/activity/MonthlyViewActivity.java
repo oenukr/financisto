@@ -273,7 +273,7 @@ public class MonthlyViewActivity extends ListActivity {
 
         // Verify custom closing date
         int periodKey = Integer.parseInt(Integer.toString(close.get(Calendar.MONTH)) +
-                Integer.toString(close.get(Calendar.YEAR)));
+                close.get(Calendar.YEAR));
 
         int cd = db.getCustomClosingDay(accountId, periodKey);
         if (cd > 0) {
@@ -283,7 +283,7 @@ public class MonthlyViewActivity extends ListActivity {
 
         // Verify custom opening date = closing day of previous month + 1
         periodKey = Integer.parseInt(Integer.toString(open.get(Calendar.MONTH)) +
-                Integer.toString(open.get(Calendar.YEAR)));
+                open.get(Calendar.YEAR));
 
         int od = db.getCustomClosingDay(accountId, periodKey);
         if (od > 0) {
