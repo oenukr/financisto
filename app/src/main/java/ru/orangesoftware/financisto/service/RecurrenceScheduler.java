@@ -104,7 +104,7 @@ public class RecurrenceScheduler {
 		long t0 = System.currentTimeMillis();
 		try {
 			Date endDate = new Date(now);
-			List<RestoredTransaction> restored = new ArrayList<RestoredTransaction>();
+			List<RestoredTransaction> restored = new ArrayList<>();
 			ArrayList<TransactionInfo> list = db.getAllScheduledTransactions();
 			for (TransactionInfo t : list) {
 				if (t.recurrence != null) {

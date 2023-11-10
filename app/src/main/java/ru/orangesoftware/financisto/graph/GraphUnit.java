@@ -28,7 +28,7 @@ public class GraphUnit implements Comparable<GraphUnit>, Iterable<Amount> {
     public final Currency currency;
 
     private final IncomeExpenseAmount incomeExpenseAmount = new IncomeExpenseAmount();
-    private final List<Amount> amounts = new LinkedList<Amount>();
+    private final List<Amount> amounts = new LinkedList<>();
 
     public long maxAmount;
     public TotalError error;

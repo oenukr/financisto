@@ -193,7 +193,7 @@ public enum PeriodType implements LocalizableEnum {
     };
 
     public static PeriodType[] allRegular() {
-        List<PeriodType> types = new ArrayList<PeriodType>();
+        List<PeriodType> types = new ArrayList<>();
         for (PeriodType periodType : PeriodType.values()) {
             if (periodType.inPast) {
                 types.add(periodType);
@@ -203,7 +203,7 @@ public enum PeriodType implements LocalizableEnum {
     }
 
     public static PeriodType[] allPlanner() {
-        List<PeriodType> types = new ArrayList<PeriodType>();
+        List<PeriodType> types = new ArrayList<>();
         for (PeriodType periodType : PeriodType.values()) {
             if (periodType.inFuture) {
                 types.add(periodType);

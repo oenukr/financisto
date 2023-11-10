@@ -71,7 +71,7 @@ public class RecurrenceSchedulerTest extends AbstractDbTest {
 
     private List<RestoredTransaction> assertRestoredSize(List<TransactionInfo> schedules, long now, int count) {
         // given
-        DatabaseAdapter db = new FakeDatabaseAdapter(getContext(), new ArrayList<TransactionInfo>(schedules));
+        DatabaseAdapter db = new FakeDatabaseAdapter(getContext(), new ArrayList<>(schedules));
         RecurrenceScheduler scheduler = new RecurrenceScheduler(db);
         // when
         List<RestoredTransaction> missed = scheduler.getMissedSchedules(now);

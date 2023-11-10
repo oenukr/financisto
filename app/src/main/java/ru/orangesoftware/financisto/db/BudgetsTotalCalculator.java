@@ -72,7 +72,7 @@ public class BudgetsTotalCalculator {
     }
     
     public Total[] calculateTotals() {
-        Map<Currency, Total> totals = new HashMap<Currency, Total>();
+        Map<Currency, Total> totals = new HashMap<>();
         for (Budget b : budgets) {
             Currency c = b.getBudgetCurrency();
             Total total = totals.get(c);

@@ -24,7 +24,7 @@ import ru.orangesoftware.orb.Query;
 public class CurrencyCache {
 
     //@ProtectedBy("this")
-	private static final TLongObjectHashMap<Currency> CURRENCIES = new TLongObjectHashMap<Currency>();
+	private static final TLongObjectHashMap<Currency> CURRENCIES = new TLongObjectHashMap<>();
 	
 	public static synchronized Currency getCurrency(EntityManager em, long currencyId) {
 		Currency cachedCurrency = CURRENCIES.get(currencyId);
@@ -44,7 +44,7 @@ public class CurrencyCache {
 	}
 
 	public static synchronized void initialize(EntityManager em) {
-        TLongObjectHashMap<Currency> currencies = new TLongObjectHashMap<Currency>();
+        TLongObjectHashMap<Currency> currencies = new TLongObjectHashMap<>();
 		Query<Currency> q = em.createQuery(Currency.class);
 		Cursor c = q.execute();
 		try {

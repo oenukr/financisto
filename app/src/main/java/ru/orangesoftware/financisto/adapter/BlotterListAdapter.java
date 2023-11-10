@@ -60,7 +60,7 @@ public class BlotterListAdapter extends ResourceCursorAdapter {
     private final int[] colors;
 
     private boolean allChecked = true;
-    private final HashMap<Long, Boolean> checkedItems = new HashMap<Long, Boolean>();
+    private final HashMap<Long, Boolean> checkedItems = new HashMap<>();
 
     private final boolean showRunningBalance;
 

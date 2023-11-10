@@ -84,7 +84,7 @@ public class Recurrence {
 
     public List<Date> generateDates(Date start, Date end) {
         DateRecurrenceIterator ri = createIterator(start);
-        List<Date> dates = new ArrayList<Date>();
+        List<Date> dates = new ArrayList<>();
         while (ri.hasNext()) {
             Date nextDate = ri.next();
             if (nextDate.after(end)) {

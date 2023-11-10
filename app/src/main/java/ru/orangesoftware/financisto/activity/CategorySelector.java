@@ -360,7 +360,7 @@ public class CategorySelector<A extends AbstractActivity> {
     }
 
     protected List<TransactionAttribute> getAttributes() {
-        List<TransactionAttribute> list = new LinkedList<TransactionAttribute>();
+        List<TransactionAttribute> list = new LinkedList<>();
         long count = attributesLayout.getChildCount();
         for (int i = 0; i < count; i++) {
             View v = attributesLayout.getChildAt(i);

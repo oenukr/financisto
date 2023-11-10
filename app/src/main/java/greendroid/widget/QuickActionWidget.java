@@ -62,7 +62,7 @@ public abstract class QuickActionWidget extends PopupWindow {
     private boolean mIsDirty;
 
     private OnQuickActionClickListener mOnQuickActionClickListener;
-    private final ArrayList<QuickAction> mQuickActions = new ArrayList<QuickAction>();
+    private final ArrayList<QuickAction> mQuickActions = new ArrayList<>();
 
     /**
      * Interface that may be used to listen to clicks on quick actions.

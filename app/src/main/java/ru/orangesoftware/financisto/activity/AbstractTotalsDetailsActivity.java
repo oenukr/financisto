@@ -92,7 +92,7 @@ public abstract class AbstractTotalsDetailsActivity extends AbstractActivity {
             Total totalInHomeCurrency = getTotalInHomeCurrency();
             Currency homeCurrency = totalInHomeCurrency.currency;
             ExchangeRateProvider rates = db.getLatestRates();
-            List<TotalInfo> result = new ArrayList<TotalInfo>();
+            List<TotalInfo> result = new ArrayList<>();
             for (Total total : totals) {
                 ExchangeRate rate = rates.getRate(total.currency, homeCurrency);
                 TotalInfo info = new TotalInfo(total, rate);

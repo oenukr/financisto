@@ -130,7 +130,7 @@ public class QifExport extends Export {
     }
 
     private List<QifTransaction> fromTransactions(List<Transaction> transactions, Map<Long, Category> categoriesMap, Map<Long, Account> accountsMap) {
-        List<QifTransaction> qifTransactions = new ArrayList<QifTransaction>(transactions.size());
+        List<QifTransaction> qifTransactions = new ArrayList<>(transactions.size());
         for (Transaction transaction : transactions) {
             QifTransaction qifTransaction = QifTransaction.fromTransaction(transaction, categoriesMap, accountsMap);
             qifTransactions.add(qifTransaction);

@@ -90,7 +90,7 @@ public class QifExportActivity extends AbstractExportActivity implements Activit
     }
 
     private ArrayList<Account> getSelectedAccounts() {
-        ArrayList<Account> selected = new ArrayList<Account>();
+        ArrayList<Account> selected = new ArrayList<>();
         for (MultiChoiceItem i : accounts) {
             if (i.isChecked()) {
                 selected.add((Account)i);
@@ -132,7 +132,7 @@ public class QifExportActivity extends AbstractExportActivity implements Activit
     }
 
     private long[] getSelectedAccountsIds() {
-        List<Long> selectedAccounts = new ArrayList<Long>(accounts.size());
+        List<Long> selectedAccounts = new ArrayList<>(accounts.size());
         for (Account account : accounts) {
             if (account.isChecked()) {
                 selectedAccounts.add(account.id);

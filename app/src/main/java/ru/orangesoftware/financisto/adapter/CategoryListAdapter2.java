@@ -38,8 +38,8 @@ public class CategoryListAdapter2 extends BaseAdapter {
 	private CategoryTree<Category> categories;
 	private Map<Long, String> attributes;
 
-	private final ArrayList<Category> list = new ArrayList<Category>();
-	private final HashSet<Long> state = new HashSet<Long>();
+	private final ArrayList<Category> list = new ArrayList<>();
+	private final HashSet<Long> state = new HashSet<>();
 	
 	private final Drawable expandedDrawable;
 	private final Drawable collapsedDrawable;

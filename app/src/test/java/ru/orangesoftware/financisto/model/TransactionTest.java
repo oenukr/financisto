@@ -96,7 +96,7 @@ public class TransactionTest extends AbstractDbTest {
     }
 
     private Map<Long, String> asMap(TransactionAttribute... values) {
-        Map<Long, String> map = new HashMap<Long, String>();
+        Map<Long, String> map = new HashMap<>();
         for (TransactionAttribute value : values) {
             map.put(value.attributeId, value.value);
         }

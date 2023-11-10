@@ -117,7 +117,7 @@ public class Csv {
 
         private String escape(String value) {
             if (value == null) return "";
-            if (value.length() == 0) return "\"\"";
+            if (value.isEmpty()) return "\"\"";
 
             boolean needQuoting = value.startsWith(" ") || value.endsWith(" ") || (value.startsWith("#") && first);
             if (!needQuoting) {
@@ -157,9 +157,9 @@ public class Csv {
             if (line == null) return null;
             if (!preserveSpaces) line = removeLeadingSpaces(line);
             if (ignoreComments && line.startsWith("#")) return readLine();
-            if (ignoreEmptyLines && line.length() == 0) return readLine();
+            if (ignoreEmptyLines && line.isEmpty()) return readLine();
 
-            List<String> result = new ArrayList<String>();
+            List<String> result = new ArrayList<>();
 
             while (line != null) {
                 String token = "";

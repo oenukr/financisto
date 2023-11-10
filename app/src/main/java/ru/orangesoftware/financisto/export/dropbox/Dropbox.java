@@ -115,7 +115,7 @@ public class Dropbox {
     List<String> listFiles() throws Exception {
         if (authSession()) {
             try {
-                List<String> files = new ArrayList<String>();
+                List<String> files = new ArrayList<>();
                 ListFolderResult listFolderResult = dropboxClient.files().listFolder("");
                 for (Metadata metadata : listFolderResult.getEntries()) {
                     String name = metadata.getName();

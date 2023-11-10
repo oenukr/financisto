@@ -162,7 +162,7 @@ public class GoogleDriveClient {
 //    }
 
     private List<DriveFileInfo> fetchFiles(DriveApi.MetadataBufferResult metadataBufferResult) {
-        List<DriveFileInfo> files = new ArrayList<DriveFileInfo>();
+        List<DriveFileInfo> files = new ArrayList<>();
         MetadataBuffer metadataBuffer = metadataBufferResult.getMetadataBuffer();
         if (metadataBuffer == null) return files;
         try {

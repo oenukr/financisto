@@ -69,7 +69,7 @@ public class TransactionsTotalCalculator {
                 filter.getSelection(), filter.getSelectionArgs(),
                 BALANCE_GROUPBY, null, null)) {
             int count = c.getCount();
-            List<Total> totals = new ArrayList<Total>(count);
+            List<Total> totals = new ArrayList<>(count);
             while (c.moveToNext()) {
                 long currencyId = c.getLong(0);
                 long balance = c.getLong(1);

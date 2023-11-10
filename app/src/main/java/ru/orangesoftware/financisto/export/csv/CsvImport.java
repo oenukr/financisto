@@ -177,7 +177,7 @@ public class CsvImport {
             SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss");
             Csv.Reader reader = new Csv.Reader(new FileReader(csvFilename))
                     .delimiter(options.fieldSeparator).ignoreComments(true);
-            List<CsvTransaction> transactions = new LinkedList<CsvTransaction>();
+            List<CsvTransaction> transactions = new LinkedList<>();
             List<String> line;
             while ((line = reader.readLine()) != null) {
                 if (parseLine) {
@@ -186,10 +186,10 @@ public class CsvImport {
                     int countOfColumns = line.size();
                     for (int i = 0; i < countOfColumns; i++) {
                         String transactionField = myTrim(header.get(i));
-                        if (!transactionField.equals("")) {
+                        if (!transactionField.isEmpty()) {
                             try {
                                 String fieldValue = line.get(i);
-                                if (!fieldValue.equals("")) {
+                                if (!fieldValue.isEmpty()) {
                                     if (transactionField.equals("date")) {
                                         transaction.date = options.dateFormat.parse(fieldValue);
                                     } else if (transactionField.equals("time")) {
@@ -246,7 +246,7 @@ public class CsvImport {
 
     private Double parseAmount(String fieldValue) {
         fieldValue = fieldValue.trim();
-        if (fieldValue.length() > 0) {
+        if (!fieldValue.isEmpty()) {
             fieldValue = fieldValue.replace(groupSeparator + "", "");
             fieldValue = fieldValue.replace(decimalSeparator, '.');
             double fromAmount = Double.parseDouble(fieldValue);
@@ -257,7 +257,7 @@ public class CsvImport {
     }
 
     public Set<CategoryInfo> collectCategories(List<CsvTransaction> transactions) {
-        Set<CategoryInfo> categories = new HashSet<CategoryInfo>();
+        Set<CategoryInfo> categories = new HashSet<>();
         for (CsvTransaction transaction : transactions) {
             String category = transaction.category;
             if (Utils.isNotEmpty(transaction.categoryParent)) {

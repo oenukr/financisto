@@ -41,7 +41,7 @@ public class FolderBrowser extends ListActivity {
 
     public static final String PATH = "PATH";
     
-    private final List<FileItem> files = new ArrayList<FileItem>();
+    private final List<FileItem> files = new ArrayList<>();
 
     private Button selectButton;
     private Button createButton;
@@ -169,7 +169,7 @@ public class FolderBrowser extends ListActivity {
     }
 
     private void setAdapter() {
-        ListAdapter adapter = new ArrayAdapter<FileItem>(this, android.R.layout.simple_list_item_1, files);
+        ListAdapter adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, files);
         setListAdapter(adapter);
     }
 

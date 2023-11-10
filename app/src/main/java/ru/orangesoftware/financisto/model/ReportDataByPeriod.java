@@ -103,7 +103,7 @@ public class ReportDataByPeriod {
 	/**
 	 * The data points of the report (period x monthly result)
 	 */
-	private final List<PeriodValue> values = new ArrayList<PeriodValue>();
+	private final List<PeriodValue> values = new ArrayList<>();
 	
 	/**
 	 * Constructor for report data builder that considers filters in a given period.

@@ -95,7 +95,7 @@ public class RecurUtils {
 			@Override
 			public Period[] repeat(RecurInterval interval, long startDate, long periodParam) {
 				long endDate = 0;
-				LinkedList<Period> periods = new LinkedList<Period>();
+				LinkedList<Period> periods = new LinkedList<>();
 				while (endDate < periodParam) {
 					Period p = interval.next(startDate);
 					startDate = p.end+1;
@@ -118,7 +118,7 @@ public class RecurUtils {
 			}
 			@Override
 			public Period[] repeat(RecurInterval interval, long startDate, long periodParam) {
-				LinkedList<Period> periods = new LinkedList<Period>();
+				LinkedList<Period> periods = new LinkedList<>();
 				while (periodParam-- > 0) {
 					Period p = interval.next(startDate);
 					startDate = p.end+1;
@@ -431,7 +431,7 @@ public class RecurUtils {
 	}
 
 	private static HashMap<String, String> toMap(String[] a) {
-		HashMap<String, String> map = new HashMap<String, String>();
+		HashMap<String, String> map = new HashMap<>();
 		for (String s : a) {
 			String[] kv = s.split("=");
 			if (kv.length > 1) {

@@ -29,11 +29,11 @@ public class CategoryTree<T extends CategoryEntity<T>> implements Iterable<T> {
 	}
 	
 	public CategoryTree() {
-		this.roots = new ArrayList<T>();
+		this.roots = new ArrayList<>();
 	}
 	
 	public static <T extends CategoryEntity<T>> CategoryTree<T> createFromCursor(Cursor c, NodeCreator<T> creator) {
-		ArrayList<T> roots = new ArrayList<T>();
+		ArrayList<T> roots = new ArrayList<>();
 		T parent = null;
 		while (c.moveToNext()) {
 			T category = creator.createNode(c);
@@ -52,7 +52,7 @@ public class CategoryTree<T extends CategoryEntity<T>> implements Iterable<T> {
 				parent = category;
 			}
 		}	
-		return new CategoryTree<T>(roots);
+		return new CategoryTree<>(roots);
 	}
 
     public void insertAtTop(T category) {
@@ -64,7 +64,7 @@ public class CategoryTree<T extends CategoryEntity<T>> implements Iterable<T> {
         T createNode(Cursor c);
     }
 	public Map<Long, T> asMap() {
-		Map<Long, T> map = new HashMap<Long, T>();
+		Map<Long, T> map = new HashMap<>();
 		initializeMap(map, this);
 		return map;
 	}

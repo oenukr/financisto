@@ -78,7 +78,7 @@ public class SubCategoryReport extends Report {
             });
 
             ArrayList<GraphUnitTree> roots = createTree(amounts, 0);
-            ArrayList<GraphUnit> units = new ArrayList<GraphUnit>();
+            ArrayList<GraphUnit> units = new ArrayList<>();
             flattenTree(roots, units);
             Total total = calculateTotal(roots);
             return new ReportData(units, total);
@@ -98,7 +98,7 @@ public class SubCategoryReport extends Report {
     }
 
     private ArrayList<GraphUnitTree> createTree(CategoryTree<CategoryAmount> amounts, int level) {
-        ArrayList<GraphUnitTree> roots = new ArrayList<GraphUnitTree>();
+        ArrayList<GraphUnitTree> roots = new ArrayList<>();
         GraphUnitTree u = null;
         long lastId = -1;
         for (CategoryAmount a : amounts) {

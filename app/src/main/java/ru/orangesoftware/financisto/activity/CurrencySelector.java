@@ -114,10 +114,9 @@ public class CurrencySelector {
 
     private List<List<String>> readCurrenciesFromAsset() {
         try {
-            InputStreamReader r = new InputStreamReader(context.getAssets().open("currencies.csv"), StandardCharsets.UTF_8);
-            try {
+            try (InputStreamReader r = new InputStreamReader(context.getAssets().open("currencies.csv"), StandardCharsets.UTF_8)) {
                 Csv.Reader csv = new Csv.Reader(r).delimiter(',').ignoreComments(true).ignoreEmptyLines(true);
-                List<List<String>> allLines = new ArrayList<List<String>>();
+                List<List<String>> allLines = new ArrayList<>();
                 List<String> line;
                 while ((line = csv.readLine()) != null) {
                     if (line.size() == 6) {
@@ -125,8 +124,6 @@ public class CurrencySelector {
                     }
                 }
                 return allLines;
-            } finally {
-                r.close();
             }
         } catch (IOException e) {
             Log.e("Financisto", "IO error while reading currencies", e);
