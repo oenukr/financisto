@@ -190,33 +190,45 @@ public class CsvImport {
                             try {
                                 String fieldValue = line.get(i);
                                 if (!fieldValue.isEmpty()) {
-                                    if (transactionField.equals("date")) {
-                                        transaction.date = options.dateFormat.parse(fieldValue);
-                                    } else if (transactionField.equals("time")) {
-                                        transaction.time = format.parse(fieldValue);
-                                    } else if (transactionField.equals("amount")) {
-                                        Double fromAmountDouble = parseAmount(fieldValue);
-                                        transaction.fromAmount = fromAmountDouble.longValue();
-                                    } else if (transactionField.equals("original amount")) {
-                                        Double originalAmountDouble = parseAmount(fieldValue);
-                                        transaction.originalAmount = originalAmountDouble.longValue();
-                                    } else if (transactionField.equals("original currency")) {
-                                        transaction.originalCurrency = fieldValue;
-                                    } else if (transactionField.equals("payee")) {
-                                        transaction.payee = fieldValue;
-                                    } else if (transactionField.equals("category")) {
-                                        transaction.category = fieldValue;
-                                    } else if (transactionField.equals("parent")) {
-                                        transaction.categoryParent = fieldValue;
-                                    } else if (transactionField.equals("note")) {
-                                        transaction.note = fieldValue;
-                                    } else if (transactionField.equals("project")) {
-                                        transaction.project = fieldValue;
-                                    } else if (transactionField.equals("currency")) {
-                                        if (!account.currency.name.equals(fieldValue)) {
-                                            throw new ImportExportException(R.string.import_wrong_currency_2, null, fieldValue);
-                                        }
-                                        transaction.currency = fieldValue;
+                                    switch (transactionField) {
+                                        case "date":
+                                            transaction.date = options.dateFormat.parse(fieldValue);
+                                            break;
+                                        case "time":
+                                            transaction.time = format.parse(fieldValue);
+                                            break;
+                                        case "amount":
+                                            Double fromAmountDouble = parseAmount(fieldValue);
+                                            transaction.fromAmount = fromAmountDouble.longValue();
+                                            break;
+                                        case "original amount":
+                                            Double originalAmountDouble = parseAmount(fieldValue);
+                                            transaction.originalAmount = originalAmountDouble.longValue();
+                                            break;
+                                        case "original currency":
+                                            transaction.originalCurrency = fieldValue;
+                                            break;
+                                        case "payee":
+                                            transaction.payee = fieldValue;
+                                            break;
+                                        case "category":
+                                            transaction.category = fieldValue;
+                                            break;
+                                        case "parent":
+                                            transaction.categoryParent = fieldValue;
+                                            break;
+                                        case "note":
+                                            transaction.note = fieldValue;
+                                            break;
+                                        case "project":
+                                            transaction.project = fieldValue;
+                                            break;
+                                        case "currency":
+                                            if (!account.currency.name.equals(fieldValue)) {
+                                                throw new ImportExportException(R.string.import_wrong_currency_2, null, fieldValue);
+                                            }
+                                            transaction.currency = fieldValue;
+                                            break;
                                     }
                                 }
                             } catch (IllegalArgumentException e) {
