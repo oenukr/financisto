@@ -198,9 +198,7 @@ public class CategorySelector<A extends AbstractActivity> {
                     autoCompleteTextView.selectAll();
                 }
             });
-            autoCompleteTextView.setOnItemClickListener((parent, view, position, id) -> {
-                activity.onSelectedId(R.id.category, id);
-            });
+            autoCompleteTextView.setOnItemClickListener((parent, view, position, id) -> activity.onSelectedId(R.id.category, id));
             initAutocomplete = false;
         }
     }
