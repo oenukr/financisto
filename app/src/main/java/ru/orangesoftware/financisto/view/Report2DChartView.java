@@ -264,7 +264,7 @@ public class Report2DChartView extends View {
                 canvas.drawText(points.get(points.size() - 1).getYearString(), points.get(points.size() - 1).getX(), getHeight() - ySpace - padding + 2 * txtHeight - 1, labelPaint);
 
                 labelPaint.setTextSize(textSize12);
-                canvas.drawText(getResources().getString(R.string.period), padding + xSpace + (getWidth() - xSpace - 2 * padding) / 2, getHeight() - ySpace - padding / 2 + txtHeight, labelPaint);
+                canvas.drawText(getResources().getString(R.string.period), padding + xSpace + (float) (getWidth() - xSpace - 2 * padding) / 2, getHeight() - ySpace - (float) padding / 2 + txtHeight, labelPaint);
             }
         }
         canvas.drawLine(padding + xSpace + 1, padding, getWidth() - padding, padding, gridPaint);
@@ -296,7 +296,7 @@ public class Report2DChartView extends View {
         currencyPaint.setTextSize(textSize12);
 
         canvas.drawText("x:", padding, getHeight() - padding, currencyPaint);
-        canvas.drawText("y:", padding + getWidth() / 2, getHeight() - padding, currencyPaint);
+        canvas.drawText("y:", padding + (float) getWidth() / 2, getHeight() - padding, currencyPaint);
 
         // set desired drawing location
         int amountX = 0;
@@ -367,7 +367,7 @@ public class Report2DChartView extends View {
         }
         String x = points.get(selected).getMonthLongString(this.getContext()) + " " + points.get(selected).getYearString();
 
-        canvas.drawText(x, 30 + (getWidth() / 2 - 30) / 2, getHeight() - padding, valuesPaint);
+        canvas.drawText(x, 30 + (float) (getWidth() / 2 - 30) / 2, getHeight() - padding, valuesPaint);
 
         String value;
         if (absoluteCalculation) {
@@ -377,7 +377,7 @@ public class Report2DChartView extends View {
             value = Utils.amountToString(currency, (long) points.get(selected).getPointData().getValue());
         }
 
-        canvas.drawText(value, getWidth() / 2 + 30 + (getWidth() / 2 - 30) / 2, getHeight() - padding, valuesPaint);
+        canvas.drawText(value, (float) getWidth() / 2 + 30 + (float) (getWidth() / 2 - 30) / 2, getHeight() - padding, valuesPaint);
     }
 
     /**

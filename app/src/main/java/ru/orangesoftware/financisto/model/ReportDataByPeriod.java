@@ -169,7 +169,7 @@ public class ReportDataByPeriod {
 	private void init(Context context, Calendar startDate, int periodLength, Currency currency, String filterColumn, int[] filterId, MyEntityManager em) {
 		this.context = context;
 		this.periodLength = periodLength;
-		startDate.set(startDate.get(Calendar.YEAR), startDate.get(Calendar.MONTH), 01, 00, 00, 00);
+		startDate.set(startDate.get(Calendar.YEAR), startDate.get(Calendar.MONTH), 1, 0, 0, 0);
 		this.startDate = startDate;
 		
 		SQLiteDatabase db = em.db();
