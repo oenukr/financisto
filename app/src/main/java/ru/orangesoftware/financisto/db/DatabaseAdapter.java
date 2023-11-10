@@ -896,14 +896,11 @@ public class DatabaseAdapter extends MyEntityManager {
     private long insertCategory(String field, long categoryId, String title, int type) {
         int num = 0;
         SQLiteDatabase db = db();
-        Cursor c = db.query(CATEGORY_TABLE, new String[]{field},
-                CategoryColumns._id + "=?", new String[]{String.valueOf(categoryId)}, null, null, null);
-        try {
+        try (Cursor c = db.query(CATEGORY_TABLE, new String[]{field},
+                CategoryColumns._id + "=?", new String[]{String.valueOf(categoryId)}, null, null, null)) {
             if (c.moveToFirst()) {
                 num = c.getInt(0);
             }
-        } finally {
-            c.close();
         }
         String[] args = new String[]{String.valueOf(num)};
         db.execSQL(INSERT_CATEGORY_UPDATE_RIGHT, args);
@@ -956,15 +953,12 @@ public class DatabaseAdapter extends MyEntityManager {
         //	`r` > v_rightkey;
         SQLiteDatabase db = db();
         int left = 0, right = 0;
-        Cursor c = db.query(CATEGORY_TABLE, new String[]{CategoryColumns.left.name(), CategoryColumns.right.name()},
-                CategoryColumns._id + "=?", new String[]{String.valueOf(categoryId)}, null, null, null);
-        try {
+        try (Cursor c = db.query(CATEGORY_TABLE, new String[]{CategoryColumns.left.name(), CategoryColumns.right.name()},
+                CategoryColumns._id + "=?", new String[]{String.valueOf(categoryId)}, null, null, null)) {
             if (c.moveToFirst()) {
                 left = c.getInt(0);
                 right = c.getInt(1);
             }
-        } finally {
-            c.close();
         }
         db.beginTransaction();
         try {
@@ -1235,11 +1229,10 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     public Map<Long, String> getAllAttributesForTransaction(long transactionId) {
-        Cursor c = db().query(TRANSACTION_ATTRIBUTE_TABLE, TransactionAttributeColumns.NORMAL_PROJECTION,
+        try (Cursor c = db().query(TRANSACTION_ATTRIBUTE_TABLE, TransactionAttributeColumns.NORMAL_PROJECTION,
                 TransactionAttributeColumns.TRANSACTION_ID + "=? AND " + TransactionAttributeColumns.ATTRIBUTE_ID + ">=0",
                 new String[]{String.valueOf(transactionId)},
-                null, null, null);
-        try {
+                null, null, null)) {
             HashMap<Long, String> attributes = new HashMap<>();
             while (c.moveToNext()) {
                 long attributeId = c.getLong(TransactionAttributeColumns.Indicies.ATTRIBUTE_ID);
@@ -1247,17 +1240,14 @@ public class DatabaseAdapter extends MyEntityManager {
                 attributes.put(attributeId, value);
             }
             return attributes;
-        } finally {
-            c.close();
         }
     }
 
     public EnumMap<SystemAttribute, String> getSystemAttributesForTransaction(long transactionId) {
-        Cursor c = db().query(TRANSACTION_ATTRIBUTE_TABLE, TransactionAttributeColumns.NORMAL_PROJECTION,
+        try (Cursor c = db().query(TRANSACTION_ATTRIBUTE_TABLE, TransactionAttributeColumns.NORMAL_PROJECTION,
                 TransactionAttributeColumns.TRANSACTION_ID + "=? AND " + TransactionAttributeColumns.ATTRIBUTE_ID + "<0",
                 new String[]{String.valueOf(transactionId)},
-                null, null, null);
-        try {
+                null, null, null)) {
             EnumMap<SystemAttribute, String> attributes = new EnumMap<>(SystemAttribute.class);
             while (c.moveToNext()) {
                 long attributeId = c.getLong(TransactionAttributeColumns.Indicies.ATTRIBUTE_ID);
@@ -1265,8 +1255,6 @@ public class DatabaseAdapter extends MyEntityManager {
                 attributes.put(SystemAttribute.forId(attributeId), value);
             }
             return attributes;
-        } finally {
-            c.close();
         }
     }
 
@@ -1502,13 +1490,10 @@ public class DatabaseAdapter extends MyEntityManager {
 
     public long fetchBudgetBalance(Map<Long, Category> categories, Map<Long, Project> projects, Budget b) {
         String where = Budget.createWhere(b, categories, projects);
-        Cursor c = db().query(V_BLOTTER_FOR_ACCOUNT_WITH_SPLITS, SUM_FROM_AMOUNT, where, null, null, null, null);
-        try {
+        try (Cursor c = db().query(V_BLOTTER_FOR_ACCOUNT_WITH_SPLITS, SUM_FROM_AMOUNT, where, null, null, null, null)) {
             if (c.moveToNext()) {
                 return c.getLong(0);
             }
-        } finally {
-            c.close();
         }
         return 0;
     }
@@ -1595,44 +1580,35 @@ public class DatabaseAdapter extends MyEntityManager {
 
     public ExchangeRate findRate(Currency fromCurrency, Currency toCurrency, long date) {
         long day = DateUtils.atMidnight(date);
-        Cursor c = db().query(EXCHANGE_RATES_TABLE, ExchangeRateColumns.NORMAL_PROJECTION, ExchangeRateColumns.NORMAL_PROJECTION_WHERE,
-                new String[]{String.valueOf(fromCurrency.id), String.valueOf(toCurrency.id), String.valueOf(day)}, null, null, null);
-        try {
+        try (Cursor c = db().query(EXCHANGE_RATES_TABLE, ExchangeRateColumns.NORMAL_PROJECTION, ExchangeRateColumns.NORMAL_PROJECTION_WHERE,
+                new String[]{String.valueOf(fromCurrency.id), String.valueOf(toCurrency.id), String.valueOf(day)}, null, null, null)) {
             if (c.moveToFirst()) {
                 return ExchangeRate.fromCursor(c);
             }
-        } finally {
-            c.close();
         }
         return null;
     }
 
     public List<ExchangeRate> findRates(Currency fromCurrency) {
         List<ExchangeRate> rates = new ArrayList<>();
-        Cursor c = db().query(EXCHANGE_RATES_TABLE, ExchangeRateColumns.NORMAL_PROJECTION, ExchangeRateColumns.from_currency_id + "=?",
-                new String[]{String.valueOf(fromCurrency.id)}, null, null, ExchangeRateColumns.rate_date + " desc");
-        try {
+        try (Cursor c = db().query(EXCHANGE_RATES_TABLE, ExchangeRateColumns.NORMAL_PROJECTION, ExchangeRateColumns.from_currency_id + "=?",
+                new String[]{String.valueOf(fromCurrency.id)}, null, null, ExchangeRateColumns.rate_date + " desc")) {
             while (c.moveToNext()) {
                 rates.add(ExchangeRate.fromCursor(c));
             }
-        } finally {
-            c.close();
         }
         return rates;
     }
 
     public List<ExchangeRate> findRates(Currency fromCurrency, Currency toCurrency) {
         List<ExchangeRate> rates = new ArrayList<>();
-        Cursor c = db().query(EXCHANGE_RATES_TABLE, ExchangeRateColumns.NORMAL_PROJECTION,
+        try (Cursor c = db().query(EXCHANGE_RATES_TABLE, ExchangeRateColumns.NORMAL_PROJECTION,
                 ExchangeRateColumns.from_currency_id + "=? and " + ExchangeRateColumns.to_currency_id + "=?",
                 new String[]{String.valueOf(fromCurrency.id), String.valueOf(toCurrency.id)},
-                null, null, ExchangeRateColumns.rate_date + " desc");
-        try {
+                null, null, ExchangeRateColumns.rate_date + " desc")) {
             while (c.moveToNext()) {
                 rates.add(ExchangeRate.fromCursor(c));
             }
-        } finally {
-            c.close();
         }
         return rates;
     }

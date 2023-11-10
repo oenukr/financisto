@@ -412,19 +412,15 @@ public class ReportDataByPeriod {
 		int[] accounts = new int[0];
 		
 		String where = AccountColumns.CURRENCY_ID+"=?";
-		Cursor c = null;
-		try {
-			c = db.query(DatabaseHelper.ACCOUNT_TABLE, new String[]{AccountColumns.ID}, 
-					   where, new String[]{Long.toString(currency.id)}, null, null, null);
-			accounts = new int[c.getCount()];
-			int index=0;
-			while (c.moveToNext()) {
-				accounts[index] = c.getInt(0);
-				index++;
-			} 
-		} finally {
-			if(c!=null) c.close();
-		}
+        try (Cursor c = db.query(DatabaseHelper.ACCOUNT_TABLE, new String[]{AccountColumns.ID},
+                where, new String[]{Long.toString(currency.id)}, null, null, null)) {
+            accounts = new int[c.getCount()];
+            int index = 0;
+            while (c.moveToNext()) {
+                accounts[index] = c.getInt(0);
+                index++;
+            }
+        }
 		return accounts;
 	}
 	

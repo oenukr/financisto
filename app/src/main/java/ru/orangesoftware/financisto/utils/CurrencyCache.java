@@ -46,15 +46,12 @@ public class CurrencyCache {
 	public static synchronized void initialize(EntityManager em) {
         TLongObjectHashMap<Currency> currencies = new TLongObjectHashMap<>();
 		Query<Currency> q = em.createQuery(Currency.class);
-		Cursor c = q.execute();
-		try {
-			while (c.moveToNext()) {
-				Currency currency = EntityManager.loadFromCursor(c, Currency.class);
-				currencies.put(currency.id, currency);
-			}
-		} finally {
-			c.close();
-		}
+        try (Cursor c = q.execute()) {
+            while (c.moveToNext()) {
+                Currency currency = EntityManager.loadFromCursor(c, Currency.class);
+                currencies.put(currency.id, currency);
+            }
+        }
 		CURRENCIES.putAll(currencies);
 	}
 	

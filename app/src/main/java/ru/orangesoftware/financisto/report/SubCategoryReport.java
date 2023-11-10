@@ -58,13 +58,12 @@ public class SubCategoryReport extends Report {
     @Override
 	public ReportData getReport(final DatabaseAdapter db, WhereFilter filter) {
 		filterTransfers(filter);
-		Cursor c = db.db().query(V_REPORT_SUB_CATEGORY, DatabaseHelper.SubCategoryReportColumns.NORMAL_PROJECTION,
-				filter.getSelection(), filter.getSelectionArgs(), null, null,
-                DatabaseHelper.SubCategoryReportColumns.LEFT);
-        final ExchangeRateProvider rates = db.getHistoryRates();
-        try {
+        try (Cursor c = db.db().query(V_REPORT_SUB_CATEGORY, DatabaseHelper.SubCategoryReportColumns.NORMAL_PROJECTION,
+                filter.getSelection(), filter.getSelectionArgs(), null, null,
+                DatabaseHelper.SubCategoryReportColumns.LEFT)) {
+            final ExchangeRateProvider rates = db.getHistoryRates();
             final int leftColumnIndex = c.getColumnIndex(DatabaseHelper.SubCategoryReportColumns.LEFT);
-            CategoryTree<CategoryAmount> amounts = CategoryTree.createFromCursor(c, new NodeCreator<CategoryAmount>(){
+            CategoryTree<CategoryAmount> amounts = CategoryTree.createFromCursor(c, new NodeCreator<CategoryAmount>() {
                 @Override
                 public CategoryAmount createNode(Cursor c) {
                     BigDecimal amount;
@@ -82,8 +81,6 @@ public class SubCategoryReport extends Report {
             flattenTree(roots, units);
             Total total = calculateTotal(roots);
             return new ReportData(units, total);
-        } finally {
-            c.close();
         }
 	}
 

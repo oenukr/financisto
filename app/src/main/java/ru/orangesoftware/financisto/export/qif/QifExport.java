@@ -108,8 +108,7 @@ public class QifExport extends Export {
     }
 
     private void writeTransactionsForAccount(QifBufferedWriter qifWriter, QifAccount qifAccount, Account account) throws IOException {
-        Cursor c = getBlotterForAccount(account);
-        try {
+        try (Cursor c = getBlotterForAccount(account)) {
             boolean addHeader = true;
             while (c.moveToNext()) {
                 if (addHeader) {
@@ -124,8 +123,6 @@ public class QifExport extends Export {
                 }
                 qifTransaction.writeTo(qifWriter, options);
             }
-        } finally {
-            c.close();
         }
     }
 

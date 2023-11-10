@@ -224,14 +224,11 @@ public class GoogleDriveClient {
     }
 
     private DriveId fetchDriveId(DriveApi.MetadataBufferResult result) {
-        MetadataBuffer buffer = result.getMetadataBuffer();
-        try {
+        try (MetadataBuffer buffer = result.getMetadataBuffer()) {
             for (Metadata metadata : buffer) {
                 if (metadata == null) continue;
                 return metadata.getDriveId();
             }
-        } finally {
-            buffer.close();
         }
         return null;
     }

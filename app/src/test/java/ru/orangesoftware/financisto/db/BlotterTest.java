@@ -63,15 +63,12 @@ public class BlotterTest extends AbstractDbTest {
     }
 
     private List<Transaction> getBlotter(WhereFilter filter) {
-        Cursor c = db.getBlotter(filter);
-        try {
+        try (Cursor c = db.getBlotter(filter)) {
             List<Transaction> list = new ArrayList<>();
             while (c.moveToNext()) {
                 list.add(Transaction.fromBlotterCursor(c));
             }
             return list;
-        } finally {
-            c.close();
         }
     }
 
