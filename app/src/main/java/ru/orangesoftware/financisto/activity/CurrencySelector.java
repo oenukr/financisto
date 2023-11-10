@@ -10,7 +10,6 @@ package ru.orangesoftware.financisto.activity;
 
 import android.app.AlertDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -57,19 +56,11 @@ public class CurrencySelector {
         new AlertDialog.Builder(context)
                 .setTitle(R.string.currencies)
                 .setIcon(R.drawable.ic_dialog_currency)
-                .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialogInterface, int i) {
-                        addSelectedCurrency(selectedCurrency);
-                        dialogInterface.dismiss();
-                    }
+                .setPositiveButton(R.string.ok, (dialogInterface, i) -> {
+                    addSelectedCurrency(selectedCurrency);
+                    dialogInterface.dismiss();
                 })
-                .setSingleChoiceItems(items, 0, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialogInterface, int i) {
-                        selectedCurrency = i;
-                    }
-                })
+                .setSingleChoiceItems(items, 0, (dialogInterface, i) -> selectedCurrency = i)
                 .show();
     }
 

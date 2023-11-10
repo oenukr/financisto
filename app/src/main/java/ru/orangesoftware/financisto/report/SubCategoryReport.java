@@ -35,7 +35,6 @@ import ru.orangesoftware.financisto.graph.GraphUnit;
 import ru.orangesoftware.financisto.model.Category;
 import ru.orangesoftware.financisto.model.CategoryEntity;
 import ru.orangesoftware.financisto.model.CategoryTree;
-import ru.orangesoftware.financisto.model.CategoryTree.NodeCreator;
 import ru.orangesoftware.financisto.model.Currency;
 import ru.orangesoftware.financisto.model.Total;
 import ru.orangesoftware.financisto.rates.ExchangeRateProvider;
@@ -63,17 +62,14 @@ public class SubCategoryReport extends Report {
                 DatabaseHelper.SubCategoryReportColumns.LEFT)) {
             final ExchangeRateProvider rates = db.getHistoryRates();
             final int leftColumnIndex = c.getColumnIndex(DatabaseHelper.SubCategoryReportColumns.LEFT);
-            CategoryTree<CategoryAmount> amounts = CategoryTree.createFromCursor(c, new NodeCreator<CategoryAmount>() {
-                @Override
-                public CategoryAmount createNode(Cursor c) {
-                    BigDecimal amount;
-                    try {
-                        amount = TransactionsTotalCalculator.getAmountFromCursor(db, c, currency, rates, c.getColumnIndex(DatabaseHelper.ReportColumns.DATETIME));
-                    } catch (UnableToCalculateRateException e) {
-                        amount = BigDecimal.ZERO;
-                    }
-                    return new CategoryAmount(c, leftColumnIndex, amount);
+            CategoryTree<CategoryAmount> amounts = CategoryTree.createFromCursor(c, c1 -> {
+                BigDecimal amount;
+                try {
+                    amount = TransactionsTotalCalculator.getAmountFromCursor(db, c1, currency, rates, c1.getColumnIndex(DatabaseHelper.ReportColumns.DATETIME));
+                } catch (UnableToCalculateRateException e) {
+                    amount = BigDecimal.ZERO;
                 }
+                return new CategoryAmount(c1, leftColumnIndex, amount);
             });
 
             ArrayList<GraphUnitTree> roots = createTree(amounts, 0);

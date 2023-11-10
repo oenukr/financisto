@@ -128,12 +128,7 @@ public class RecurrenceScheduler {
 				}				
 			}
 			if (restored.size() > MAX_RESTORED) {
-				Collections.sort(restored, new Comparator<RestoredTransaction>(){
-					@Override
-					public int compare(RestoredTransaction t0, RestoredTransaction t1) {
-						return t1.dateTime.compareTo(t0.dateTime);
-					}
-				});
+				Collections.sort(restored, (t01, t1) -> t1.dateTime.compareTo(t01.dateTime));
 				restored = restored.subList(0, MAX_RESTORED);
 			}
 			return restored;

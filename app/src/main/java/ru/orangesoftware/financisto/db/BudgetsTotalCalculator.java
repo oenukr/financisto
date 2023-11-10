@@ -54,14 +54,11 @@ public class BudgetsTotalCalculator {
                 final String projectsText = getChecked(projects, b.projects);
                 b.spent = spent;
                 if (handler != null) {
-                    handler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            b.updated = true;
-                            b.spent = spent;
-                            b.categoriesText = categoriesText;
-                            b.projectsText = projectsText;
-                        }
+                    handler.post(() -> {
+                        b.updated = true;
+                        b.spent = spent;
+                        b.categoriesText = categoriesText;
+                        b.projectsText = projectsText;
                     });
                 }
             }

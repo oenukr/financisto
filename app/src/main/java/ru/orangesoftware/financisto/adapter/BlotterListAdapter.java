@@ -20,7 +20,6 @@ import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.text.format.DateUtils;
 import android.view.View;
-import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.ImageView;
@@ -213,12 +212,7 @@ public class BlotterListAdapter extends ResourceCursorAdapter {
         if (v.checkBox != null) {
             final long parent = cursor.getLong(BlotterColumns.parent_id.ordinal());
             final long id = parent > 0 ? parent : cursor.getLong(BlotterColumns._id.ordinal());
-            v.checkBox.setOnClickListener(new OnClickListener() {
-                @Override
-                public void onClick(View arg0) {
-                    updateCheckedState(id, allChecked ^ v.checkBox.isChecked());
-                }
-            });
+            v.checkBox.setOnClickListener(arg0 -> updateCheckedState(id, allChecked ^ v.checkBox.isChecked()));
             boolean isChecked = getCheckedState(id);
             v.checkBox.setChecked(isChecked);
         }

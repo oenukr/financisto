@@ -153,20 +153,17 @@ public class CategoryTree<T extends CategoryEntity<T>> implements Iterable<T> {
 		return true;
 	}
 	
-	private final Comparator<T> byTitleComparator = new Comparator<T>() {
-		@Override
-		public int compare(T c1, T c2) {
-			String t1 = c1.title;
-			String t2 = c2.title;
-			if (t1 == null) {
-				t1 = "";
-			}
-			if (t2 == null) {
-				t2 = "";
-			}
-			return t1.compareTo(t2);
-		}
-	};
+	private final Comparator<T> byTitleComparator = (c1, c2) -> {
+        String t1 = c1.title;
+        String t2 = c2.title;
+        if (t1 == null) {
+            t1 = "";
+        }
+        if (t2 == null) {
+            t2 = "";
+        }
+        return t1.compareTo(t2);
+    };
 
 	private void sortByTitle(CategoryTree<T> tree) {
 		Collections.sort(tree.roots, byTitleComparator);

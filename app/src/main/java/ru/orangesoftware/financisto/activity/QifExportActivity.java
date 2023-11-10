@@ -59,12 +59,7 @@ public class QifExportActivity extends AbstractExportActivity implements Activit
         accounts = db.getAllAccountsList();
 
         bAccounts = (Button)findViewById(R.id.bAccounts);
-        bAccounts.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                activityLayout.selectMultiChoice(QifExportActivity.this, R.id.bAccounts, R.string.accounts, accounts);
-            }
-        });
+        bAccounts.setOnClickListener(view -> activityLayout.selectMultiChoice(QifExportActivity.this, R.id.bAccounts, R.string.accounts, accounts));
 
         clearFilter();
     }
