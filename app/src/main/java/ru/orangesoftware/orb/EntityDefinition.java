@@ -130,20 +130,20 @@ class EntityDefinition {
 			String[] path = field.split("\\.");
 			StringBuilder e = new StringBuilder("e");
 			EntityDefinition ed = this;
-            for (String f : path) {
-                FieldInfo fi = ed.getFieldInfo(f);
-                if (fi.type.isPrimitive()) {
-                    e.append("_").append(fi.columnName);
-                    break;
-                } else {
-                    e.append(fi.index);
-                    ed = EntityManager.getEntityDefinitionOrThrow(fi.field.getType());
-                }
-            }
+			for (String f : path) {
+				FieldInfo fi = ed.getFieldInfo(f);
+				if (fi.type.isPrimitive()) {
+					e.append("_").append(fi.columnName);
+					break;
+				} else {
+					e.append(fi.index);
+					ed = EntityManager.getEntityDefinitionOrThrow(fi.field.getType());
+				}
+			}
 			return e.toString();
 		} else {
 			FieldInfo fi = getFieldInfo(field);
-			return "e_"+fi.columnName;			
+			return "e_" + fi.columnName;
 		}
 	}
 	
