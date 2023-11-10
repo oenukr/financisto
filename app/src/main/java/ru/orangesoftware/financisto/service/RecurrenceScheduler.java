@@ -67,7 +67,7 @@ public class RecurrenceScheduler {
 
     private void deleteTransactionIfNeeded(TransactionInfo transaction) {
         TransactionAttributeInfo a = db.getSystemAttributeForTransaction(SystemAttribute.DELETE_AFTER_EXPIRED, transaction.id);
-        if (a != null && Boolean.valueOf(a.value)) {
+        if (a != null && Boolean.parseBoolean(a.value)) {
             db.deleteTransaction(transaction.id);
         }
     }

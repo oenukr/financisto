@@ -121,7 +121,7 @@ public class AttributeActivity extends Activity implements OnItemSelectedListene
 		}
 		if (attribute.defaultValue != null) {
 			if (attribute.type == Attribute.TYPE_CHECKBOX) {
-				defaultValueCheckBox.setChecked(Boolean.valueOf(attribute.defaultValue));
+				defaultValueCheckBox.setChecked(Boolean.parseBoolean(attribute.defaultValue));
 			} else {
 				defaultValueTextView.setText(attribute.defaultValue);				
 			}			

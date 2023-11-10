@@ -66,10 +66,10 @@ public class MultiNumberPicker extends LinearLayout implements NumberPicker.OnCh
 		int m = maxMultiplier;
 		int len = pickers.length;
 		int v = 0;
-		for (int i=0; i<len; i++) {
-			v += m*pickers[i].getCurrent();
-			m /= 10;
-		}
+        for (NumberPicker numberPicker : pickers) {
+            v += m * numberPicker.getCurrent();
+            m /= 10;
+        }
 		mPrevious = mCurrent;
 		mCurrent = v;		
 		notifyChange();
