@@ -102,7 +102,7 @@ public class RecurUtils {
 					endDate = p.end;
 					periods.add(p);
 				}
-				return periods.toArray(new Period[periods.size()]);
+				return periods.toArray(new Period[0]);
 			}
 		},
 //		INDEFINETELY(0, R.string.recur_indefinitely){
@@ -124,7 +124,7 @@ public class RecurUtils {
 					startDate = p.end+1;
 					periods.add(p);
 				}
-				return periods.toArray(new Period[periods.size()]);
+				return periods.toArray(new Period[0]);
 			}
 		};	
 

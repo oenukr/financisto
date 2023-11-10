@@ -54,7 +54,7 @@ class EntityDefinition {
 			if (tableName == null) {
 				tableName = clazz.getSimpleName().toUpperCase();
 			}
-			return new EntityDefinition(constructor, tableName, idField, fields.toArray(new FieldInfo[fields.size()]));
+			return new EntityDefinition(constructor, tableName, idField, fields.toArray(new FieldInfo[0]));
 		}
 
 	}

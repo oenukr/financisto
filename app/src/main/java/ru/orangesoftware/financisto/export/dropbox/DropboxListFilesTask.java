@@ -40,7 +40,7 @@ public class DropboxListFilesTask extends ImportExportAsyncTask {
         try {
             Dropbox dropbox = new Dropbox(context);
             List<String> files = dropbox.listFiles();
-            return files.toArray(new String[files.size()]);
+            return files.toArray(new String[0]);
         } catch (Exception e) {
             throw new ImportExportException(R.string.dropbox_error);
         }

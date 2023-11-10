@@ -81,7 +81,7 @@ public class BudgetsTotalCalculator {
             total.balance += b.amount+b.spent;
         }
         Collection<Total> values = totals.values();
-        return values.toArray(new Total[values.size()]);
+        return values.toArray(new Total[0]);
     }
 
     public Total calculateTotalInHomeCurrency() {

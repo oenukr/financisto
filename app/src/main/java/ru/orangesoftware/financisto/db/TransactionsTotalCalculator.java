@@ -78,7 +78,7 @@ public class TransactionsTotalCalculator {
                 total.balance = balance;
                 totals.add(total);
             }
-            return totals.toArray(new Total[totals.size()]);
+            return totals.toArray(new Total[0]);
         }
     }
 

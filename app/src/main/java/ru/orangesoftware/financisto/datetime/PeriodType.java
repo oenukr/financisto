@@ -199,7 +199,7 @@ public enum PeriodType implements LocalizableEnum {
                 types.add(periodType);
             }
         }
-        return types.toArray(new PeriodType[types.size()]);
+        return types.toArray(new PeriodType[0]);
     }
 
     public static PeriodType[] allPlanner() {
@@ -209,7 +209,7 @@ public enum PeriodType implements LocalizableEnum {
                 types.add(periodType);
             }
         }
-        return types.toArray(new PeriodType[types.size()]);
+        return types.toArray(new PeriodType[0]);
     }
 
     public final int titleId;

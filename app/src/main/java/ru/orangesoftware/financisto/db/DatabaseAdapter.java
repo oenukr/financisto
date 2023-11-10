@@ -1684,7 +1684,7 @@ public class DatabaseAdapter extends MyEntityManager {
             }
         }
         Collection<Total> values = totalsMap.values();
-        return values.toArray(new Total[values.size()]);
+        return values.toArray(new Total[0]);
     }
 
     /**
