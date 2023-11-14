@@ -40,12 +40,11 @@ import ru.orangesoftware.financisto.utils.Utils;
 public class DatabaseBackupTest extends AbstractImportExportTest {
 
     Account a1;
-    private Map<String, Category> categoriesMap;
 
     public void setUp() throws Exception {
         super.setUp();
         a1 = createFirstAccount();
-        categoriesMap = CategoryBuilder.createDefaultHierarchy(db);
+        Map<String, Category> categoriesMap = CategoryBuilder.createDefaultHierarchy(db);
         TransactionBuilder.withDb(db).dateTime(DateTime.date(2011, 8, 3).at(22, 34, 55, 10))
                 .account(a1).amount(-123456).category(categoriesMap.get("AA1")).payee("P1").location("Home").project("P1").note("My note").create();
     }
