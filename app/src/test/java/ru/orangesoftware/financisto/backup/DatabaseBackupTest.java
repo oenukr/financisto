@@ -96,7 +96,7 @@ public class DatabaseBackupTest extends AbstractImportExportTest {
         try (BufferedReader br = createFileReader(fileName, useGzip)) {
             PackageInfo pi = Utils.getPackageInfo(getContext());
             assertEquals("PACKAGE:" + pi.packageName, br.readLine());
-            assertEquals("VERSION_CODE:" + pi.versionCode, br.readLine());
+            assertEquals("LONG_VERSION_CODE:" + pi.versionCode, br.readLine());
             assertEquals("VERSION_NAME:" + pi.versionName, br.readLine());
             assertEquals("DATABASE_VERSION:" + db.db().getVersion(), br.readLine());
             assertEquals("#START", br.readLine());
