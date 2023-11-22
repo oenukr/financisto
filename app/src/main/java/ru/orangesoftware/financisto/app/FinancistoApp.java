@@ -25,6 +25,7 @@ public class FinancistoApp extends Application {
     @AfterInject
     public void init() {
 //        bus.register(driveClient);
+        JavaAppKoinKt.start(FinancistoApp_.getInstance());
     }
 
     @Override

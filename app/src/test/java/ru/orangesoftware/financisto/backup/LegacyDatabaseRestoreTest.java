@@ -18,9 +18,8 @@ import android.content.Context;
 
 import org.junit.Test;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.List;
 
 import ru.orangesoftware.financisto.db.AbstractDbTest;
@@ -274,7 +273,7 @@ public class LegacyDatabaseRestoreTest extends AbstractDbTest {
 
     private String createBackupFile(String fileContent) throws IOException {
         String fileName = "backup_" + System.currentTimeMillis() + ".backup";
-        FileOutputStream out = new FileOutputStream(new File(Export.getBackupFolder(getContext()), fileName));
+        OutputStream out = getContext().getContentResolver().openOutputStream(Export.getBackupFolder(getContext()).findFile(fileName).getUri());
         out.write(fileContent.getBytes());
         out.flush();
         out.close();
@@ -282,7 +281,7 @@ public class LegacyDatabaseRestoreTest extends AbstractDbTest {
     }
 
     private void deleteBackupFile(String fileName) {
-        new File(Export.getBackupFolder(getContext()), fileName).delete();
+        Export.getBackupFolder(getContext()).findFile(fileName).delete();
     }
 
 }
