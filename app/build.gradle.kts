@@ -126,9 +126,11 @@ dependencies {
     // Koin - dependency injection
     implementation("io.insert-koin:koin-core:3.5.2-RC1")
     implementation("io.insert-koin:koin-android:3.5.2-RC1")
-    // Java Compatibility
+    // Koin - Java Compatibility
     implementation("io.insert-koin:koin-android-compat:3.5.2-RC1")
     implementation("io.insert-koin:koin-androidx-compose:3.5.2-RC1")
+    // Koin - tests
+    testImplementation("io.insert-koin:koin-test:3.5.2-RC1")
 
     implementation("androidx.legacy:legacy-support-v4:1.0.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
