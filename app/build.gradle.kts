@@ -113,7 +113,7 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
     // Integration with activities
-    implementation("androidx.activity:activity-compose:1.8.1")
+    implementation("androidx.activity:activity-compose:1.8.2")
 
     implementation("com.google.accompanist:accompanist-permissions:0.33.2-alpha")
 
