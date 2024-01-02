@@ -13,8 +13,6 @@ package ru.orangesoftware.financisto.activity;
 import static android.Manifest.permission.GET_ACCOUNTS;
 import static ru.orangesoftware.financisto.activity.RequestPermission.isRequestingPermission;
 import static ru.orangesoftware.financisto.activity.RequestPermission.isRequestingPermissions;
-import static ru.orangesoftware.financisto.utils.FingerprintUtils.fingerprintUnavailable;
-import static ru.orangesoftware.financisto.utils.FingerprintUtils.reasonWhyFingerprintUnavailable;
 
 import android.Manifest;
 import android.accounts.Account;
@@ -41,6 +39,7 @@ import ru.orangesoftware.financisto.dialog.FolderBrowser;
 import ru.orangesoftware.financisto.export.Export;
 import ru.orangesoftware.financisto.export.dropbox.Dropbox;
 import ru.orangesoftware.financisto.rates.ExchangeRateProviderFactory;
+import ru.orangesoftware.financisto.utils.BiometricPromptUtils;
 import ru.orangesoftware.financisto.utils.MyPreferences;
 import ru.orangesoftware.financisto.utils.PinProtection;
 
@@ -117,8 +116,8 @@ public class PreferencesActivity extends PreferenceActivity {
 //            return true;
 //        });
         Preference useFingerprint = preferenceScreen.findPreference("pin_protection_use_fingerprint");
-        if (fingerprintUnavailable(this)) {
-            useFingerprint.setSummary(getString(R.string.fingerprint_unavailable, reasonWhyFingerprintUnavailable(this)));
+        if (!BiometricPromptUtils.INSTANCE.canUseBiometrics(this)) {
+            useFingerprint.setSummary(getString(R.string.fingerprint_unavailable, BiometricPromptUtils.INSTANCE.reasonFingerprintUnavailable(this)));
             useFingerprint.setEnabled(false);
         }
         linkToDropbox();
