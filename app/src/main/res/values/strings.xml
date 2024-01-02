@@ -990,6 +990,7 @@
     <string name="fingerprint_unavailable_enrolled_fingerprints">At least one fingerprint needs to be enrolled</string>
     <string name="fingerprint_unavailable_unknown">This device is not supported</string>
     <string name="fingerprint_unavailable">Not available: %1$s</string>
+    <string name="fingerprint_security_update_required">Security update required</string>
 
     <string name="image_pick_camera">Camera</string>
     <string name="image_pick_images">Images</string>
