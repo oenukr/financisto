@@ -8,6 +8,8 @@ import android.content.res.Resources;
 import android.preference.PreferenceManager;
 import android.util.Log;
 
+import androidx.annotation.Nullable;
+
 import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Locale;
@@ -137,6 +139,7 @@ public class MyPreferences {
         return isPinLockEnabled(context) ? 60 * Integer.parseInt(sharedPreferences.getString("pin_protection_lock_time", "5")) : 0;
     }
 
+    @Nullable
     public static String getPin(Context context) {
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
         return sharedPreferences.getString("pin", null);

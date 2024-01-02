@@ -16,7 +16,7 @@ allprojects {
     repositories {
         google()
         mavenCentral()
-        jcenter() // needed for: rxfingerprint, rximagepicker
+        jcenter() // needed for: rximagepicker
     }
 }
 

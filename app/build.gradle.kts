@@ -113,7 +113,7 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
     // Integration with activities
-    implementation("androidx.activity:activity-compose:1.8.1")
+    implementation("androidx.activity:activity-compose:1.8.2")
 
     implementation("com.google.accompanist:accompanist-permissions:0.33.2-alpha")
 
@@ -131,6 +131,9 @@ dependencies {
     implementation("io.insert-koin:koin-androidx-compose:3.5.2-RC1")
     // Koin - tests
     testImplementation("io.insert-koin:koin-test:3.5.2-RC1")
+
+    // Biometrics
+    implementation("androidx.biometric:biometric:1.1.0")
 
     implementation("androidx.legacy:legacy-support-v4:1.0.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
@@ -155,7 +158,6 @@ dependencies {
 
     // Rx libs
     implementation("com.github.akarnokd:rxjava3-bridge:3.0.2")
-    implementation("com.mtramin:rxfingerprint:2.2.1")
     implementation("io.reactivex.rxjava3:rxjava:3.1.8")
     implementation("io.reactivex.rxjava3:rxandroid:3.0.2")
     implementation("io.reactivex.rxjava2:rxjava:2.2.21")
