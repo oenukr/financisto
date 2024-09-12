@@ -11,7 +11,6 @@
 package ru.orangesoftware.financisto.export.qif;
 
 import android.content.Context;
-import android.content.pm.PackageManager;
 import android.database.Cursor;
 
 import java.io.BufferedWriter;
@@ -48,7 +47,7 @@ public class QifExport extends Export {
     }
 
     @Override
-    protected void writeHeader(BufferedWriter bw) throws IOException, PackageManager.NameNotFoundException {
+    protected void writeHeader(BufferedWriter bw) {
         // no header
     }
 
