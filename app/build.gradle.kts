@@ -4,14 +4,6 @@ plugins {
     id("org.jetbrains.kotlin.kapt")
 }
 
-repositories {
-    google()
-    mavenCentral()
-    gradlePluginPortal()
-    jcenter() // needed for: rxfingerprint
-    maven { url = uri("https://jitpack.io") } // needed for: rximagepicker
-}
-
 android {
     namespace = "ru.orangesoftware.financisto"
 
@@ -185,10 +177,8 @@ kapt {
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(17)
-//        vendor = JvmVendorSpec.ADOPTIUM
     }
 }
 kotlin {
     jvmToolchain(17)
-//    (this as JavaToolchainSpec).languageVersion.set(JavaLanguageVersion.of(8))
 }

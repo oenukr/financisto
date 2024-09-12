@@ -1,26 +1,9 @@
 import io.gitlab.arturbosch.detekt.Detekt
 
 buildscript {
-    repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
-        jcenter() // needed for: rxfingerprint
-        maven { url = uri("https://jitpack.io") } // needed for: rximagepicker
-    }
     dependencies {
         classpath("com.android.tools.build:gradle:8.2.0")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.20")
-    }
-}
-
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
-        jcenter() // needed for: rxfingerprint
-        maven { url = uri("https://jitpack.io") } // needed for: rximagepicker
     }
 }
 
