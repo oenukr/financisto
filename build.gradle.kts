@@ -4,7 +4,9 @@ buildscript {
     repositories {
         google()
         mavenCentral()
-        jcenter() // needed for: rxfingerprint, rximagepicker
+        gradlePluginPortal()
+        jcenter() // needed for: rxfingerprint
+        maven { url = uri("https://jitpack.io") } // needed for: rximagepicker
     }
     dependencies {
         classpath("com.android.tools.build:gradle:8.2.0")
@@ -16,7 +18,9 @@ allprojects {
     repositories {
         google()
         mavenCentral()
-        jcenter() // needed for: rximagepicker
+        gradlePluginPortal()
+        jcenter() // needed for: rxfingerprint
+        maven { url = uri("https://jitpack.io") } // needed for: rximagepicker
     }
 }
 

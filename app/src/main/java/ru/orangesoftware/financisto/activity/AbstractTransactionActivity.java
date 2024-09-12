@@ -128,7 +128,7 @@ public abstract class AbstractTransactionActivity extends AbstractActivity imple
 
     protected Transaction transaction = new Transaction();
 
-    protected CompositeDisposable disposable = new CompositeDisposable();
+    protected final CompositeDisposable disposable = new CompositeDisposable();
 
     public AbstractTransactionActivity() {
     }

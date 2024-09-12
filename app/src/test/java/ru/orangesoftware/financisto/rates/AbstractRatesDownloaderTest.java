@@ -20,7 +20,7 @@ public abstract class AbstractRatesDownloaderTest {
     private final Map<String, Currency> nameToCurrency = new HashMap<>();
     private final AtomicLong counter = new AtomicLong(1);
 
-    FakeHttpClientWrapper client = new FakeHttpClientWrapper();
+    final FakeHttpClientWrapper client = new FakeHttpClientWrapper();
 
     abstract ExchangeRateProvider service();
 
