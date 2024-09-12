@@ -7,7 +7,9 @@ plugins {
 repositories {
     google()
     mavenCentral()
-    maven { url = uri("https://jitpack.io") }
+    gradlePluginPortal()
+    jcenter() // needed for: rxfingerprint
+    maven { url = uri("https://jitpack.io") } // needed for: rximagepicker
 }
 
 android {
@@ -163,7 +165,7 @@ dependencies {
     implementation("io.reactivex.rxjava2:rxjava:2.2.21")
     implementation("io.reactivex.rxjava2:rxandroid:2.1.1")
     implementation("org.reactivestreams:reactive-streams:1.0.4")
-    implementation("com.mlsdev.rximagepicker:library:2.1.5")
+    implementation("com.github.MLSDev:RxImagePicker:master")
 
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
 

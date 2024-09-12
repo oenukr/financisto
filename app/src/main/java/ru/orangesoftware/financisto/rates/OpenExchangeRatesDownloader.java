@@ -81,7 +81,7 @@ public class OpenExchangeRatesDownloader extends AbstractMultipleRatesDownloader
         return GET_LATEST+appId;
     }
 
-    private boolean hasError(JSONObject json) throws JSONException {
+    private boolean hasError(JSONObject json) {
         return json.optBoolean("error", false);
     }
 
