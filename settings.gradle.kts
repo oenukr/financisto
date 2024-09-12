@@ -12,6 +12,12 @@ dependencyResolutionManagement {
         mavenCentral()
         maven { url = uri("https://jitpack.io") } // needed for: rximagepicker
     }
+
+    versionCatalogs {
+        create("libs") {
+            from(files("libs.versions.toml"))
+        }
+    }
 }
 
 plugins {
