@@ -33,9 +33,9 @@ import greendroid.widget.QuickActionGrid;
 import greendroid.widget.QuickActionWidget;
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.adapter.AccountListAdapter2;
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.blotter.BlotterFilter;
 import ru.orangesoftware.financisto.blotter.TotalCalculationTask;
-import ru.orangesoftware.financisto.bus.GreenRobotBus_;
 import ru.orangesoftware.financisto.bus.SwitchToMenuTabEvent;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
 import ru.orangesoftware.financisto.dialog.AccountInfoDialog;
@@ -104,7 +104,7 @@ public class AccountListActivity extends AbstractListActivity {
                 MenuListItem.MENU_BACKUP.call(this);
                 break;
             case R.id.go_to_menu:
-                GreenRobotBus_.getInstance_(this).post(new SwitchToMenuTabEvent());
+                new DependenciesHolder().getGreenRobotBus().post(new SwitchToMenuTabEvent());
                 break;
         }
     }

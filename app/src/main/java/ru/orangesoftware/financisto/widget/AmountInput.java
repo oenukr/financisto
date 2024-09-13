@@ -31,25 +31,15 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 
-import org.androidannotations.annotations.AfterViews;
-import org.androidannotations.annotations.Click;
-import org.androidannotations.annotations.EViewGroup;
-import org.androidannotations.annotations.ViewById;
-import org.androidannotations.annotations.res.ColorRes;
-import org.androidannotations.annotations.res.DimensionPixelSizeRes;
-import org.androidannotations.annotations.res.DrawableRes;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.model.Currency;
 import ru.orangesoftware.financisto.utils.MyPreferences;
 import ru.orangesoftware.financisto.utils.Utils;
 
-@EViewGroup(R.layout.amount_input)
 public class AmountInput extends LinearLayout implements AmountListener {
 
     public interface OnAmountChangedListener {
@@ -62,25 +52,16 @@ public class AmountInput extends LinearLayout implements AmountListener {
     private Currency currency;
     private int decimals;
 
-    @ViewById(R.id.signSwitcher)
     protected ImageSwitcher signSwitcher;
-    @ViewById(R.id.primary)
     protected EditText primary;
-    @ViewById(R.id.delimiter)
     protected TextView delimiter;
-    @ViewById(R.id.secondary)
     protected EditText secondary;
 
-    @DimensionPixelSizeRes(R.dimen.select_entry_height_no_label)
     protected int minHeight;
 
-    @DrawableRes(R.drawable.ic_action_add)
     protected Drawable plusDrawable;
-    @ColorRes(R.color.positive_amount)
     protected int plusColor;
-    @DrawableRes(R.drawable.ic_action_minus)
     protected Drawable minusDrawable;
-    @ColorRes(R.color.negative_amount)
     protected int minusColor;
 
     private OnAmountChangedListener onAmountChangedListener;
@@ -158,7 +139,6 @@ public class AmountInput extends LinearLayout implements AmountListener {
         }
     };
 
-    @AfterViews
     protected void initialize() {
         setMinimumHeight(minHeight);
         plusDrawable.mutate().setColorFilter(plusColor, PorterDuff.Mode.SRC_ATOP);
@@ -205,17 +185,14 @@ public class AmountInput extends LinearLayout implements AmountListener {
         }
     }
 
-    @Click(R.id.calculator)
     protected void onClickCalculator() {
         openCalculator();
     }
 
-    @Click(R.id.amount_input)
     protected void onClickUpDown() {
         openQuickInput();
     }
 
-    @Click(R.id.signSwitcher)
     protected void onClickSignSwitcher() {
         if (isExpense) {
             isExpense = false;

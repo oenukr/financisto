@@ -26,8 +26,8 @@ import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
 import ru.orangesoftware.financisto.R;
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.bus.GreenRobotBus;
-import ru.orangesoftware.financisto.bus.GreenRobotBus_;
 import ru.orangesoftware.financisto.bus.RefreshCurrentTab;
 import ru.orangesoftware.financisto.bus.SwitchToMenuTabEvent;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
@@ -39,7 +39,7 @@ import ru.orangesoftware.financisto.utils.PinProtection;
 
 public class MainActivity extends TabActivity implements TabHost.OnTabChangeListener {
 
-    private GreenRobotBus greenRobotBus;
+    private final GreenRobotBus greenRobotBus = new DependenciesHolder().getGreenRobotBus();
 
     @Override
     protected void attachBaseContext(Context base) {
@@ -49,8 +49,6 @@ public class MainActivity extends TabActivity implements TabHost.OnTabChangeList
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        greenRobotBus = GreenRobotBus_.getInstance_(this);
 
         requestWindowFeature(Window.FEATURE_NO_TITLE);
 

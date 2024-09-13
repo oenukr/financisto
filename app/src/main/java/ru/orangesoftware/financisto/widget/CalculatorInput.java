@@ -11,15 +11,6 @@ import android.widget.TextView;
 
 import androidx.core.content.ContextCompat;
 
-import org.androidannotations.annotations.AfterInject;
-import org.androidannotations.annotations.AfterViews;
-import org.androidannotations.annotations.Click;
-import org.androidannotations.annotations.EFragment;
-import org.androidannotations.annotations.FragmentArg;
-import org.androidannotations.annotations.SystemService;
-import org.androidannotations.annotations.ViewById;
-import org.androidannotations.annotations.ViewsById;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
@@ -30,25 +21,16 @@ import ru.orangesoftware.financisto.utils.MyPreferences;
 import ru.orangesoftware.financisto.utils.StringUtil;
 import ru.orangesoftware.financisto.utils.Utils;
 
-@EFragment(R.layout.calculator)
 public class CalculatorInput extends DialogFragment {
 
-    @ViewById(R.id.result)
     protected TextView tvResult;
 
-    @ViewById(R.id.op)
     protected TextView tvOp;
 
-    @ViewsById({R.id.b0, R.id.b1, R.id.b2, R.id.b3,
-            R.id.b4, R.id.b5, R.id.b6, R.id.b7, R.id.b8, R.id.b9, R.id.bAdd,
-            R.id.bSubtract, R.id.bDivide, R.id.bMultiply, R.id.bPercent,
-            R.id.bPlusMinus, R.id.bDot, R.id.bResult, R.id.bClear, R.id.bDelete})
     protected List<Button> buttons;
 
-    @SystemService
     protected Vibrator vibrator;
 
-    @FragmentArg
     protected String amount;
 
     private final Stack<String> stack = new Stack<>();
@@ -62,12 +44,10 @@ public class CalculatorInput extends DialogFragment {
         this.listener = listener;
     }
 
-    @AfterInject
     public void init() {
 
     }
 
-    @AfterViews
     public void initUi() {
         int bgColorResource = R.color.bg_calculator;
         int bgColor = ContextCompat.getColor(getActivity(), bgColorResource);
@@ -82,17 +62,12 @@ public class CalculatorInput extends DialogFragment {
         return dialog;
     }
 
-    @Click({R.id.b0, R.id.b1, R.id.b2, R.id.b3,
-            R.id.b4, R.id.b5, R.id.b6, R.id.b7, R.id.b8, R.id.b9, R.id.bAdd,
-            R.id.bSubtract, R.id.bDivide, R.id.bMultiply, R.id.bPercent,
-            R.id.bPlusMinus, R.id.bDot, R.id.bResult, R.id.bClear, R.id.bDelete})
     public void onButtonClick(View v) {
         Button b = (Button) v;
         char c = b.getText().charAt(0);
         onButtonClick(c);
     }
 
-    @Click(R.id.bOK)
     public void onOk() {
         if (!isInEquals) {
             doEqualsChar();
@@ -101,7 +76,6 @@ public class CalculatorInput extends DialogFragment {
         dismiss();
     }
 
-    @Click(R.id.bCancel)
     public void onCancel() {
         dismiss();
     }

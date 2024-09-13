@@ -10,6 +10,7 @@
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
+    package="ru.orangesoftware.financisto"
     android:installLocation="internalOnly">
 
     <supports-screens
@@ -49,7 +50,7 @@
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 
     <application
-        android:name=".app.FinancistoApp_"
+        android:name=".app.FinancistoApp"
         android:allowBackup="true"
         android:description="@string/app_description"
         android:hardwareAccelerated="true"

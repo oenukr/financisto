@@ -8,26 +8,27 @@ import android.content.res.Configuration;
 
 import androidx.annotation.NonNull;
 
-import org.androidannotations.annotations.AfterInject;
-import org.androidannotations.annotations.Bean;
-import org.androidannotations.annotations.EApplication;
-
 import ru.orangesoftware.financisto.bus.GreenRobotBus;
+import ru.orangesoftware.financisto.export.drive.GoogleDriveClient;
 import ru.orangesoftware.financisto.utils.MyPreferences;
 
-@EApplication
 public class FinancistoApp extends Application {
 
-    @Bean
     public GreenRobotBus bus;
+    public GoogleDriveClient driveClient;
 
-//    @Bean
-//    public GoogleDriveClient driveClient;
+    @Override
+    public void onCreate() {
+        init();
+        super.onCreate();
+    }
 
-    @AfterInject
     public void init() {
-//        bus.register(driveClient);
-        JavaAppKoinKt.start(FinancistoApp_.getInstance());
+        JavaAppKoinKt.start(this);
+        DependenciesHolder dependencies = new DependenciesHolder();
+        bus = dependencies.getGreenRobotBus();
+        driveClient = dependencies.getGoogleDriveClient();
+        bus.register(driveClient);
     }
 
     @Override

@@ -15,11 +15,8 @@ import static ru.orangesoftware.orb.EntityManager.DEF_SORT_COL;
 
 import android.content.Context;
 
-import org.androidannotations.annotations.EBean;
-
 import ru.orangesoftware.financisto.utils.EnumUtils;
 
-@EBean(scope = EBean.Scope.Singleton)
 public class DatabaseHelper extends DatabaseSchemaEvolution {
 
     public DatabaseHelper(Context context) {

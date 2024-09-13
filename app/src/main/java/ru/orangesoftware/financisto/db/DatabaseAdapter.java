@@ -55,8 +55,6 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.util.Log;
 
-import org.androidannotations.annotations.EBean;
-
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -99,7 +97,6 @@ import ru.orangesoftware.financisto.rates.LatestExchangeRates;
 import ru.orangesoftware.financisto.utils.ArrUtils;
 import ru.orangesoftware.financisto.utils.StringUtil;
 
-@EBean(scope = EBean.Scope.Singleton)
 public class DatabaseAdapter extends MyEntityManager {
 
     private boolean updateAccountBalance = true;

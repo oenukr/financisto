@@ -18,8 +18,8 @@ import android.widget.Toast;
 import androidx.documentfile.provider.DocumentFile;
 
 import ru.orangesoftware.financisto.R;
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.backup.Backup;
-import ru.orangesoftware.financisto.bus.GreenRobotBus_;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
 import ru.orangesoftware.financisto.export.BackupExportTask;
 import ru.orangesoftware.financisto.export.BackupImportTask;
@@ -127,7 +127,7 @@ public enum MenuListItem implements SummaryEntityEnum {
             if (isRequestingPermission(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
                 return;
             }
-            GreenRobotBus_.getInstance_(activity).post(new MenuListActivity.StartDropboxBackup());
+            new DependenciesHolder().getGreenRobotBus().post(new MenuListActivity.StartDropboxBackup());
         }
     },
     DROPBOX_RESTORE(R.string.restore_database_online_dropbox, R.string.restore_database_online_dropbox_summary, R.drawable.actionbar_dropbox) {
@@ -136,7 +136,7 @@ public enum MenuListItem implements SummaryEntityEnum {
             if (isRequestingPermission(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
                 return;
             }
-            GreenRobotBus_.getInstance_(activity).post(new MenuListActivity.StartDropboxRestore());
+            new DependenciesHolder().getGreenRobotBus().post(new MenuListActivity.StartDropboxRestore());
         }
     },
     MENU_BACKUP_TO(R.string.backup_database_to, R.string.backup_database_to_summary, R.drawable.actionbar_share) {
