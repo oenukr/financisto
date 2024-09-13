@@ -26,21 +26,15 @@ import android.widget.LinearLayout.LayoutParams;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 
-import org.androidannotations.annotations.EFragment;
-import org.androidannotations.annotations.FragmentArg;
-
 import java.math.BigDecimal;
 
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.model.Currency;
 import ru.orangesoftware.financisto.utils.CurrencyCache;
 
-@EFragment
 public class QuickAmountInput extends DialogFragment {
 
-    @FragmentArg
     protected long currencyId;
-    @FragmentArg
     protected long amount;
 
     private AmountPicker picker;
