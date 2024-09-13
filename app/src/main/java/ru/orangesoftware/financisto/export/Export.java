@@ -109,8 +109,13 @@ public abstract class Export {
         Uri path;
         BackupPreferences backupPreferences = dependencies.getPreferencesStore().getBackupPreferencesRx().blockingFirst();
         path = backupPreferences.getFolder();
-        DocumentFile file = DocumentFile.fromTreeUri(context, path);
-        if (file.isDirectory() && file.canWrite()) {
+        DocumentFile file = null;
+        try {
+            file = DocumentFile.fromTreeUri(context, path);
+        } catch (IllegalArgumentException e) {
+            file = null;
+        }
+        if (file != null && file.isDirectory() && file.canWrite()) {
             return file;
         }
         file = DocumentFile.fromFile(Export.DEFAULT_EXPORT_PATH);
@@ -130,7 +135,7 @@ public abstract class Export {
 
 //    public static void uploadBackupFileToGoogleDrive(Context context, String backupFileName) throws Exception {
 //        File file = getBackupFile(context, backupFileName);
-//        GoogleDriveClient driveClient = GoogleDriveClient_.getInstance_(context);
+//        GoogleDriveClient driveClient = new DependenciesHolder().getGoogleDriveClient();
 //        driveClient.uploadFile(file);
 //    }
 

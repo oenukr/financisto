@@ -1,7 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.kapt)
     alias(libs.plugins.compose.compiler)
 }
 
@@ -137,7 +136,7 @@ dependencies {
     implementation("com.google.android.gms:play-services-drive:17.0.0")
     implementation("com.google.android.gms:play-services-plus:17.0.0")
 
-    kapt("org.androidannotations:androidannotations:4.8.0")
+//    kapt("org.androidannotations:androidannotations:4.8.0")
     implementation("org.androidannotations:androidannotations-api:4.8.0")
 
     implementation("com.google.code.gson:gson:2.10.1")
@@ -166,13 +165,6 @@ dependencies {
     testImplementation("androidx.test:core:1.6.1")
     testImplementation("org.robolectric:robolectric:4.11.1") // can't be used because of the current target sdk
     testImplementation("org.hamcrest:hamcrest:2.2")
-}
-
-kapt {
-    keepJavacAnnotationProcessors = true
-    showProcessorStats = true
-    useBuildCache = true
-    correctErrorTypes = true
 }
 
 java {
