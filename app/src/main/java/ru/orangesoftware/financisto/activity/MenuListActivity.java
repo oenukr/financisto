@@ -28,7 +28,6 @@ import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.common.api.Status;
 
 import org.androidannotations.annotations.AfterViews;
-import org.androidannotations.annotations.Bean;
 import org.androidannotations.annotations.EActivity;
 import org.androidannotations.annotations.OnActivityResult;
 import org.greenrobot.eventbus.Subscribe;
@@ -38,6 +37,7 @@ import java.util.List;
 
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.adapter.SummaryEntityListAdapter;
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.bus.GreenRobotBus;
 import ru.orangesoftware.financisto.export.csv.CsvExportOptions;
 import ru.orangesoftware.financisto.export.csv.CsvImportOptions;
@@ -65,8 +65,7 @@ public class MenuListActivity extends ListActivity {
 
     private static final int RESOLVE_CONNECTION_REQUEST_CODE = 1;
 
-    @Bean
-    GreenRobotBus bus;
+    GreenRobotBus bus = new DependenciesHolder().getGreenRobotBus();
 
     @Override
     protected void attachBaseContext(Context base) {

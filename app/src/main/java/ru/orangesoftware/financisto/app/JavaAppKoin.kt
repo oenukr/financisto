@@ -7,15 +7,23 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
+import ru.orangesoftware.financisto.bus.GreenRobotBus
+import ru.orangesoftware.financisto.bus.GreenRobotBus_
+import ru.orangesoftware.financisto.db.DatabaseAdapter
+import ru.orangesoftware.financisto.db.DatabaseAdapter_
+import ru.orangesoftware.financisto.db.DatabaseHelper
+import ru.orangesoftware.financisto.db.DatabaseHelper_
+import ru.orangesoftware.financisto.export.drive.GoogleDriveClient
+import ru.orangesoftware.financisto.export.drive.GoogleDriveClient_
 import ru.orangesoftware.financisto.persistance.PreferencesStore
 
 // A module with Kotlin and Java components
 val modules = module {
-//    singleOf(::KotlinComponent)
-//    singleOf(::JavaComponent)
-    single<PreferencesStore> {
-        PreferencesStore(androidContext())
-    }
+    single<PreferencesStore> { PreferencesStore(androidContext()) }
+    single<GreenRobotBus> { GreenRobotBus_.getInstance_(androidContext()) }
+    single<GoogleDriveClient> { GoogleDriveClient_.getInstance_(androidContext()) }
+    single<DatabaseAdapter> { DatabaseAdapter_.getInstance_(androidContext()) }
+    single<DatabaseHelper> { DatabaseHelper_.getInstance_(androidContext()) }
 }
 
 // Start
@@ -33,7 +41,9 @@ fun start(myApplication: Application) {
 
 // Dependency holder
 class DependenciesHolder : KoinComponent {
-//    val kComp: KotlinComponent by inject()
-//    val jComp: JavaComponent by inject()
     val preferencesStore: PreferencesStore by inject()
+    val greenRobotBus: GreenRobotBus by inject()
+    val googleDriveClient: GoogleDriveClient by inject()
+    val databaseAdapter: DatabaseAdapter by inject()
+    val databaseHelper: DatabaseHelper by inject()
 }

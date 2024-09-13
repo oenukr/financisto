@@ -30,6 +30,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import ru.orangesoftware.financisto.R;
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
 import ru.orangesoftware.financisto.utils.MenuItemInfo;
 import ru.orangesoftware.financisto.utils.MyPreferences;
@@ -47,7 +48,7 @@ public abstract class AbstractListActivity extends ListActivity implements Refre
     protected LayoutInflater inflater;
     protected Cursor cursor;
     protected ListAdapter adapter;
-    protected DatabaseAdapter db;
+    protected DatabaseAdapter db = new DependenciesHolder().getDatabaseAdapter();
     protected ImageButton bAdd;
 
     protected boolean enablePin = true;
@@ -69,7 +70,6 @@ public abstract class AbstractListActivity extends ListActivity implements Refre
 
         setContentView(contentId);
 
-        db = new DatabaseAdapter(this);
         db.open();
 
         this.inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
