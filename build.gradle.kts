@@ -1,31 +1,11 @@
 import io.gitlab.arturbosch.detekt.Detekt
 
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
-        jcenter() // needed for: rxfingerprint
-        maven { url = uri("https://jitpack.io") } // needed for: rximagepicker
-    }
-    dependencies {
-        classpath("com.android.tools.build:gradle:8.2.0")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.20")
-    }
-}
-
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
-        jcenter() // needed for: rxfingerprint
-        maven { url = uri("https://jitpack.io") } // needed for: rximagepicker
-    }
-}
-
 plugins {
-    id("io.gitlab.arturbosch.detekt").version("1.23.3")
+    alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.kotlin.android) apply false
+    alias(libs.plugins.kotlin.kapt) apply false
+    alias(libs.plugins.compose.compiler) apply false
+    alias(libs.plugins.detekt)
 }
 
 detekt {
@@ -50,5 +30,5 @@ tasks.register("clean", Delete::class) {
 }
 
 dependencies {
-    detektPlugins("io.gitlab.arturbosch.detekt:detekt-formatting:1.23.3")
+    detektPlugins(libs.detekt.formatting)
 }

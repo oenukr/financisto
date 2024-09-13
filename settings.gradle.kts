@@ -1,7 +1,22 @@
 pluginManagement {
     repositories {
+        google()
         mavenCentral()
         gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url = uri("https://jitpack.io") } // needed for: rximagepicker
+    }
+
+    versionCatalogs {
+        create("libs") {
+            from(files("libs.versions.toml"))
+        }
     }
 }
 
