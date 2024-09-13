@@ -1,21 +1,14 @@
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("org.jetbrains.kotlin.kapt")
-}
-
-repositories {
-    google()
-    mavenCentral()
-    gradlePluginPortal()
-    jcenter() // needed for: rxfingerprint
-    maven { url = uri("https://jitpack.io") } // needed for: rximagepicker
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.kapt)
+    alias(libs.plugins.compose.compiler)
 }
 
 android {
     namespace = "ru.orangesoftware.financisto"
 
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "ru.orangesoftware.financisto"
@@ -43,8 +36,8 @@ android {
         compose = true
     }
 
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.4"
+    composeCompiler {
+        enableStrongSkippingMode = true
     }
 
     testOptions {
@@ -115,14 +108,14 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
     // Integration with activities
-    implementation("androidx.activity:activity-compose:1.8.2")
+    implementation("androidx.activity:activity-compose:1.9.2")
 
     implementation("com.google.accompanist:accompanist-permissions:0.33.2-alpha")
 
 
     // Preferences DataStore (SharedPreferences like APIs)
-    implementation("androidx.datastore:datastore-preferences:1.0.0")
-    implementation("androidx.datastore:datastore-preferences-rxjava3:1.0.0")
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
+    implementation("androidx.datastore:datastore-preferences-rxjava3:1.1.1")
 
 
     // Koin - dependency injection
@@ -138,9 +131,9 @@ dependencies {
     implementation("androidx.biometric:biometric:1.1.0")
 
     implementation("androidx.legacy:legacy-support-v4:1.0.0")
-    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("androidx.appcompat:appcompat:1.7.0")
 
-    implementation("com.google.android.gms:play-services-base:18.2.0")
+    implementation("com.google.android.gms:play-services-base:18.5.0")
     implementation("com.google.android.gms:play-services-drive:17.0.0")
     implementation("com.google.android.gms:play-services-plus:17.0.0")
 
@@ -156,7 +149,7 @@ dependencies {
     implementation("org.greenrobot:eventbus:3.3.1")
     implementation("com.wdullaer:materialdatetimepicker:4.2.3")
     implementation("commons-io:commons-io:2.15.0")
-    implementation("com.github.bumptech.glide:glide:4.10.0")
+    implementation("com.github.bumptech.glide:glide:4.16.0")
 
     // Rx libs
     implementation("com.github.akarnokd:rxjava3-bridge:3.0.2")
@@ -170,7 +163,7 @@ dependencies {
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
 
     testImplementation("junit:junit:4.13.2")
-    testImplementation("androidx.test:core:1.5.0")
+    testImplementation("androidx.test:core:1.6.1")
     testImplementation("org.robolectric:robolectric:4.11.1") // can't be used because of the current target sdk
     testImplementation("org.hamcrest:hamcrest:2.2")
 }
@@ -184,11 +177,9 @@ kapt {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
-//        vendor = JvmVendorSpec.ADOPTIUM
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 kotlin {
-    jvmToolchain(17)
-//    (this as JavaToolchainSpec).languageVersion.set(JavaLanguageVersion.of(8))
+    jvmToolchain(21)
 }
