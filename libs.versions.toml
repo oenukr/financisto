@@ -1,6 +1,6 @@
 [versions]
 android_tools = "8.6.0"
-detekt = "1.23.4"
+detekt = "1.23.7"
 kotlin = "2.0.0"
 
 [libraries]
