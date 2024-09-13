@@ -27,9 +27,6 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.common.api.Status;
 
-import org.androidannotations.annotations.AfterViews;
-import org.androidannotations.annotations.EActivity;
-import org.androidannotations.annotations.OnActivityResult;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
@@ -60,10 +57,9 @@ import ru.orangesoftware.financisto.export.qif.QifImportOptions;
 import ru.orangesoftware.financisto.utils.MyPreferences;
 import ru.orangesoftware.financisto.utils.PinProtection;
 
-@EActivity(R.layout.activity_menu_list)
 public class MenuListActivity extends ListActivity {
 
-    private static final int RESOLVE_CONNECTION_REQUEST_CODE = 1;
+    protected static final int RESOLVE_CONNECTION_REQUEST_CODE = 1;
 
     GreenRobotBus bus = new DependenciesHolder().getGreenRobotBus();
 
@@ -72,7 +68,6 @@ public class MenuListActivity extends ListActivity {
         super.attachBaseContext(MyPreferences.switchLocale(base));
     }
 
-    @AfterViews
     protected void init() {
         setListAdapter(new SummaryEntityListAdapter(this, MenuListItem.values()));
     }
@@ -82,7 +77,6 @@ public class MenuListActivity extends ListActivity {
         MenuListItem.values()[position].call(this);
     }
 
-    @OnActivityResult(MenuListItem.ACTIVITY_CSV_EXPORT)
     public void onCsvExportResult(int resultCode, Intent data) {
         if (resultCode == RESULT_OK) {
             CsvExportOptions options = CsvExportOptions.fromIntent(data);
@@ -90,7 +84,6 @@ public class MenuListActivity extends ListActivity {
         }
     }
 
-    @OnActivityResult(MenuListItem.ACTIVITY_QIF_EXPORT)
     public void onQifExportResult(int resultCode, Intent data) {
         if (resultCode == RESULT_OK) {
             QifExportOptions options = QifExportOptions.fromIntent(data);
@@ -98,7 +91,6 @@ public class MenuListActivity extends ListActivity {
         }
     }
 
-    @OnActivityResult(MenuListItem.ACTIVITY_CSV_IMPORT)
     public void onCsvImportResult(int resultCode, Intent data) {
         if (resultCode == RESULT_OK) {
             CsvImportOptions options = CsvImportOptions.fromIntent(data);
@@ -106,7 +98,6 @@ public class MenuListActivity extends ListActivity {
         }
     }
 
-    @OnActivityResult(MenuListItem.ACTIVITY_QIF_IMPORT)
     public void onQifImportResult(int resultCode, Intent data) {
         if (resultCode == RESULT_OK) {
             QifImportOptions options = QifImportOptions.fromIntent(data);
@@ -114,7 +105,6 @@ public class MenuListActivity extends ListActivity {
         }
     }
 
-    @OnActivityResult(MenuListItem.ACTIVITY_CHANGE_PREFERENCES)
     public void onChangePreferences() {
         scheduleNextAutoBackup(this);
     }
@@ -237,7 +227,6 @@ public class MenuListActivity extends ListActivity {
         Toast.makeText(this, getString(R.string.google_drive_connection_failed, event.message), Toast.LENGTH_LONG).show();
     }
 
-    @OnActivityResult(RESOLVE_CONNECTION_REQUEST_CODE)
     public void onConnectionRequest(int resultCode) {
         if (resultCode == RESULT_OK) {
             Toast.makeText(this, R.string.google_drive_connection_resolved, Toast.LENGTH_LONG).show();

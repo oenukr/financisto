@@ -8,22 +8,18 @@ import org.koin.core.component.inject
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
 import ru.orangesoftware.financisto.bus.GreenRobotBus
-import ru.orangesoftware.financisto.bus.GreenRobotBus_
 import ru.orangesoftware.financisto.db.DatabaseAdapter
-import ru.orangesoftware.financisto.db.DatabaseAdapter_
 import ru.orangesoftware.financisto.db.DatabaseHelper
-import ru.orangesoftware.financisto.db.DatabaseHelper_
 import ru.orangesoftware.financisto.export.drive.GoogleDriveClient
-import ru.orangesoftware.financisto.export.drive.GoogleDriveClient_
 import ru.orangesoftware.financisto.persistance.PreferencesStore
 
 // A module with Kotlin and Java components
 val modules = module {
     single<PreferencesStore> { PreferencesStore(androidContext()) }
-    single<GreenRobotBus> { GreenRobotBus_.getInstance_(androidContext()) }
-    single<GoogleDriveClient> { GoogleDriveClient_.getInstance_(androidContext()) }
-    single<DatabaseAdapter> { DatabaseAdapter_.getInstance_(androidContext()) }
-    single<DatabaseHelper> { DatabaseHelper_.getInstance_(androidContext()) }
+    single<GreenRobotBus> { GreenRobotBus() }
+    single<GoogleDriveClient> { GoogleDriveClient(androidContext()) }
+    single<DatabaseAdapter> { DatabaseAdapter(androidContext()) }
+    single<DatabaseHelper> { DatabaseHelper(androidContext()) }
 }
 
 // Start

@@ -55,7 +55,7 @@ public class GoogleDriveClient {
 
     private GoogleApiClient googleApiClient;
 
-    GoogleDriveClient(Context context) {
+    public GoogleDriveClient(Context context) {
         this.context = context.getApplicationContext();
     }
 
