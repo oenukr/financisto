@@ -109,8 +109,11 @@ dependencies {
     // Integration with activities
     implementation("androidx.activity:activity-compose:1.9.2")
 
-    implementation("com.google.accompanist:accompanist-permissions:0.33.2-alpha")
+    // Permissions
+    implementation(libs.accompanist.permissions)
 
+    // Webview
+    implementation(libs.accompanist.webview)
 
     // Preferences DataStore (SharedPreferences like APIs)
     implementation("androidx.datastore:datastore-preferences:1.1.1")
