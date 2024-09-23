@@ -17,6 +17,9 @@ dependencyResolutionManagement {
         create("libs") {
             from(files("libs.versions.toml"))
         }
+        create("compose") {
+            from(files("compose.versions.toml"))
+        }
     }
 }
 

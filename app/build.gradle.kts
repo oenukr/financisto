@@ -91,23 +91,23 @@ android {
 
 dependencies {
     // Compose
-    val composeBom = platform("androidx.compose:compose-bom:2023.10.01")
+    val composeBom = platform(compose.bom)
     implementation(composeBom)
     androidTestImplementation(composeBom)
 
     // Material Design 3
-    implementation("androidx.compose.material3:material3")
+    implementation(compose.material3)
 
     // Android Studio Preview support
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    debugImplementation("androidx.compose.ui:ui-tooling")
+    implementation(compose.ui.tooling.preview)
+    debugImplementation(compose.ui.tooling)
 
     // UI Tests
-    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
-    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    androidTestImplementation(compose.ui.test.junit4)
+    debugImplementation(compose.ui.test.manifest)
 
     // Integration with activities
-    implementation("androidx.activity:activity-compose:1.9.2")
+    implementation(libs.activity.compose)
 
     // Permissions
     implementation(libs.accompanist.permissions)
@@ -116,51 +116,51 @@ dependencies {
     implementation(libs.accompanist.webview)
 
     // Preferences DataStore (SharedPreferences like APIs)
-    implementation("androidx.datastore:datastore-preferences:1.1.1")
-    implementation("androidx.datastore:datastore-preferences-rxjava3:1.1.1")
+    implementation(libs.datastore.preferences)
+    implementation(libs.datastore.preferences.rx)
 
 
     // Koin - dependency injection
-    implementation("io.insert-koin:koin-core:3.5.2-RC1")
-    implementation("io.insert-koin:koin-android:3.5.2-RC1")
+    implementation(libs.koin.core)
+    implementation(libs.koin.android)
     // Koin - Java Compatibility
-    implementation("io.insert-koin:koin-android-compat:3.5.2-RC1")
-    implementation("io.insert-koin:koin-androidx-compose:3.5.2-RC1")
+    implementation(libs.koin.android.compat)
+    implementation(libs.koin.compose)
     // Koin - tests
-    testImplementation("io.insert-koin:koin-test:3.5.2-RC1")
+    testImplementation(libs.koin.test)
 
     // Biometrics
-    implementation("androidx.biometric:biometric:1.1.0")
+    implementation(libs.biometric)
 
-    implementation("androidx.legacy:legacy-support-v4:1.0.0")
-    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation(libs.legacy.support)
+    implementation(libs.appcompat)
 
-    implementation("com.google.android.gms:play-services-base:18.5.0")
-    implementation("com.google.android.gms:play-services-drive:17.0.0")
-    implementation("com.google.android.gms:play-services-plus:17.0.0")
+    implementation(libs.google.play.base)
+    implementation(libs.google.play.drive)
+    implementation(libs.google.play.plus)
 
-//    kapt("org.androidannotations:androidannotations:4.8.0")
-    implementation("org.androidannotations:androidannotations-api:4.8.0")
+    implementation(libs.androidannotations.api)
 
-    implementation("com.google.code.gson:gson:2.10.1")
-    implementation("net.sf.trove4j:trove4j:3.0.3")
+    implementation(libs.gson)
+    implementation(libs.java.collections)
 
     implementation("com.dropbox.core:dropbox-core-sdk:5.4.5")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.squareup.okio:okio:3.6.0")
-    implementation("org.greenrobot:eventbus:3.3.1")
-    implementation("com.wdullaer:materialdatetimepicker:4.2.3")
-    implementation("commons-io:commons-io:2.15.0")
-    implementation("com.github.bumptech.glide:glide:4.16.0")
+    implementation(libs.okhttp)
+    implementation(libs.okio)
+    implementation(libs.eventbus)
+    implementation(libs.materialdatetimepicker)
+    implementation(libs.commons.io)
+    implementation(libs.glide)
+    implementation(libs.glide.compose)
 
     // Rx libs
-    implementation("com.github.akarnokd:rxjava3-bridge:3.0.2")
-    implementation("io.reactivex.rxjava3:rxjava:3.1.8")
-    implementation("io.reactivex.rxjava3:rxandroid:3.0.2")
-    implementation("io.reactivex.rxjava2:rxjava:2.2.21")
-    implementation("io.reactivex.rxjava2:rxandroid:2.1.1")
-    implementation("org.reactivestreams:reactive-streams:1.0.4")
-    implementation("com.github.MLSDev:RxImagePicker:master")
+    implementation(libs.rxjava3.bridge)
+    implementation(libs.rxjava3.rxjava)
+    implementation(libs.rxjava3.rxandroid)
+    implementation(libs.rxjava2.rxjava)
+    implementation(libs.rxjava2.rxandroid)
+    implementation(libs.reactive.streams)
+    implementation(libs.rximagepicker)
 
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
 
