@@ -141,7 +141,6 @@ dependencies {
 
     implementation(libs.androidannotations.api)
 
-    implementation(libs.gson)
     implementation(libs.java.collections)
 
     implementation("com.dropbox.core:dropbox-core-sdk:5.4.5")
