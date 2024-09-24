@@ -42,11 +42,11 @@
         <item name="android:textSize">15sp</item>
     </style>
 
-    <style name="MoreButton">
+    <style name="MoreButton" parent="Theme.AppCompat.DayNight">
         <item name="android:src">@drawable/spinner_ab_default_holo_light_am</item>
     </style>
 
-    <style name="BorderlessButton">
+    <style name="BorderlessButton" parent="Theme.AppCompat.DayNight">
         <item name="android:background">@android:drawable/list_selector_background</item>
         <item name="android:paddingLeft">4dip</item>
         <item name="android:paddingRight">4dip</item>
@@ -97,19 +97,19 @@
         <item name="android:src">@drawable/ic_action_trash</item>
     </style>
 
-    <style name="UpButton">
+    <style name="UpButton" parent="Theme.AppCompat.DayNight">
         <item name="android:src">@drawable/ic_btn_round_up</item>
     </style>
 
-    <style name="DownButton">
+    <style name="DownButton" parent="Theme.AppCompat.DayNight">
         <item name="android:src">@drawable/ic_btn_round_down</item>
     </style>
 
-    <style name="TopButton">
+    <style name="TopButton" parent="Theme.AppCompat.DayNight">
         <item name="android:src">@drawable/ic_btn_round_top</item>
     </style>
 
-    <style name="BottomButton">
+    <style name="BottomButton" parent="Theme.AppCompat.DayNight">
         <item name="android:src">@drawable/ic_btn_round_bottom</item>
     </style>
 
@@ -129,7 +129,7 @@
         <item name="android:windowContentOverlay">@null</item>
     </style>
 
-    <style name="ButtonBar">
+    <style name="ButtonBar" parent="Theme.AppCompat.DayNight">
         <item name="android:paddingTop">5dip</item>
         <item name="android:paddingLeft">4dip</item>
         <item name="android:paddingRight">4dip</item>
@@ -143,20 +143,20 @@
         <item name="android:maxHeight">12dip</item>
     </style>
 
-    <style name="BottomBar">
+    <style name="BottomBar" parent="Theme.AppCompat.DayNight">
         <item name="android:layout_width">fill_parent</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:background">@color/holo_gray_dark</item>
         <item name="android:minHeight">@dimen/action_button_size</item>
     </style>
 
-    <style name="BottomBarButton">
+    <style name="BottomBarButton" parent="Theme.AppCompat.DayNight">
         <item name="android:background" />
         <item name="android:layout_width">@dimen/action_button_size</item>
         <item name="android:layout_height">@dimen/action_button_size</item>
     </style>
 
-    <style name="CalculatorButton">
+    <style name="CalculatorButton" parent="Theme.AppCompat.DayNight">
         <item name="android:textColor">@android:color/secondary_text_dark</item>
         <item name="android:background">@android:drawable/list_selector_background</item>
         <item name="android:layout_width">@dimen/calculator_button_width</item>
@@ -164,11 +164,11 @@
         <item name="android:textSize">26sp</item>
     </style>
 
-    <style name="AccountTypeImage">
+    <style name="AccountTypeImage" parent="Theme.AppCompat.DayNight">
         <item name="android:tint">@color/holo_gray_light</item>
     </style>
 
-    <style name="ContactListSeparatorTextViewStyle">
+    <style name="ContactListSeparatorTextViewStyle" parent="Theme.AppCompat.DayNight">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:layout_marginTop">8dip</item>
@@ -186,7 +186,7 @@
         <item name="android:textAllCaps">true</item>
     </style>
 
-    <style name="LockButton">
+    <style name="LockButton" parent="Theme.AppCompat.DayNight">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:layout_margin">3dp</item>

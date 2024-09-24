@@ -10,6 +10,8 @@
  ******************************************************************************/
 package ru.orangesoftware.financisto.export;
 
+import static ru.orangesoftware.financisto.activity.RequestPermission.checkPermission;
+
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager.NameNotFoundException;
@@ -31,7 +33,6 @@ import java.util.Date;
 import java.util.zip.GZIPOutputStream;
 
 import ru.orangesoftware.financisto.R;
-import ru.orangesoftware.financisto.activity.RequestPermission;
 import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.export.dropbox.Dropbox;
 import ru.orangesoftware.financisto.persistance.BackupPreferences;
@@ -52,7 +53,7 @@ public abstract class Export {
     }
 
     public String export() throws Exception {
-        if (!RequestPermission.checkPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+        if (!checkPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
             throw new ImportExportException(R.string.request_permissions_storage_not_granted);
         }
         DocumentFile path = getBackupFolder(context);

@@ -10,7 +10,7 @@
 
     <dimen name="gd_arrow_offset">5dp</dimen>
 
-    <style name="GreenDroid" />
+    <style name="GreenDroid" parent="Theme.AppCompat.DayNight"/>
     <style name="GreenDroid.Widget" />
     <style name="GreenDroid.Widget.QuickAction" />
     <style name="GreenDroid.Widget.QuickAction.Grid">
