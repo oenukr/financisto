@@ -1,42 +1,25 @@
-/*******************************************************************************
- * Copyright (c) 2010 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * <p/>
- * Contributors:
- * Denis Solonenko - initial API and implementation
- ******************************************************************************/
-package ru.orangesoftware.financisto.activity;
+package ru.orangesoftware.financisto.activity
 
-import android.view.View;
+import android.view.View
 
-import ru.orangesoftware.financisto.R;
-import ru.orangesoftware.financisto.blotter.BlotterFilter;
-import ru.orangesoftware.financisto.filter.Criteria;
-import ru.orangesoftware.financisto.model.MyLocation;
+import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.blotter.BlotterFilter
+import ru.orangesoftware.financisto.filter.Criteria
+import ru.orangesoftware.financisto.model.MyLocation
 
-public class LocationsListActivity extends MyEntityListActivity<MyLocation> {
+class LocationsListActivity : MyEntityListActivity<MyLocation>(
+    MyLocation::class.java,
+    R.string.no_locations,
+) {
 
-    public LocationsListActivity() {
-        super(MyLocation.class, R.string.no_locations);
+    override fun getEditActivityClass(): Class<out MyEntityActivity<MyLocation>> =
+        LocationActivity::class.java
+
+    override fun createBlotterCriteria(location: MyLocation?): Criteria =
+        Criteria.eq(BlotterFilter.LOCATION_ID, location?.id.toString())
+
+    override fun deleteItem(v: View?, position: Int, id: Long) {
+        db.deleteLocation(id)
+        recreateCursor()
     }
-
-    @Override
-    protected Class<LocationActivity> getEditActivityClass() {
-        return LocationActivity.class;
-    }
-
-    @Override
-    protected Criteria createBlotterCriteria(MyLocation location) {
-        return Criteria.eq(BlotterFilter.LOCATION_ID, String.valueOf(location.id));
-    }
-
-    @Override
-    protected void deleteItem(View v, int position, long id) {
-        db.deleteLocation(id);
-        recreateCursor();
-    }
-
 }

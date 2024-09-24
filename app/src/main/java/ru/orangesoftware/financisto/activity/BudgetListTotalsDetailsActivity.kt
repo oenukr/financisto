@@ -1,53 +1,28 @@
-/*
- * Copyright (c) 2012 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- */
+package ru.orangesoftware.financisto.activity
 
-package ru.orangesoftware.financisto.activity;
+import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.db.BudgetsTotalCalculator
+import ru.orangesoftware.financisto.filter.WhereFilter
+import ru.orangesoftware.financisto.model.Total
 
-import android.content.Intent;
+class BudgetListTotalsDetailsActivity : AbstractTotalsDetailsActivity(
+    R.string.budget_total_in_currency,
+)  {
 
-import java.util.List;
-
-import ru.orangesoftware.financisto.R;
-import ru.orangesoftware.financisto.db.BudgetsTotalCalculator;
-import ru.orangesoftware.financisto.filter.WhereFilter;
-import ru.orangesoftware.financisto.model.Budget;
-import ru.orangesoftware.financisto.model.Total;
-
-public class BudgetListTotalsDetailsActivity extends AbstractTotalsDetailsActivity  {
-
-    private WhereFilter filter = WhereFilter.empty();
-    private BudgetsTotalCalculator calculator;
-    
-    public BudgetListTotalsDetailsActivity() {
-        super(R.string.budget_total_in_currency);
+    private var filter: WhereFilter = WhereFilter.empty()
+    private val calculator: BudgetsTotalCalculator by lazy {
+        BudgetsTotalCalculator(db, db.getAllBudgets(filter))
     }
 
-    @Override
-    protected void internalOnCreate() {
-        Intent intent = getIntent();
-        if (intent != null) {
-            filter = WhereFilter.fromIntent(intent);
-        }
+    override fun internalOnCreate() {
+        filter = WhereFilter.fromIntent(intent)
     }
 
-    @Override
-    protected void prepareInBackground() {
-        List<Budget> budgets = db.getAllBudgets(filter);
-        calculator = new BudgetsTotalCalculator(db, budgets);
-        calculator.updateBudgets(null);
+    override fun prepareInBackground() {
+        calculator.updateBudgets(null)
     }
 
-    protected Total getTotalInHomeCurrency() {
-        return calculator.calculateTotalInHomeCurrency();
-    }
+    override fun getTotalInHomeCurrency(): Total = calculator.calculateTotalInHomeCurrency()
 
-    protected Total[] getTotals() {
-        return calculator.calculateTotals();
-    }
-
+    override fun getTotals(): Array<Total> = calculator.calculateTotals()
 }

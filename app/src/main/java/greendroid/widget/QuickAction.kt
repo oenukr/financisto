@@ -13,15 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package greendroid.widget;
+package greendroid.widget
 
-import android.content.Context;
-import android.graphics.drawable.Drawable;
-import android.view.View;
+import android.content.Context
+import android.graphics.drawable.Drawable
+import android.view.View
 
-import androidx.core.content.ContextCompat;
+import androidx.core.content.ContextCompat
 
-import java.lang.ref.WeakReference;
+import java.lang.ref.WeakReference
 
 /**
  * A QuickAction implements an item in a {@link greendroid.widget.QuickActionWidget}. A
@@ -30,31 +30,28 @@ import java.lang.ref.WeakReference;
  * @author Benjamin Fellous
  * @author Cyril Mottier
  */
-public class QuickAction {
+open class QuickAction(
+    val drawable: Drawable,
+    val title: CharSequence,
+) {
 
-    public Drawable mDrawable;
-    public CharSequence mTitle;
+    constructor(
+        ctx: Context,
+        drawableId: Int,
+        title: CharSequence
+    ) : this(ContextCompat.getDrawable(ctx, drawableId)!!, title)
 
-    /* package */WeakReference<View> mView;
+    constructor(ctx: Context, drawable: Drawable, titleId: Int) : this(
+        drawable,
+        ctx.resources.getString(titleId)
+    )
 
-    public QuickAction(Drawable d, CharSequence title) {
-        mDrawable = d;
-        mTitle = title;
-    }
+    constructor(ctx: Context, drawableId: Int, titleId: Int) : this(
+        ContextCompat.getDrawable(
+            ctx,
+            drawableId
+        )!!, ctx.resources.getString(titleId)
+    )
 
-    public QuickAction(Context ctx, int drawableId, CharSequence title) {
-        mDrawable = ContextCompat.getDrawable(ctx, drawableId);
-        mTitle = title;
-    }
-
-    public QuickAction(Context ctx, Drawable d, int titleId) {
-        mDrawable = d;
-        mTitle = ctx.getResources().getString(titleId);
-    }
-
-    public QuickAction(Context ctx, int drawableId, int titleId) {
-        mDrawable = ContextCompat.getDrawable(ctx, drawableId);
-        mTitle = ctx.getResources().getString(titleId);
-    }
-
+    var mView: WeakReference<View>? = null
 }

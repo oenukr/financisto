@@ -1,11 +1,5 @@
-package ru.orangesoftware.financisto.activity;
+package ru.orangesoftware.financisto.activity
 
-import ru.orangesoftware.financisto.model.Project;
+import ru.orangesoftware.financisto.model.Project
 
-public class ProjectActivity extends MyEntityActivity<Project> {
-
-    public ProjectActivity() {
-        super(Project.class);
-    }
-
-}
+class ProjectActivity : MyEntityActivity<Project>(Project::class.java)

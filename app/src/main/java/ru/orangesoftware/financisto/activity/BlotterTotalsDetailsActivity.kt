@@ -1,61 +1,44 @@
-/*
- * Copyright (c) 2012 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- */
+package ru.orangesoftware.financisto.activity
 
-package ru.orangesoftware.financisto.activity;
+import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.blotter.AccountTotalCalculationTask
+import ru.orangesoftware.financisto.blotter.BlotterFilter
+import ru.orangesoftware.financisto.blotter.BlotterTotalCalculationTask
+import ru.orangesoftware.financisto.blotter.TotalCalculationTask
+import ru.orangesoftware.financisto.filter.WhereFilter
+import ru.orangesoftware.financisto.model.Total
 
-import android.content.Intent;
+class BlotterTotalsDetailsActivity : AbstractTotalsDetailsActivity(
+    R.string.blotter_total_in_currency,
+)  {
 
-import ru.orangesoftware.financisto.R;
-import ru.orangesoftware.financisto.blotter.AccountTotalCalculationTask;
-import ru.orangesoftware.financisto.blotter.BlotterFilter;
-import ru.orangesoftware.financisto.blotter.BlotterTotalCalculationTask;
-import ru.orangesoftware.financisto.blotter.TotalCalculationTask;
-import ru.orangesoftware.financisto.filter.WhereFilter;
-import ru.orangesoftware.financisto.model.Total;
+    @Volatile
+    private var totalCalculationTask: TotalCalculationTask? = null
 
-public class BlotterTotalsDetailsActivity extends AbstractTotalsDetailsActivity  {
-
-    private volatile TotalCalculationTask totalCalculationTask;
-
-    public BlotterTotalsDetailsActivity() {
-        super(R.string.blotter_total_in_currency);
-    }
-
-    @Override
-    protected void internalOnCreate() {
-        Intent intent = getIntent();
+    override fun internalOnCreate() {
         if (intent != null) {
-            WhereFilter blotterFilter = WhereFilter.fromIntent(intent);
-            cleanupFilter(blotterFilter);
-            totalCalculationTask = createTotalCalculationTask(blotterFilter);
+            val blotterFilter: WhereFilter = WhereFilter.fromIntent(intent)
+            cleanupFilter(blotterFilter)
+            totalCalculationTask = createTotalCalculationTask(blotterFilter)
         }
     }
 
-    private void cleanupFilter(WhereFilter blotterFilter) {
-        blotterFilter.remove(BlotterFilter.BUDGET_ID);
+    private fun cleanupFilter(blotterFilter: WhereFilter) {
+        blotterFilter.remove(BlotterFilter.BUDGET_ID)
     }
 
-    private TotalCalculationTask createTotalCalculationTask(WhereFilter blotterFilter) {
-        WhereFilter filter = WhereFilter.copyOf(blotterFilter);
-        if (filter.getAccountId() > 0) {
-            shouldShowHomeCurrencyTotal = false;
-            return new AccountTotalCalculationTask(this, db, filter, null);
+    private fun createTotalCalculationTask(blotterFilter: WhereFilter): TotalCalculationTask {
+        val filter: WhereFilter = WhereFilter.copyOf(blotterFilter)
+        return if (filter.getAccountId() > 0) {
+            shouldShowHomeCurrencyTotal = false
+            AccountTotalCalculationTask(this, db, filter, null)
         } else {
-            return new BlotterTotalCalculationTask(this, db, filter, null);
+            BlotterTotalCalculationTask(this, db, filter, null)
         }
     }
 
-    protected Total getTotalInHomeCurrency() {
-        return totalCalculationTask.getTotalInHomeCurrency();
-    }
+    override fun getTotalInHomeCurrency(): Total =
+        totalCalculationTask?.getTotalInHomeCurrency() ?: Total.ZERO
 
-    protected Total[] getTotals() {
-        return totalCalculationTask.getTotals();
-    }
-
+    override fun getTotals(): Array<Total> = totalCalculationTask?.getTotals() ?: emptyArray()
 }

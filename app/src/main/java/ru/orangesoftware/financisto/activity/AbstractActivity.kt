@@ -1,123 +1,96 @@
-/*******************************************************************************
- * Copyright (c) 2010 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- *
- * Contributors:
- *     Denis Solonenko - initial API and implementation
- ******************************************************************************/
-package ru.orangesoftware.financisto.activity;
+package ru.orangesoftware.financisto.activity
 
-import android.content.Context;
-import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.widget.Toast;
+import android.content.Context
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.widget.Toast
+import androidx.annotation.StringRes
+import androidx.fragment.app.FragmentActivity
+import ru.orangesoftware.financisto.db.DatabaseAdapter
+import ru.orangesoftware.financisto.model.MultiChoiceItem
+import ru.orangesoftware.financisto.utils.MyPreferences
+import ru.orangesoftware.financisto.utils.PinProtection
+import ru.orangesoftware.financisto.view.NodeInflater
 
-import androidx.fragment.app.FragmentActivity;
+abstract class AbstractActivity : FragmentActivity(), ActivityLayoutListener {
 
-import java.util.List;
+    protected lateinit var db: DatabaseAdapter
+    protected lateinit var x: ActivityLayout
 
-import ru.orangesoftware.financisto.db.DatabaseAdapter;
-import ru.orangesoftware.financisto.model.MultiChoiceItem;
-import ru.orangesoftware.financisto.utils.MyPreferences;
-import ru.orangesoftware.financisto.utils.PinProtection;
-import ru.orangesoftware.financisto.view.NodeInflater;
-
-public abstract class AbstractActivity extends FragmentActivity implements ActivityLayoutListener {
-
-	protected DatabaseAdapter db;
-
-	protected ActivityLayout x;
-
-	@Override
-	protected void attachBaseContext(Context base) {
-		super.attachBaseContext(MyPreferences.switchLocale(base));
-	}
-
-	@Override
-	protected void onCreate(Bundle savedInstanceState) {
-		super.onCreate(savedInstanceState);
-
-		LayoutInflater layoutInflater = (LayoutInflater)getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-		NodeInflater nodeInflater = new NodeInflater(layoutInflater);
-		x = new ActivityLayout(nodeInflater, this);
-		db = new DatabaseAdapter(this);
-		db.open();
-	}
-
-	@Override
-	protected void onPause() {
-		super.onPause();
-        if (shouldLock()) {
-		    PinProtection.lock(this);
-        }
-	}
-
-	@Override
-	protected void onResume() {
-		super.onResume();
-        if (shouldLock()) {
-		    PinProtection.unlock(this);
-        }
-	}
-
-    protected boolean shouldLock() {
-        return true;
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(MyPreferences.switchLocale(base))
     }
 
-	@Override
-	public void onClick(View v) {
-		int id = v.getId();
-		onClick(v, id);
-	}
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
 
-	protected abstract void onClick(View v, int id);
+        val nodeInflater = NodeInflater(LayoutInflater.from(this))
+        x = ActivityLayout(nodeInflater, this)
+        db = DatabaseAdapter(this)
+        db.open()
+    }
 
+    override fun onPause() {
+        super.onPause()
+        if (shouldLock()) {
+            PinProtection.lock(this)
+        }
+    }
 
-	@Override
-	public void onSelected(int id, List<? extends MultiChoiceItem> items) {
-	}
+    override fun onResume() {
+        super.onResume()
+        if (shouldLock()) {
+            PinProtection.unlock(this)
+        }
+    }
 
-	@Override
-	public void onSelectedId(final int id, final long selectedId) {
-	}
+    protected open fun shouldLock(): Boolean {
+        return true
+    }
 
-	@Override
-	public void onSelectedPos(int id, int selectedPos) {
-	}
+    override fun onClick(v: View) {
+        val id = v.id
+        onClick(v, id)
+    }
 
-    protected boolean checkSelected(Object value, int messageResId) {
+    protected abstract fun onClick(v: View, id: Int)
+
+    override fun onSelected(id: Int, items: List<MultiChoiceItem>) {}
+
+    override fun onSelectedId(id: Int, selectedId: Long) {}
+
+    override fun onSelectedPos(id: Int, selectedPos: Int) {}
+
+    protected fun checkSelected(value: Any?, @StringRes messageResId: Int): Boolean {
         if (value == null) {
-            Toast.makeText(this, messageResId, Toast.LENGTH_SHORT).show();
-            return false;
+            Toast.makeText(this, messageResId, Toast.LENGTH_SHORT).show()
+            return false
         }
-        return true;
+        return true
     }
 
-    protected boolean checkSelectedId(long value, int messageResId) {
-		if (value <= 0) {
-			Toast.makeText(this, messageResId, Toast.LENGTH_SHORT).show();
-			return false;
-		}
-		return true;
-	}
+    protected fun checkSelectedId(value: Long, @StringRes messageResId: Int): Boolean {
+        if (value <= 0) {
+            Toast.makeText(this, messageResId, Toast.LENGTH_SHORT).show()
+            return false
+        }
+        return true
+    }
 
-	public static void setVisibility(View v, int visibility) {
-		if (v == null) return;
-		v.setVisibility(visibility);
-		Object o = v.getTag();
-		if (o instanceof View) {
-			((View)o).setVisibility(visibility);
-		}
-	}
+    companion object {
+        @JvmStatic
+        fun setVisibility(v: View?, visibility: Int) {
+            v?.visibility = visibility
+            val tag = v?.tag
+            if (tag is View) {
+                tag.visibility = visibility
+            }
+        }
+    }
 
-	@Override
-	protected void onDestroy() {
-		db.close();
-		super.onDestroy();
-	}
-
+    override fun onDestroy() {
+        db.close()
+        super.onDestroy()
+    }
 }

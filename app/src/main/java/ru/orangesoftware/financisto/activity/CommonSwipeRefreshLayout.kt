@@ -1,28 +1,25 @@
-package ru.orangesoftware.financisto.activity;
+package ru.orangesoftware.financisto.activity
 
-import android.content.Context;
-import android.util.AttributeSet;
-import android.view.View;
+import android.content.Context
+import android.util.AttributeSet
+import android.view.View
 
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
-public class CommonSwipeRefreshLayout extends SwipeRefreshLayout {
-    private View mScrollingView;
+class CommonSwipeRefreshLayout @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null,
+) : SwipeRefreshLayout(
+    context,
+    attrs,
+) {
+    private var mScrollingView: View? = null
 
-    public CommonSwipeRefreshLayout(Context context) {
-        super(context);
+    override fun canChildScrollUp(): Boolean {
+        return mScrollingView != null && mScrollingView!!.canScrollVertically(-1)
     }
 
-    public CommonSwipeRefreshLayout(Context context, AttributeSet attrs) {
-        super(context, attrs);
-    }
-
-    @Override
-    public boolean canChildScrollUp() {
-        return mScrollingView != null && mScrollingView.canScrollVertically(-1);
-    }
-
-    public void setScrollingView(View scrollingView) {
+    fun setScrollingView(scrollingView: View) {
         mScrollingView = scrollingView;
     }
 }

@@ -1,25 +1,26 @@
-package ru.orangesoftware.financisto.activity;
+package ru.orangesoftware.financisto.activity
 
-import android.content.Context;
-import android.graphics.Color;
-import android.graphics.LightingColorFilter;
-import android.graphics.drawable.Drawable;
+import android.content.Context
+import android.graphics.Color
+import android.graphics.LightingColorFilter
+import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 
-import androidx.core.content.ContextCompat;
+import androidx.core.content.ContextCompat
 
-import greendroid.widget.QuickAction;
-import ru.orangesoftware.financisto.R;
+import greendroid.widget.QuickAction
+import ru.orangesoftware.financisto.R
 
-class MyQuickAction extends QuickAction {
-
-    MyQuickAction(Context ctx, int drawableId, int titleId) {
-        super(ctx, buildDrawable(ctx, drawableId), titleId);
-    }
-
-    private static Drawable buildDrawable(Context ctx, int drawableId) {
-        Drawable d = ContextCompat.getDrawable(ctx, drawableId).mutate();
-        d.setColorFilter(new LightingColorFilter(Color.BLACK, ContextCompat.getColor(ctx, R.color.colorPrimary)));
-        return d;
-    }
-
-}
+class MyQuickAction(
+    ctx: Context,
+    @DrawableRes drawableId: Int,
+    @StringRes titleId: Int,
+) : QuickAction(
+    ctx,
+    ContextCompat.getDrawable(ctx, drawableId)!!.mutate().apply { colorFilter = LightingColorFilter(
+            Color.BLACK,
+            ContextCompat.getColor(ctx, R.color.colorPrimary)
+        )
+    },
+    titleId,
+)

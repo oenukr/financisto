@@ -8,8 +8,6 @@
 
 package ru.orangesoftware.financisto.activity;
 
-import static ru.orangesoftware.financisto.activity.UiUtils.applyTheme;
-
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.ProgressDialog;
@@ -129,7 +127,7 @@ public class PurgeAccountActivity extends AbstractActivity {
                         date.get(Calendar.MONTH),
                         date.get(Calendar.DAY_OF_MONTH)
                 );
-                applyTheme(this, dialog);
+                UiUtils.INSTANCE.applyTheme(this, dialog);
                 dialog.show(getSupportFragmentManager(), "DatePickerDialog");
                 break;
             case R.id.backup:

@@ -1,58 +1,47 @@
-package ru.orangesoftware.financisto.activity;
+package ru.orangesoftware.financisto.activity
 
-import android.app.Activity;
-import android.widget.ArrayAdapter;
-import android.widget.ListAdapter;
+import android.app.Activity
+import android.widget.ArrayAdapter
+import android.widget.ListAdapter
 
-import java.util.List;
+import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.db.DatabaseAdapter
+import ru.orangesoftware.financisto.db.MyEntityManager
+import ru.orangesoftware.financisto.model.Project
+import ru.orangesoftware.financisto.utils.MyPreferences
+import ru.orangesoftware.financisto.utils.TransactionUtils
 
-import ru.orangesoftware.financisto.R;
-import ru.orangesoftware.financisto.db.DatabaseAdapter;
-import ru.orangesoftware.financisto.db.MyEntityManager;
-import ru.orangesoftware.financisto.model.Project;
-import ru.orangesoftware.financisto.utils.MyPreferences;
-import ru.orangesoftware.financisto.utils.TransactionUtils;
+class ProjectSelector<A : AbstractActivity> @JvmOverloads constructor(
+    activity: A,
+    db: DatabaseAdapter,
+    layout: ActivityLayout,
+    emptyId: Int = R.string.no_project,
+) : MyEntitySelector<Project, A>(
+    Project::class.java,
+    activity,
+    db,
+    layout,
+    MyPreferences.isShowProject(activity),
+    R.id.project,
+    R.id.project_add,
+    R.id.project_clear,
+    R.string.project,
+    emptyId,
+    R.id.project_show_list,
+    R.id.project_close_filter,
+    R.id.project_show_filter,
+) {
 
-/**
- * Created by IntelliJ IDEA.
- * User: denis.solonenko
- * Date: 7/2/12 9:25 PM
- */
-public class ProjectSelector<A extends AbstractActivity> extends MyEntitySelector<Project, A> {
+    override fun getEditActivityClass(): Class<*> = ProjectActivity::class.java
 
-    public ProjectSelector(A activity, DatabaseAdapter db, ActivityLayout x) {
-        this(activity, db, x, R.string.no_project);
-    }
+    override fun fetchEntities(entityManager: MyEntityManager): List<Project> =
+        em.getActiveProjectsList(true)
 
-    public ProjectSelector(A activity, DatabaseAdapter db, ActivityLayout x, int emptyId) {
-        super(Project.class, activity, db, x, MyPreferences.isShowProject(activity),
-                R.id.project, R.id.project_add, R.id.project_clear, R.string.project, emptyId,
-                R.id.project_show_list, R.id.project_close_filter, R.id.project_show_filter);
-    }
+    override fun createAdapter(activity: Activity?, entities: MutableList<Project>?): ListAdapter =
+        TransactionUtils.createProjectAdapter(activity, entities)
 
-    @Override
-    protected Class getEditActivityClass() {
-        return ProjectActivity.class;
-    }
+    override fun createFilterAdapter(): ArrayAdapter<Project> =
+        TransactionUtils.projectFilterAdapter(activity, em)
 
-    @Override
-    protected List<Project> fetchEntities(MyEntityManager em) {
-        return em.getActiveProjectsList(true);
-    }
-
-    @Override
-    protected ListAdapter createAdapter(Activity activity, List<Project> entities) {
-        return TransactionUtils.createProjectAdapter(activity, entities);
-    }
-
-    @Override
-    protected ArrayAdapter<Project> createFilterAdapter() {
-        return TransactionUtils.projectFilterAdapter(activity, em);
-    }
-
-    @Override
-    protected boolean isListPickConfigured() {
-        return MyPreferences.isProjectSelectorList(activity);
-    }
-
+    override fun isListPickConfigured(): Boolean = MyPreferences.isProjectSelectorList(activity)
 }

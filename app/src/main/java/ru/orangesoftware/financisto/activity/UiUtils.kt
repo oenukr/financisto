@@ -1,24 +1,24 @@
-package ru.orangesoftware.financisto.activity;
+package ru.orangesoftware.financisto.activity
 
-import android.content.Context;
+import android.content.Context
 
-import androidx.core.content.ContextCompat;
+import androidx.core.content.ContextCompat
 
-import com.wdullaer.materialdatetimepicker.date.DatePickerDialog;
-import com.wdullaer.materialdatetimepicker.time.TimePickerDialog;
+import com.wdullaer.materialdatetimepicker.date.DatePickerDialog
+import com.wdullaer.materialdatetimepicker.time.TimePickerDialog
 
-import ru.orangesoftware.financisto.R;
+import ru.orangesoftware.financisto.R
 
-public class UiUtils {
+object UiUtils {
 
-    public static void applyTheme(Context context, DatePickerDialog d) {
-        d.setAccentColor(ContextCompat.getColor(context, R.color.colorPrimary));
-        d.setThemeDark(true);
+    fun applyTheme(context: Context, dialog: DatePickerDialog) {
+        dialog.accentColor = ContextCompat.getColor(context, R.color.colorPrimary)
+        dialog.setThemeDark(true)
     }
 
-    public static void applyTheme(Context context, TimePickerDialog d) {
-        d.setAccentColor(ContextCompat.getColor(context, R.color.colorPrimary));
-        d.setThemeDark(true);
+    fun applyTheme(context: Context, dialog: TimePickerDialog) {
+        dialog.accentColor = ContextCompat.getColor(context, R.color.colorPrimary)
+        dialog.setThemeDark(true)
     }
 
 }

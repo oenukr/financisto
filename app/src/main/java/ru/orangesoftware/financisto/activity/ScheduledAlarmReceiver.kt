@@ -1,13 +1,3 @@
-/*******************************************************************************
- * Copyright (c) 2010 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- *
- * Contributors:
- *     Denis Solonenko - initial API and implementation
- ******************************************************************************/
 package ru.orangesoftware.financisto.activity;
 
 import android.content.Context;
@@ -17,34 +7,46 @@ import android.util.Log;
 import ru.orangesoftware.financisto.service.FinancistoService;
 import ru.orangesoftware.financisto.service.RecurrenceScheduler;
 
-public class ScheduledAlarmReceiver extends PackageReplaceReceiver {
+private const val BOOT_COMPLETED = "android.intent.action.BOOT_COMPLETED"
+private const val SCHEDULED_BACKUP = "ru.orangesoftware.financisto.SCHEDULED_BACKUP"
 
-    private static final String BOOT_COMPLETED = "android.intent.action.BOOT_COMPLETED";
-    private static final String SCHEDULED_BACKUP = "ru.orangesoftware.financisto.SCHEDULED_BACKUP";
+class ScheduledAlarmReceiver : PackageReplaceReceiver() {
 
-    @Override
-    public void onReceive(Context context, Intent intent) {
-        Log.i("ScheduledAlarmReceiver", "Received " + intent.getAction());
-        String action = intent.getAction();
-        if (BOOT_COMPLETED.equals(action)) {
-            requestScheduleAll(context);
-            requestScheduleAutoBackup(context);
-        } else if (SCHEDULED_BACKUP.equals(action)) {
-            requestAutoBackup(context);
-        } else {
-            requestScheduleOne(context, intent);
+    override fun onReceive(context: Context?, intent: Intent?) {
+        Log.i("ScheduledAlarmReceiver", "Received ${intent?.action}")
+        if (context == null || intent == null) return
+
+        when(intent.action) {
+            BOOT_COMPLETED -> {
+                requestScheduleAll(context)
+                requestScheduleAutoBackup(context)
+            }
+            SCHEDULED_BACKUP -> {
+                requestAutoBackup(context)
+            }
+            else -> {
+                requestScheduleOne(context, intent)
+            }
         }
     }
 
-    private void requestScheduleOne(Context context, Intent intent) {
-        Intent serviceIntent = new Intent(FinancistoService.ACTION_SCHEDULE_ONE, null, context, FinancistoService.class);
-        serviceIntent.putExtra(RecurrenceScheduler.SCHEDULED_TRANSACTION_ID, intent.getLongExtra(RecurrenceScheduler.SCHEDULED_TRANSACTION_ID, -1));
-        FinancistoService.enqueueWork(context, serviceIntent);
+    private fun requestScheduleOne(context: Context, intent: Intent) {
+        val serviceIntent = Intent(
+            FinancistoService.ACTION_SCHEDULE_ONE,
+            null,
+            context,
+            FinancistoService::class.java
+        )
+        serviceIntent.putExtra(
+            RecurrenceScheduler.SCHEDULED_TRANSACTION_ID,
+            intent.getLongExtra(RecurrenceScheduler.SCHEDULED_TRANSACTION_ID, -1)
+        )
+        FinancistoService.enqueueWork(context, serviceIntent)
     }
 
-    private void requestAutoBackup(Context context) {
-        Intent serviceIntent = new Intent(FinancistoService.ACTION_AUTO_BACKUP, null, context, FinancistoService.class);
-        FinancistoService.enqueueWork(context, serviceIntent);
+    private fun requestAutoBackup(context: Context) {
+        val serviceIntent = Intent(FinancistoService.ACTION_AUTO_BACKUP, null, context, FinancistoService::class.java)
+        FinancistoService.enqueueWork(context, serviceIntent)
     }
 
 }

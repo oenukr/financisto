@@ -26,6 +26,8 @@ import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.PopupMenu;
 
+import androidx.annotation.Nullable;
+
 import java.util.LinkedList;
 import java.util.List;
 
@@ -63,7 +65,7 @@ public abstract class AbstractListActivity extends ListActivity implements Refre
     }
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         requestWindowFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
@@ -106,7 +108,7 @@ public abstract class AbstractListActivity extends ListActivity implements Refre
 
     protected abstract ListAdapter createAdapter(Cursor cursor);
 
-    protected void internalOnCreate(Bundle savedInstanceState) {
+    protected void internalOnCreate(@Nullable Bundle savedInstanceState) {
         bAdd = findViewById(R.id.bAdd);
         bAdd.setOnClickListener(arg0 -> addItem());
     }

@@ -1,93 +1,69 @@
-/*******************************************************************************
- * Copyright (c) 2010 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
- * Contributors:
- *     Denis Solonenko - initial API and implementation
- ******************************************************************************/
-package ru.orangesoftware.financisto.activity;
+package ru.orangesoftware.financisto.activity
 
-import android.database.Cursor;
-import android.os.Bundle;
-import android.util.Log;
-import android.view.View;
-import android.widget.ListAdapter;
+import android.database.Cursor
+import android.os.Bundle
+import android.util.Log
+import android.view.View
+import android.widget.ListAdapter
+import ru.orangesoftware.financisto.adapter.TransactionsListAdapter
+import ru.orangesoftware.financisto.blotter.TotalCalculationTask
+import ru.orangesoftware.financisto.model.Budget
+import ru.orangesoftware.financisto.model.Category
+import ru.orangesoftware.financisto.model.MyEntity
+import ru.orangesoftware.financisto.model.Project
+import ru.orangesoftware.financisto.model.Total
 
-import java.util.Map;
-
-import ru.orangesoftware.financisto.adapter.TransactionsListAdapter;
-import ru.orangesoftware.financisto.blotter.TotalCalculationTask;
-import ru.orangesoftware.financisto.model.Budget;
-import ru.orangesoftware.financisto.model.Category;
-import ru.orangesoftware.financisto.model.MyEntity;
-import ru.orangesoftware.financisto.model.Project;
-import ru.orangesoftware.financisto.model.Total;
-
-public class BudgetBlotterActivity extends BlotterActivity {
+class BudgetBlotterActivity : BlotterActivity() {
 	
-	private Map<Long, Category> categories;
-	private Map<Long, Project> projects;
-	
-    public BudgetBlotterActivity() {
-		super();
-	}
-        
-	@Override
-	protected void internalOnCreate(Bundle savedInstanceState) {
-		categories = MyEntity.asMap(db.getCategoriesList(true));
-		projects = MyEntity.asMap(db.getActiveProjectsList(true));
-		super.internalOnCreate(savedInstanceState);
-		bFilter.setVisibility(View.GONE);
-	}
-	
-	@Override
-	protected Cursor createCursor() {
-		long budgetId = blotterFilter.getBudgetId();
-		return getBlotterForBudget(budgetId);
-	}
-
-	@Override
-	protected ListAdapter createAdapter(Cursor cursor) {
-		return new TransactionsListAdapter(this, db, cursor);
-	}
-	
-	private Cursor getBlotterForBudget(long budgetId) {
-		Budget b = db.load(Budget.class, budgetId);
-		String where = Budget.createWhere(b, categories, projects);
-		return db.getBlotterWithSplits(where);
-	}
-
-    @Override
-    protected TotalCalculationTask createTotalCalculationTask() {
-        return new TotalCalculationTask(this, totalText) {
-            @Override
-            public Total getTotalInHomeCurrency() {
-                long t0 = System.currentTimeMillis();
-                try {
-                    try {
-                        long budgetId = blotterFilter.getBudgetId();
-                        Budget b = db.load(Budget.class, budgetId);
-                        Total total = new Total(b.getBudgetCurrency());
-                        total.balance = db.fetchBudgetBalance(categories, projects, b);
-                        return total;
-                    } finally {
-                        long t1 = System.currentTimeMillis();
-                        Log.d("BUDGET TOTALS", (t1-t0)+"ms");
-                    }
-                } catch (Exception ex) {
-                    Log.e("BudgetTotals", "Unexpected error", ex);
-                    return Total.ZERO;
-                }
-            }
-
-            @Override
-            public Total[] getTotals() {
-                return new Total[0];
-            }
-        };
+	private val categories: Map<Long, Category> by lazy {
+        MyEntity.asMap(db.getCategoriesList(true))
     }
+	private val projects: Map<Long, Project> by lazy {
+        MyEntity.asMap(db.getActiveProjectsList(true))
+    }
+	
+	override fun internalOnCreate(savedInstanceState: Bundle?) {
+		super.internalOnCreate(savedInstanceState)
+		bFilter.setVisibility(View.GONE)
+	}
+	
+	override fun createCursor(): Cursor {
+		val budgetId = blotterFilter.getBudgetId()
+		return getBlotterForBudget(budgetId)
+	}
 
+	override fun createAdapter(cursor: Cursor): ListAdapter {
+		return TransactionsListAdapter(this, db, cursor)
+	}
+	
+	private fun getBlotterForBudget(budgetId: Long): Cursor {
+		val b = db.load(Budget::class.java, budgetId)
+		val where = Budget.createWhere(b, categories, projects)
+		return db.getBlotterWithSplits(where)
+	}
+
+    override fun createTotalCalculationTask(): TotalCalculationTask {
+        return object : TotalCalculationTask(this, totalText) {
+			override fun getTotalInHomeCurrency(): Total {
+				val t0 = System.currentTimeMillis()
+				try {
+					try {
+						val budgetId = blotterFilter.getBudgetId()
+						val b = db.load(Budget::class.java, budgetId)
+						val total = Total(b.getBudgetCurrency())
+						total.balance = db.fetchBudgetBalance(categories, projects, b)
+						return total
+					} finally {
+						val t1 = System.currentTimeMillis()
+						Log.d("BUDGET TOTALS", "${(t1-t0)}ms")
+					}
+				} catch (ex: Exception) {
+					Log.e("BudgetTotals", "Unexpected error", ex)
+					return Total.ZERO
+				}
+			}
+
+			override fun getTotals(): Array<Total> = emptyArray()
+		}
+    }
 }

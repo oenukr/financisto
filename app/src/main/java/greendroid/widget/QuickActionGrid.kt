@@ -13,22 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package greendroid.widget;
+package greendroid.widget
 
-import android.content.Context;
-import android.graphics.Rect;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.View.MeasureSpec;
-import android.view.ViewGroup;
-import android.widget.AdapterView.OnItemClickListener;
-import android.widget.BaseAdapter;
-import android.widget.GridView;
-import android.widget.TextView;
+import android.content.Context
+import android.graphics.Rect
+import android.view.LayoutInflater
+import android.view.View
+import android.view.View.MeasureSpec
+import android.view.ViewGroup
+import android.widget.AdapterView.OnItemClickListener
+import android.widget.BaseAdapter
+import android.widget.GridView
+import android.widget.TextView
 
-import java.util.List;
-
-import ru.orangesoftware.financisto.R;
+import ru.orangesoftware.financisto.R
 
 /**
  * A {@link QuickActionGrid} is an implementation of a {@link QuickActionWidget}
@@ -38,84 +36,64 @@ import ru.orangesoftware.financisto.R;
  * @author Benjamin Fellous
  * @author Cyril Mottier
  */
-public class QuickActionGrid extends QuickActionWidget {
+class QuickActionGrid(context: Context) : QuickActionWidget(context) {
 
-    private final GridView mGridView;
-
-    public QuickActionGrid(Context context) {
-        super(context);
-
-        setContentView(R.layout.gd_quick_action_grid);
-
-        final View v = getContentView();
-        mGridView = v.findViewById(R.id.gdi_grid);
+    init {
+        setContentView(R.layout.gd_quick_action_grid)
     }
 
-    public void setNumColumns(int columns) {
-        mGridView.setNumColumns(columns);
+    private val mGridView: GridView = contentView.findViewById(R.id.gdi_grid)
+
+    fun setNumColumns(columns: Int) {
+        mGridView.numColumns = columns
     }
 
-    @Override
-    protected void populateQuickActions(final List<QuickAction> quickActions) {
-        mGridView.setAdapter(new BaseAdapter() {
+    override fun populateQuickActions(quickActions: MutableList<QuickAction>) {
+        mGridView.adapter = object: BaseAdapter() {
+            override fun getView(position: Int, view: View?, parent: ViewGroup?): View =
+                (view as? TextView ?: LayoutInflater.from(context)
+                    .inflate(R.layout.gd_quick_action_grid_item, mGridView, false) as TextView)
+                    .apply {
+                        text = quickActions[position].title
+                        setCompoundDrawablesWithIntrinsicBounds(
+                            null,
+                            quickActions[position].drawable,
+                            null,
+                            null
+                        )
+                    }
 
-            public View getView(int position, View view, ViewGroup parent) {
+            override fun getItemId(position: Int): Long = position.toLong()
 
-                TextView textView = (TextView) view;
+            override fun getItem(position: Int): Any? = null
 
-                if (view == null) {
-                    final LayoutInflater inflater = LayoutInflater.from(getContext());
-                    textView = (TextView) inflater.inflate(R.layout.gd_quick_action_grid_item, mGridView, false);
-                }
-
-                QuickAction quickAction = quickActions.get(position);
-                textView.setText(quickAction.mTitle);
-                textView.setCompoundDrawablesWithIntrinsicBounds(null, quickAction.mDrawable, null, null);
-
-                return textView;
-
-            }
-
-            public long getItemId(int position) {
-                return position;
-            }
-
-            public Object getItem(int position) {
-                return null;
-            }
-
-            public int getCount() {
-                return quickActions.size();
-            }
-        });
-
-        mGridView.setOnItemClickListener(mInternalItemClickListener);
-    }
-
-    @Override
-    protected void onMeasureAndLayout(Rect anchorRect, View contentView) {
-
-        //contentView.setLayoutParams(new GridView.LayoutParams(GridView.LayoutParams.WRAP_CONTENT, GridView.LayoutParams.WRAP_CONTENT));
-        contentView.measure(MeasureSpec.makeMeasureSpec(getScreenWidth(), MeasureSpec.EXACTLY),
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-
-        int rootHeight = contentView.getMeasuredHeight();
-
-        int offsetY = getArrowOffsetY();
-        int dyTop = anchorRect.top;
-        int dyBottom = getScreenHeight() - anchorRect.bottom;
-
-        boolean onTop = (dyTop > dyBottom);
-        int popupY = (onTop) ? anchorRect.top - rootHeight + offsetY : anchorRect.bottom - offsetY;
-
-        setWidgetSpecs(popupY, onTop);
-    }
-
-    private final OnItemClickListener mInternalItemClickListener = (adapterView, view, position, id) -> {
-        getOnQuickActionClickListener().onQuickActionClicked(QuickActionGrid.this, position);
-        if (getDismissOnClick()) {
-            dismiss();
+            override fun getCount(): Int = quickActions.size
         }
-    };
+        mGridView.onItemClickListener = internalItemClickListener
+    }
 
+    override fun onMeasureAndLayout(anchorRect: Rect, contentView: View) {
+        contentView.measure(
+            MeasureSpec.makeMeasureSpec(screenWidth, MeasureSpec.EXACTLY),
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+        )
+
+        val rootHeight = contentView.measuredHeight
+
+        val offsetY = arrowOffsetY
+        val dyTop = anchorRect.top
+        val dyBottom = screenHeight - anchorRect.bottom
+
+        val onTop = (dyTop > dyBottom)
+        val popupY = if (onTop) anchorRect.top - rootHeight + offsetY else anchorRect.bottom - offsetY
+
+        setWidgetSpecs(popupY, onTop)
+    }
+
+    private val internalItemClickListener: OnItemClickListener = OnItemClickListener { _, _, position, _ ->
+        onQuickActionClickListener.onQuickActionClicked(this@QuickActionGrid, position)
+        if (dismissOnClick) {
+            dismiss()
+        }
+    }
 }
