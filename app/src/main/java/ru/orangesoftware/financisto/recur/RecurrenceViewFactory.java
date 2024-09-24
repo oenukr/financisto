@@ -10,8 +10,6 @@
  ******************************************************************************/
 package ru.orangesoftware.financisto.recur;
 
-import static ru.orangesoftware.financisto.activity.UiUtils.applyTheme;
-
 import android.content.Context;
 import android.text.InputType;
 import android.view.LayoutInflater;
@@ -37,6 +35,7 @@ import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.activity.ActivityLayout;
 import ru.orangesoftware.financisto.activity.ActivityLayoutListener;
 import ru.orangesoftware.financisto.activity.RecurrenceActivity;
+import ru.orangesoftware.financisto.activity.UiUtils;
 import ru.orangesoftware.financisto.datetime.DateUtils;
 import ru.orangesoftware.financisto.model.MultiChoiceItem;
 import ru.orangesoftware.financisto.utils.EnumUtils;
@@ -746,7 +745,7 @@ public class RecurrenceViewFactory {
                     c.get(Calendar.MONTH),
                     c.get(Calendar.DAY_OF_MONTH)
             );
-            applyTheme(activity, dialog);
+            UiUtils.INSTANCE.applyTheme(activity, dialog);
             dialog.show(activity.getSupportFragmentManager(), "DatePickerDialog");
         }
 

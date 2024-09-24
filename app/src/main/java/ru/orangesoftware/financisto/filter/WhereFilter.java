@@ -17,6 +17,8 @@ import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.os.Bundle;
 
+import androidx.annotation.NonNull;
+
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -226,7 +228,7 @@ public class WhereFilter {
 		intent.replaceExtras(bundle);
 	}
 
-	public static WhereFilter fromIntent(Intent intent) {
+	public static WhereFilter fromIntent(@NonNull Intent intent) {
 		Bundle bundle = intent.getExtras();
 		if (bundle == null) bundle = new Bundle();
 		return fromBundle(bundle);

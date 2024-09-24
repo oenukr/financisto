@@ -23,6 +23,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.util.List;
 
@@ -111,7 +112,7 @@ public class BlotterActivity extends AbstractListActivity {
     }
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         LayoutInflater layoutInflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         inflater = new NodeInflater(layoutInflater);
@@ -119,7 +120,7 @@ public class BlotterActivity extends AbstractListActivity {
     }
 
     @Override
-    protected void internalOnCreate(Bundle savedInstanceState) {
+    protected void internalOnCreate(@Nullable Bundle savedInstanceState) {
         super.internalOnCreate(savedInstanceState);
 
         bFilter = findViewById(R.id.bFilter);

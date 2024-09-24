@@ -10,8 +10,6 @@
  ******************************************************************************/
 package ru.orangesoftware.financisto.activity;
 
-import static ru.orangesoftware.financisto.activity.UiUtils.applyTheme;
-
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Bundle;
@@ -171,7 +169,7 @@ public class RecurrenceActivity extends AbstractActivity {
                         c.get(Calendar.MONTH),
                         c.get(Calendar.DAY_OF_MONTH)
                 );
-                applyTheme(this, dialog);
+                UiUtils.INSTANCE.applyTheme(this, dialog);
                 dialog.show(getSupportFragmentManager(), "DatePickerDialog");
             }
             break;
@@ -185,7 +183,7 @@ public class RecurrenceActivity extends AbstractActivity {
                         },
                         c.get(Calendar.HOUR_OF_DAY), c.get(Calendar.MINUTE), is24Format
                 );
-                applyTheme(this, dialog);
+                UiUtils.INSTANCE.applyTheme(this, dialog);
                 dialog.show(getSupportFragmentManager(), "TimePickerDialog");
             }
             break;

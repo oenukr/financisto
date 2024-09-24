@@ -1,7 +1,6 @@
 package ru.orangesoftware.financisto.activity;
 
 import static ru.orangesoftware.financisto.activity.RequestPermission.isRequestingPermission;
-import static ru.orangesoftware.financisto.activity.UiUtils.applyTheme;
 import static ru.orangesoftware.financisto.model.Category.NO_CATEGORY_ID;
 import static ru.orangesoftware.financisto.model.MyLocation.CURRENT_LOCATION_ID;
 import static ru.orangesoftware.financisto.model.Project.NO_PROJECT_ID;
@@ -211,7 +210,7 @@ public abstract class AbstractTransactionActivity extends AbstractActivity imple
                     dateTime.get(Calendar.MONTH),
                     dateTime.get(Calendar.DAY_OF_MONTH)
             );
-            applyTheme(this, dialog);
+            UiUtils.INSTANCE.applyTheme(this, dialog);
             dialog.show(getSupportFragmentManager(), "DatePickerDialog");
         });
 
@@ -227,7 +226,7 @@ public abstract class AbstractTransactionActivity extends AbstractActivity imple
                     },
                     dateTime.get(Calendar.HOUR_OF_DAY), dateTime.get(Calendar.MINUTE), is24Format
             );
-            applyTheme(this, dialog);
+            UiUtils.INSTANCE.applyTheme(this, dialog);
             dialog.show(getSupportFragmentManager(), "TimePickerDialog");
         });
 
