@@ -1,24 +1,20 @@
-package ru.orangesoftware.financisto.utils;
+package ru.orangesoftware.financisto.utils
 
-public interface IntegrityCheck {
+interface IntegrityCheck {
 
-    enum Level {
+    enum class Level {
         OK, INFO, WARN, ERROR
     }
 
-    class Result {
-        public static final Result OK = new Result(Level.OK, "");
-
-        public final Level level;
-        public final String message;
-
-        Result(Level level, String message) {
-            this.level = level;
-            this.message = message;
+    class Result(
+        val level: Level,
+        val message: String,
+    ) {
+        companion object {
+            @JvmStatic
+            val OK: Result = Result(Level.OK, "")
         }
     }
-
-
-    Result check();
-
+    
+    fun check(): Result
 }

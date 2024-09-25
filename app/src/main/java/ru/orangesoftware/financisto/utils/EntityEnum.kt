@@ -1,7 +1,5 @@
-package ru.orangesoftware.financisto.utils;
+package ru.orangesoftware.financisto.utils
 
-public interface EntityEnum extends LocalizableEnum {
-	
-	int getIconId();
-
+interface EntityEnum : LocalizableEnum {
+	fun getIconId(): Int
 }

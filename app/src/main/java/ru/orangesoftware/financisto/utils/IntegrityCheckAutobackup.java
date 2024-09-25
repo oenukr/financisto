@@ -44,7 +44,7 @@ public class IntegrityCheckAutobackup implements IntegrityCheck {
                 }
             }
         }
-        return Result.OK;
+        return Result.getOK();
     }
 
 }

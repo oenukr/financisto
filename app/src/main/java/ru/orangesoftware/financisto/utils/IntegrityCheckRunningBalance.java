@@ -36,7 +36,7 @@ public class IntegrityCheckRunningBalance implements IntegrityCheck {
         if (isRunningBalanceBroken()) {
             return new Result(Level.ERROR, context.getString(R.string.integrity_error));
         } else {
-            return Result.OK;
+            return Result.getOK();
         }
     }
 
