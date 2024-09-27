@@ -10,6 +10,8 @@
  ******************************************************************************/
 package ru.orangesoftware.financisto.model;
 
+import androidx.annotation.NonNull;
+
 import java.util.HashMap;
 
 import ru.orangesoftware.financisto.R;
@@ -38,6 +40,12 @@ public enum SystemAttribute implements LocalizableEnum {
 	@Override
 	public int getTitleId() {
 		return titleId;
+	}
+
+	@NonNull
+	@Override
+	public String getName() {
+		return name();
 	}
 
 	public static SystemAttribute forId(long attributeId) {

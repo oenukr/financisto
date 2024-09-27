@@ -20,6 +20,8 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+
 import com.wdullaer.materialdatetimepicker.date.DatePickerDialog;
 
 import java.text.ParseException;
@@ -109,7 +111,7 @@ public class RecurrenceViewFactory {
         @Override
         public String stateToString() {
             StringBuilder sb = new StringBuilder();
-            sb.append(r.name()).append(":");
+            sb.append(r.getName()).append(":");
             HashMap<String, String> state = new HashMap<>();
             stateToMap(state);
             for (Map.Entry<String, String> e : state.entrySet()) {
@@ -276,6 +278,11 @@ public class RecurrenceViewFactory {
             return titleId;
         }
 
+        @NonNull
+        @Override
+        public String getName() {
+            return name();
+        }
     }
 
     private class DayOfWeekItem implements MultiChoiceItem {
@@ -437,6 +444,11 @@ public class RecurrenceViewFactory {
             return titleId;
         }
 
+        @NonNull
+        @Override
+        public String getName() {
+            return name();
+        }
     }
 
     enum SpecificDayPrefix implements LocalizableEnum {
@@ -453,6 +465,12 @@ public class RecurrenceViewFactory {
         @Override
         public int getTitleId() {
             return titleId;
+        }
+
+        @NonNull
+        @Override
+        public String getName() {
+            return name();
         }
     }
 
@@ -477,6 +495,12 @@ public class RecurrenceViewFactory {
         @Override
         public int getTitleId() {
             return titleId;
+        }
+
+        @NonNull
+        @Override
+        public String getName() {
+            return name();
         }
     }
 

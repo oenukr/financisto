@@ -1,66 +1,59 @@
-package ru.orangesoftware.financisto.recur;
+package ru.orangesoftware.financisto.recur
 
-import static ru.orangesoftware.financisto.recur.RecurrencePeriod.dateToDateValue;
-import static ru.orangesoftware.financisto.recur.RecurrencePeriod.dateValueToDate;
+import com.google.ical.iter.RecurrenceIterator
+import com.google.ical.iter.RecurrenceIteratorFactory
+import com.google.ical.values.RRule
+import ru.orangesoftware.financisto.recur.RecurrencePeriod.dateToDateValue
+import ru.orangesoftware.financisto.recur.RecurrencePeriod.dateValueToDate
+import java.text.ParseException
+import java.util.Calendar
+import java.util.Date
 
-import com.google.ical.iter.RecurrenceIterator;
-import com.google.ical.iter.RecurrenceIteratorFactory;
-import com.google.ical.values.RRule;
+open class DateRecurrenceIterator(private val ri: RecurrenceIterator?) {
 
-import java.text.ParseException;
-import java.util.Calendar;
-import java.util.Date;
+    private var firstDate: Date? = null
 
-public class DateRecurrenceIterator {
-
-	private final RecurrenceIterator ri;
-    private Date firstDate;
-
-	private DateRecurrenceIterator(RecurrenceIterator ri) {
-		this.ri = ri;
+	open fun hasNext(): Boolean {
+		return firstDate != null || ri?.hasNext() ?: false
 	}
 
-	public boolean hasNext() {
-		return firstDate != null || ri.hasNext();
-	}
-
-    public Date next() {
+    open fun next(): Date? {
         if (firstDate != null) {
-            Date date = firstDate;
-            firstDate = null;
-            return date;
+            val date: Date? = firstDate
+            firstDate = null
+            return date
         }
-        return dateValueToDate(ri.next());
+        return dateValueToDate(ri?.next())
     }
 
-	public static DateRecurrenceIterator create(RRule rrule, Date nowDate, Date startDate) throws ParseException {
-        RecurrenceIterator ri = RecurrenceIteratorFactory.createRecurrenceIterator(rrule,
-                dateToDateValue(startDate), Calendar.getInstance().getTimeZone());
-        Date date = null;
-        while (ri.hasNext() && (date = dateValueToDate(ri.next())).before(nowDate));
-        //ri.advanceTo(dateToDateValue(nowDate));
-        DateRecurrenceIterator iterator = new DateRecurrenceIterator(ri);
-        iterator.firstDate = date;
-        return iterator;
-	}
+    companion object {
+        @JvmStatic
+        @Throws(ParseException::class)
+        fun create(rrule: RRule, nowDate: Date, startDate: Date): DateRecurrenceIterator {
+            val ri: RecurrenceIterator = RecurrenceIteratorFactory.createRecurrenceIterator(
+                rrule,
+                dateToDateValue(startDate),
+                Calendar.getInstance().getTimeZone(),
+            )
+            var date: Date? = null
+            while (ri.hasNext()) {
+                date = dateValueToDate(ri.next())
+                if (!date.before(nowDate)) break
+            }
+            //ri.advanceTo(dateToDateValue(nowDate))
+            val iterator: DateRecurrenceIterator = DateRecurrenceIterator(ri)
+            iterator.firstDate = date
+            return iterator
+        }
 
-    public static DateRecurrenceIterator empty() {
-        return new EmptyDateRecurrenceIterator();
+        @JvmStatic
+        fun empty(): DateRecurrenceIterator {
+            return EmptyDateRecurrenceIterator
+        }
     }
 
-    private static class EmptyDateRecurrenceIterator extends DateRecurrenceIterator {
-        public EmptyDateRecurrenceIterator() {
-            super(null);
-        }
-
-        @Override
-        public boolean hasNext() {
-            return false;
-        }
-
-        @Override
-        public Date next() {
-            return null;
-        }
+    private object EmptyDateRecurrenceIterator : DateRecurrenceIterator(null) {
+        override fun hasNext(): Boolean = false
+        override fun next(): Date? = null
     }
 }

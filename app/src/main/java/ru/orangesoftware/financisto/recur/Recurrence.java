@@ -132,7 +132,7 @@ public class Recurrence {
 	}
 
 	public String toInfoString(Context context) {
-        return context.getString(pattern.frequency.titleId) +
+        return context.getString(pattern.frequency.getTitleId()) +
                 ", " + context.getString(R.string.recur_repeat_starts_on) + ": " +
                 DateUtils.getShortDateFormat(context).format(startDate.getTime()) + " " +
                 DateUtils.getTimeFormat(context).format(startDate.getTime());

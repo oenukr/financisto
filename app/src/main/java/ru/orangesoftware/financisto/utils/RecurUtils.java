@@ -82,6 +82,12 @@ public class RecurUtils {
 			return titleId;
 		}
 
+		@NonNull
+		@Override
+		public String getName() {
+			return name();
+		}
+
 		public Period next(long startDate) {
 			throw new UnsupportedOperationException();
 		}
@@ -146,6 +152,12 @@ public class RecurUtils {
 		@Override
 		public int getTitleId() {
 			return titleId;
+		}
+
+		@NonNull
+		@Override
+		public String getName() {
+			return name();
 		}
 		
 		public abstract String toSummary(Context context, long param);

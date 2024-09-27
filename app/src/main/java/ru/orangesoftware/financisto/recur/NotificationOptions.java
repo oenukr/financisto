@@ -19,6 +19,8 @@ import android.media.RingtoneManager;
 import android.net.Uri;
 import android.provider.Settings;
 
+import androidx.annotation.NonNull;
+
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.utils.LocalizableEnum;
 import ru.orangesoftware.financisto.utils.Utils;
@@ -49,6 +51,12 @@ public class NotificationOptions {
 		public int getTitleId() {
 			return titleId;
 		}
+
+		@NonNull
+		@Override
+		public String getName() {
+			return name();
+		}
 	}
 	
 	public enum LedColor implements LocalizableEnum  {
@@ -73,6 +81,11 @@ public class NotificationOptions {
 			return titleId;
 		}
 
+		@NonNull
+		@Override
+		public String getName() {
+			return name();
+		}
 	}
 	
 	public String sound;

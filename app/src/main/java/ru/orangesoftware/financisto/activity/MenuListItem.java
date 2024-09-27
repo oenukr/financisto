@@ -15,6 +15,7 @@ import android.os.AsyncTask;
 import android.widget.ListAdapter;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.documentfile.provider.DocumentFile;
 
 import ru.orangesoftware.financisto.R;
@@ -245,6 +246,12 @@ public enum MenuListItem implements SummaryEntityEnum {
         return iconId;
     }
 
+    @NonNull
+    @Override
+    public String getName() {
+        return name();
+    }
+
     public static final int ACTIVITY_CSV_EXPORT = 2;
     public static final int ACTIVITY_QIF_EXPORT = 3;
     public static final int ACTIVITY_CSV_IMPORT = 4;
@@ -287,6 +294,12 @@ public enum MenuListItem implements SummaryEntityEnum {
         @Override
         public int getIconId() {
             return iconId;
+        }
+
+        @NonNull
+        @Override
+        public String getName() {
+            return name();
         }
 
         public Class<?> getActivityClass() {
@@ -347,6 +360,11 @@ public enum MenuListItem implements SummaryEntityEnum {
             return iconId;
         }
 
+        @NonNull
+        @Override
+        public String getName() {
+            return name();
+        }
     }
 
     public static void doCsvExport(Activity activity, CsvExportOptions options) {

@@ -11,6 +11,8 @@
  ******************************************************************************/
 package ru.orangesoftware.financisto.model;
 
+import androidx.annotation.NonNull;
+
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.utils.EntityEnum;
 
@@ -43,4 +45,9 @@ public enum ElectronicPaymentType implements EntityEnum {
 		return iconId;
 	}
 
+	@NonNull
+	@Override
+	public String getName() {
+		return name();
+	}
 }

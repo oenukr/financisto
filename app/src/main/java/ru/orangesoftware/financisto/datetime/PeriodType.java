@@ -8,6 +8,8 @@
 
 package ru.orangesoftware.financisto.datetime;
 
+import androidx.annotation.NonNull;
+
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
@@ -214,8 +216,15 @@ public enum PeriodType implements LocalizableEnum {
         this.inFuture = inFuture;
     }
 
+    @Override
     public int getTitleId() {
         return titleId;
+    }
+
+    @NonNull
+    @Override
+    public String getName() {
+        return name();
     }
 
     public abstract Period calculatePeriod(long refTime);
