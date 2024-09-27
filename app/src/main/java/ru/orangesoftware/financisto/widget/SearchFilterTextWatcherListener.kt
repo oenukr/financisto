@@ -1,42 +1,34 @@
-package ru.orangesoftware.financisto.widget;
+package ru.orangesoftware.financisto.widget
 
-import android.os.Handler;
-import android.os.Looper;
-import android.text.Editable;
-import android.text.TextWatcher;
+import android.os.Handler
+import android.os.Looper
+import android.text.Editable
+import android.text.TextWatcher
 
 /**
  * https://stackoverflow.com/a/35268540/365675
  */
-public abstract class SearchFilterTextWatcherListener implements TextWatcher {
-    private final Handler handler = new Handler(Looper.getMainLooper() /*UI thread*/);
-    private Runnable workRunnable;
-    private final int delayMs;
+abstract class SearchFilterTextWatcherListener(private val delayMs: Long) : TextWatcher {
+    private val handler: Handler = Handler(Looper.getMainLooper() /*UI thread*/)
+    private lateinit var workRunnable: Runnable
 
-    public SearchFilterTextWatcherListener(int delayMs) {
-        this.delayMs = delayMs;
-    }
-    
-    public abstract void clearFilter(String oldFilter);
-    public abstract void applyFilter(String filter);
+    abstract fun clearFilter(oldFilter: String)
+    abstract fun applyFilter(filter: String)
 
-    @Override
-    public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-        handler.removeCallbacks(workRunnable);
-        clearFilter(s.toString());
+    override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {
+        handler.removeCallbacks(workRunnable)
+        clearFilter(s.toString())
     }
 
-    @Override
-    public void onTextChanged(CharSequence s, int start, int before, int count) {
+    override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
         // ignore
     }
 
-    @Override
-    public void afterTextChanged(Editable s) {
-        workRunnable = () -> {
+    override fun afterTextChanged(s: Editable) {
+        workRunnable = Runnable {
 //                    Toast.makeText(SelectTemplateActivity.this, "Filtering...", Toast.LENGTH_SHORT).show();
-            applyFilter(s.toString());
-        };
-        handler.postDelayed(workRunnable, delayMs);
+            applyFilter(s.toString())
+        }
+        handler.postDelayed(workRunnable, delayMs)
     }
 }

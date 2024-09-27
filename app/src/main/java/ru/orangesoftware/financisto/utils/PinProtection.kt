@@ -1,97 +1,92 @@
-/*
- * Copyright (c) 2011 Timo Lindhorst.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- */
-package ru.orangesoftware.financisto.utils;
+package ru.orangesoftware.financisto.utils
 
+import android.content.Context
+import android.content.Intent
 
-import android.content.Context;
-import android.content.Intent;
+import ru.orangesoftware.financisto.activity.PinActivity
+import java.util.concurrent.TimeUnit
 
-import java.util.concurrent.TimeUnit;
+private const val MIN_DELTA_TIME_MS: Long = 3000
 
-import ru.orangesoftware.financisto.activity.PinActivity;
+private interface LockState {
+    fun lock(context: Context): LockState
+    fun unlock(context: Context): LockState
+}
 
-public class PinProtection {
+object PinProtection {
 
-    private static final int MIN_DELTA_TIME_MS = 3000;
+    private val LOCKED: LockState = object : LockState {
+        override fun lock(context: Context): LockState {
+            return this
+        }
 
-    private interface LockState {
-        LockState lock(Context c);
-        LockState unlock(Context c);
+        override fun unlock(context: Context): LockState {
+            if (MyPreferences.isPinProtected(context)) {
+                askForPin(context)
+                return this
+            }
+            return UNLOCKED
+        }
     }
 
-    private static final LockState LOCKED = new LockState() {
-        @Override
-        public LockState lock(Context c) {
-            return this;
-        }
-        @Override
-        public LockState unlock(Context c) {
-            if (MyPreferences.isPinProtected(c)) {
-                askForPin(c);
-                return this;
-            }
-            return UNLOCKED;
-        }
-    };
+    private val UNLOCKED: LockState = object : LockState {
+        private var lockTime: Long = 0L
 
-    private static final LockState UNLOCKED = new LockState() {
-        private long lockTime = 0;
-
-        @Override
-        public LockState lock(Context c) {
-            lockTime = System.currentTimeMillis();
-            return this;
+        override fun lock(context: Context): LockState {
+            lockTime = System.currentTimeMillis()
+            return this
         }
 
-        @Override
-        public LockState unlock(Context c) {
-            int lockWaitTime = MyPreferences.getLockTimeSeconds(c);
+        override fun unlock(context: Context): LockState {
+            val lockWaitTime: Long = MyPreferences.getLockTimeSeconds(context).toLong()
             if (lockWaitTime > 0) {
-                long curTime = System.currentTimeMillis();
-                long lockTimeMs = Math.max(MIN_DELTA_TIME_MS, TimeUnit.MILLISECONDS.convert(lockWaitTime, TimeUnit.SECONDS));
-                long deltaTimeMs = curTime - lockTime;
+                val curTime: Long = System.currentTimeMillis()
+                val lockTimeMs: Long = MIN_DELTA_TIME_MS.coerceAtLeast(
+                    TimeUnit.MILLISECONDS.convert(
+                        lockWaitTime,
+                        TimeUnit.SECONDS
+                    )
+                )
+                val deltaTimeMs: Long = curTime - lockTime
                 if (deltaTimeMs > lockTimeMs) {
-                    askForPin(c);
-                    return LOCKED;
+                    askForPin(context)
+                    return LOCKED
                 }
             }
-            return this;
+            return this
         }
-    };
-
-    private static LockState currentState = LOCKED;
-
-    private static void askForPin(Context c) {
-        Intent intent = new Intent(c, PinActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        c.startActivity(intent);
     }
 
-    public static void lock(Context c) {
-        currentState = currentState.lock(c);
+    private var currentState: LockState = LOCKED
+
+    private fun askForPin(context: Context) {
+        val intent = Intent(context, PinActivity::class.java)
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        context.startActivity(intent)
     }
 
-    public static void unlock(Context c) {
-        currentState = currentState.unlock(c);
+    @JvmStatic
+    fun lock(context: Context) {
+        currentState = currentState.lock(context)
     }
 
-    public static void immediateLock(Context c) {
-        currentState = LOCKED;
+    @JvmStatic
+    fun unlock(context: Context) {
+        currentState = currentState.unlock(context)
     }
 
-    public static void pinUnlock(Context c) {
-        currentState = UNLOCKED;
+    @JvmStatic
+    fun immediateLock(context: Context) {
+        currentState = LOCKED
+    }
+
+    @JvmStatic
+    fun pinUnlock(context: Context) {
+        currentState = UNLOCKED
         // little hack to reset lockTime in the state
-        currentState.lock(c);
+        currentState.lock(context)
     }
 
-    public static boolean isUnlocked() {
-        return currentState == UNLOCKED;
-    }
-
+    @JvmStatic
+    fun isUnlocked(): Boolean = currentState == UNLOCKED
 }

@@ -1,33 +1,19 @@
-/*******************************************************************************
- * Copyright (c) 2010 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
- * Contributors:
- *     Denis Solonenko - initial API and implementation
- ******************************************************************************/
-package ru.orangesoftware.financisto.view;
+package ru.orangesoftware.financisto.view
 
-import android.content.Context;
+import android.content.Context
 
-import ru.orangesoftware.financisto.model.Attribute;
+import ru.orangesoftware.financisto.model.Attribute
 
-public class AttributeViewFactory {
-	private AttributeViewFactory(){}
-	
-	public static AttributeView createViewForAttribute(Context context, Attribute attribute) {
-		switch (attribute.type) {
-		case Attribute.TYPE_TEXT:
-			return new TextAttributeView(context, attribute);
-		case Attribute.TYPE_NUMBER:
-			return new NumberAttributeView(context, attribute);
-		case Attribute.TYPE_LIST:
-			return new ListAttributeView(context, attribute);
-		case Attribute.TYPE_CHECKBOX:
-			return new CheckBoxAttributeView(context, attribute);
-		}
-		return null;
-	}
+object AttributeViewFactory {
+    @JvmStatic
+    fun createViewForAttribute(
+        context: Context,
+        attribute: Attribute,
+    ): AttributeView? = when (attribute.type) {
+        Attribute.TYPE_TEXT -> TextAttributeView(context, attribute)
+        Attribute.TYPE_NUMBER -> NumberAttributeView(context, attribute)
+        Attribute.TYPE_LIST -> ListAttributeView(context, attribute)
+        Attribute.TYPE_CHECKBOX -> CheckBoxAttributeView(context, attribute)
+        else -> null
+    }
 }

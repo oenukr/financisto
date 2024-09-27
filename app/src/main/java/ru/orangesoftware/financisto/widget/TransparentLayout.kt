@@ -1,66 +1,41 @@
-/*******************************************************************************
- * Copyright (c) 2010 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
- * Contributors:
- *     Denis Solonenko - initial API and implementation
- ******************************************************************************/
-package ru.orangesoftware.financisto.widget;
+package ru.orangesoftware.financisto.widget
 
-import android.content.Context;
-import android.graphics.Canvas;
-import android.graphics.Paint;
-import android.graphics.Paint.Style;
-import android.graphics.RectF;
-import android.util.AttributeSet;
-import android.widget.RelativeLayout;
+import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Paint.Style
+import android.graphics.RectF
+import android.util.AttributeSet
+import android.widget.RelativeLayout
 
-public class TransparentLayout extends RelativeLayout 
-{ 
-	private Paint innerPaint, borderPaint ;
+class TransparentLayout @JvmOverloads constructor(
+	context: Context,
+	attrs: AttributeSet? = null,
+) : RelativeLayout(context, attrs) {
+
+	private var innerPaint: Paint = Paint().apply {
+		setARGB(225, 75, 75, 75) //gray
+		isAntiAlias = true
+	}
+	private var borderPaint: Paint = Paint().apply {
+		setARGB(255, 255, 255, 255)
+		isAntiAlias = true
+		style = Style.STROKE
+		strokeWidth = 2F
+	}
     
-	public TransparentLayout(Context context, AttributeSet attrs) {
-		super(context, attrs);
-		init();
-	}
+	override fun dispatchDraw(canvas: Canvas) {
+		val drawRect = RectF()
+		drawRect.set(
+			/* left = */ 0F,
+			/* top = */ 0F,
+			/* right = */ measuredWidth.toFloat(),
+			/* bottom = */ measuredHeight.toFloat(),
+		)
 
-	public TransparentLayout(Context context) {
-		super(context);
-		init();
-	}
+		canvas.drawRoundRect(drawRect, 5F, 5F, innerPaint)
+		canvas.drawRoundRect(drawRect, 5F, 5F, borderPaint)
 
-	private void init() {
-		innerPaint = new Paint();
-		innerPaint.setARGB(225, 75, 75, 75); //gray
-		innerPaint.setAntiAlias(true);
-
-		borderPaint = new Paint();
-		borderPaint.setARGB(255, 255, 255, 255);
-		borderPaint.setAntiAlias(true);
-		borderPaint.setStyle(Style.STROKE);
-		borderPaint.setStrokeWidth(2);
-	}
-	
-	public void setInnerPaint(Paint innerPaint) {
-		this.innerPaint = innerPaint;
-	}
-
-	public void setBorderPaint(Paint borderPaint) {
-		this.borderPaint = borderPaint;
-	}
-
-	@Override
-	protected void dispatchDraw(Canvas canvas) {
-
-		RectF drawRect = new RectF();
-		drawRect.set(0, 0, getMeasuredWidth(), getMeasuredHeight());
-
-		canvas.drawRoundRect(drawRect, 5, 5, innerPaint);
-		canvas.drawRoundRect(drawRect, 5, 5, borderPaint);
-
-		super.dispatchDraw(canvas);
+		super.dispatchDraw(canvas)
 	}
 }

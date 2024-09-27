@@ -1,5 +1,5 @@
-package ru.orangesoftware.financisto.widget;
+package ru.orangesoftware.financisto.widget
 
-public interface AmountListener {
-    void onAmountChanged(String amount);
+interface AmountListener {
+    fun onAmountChanged(amount: String)
 }

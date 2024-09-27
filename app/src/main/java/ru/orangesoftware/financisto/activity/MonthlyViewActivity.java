@@ -393,8 +393,8 @@ public class MonthlyViewActivity extends ListActivity {
 
         @Override
         protected void onPostExecute(TransactionList monthlyPreviewReport) {
-            List<TransactionInfo> transactions = monthlyPreviewReport.transactions;
-            long total = monthlyPreviewReport.totals[0].balance;
+            List<TransactionInfo> transactions = monthlyPreviewReport.getTransactions();
+            long total = monthlyPreviewReport.getTotals()[0].balance;
             if (transactions == null || transactions.isEmpty()) {
                 displayNoTransactions();
             } else { // display data

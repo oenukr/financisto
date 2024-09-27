@@ -1,5 +1,7 @@
 package ru.orangesoftware.financisto.utils
 
+import android.content.Context
+
 interface IntegrityCheck {
 
     enum class Level {
@@ -15,6 +17,6 @@ interface IntegrityCheck {
             val OK: Result = Result(Level.OK, "")
         }
     }
-    
-    fun check(): Result
+
+    fun check(context: Context): Result
 }

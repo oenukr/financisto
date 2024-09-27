@@ -573,7 +573,7 @@ public class BlotterActivity extends AbstractListActivity {
 
     @Override
     public void integrityCheck() {
-        new IntegrityCheckTask(this).execute(new IntegrityCheckRunningBalance(this, db));
+        new IntegrityCheckTask(this).execute(new IntegrityCheckRunningBalance(db));
     }
 
     @Override

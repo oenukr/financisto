@@ -159,9 +159,9 @@ public class PlannerActivity extends AbstractListActivity {
 
         @Override
         protected void onPostExecute(TransactionList data) {
-            ScheduledListAdapter adapter = new ScheduledListAdapter(PlannerActivity.this, data.transactions);
+            ScheduledListAdapter adapter = new ScheduledListAdapter(PlannerActivity.this, data.getTransactions());
             setListAdapter(adapter);
-            setTotals(data.totals);
+            setTotals(data.getTotals());
             updateFilterText(filter);
         }
 
