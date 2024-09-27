@@ -1,5 +1,8 @@
 package ru.orangesoftware.financisto.report;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
 import java.util.List;
 import java.util.Map;
 
@@ -13,8 +16,6 @@ import ru.orangesoftware.financisto.test.AccountBuilder;
 import ru.orangesoftware.financisto.test.CategoryBuilder;
 import ru.orangesoftware.financisto.test.CurrencyBuilder;
 import ru.orangesoftware.financisto.utils.CurrencyCache;
-
-import static org.junit.Assert.*;
 
 public abstract class AbstractReportTest extends AbstractDbTest {
 
@@ -50,7 +51,7 @@ public abstract class AbstractReportTest extends AbstractDbTest {
         report.setIncomeExpense(incomeExpense);
         ReportData data = report.getReport(db, filter);
         assertNotNull(data);
-        List<GraphUnit> units = data.units;
+        List<GraphUnit> units = data.getUnits();
         assertNotNull(units);
         return units;
     }

@@ -11,6 +11,8 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
+import androidx.annotation.Nullable;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -202,6 +204,7 @@ public abstract class MyEntityManager extends EntityManager {
         return q.execute();
     }
 
+    @Nullable
     public Account getAccount(long id) {
         return get(Account.class, id);
     }
@@ -459,6 +462,7 @@ public abstract class MyEntityManager extends EntityManager {
         return (ArrayList<TransactionInfo>) q.list();
     }
 
+    @Nullable
     public Category getCategory(long id) {
         return get(Category.class, id);
     }

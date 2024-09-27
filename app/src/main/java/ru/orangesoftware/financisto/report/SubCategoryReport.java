@@ -83,9 +83,9 @@ public class SubCategoryReport extends Report {
     @Override
     public ReportData getReportForChart(DatabaseAdapter db, WhereFilter filter) {
         ReportData data = super.getReportForChart(db, filter);
-        if (data.units.size() > 1) {
+        if (data.getUnits().size() > 1) {
             //remove first unit which is parent category
-            data.units.remove(0);
+            data.getUnits().removeFirst();
         }
         return data;
     }

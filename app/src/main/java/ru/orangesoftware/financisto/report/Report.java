@@ -14,6 +14,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -156,7 +159,7 @@ public abstract class Report {
 		return c.getLong(0);
 	}
 
-	public Intent createActivityIntent(Context context, DatabaseAdapter db, WhereFilter parentFilter, long id) {
+	public Intent createActivityIntent(@NonNull Context context, @NonNull DatabaseAdapter db, @Nullable WhereFilter parentFilter, long id) {
         WhereFilter filter = WhereFilter.empty();
         Criteria c = parentFilter.get(BlotterFilter.DATETIME);
         if (c != null) {
@@ -184,7 +187,7 @@ public abstract class Report {
 		return intent;
 	}
 
-    protected abstract Criteria getCriteriaForId(DatabaseAdapter db, long id);
+    protected abstract Criteria getCriteriaForId(@NonNull DatabaseAdapter db, long id);
 
     protected Class<? extends BlotterActivity> getBlotterActivityClass() {
         return BlotterActivity.class;

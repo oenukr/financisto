@@ -1,73 +1,63 @@
-package ru.orangesoftware.financisto.report;
+package ru.orangesoftware.financisto.report
 
-import android.content.Context;
-
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.List;
-
-import ru.orangesoftware.financisto.R;
-import ru.orangesoftware.financisto.db.DatabaseHelper.TransactionColumns;
-import ru.orangesoftware.financisto.db.MyEntityManager;
-import ru.orangesoftware.financisto.graph.Report2DChart;
-import ru.orangesoftware.financisto.model.Account;
-import ru.orangesoftware.financisto.model.Currency;
+import android.content.Context
+import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.db.DatabaseHelper.TransactionColumns
+import ru.orangesoftware.financisto.db.MyEntityManager
+import ru.orangesoftware.financisto.graph.Report2DChart
+import ru.orangesoftware.financisto.model.Account
+import ru.orangesoftware.financisto.model.Currency
+import java.util.Calendar
 
 /**
  * 2D Chart Report to display monthly account results.
  *
  * @author Abdsandryk
  */
-public class AccountByPeriodReport extends Report2DChart {
-
-    public AccountByPeriodReport(Context context, MyEntityManager em, Calendar startPeriod, int periodLength, Currency currency) {
-        super(context, em, startPeriod, periodLength, currency);
-    }
+class AccountByPeriodReport(
+    context: Context,
+    em: MyEntityManager,
+    startPeriod: Calendar,
+    periodLength: Int,
+    currency: Currency,
+) : Report2DChart(
+    context,
+    em,
+    startPeriod,
+    periodLength,
+    currency,
+) {
 
     /* (non-Javadoc)
      * @see ru.orangesoftware.financisto.graph.ReportGraphic2D#getFilterName()
      */
-    @Override
-    public String getFilterName() {
-        if (!filterIds.isEmpty()) {
-            long accountId = filterIds.get(currentFilterOrder);
-            Account a = em.getAccount(accountId);
-            if (a != null) {
-                return a.title;
-            } else {
-                return context.getString(R.string.no_account);
-            }
-        } else {
-            // no category
-            return context.getString(R.string.no_account);
-        }
+    override fun getFilterName(): String = if (filterIds.isNotEmpty()) {
+        val accountId: Long = filterIds[currentFilterOrder]
+        val a: Account? = em.getAccount(accountId)
+        a?.title ?: context.getString(R.string.no_account)
+    } else {
+        // no category
+        context.getString(R.string.no_account)
     }
 
     /* (non-Javadoc)
      * @see ru.orangesoftware.financisto.graph.ReportGraphic2D#setFilterIds()
      */
-    @Override
-    public void setFilterIds() {
-        filterIds = new ArrayList<>();
-        currentFilterOrder = 0;
-        List<Account> accounts = em.getAllAccountsList();
-        if (!accounts.isEmpty()) {
-            Account a;
-            for (int i = 0; i < accounts.size(); i++) {
-                a = accounts.get(i);
-                filterIds.add(a.id);
+    override fun setFilterIds() {
+        filterIds = mutableListOf()
+        currentFilterOrder = 0
+        val accounts: List<Account> = em.getAllAccountsList()
+        if (accounts.isNotEmpty()) {
+            accounts.forEach {
+                filterIds.add(it.id)
             }
         }
     }
 
-    @Override
-    protected void setColumnFilter() {
-        columnFilter = TransactionColumns.from_account_id.name();
+    override fun setColumnFilter() {
+        columnFilter = TransactionColumns.from_account_id.name
     }
 
-    @Override
-    public String getNoFilterMessage(Context context) {
-        return context.getString(R.string.report_no_account);
-    }
-
+    override fun getNoFilterMessage(context: Context): String =
+        context.getString(R.string.report_no_account)
 }
