@@ -61,11 +61,11 @@ public abstract class AbstractReportTest extends AbstractDbTest {
     }
 
     void assertIncome(GraphUnit u, long amount) {
-        assertEquals(amount, u.getIncomeExpense().income.longValue());
+        assertEquals(amount, u.getIncomeExpense().getIncome().longValue());
     }
 
     void assertExpense(GraphUnit u, long amount) {
-        assertEquals(amount, u.getIncomeExpense().expense.longValue());
+        assertEquals(amount, u.getIncomeExpense().getExpense().longValue());
     }
 
 }

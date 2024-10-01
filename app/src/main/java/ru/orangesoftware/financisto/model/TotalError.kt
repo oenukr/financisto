@@ -1,28 +1,16 @@
-/*
- * Copyright (c) 2012 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- */
-package ru.orangesoftware.financisto.model;
+package ru.orangesoftware.financisto.model
 
-public class TotalError {
+class TotalError(
+    val currency: Currency,
+    val datetime: Long,
+) {
+    companion object {
+        @JvmStatic
+        fun lastRateError(currency: Currency): TotalError =
+            TotalError(currency, System.currentTimeMillis())
 
-    public static TotalError lastRateError(Currency currency) {
-        return new TotalError(currency, System.currentTimeMillis());
+        @JvmStatic
+        fun atDateRateError(currency: Currency, datetime: Long): TotalError =
+            TotalError(currency, datetime)
     }
-
-    public static TotalError atDateRateError(Currency currency, long datetime) {
-        return new TotalError(currency, datetime);
-    }
-
-    public final Currency currency;
-	public final long datetime;
-
-    private TotalError(Currency currency, long datetime) {
-        this.currency = currency;
-        this.datetime = datetime;
-    }
-
 }

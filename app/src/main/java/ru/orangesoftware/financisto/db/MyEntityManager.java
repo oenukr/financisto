@@ -185,7 +185,7 @@ public abstract class MyEntityManager extends EntityManager {
         Query<TransactionAttributeInfo> q = createQuery(TransactionAttributeInfo.class);
         q.where(Expressions.and(
                 Expressions.eq("transactionId", transactionId),
-                Expressions.eq("attributeId", sa.id)
+                Expressions.eq("attributeId", sa.getId())
         ));
         try (Cursor c = q.execute()) {
             if (c.moveToFirst()) {

@@ -488,7 +488,7 @@ public abstract class AbstractTransactionActivity extends AbstractActivity imple
 
     private void selectStatus(TransactionStatus transactionStatus) {
         transaction.status = transactionStatus;
-        status.setImageResource(transactionStatus.iconId);
+        status.setImageResource(transactionStatus.getIconId());
     }
 
     protected Account selectAccount(long accountId) {

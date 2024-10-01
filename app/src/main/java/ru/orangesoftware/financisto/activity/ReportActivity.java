@@ -340,8 +340,8 @@ public class ReportActivity extends ListActivity implements RefreshSupportedActi
             int[] colors = generateColors(2*report.getUnits().size());
             int i = 0;
             for (GraphUnit unit : report.getUnits()) {
-                addSeries(series, renderer, unit.name, unit.getIncomeExpense().income, total, colors[i++]);
-                addSeries(series, renderer, unit.name, unit.getIncomeExpense().expense, total, colors[i++]);
+                addSeries(series, renderer, unit.name, unit.getIncomeExpense().getIncome(), total, colors[i++]);
+                addSeries(series, renderer, unit.name, unit.getIncomeExpense().getExpense(), total, colors[i++]);
             }
             renderer.setZoomButtonsVisible(true);
             renderer.setZoomEnabled(true);

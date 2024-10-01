@@ -1,38 +1,19 @@
-/*
- * Copyright (c) 2013 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- */
+package ru.orangesoftware.financisto.rates
 
-package ru.orangesoftware.financisto.rates;
+import ru.orangesoftware.financisto.model.Currency
 
-import java.util.ArrayList;
-import java.util.List;
+abstract class AbstractMultipleRatesDownloader : ExchangeRateProvider {
 
-import ru.orangesoftware.financisto.model.Currency;
-
-/**
- * Created with IntelliJ IDEA.
- * User: dsolonenko
- * Date: 2/20/13
- * Time: 10:23 PM
- */
-public abstract class AbstractMultipleRatesDownloader implements ExchangeRateProvider {
-
-    @Override
-    public List<ExchangeRate> getRates(List<Currency> currencies) {
-        List<ExchangeRate> rates = new ArrayList<>();
-        int count = currencies.size();
-        for (int i = 0; i < count; i++) {
-            for (int j = i + 1; j < count; j++) {
-                Currency fromCurrency = currencies.get(i);
-                Currency toCurrency = currencies.get(j);
-                rates.add(getRate(fromCurrency, toCurrency));
+    override fun getRates(currencies: List<Currency>): List<ExchangeRate> {
+        val rates = mutableListOf<ExchangeRate>()
+        val count = currencies.size
+        for (i in 0 until count) {
+            for (j in i + 1 until count) {
+                val fromCurrency = currencies[i]
+                val toCurrency = currencies[j]
+                rates.add(getRate(fromCurrency, toCurrency))
             }
         }
-        return rates;
+        return rates
     }
-
 }

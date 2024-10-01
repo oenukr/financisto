@@ -302,9 +302,11 @@ public class DatabaseAdapter extends MyEntityManager {
             Map<Long, String> attributesMap = getAllAttributesForTransaction(id);
             LinkedList<TransactionAttribute> attributes = new LinkedList<>();
             for (long attributeId : attributesMap.keySet()) {
-                TransactionAttribute ta = new TransactionAttribute();
-                ta.attributeId = attributeId;
-                ta.value = attributesMap.get(attributeId);
+                TransactionAttribute ta = new TransactionAttribute(
+                        attributeId,
+                        null,
+                        attributesMap.get(attributeId)
+                );
                 attributes.add(ta);
             }
             if (!attributes.isEmpty()) {
@@ -377,7 +379,7 @@ public class DatabaseAdapter extends MyEntityManager {
 
     private void insertAttributes(long transactionId, List<TransactionAttribute> attributes) {
         for (TransactionAttribute a : attributes) {
-            a.transactionId = transactionId;
+            a.setTransactionId(transactionId);
             ContentValues values = a.toValues();
             db().insert(TRANSACTION_ATTRIBUTE_TABLE, null, values);
         }
@@ -387,9 +389,11 @@ public class DatabaseAdapter extends MyEntityManager {
         if (categoryAttributes != null && !categoryAttributes.isEmpty()) {
             List<TransactionAttribute> attributes = new LinkedList<>();
             for (Map.Entry<Long, String> e : categoryAttributes.entrySet()) {
-                TransactionAttribute a = new TransactionAttribute();
-                a.attributeId = e.getKey();
-                a.value = e.getValue();
+                TransactionAttribute a = new TransactionAttribute(
+                        e.getKey(),
+                        null,
+                        e.getValue()
+                );
                 attributes.add(a);
             }
             insertAttributes(transactionId, attributes);
@@ -1141,8 +1145,8 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     public Attribute getSystemAttribute(SystemAttribute a) {
-        Attribute sa = getAttribute(a.id);
-        sa.title = context.getString(a.titleId);
+        Attribute sa = getAttribute(a.getId());
+        sa.title = context.getString(a.getTitleId());
         return sa;
     }
 
@@ -1344,14 +1348,14 @@ public class DatabaseAdapter extends MyEntityManager {
             HashMap<Long, Transaction> transactions = new HashMap<>();
             for (int i = 0; i < count; i++) {
                 RestoredTransaction rt = restored.get(i);
-                long transactionId = rt.transactionId;
+                long transactionId = rt.getTransactionId();
                 Transaction t = transactions.get(transactionId);
                 if (t == null) {
                     t = getTransaction(transactionId);
                     transactions.put(transactionId, t);
                 }
                 t.id = -1;
-                t.dateTime = rt.dateTime.getTime();
+                t.dateTime = rt.getDateTime().getTime();
                 t.status = TransactionStatus.RS;
                 t.isTemplate = 0;
                 restoredIds[i] = insertOrUpdate(t);

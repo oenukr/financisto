@@ -144,7 +144,7 @@ public abstract class Report {
                 if (u.error != null) {
                     return new Total(currency, u.error);
                 }
-                long amount = a.amount;
+                long amount = a.getAmount();
                 if (amount > 0) {
                     total.amount += amount;
                 } else {

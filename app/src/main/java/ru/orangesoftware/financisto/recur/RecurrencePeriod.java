@@ -44,7 +44,8 @@ public class RecurrencePeriod {
     }
 
     public static RecurrencePeriod parse(String string) {
-        String[] a = string.split(":");
+        // fix for the typo in INDEFINETELY that is used in the database
+        String[] a = string.replaceAll("INDEFINETELY", "INDEFINITELY").split(":");
         return new RecurrencePeriod(RecurrenceUntil.valueOf(a[0]), a[1]);
     }
 

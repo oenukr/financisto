@@ -1,54 +1,26 @@
-package ru.orangesoftware.financisto.model;
+package ru.orangesoftware.financisto.model
 
-import java.util.Calendar;
+import java.util.Calendar
 
 /**
  * Data that represents a result in a month.
  * @author Rodrigo Sousa
+ *
+ * @param month The month of reference.
+ * @param value The result value in the given month.
  */
-public class PeriodValue { 
+data class PeriodValue(
 	/**
 	 * The reference month.
 	 */
-	private final Calendar month;
-	
+	val month: Calendar,
 	/**
 	 * The result value of the corresponding month.
 	 */
-	private final double value;
-	
-	/**
-	 * Default constructor.
-	 * @param month The month of reference.
-	 * @param value The result value in the given month.
-	 */
-	public PeriodValue(Calendar month, double value) {
-		this.month = month;
-		this.value = value;		
-	}
-	
-
-	/**
-	 * @return The reference month. 
-	 */
-	public Calendar getMonth() {
-		return month;
-	}
-
-
+	val value: Double,
+) {
 	/**
 	 * @return The reference month in time milliseconds.
 	 */
-	public long getMonthTimeInMillis() {
-		return month.getTimeInMillis();
-	}
-
-
-	/**
-	 * @return The monthly result value.
-	 */
-	public double getValue() {
-		return value;
-	}
-
+	fun getMonthTimeInMillis(): Long = month.getTimeInMillis()
 }

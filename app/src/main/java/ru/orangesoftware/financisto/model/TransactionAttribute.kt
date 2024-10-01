@@ -1,39 +1,27 @@
-/*******************************************************************************
- * Copyright (c) 2010 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
- * Contributors:
- *     Denis Solonenko - initial API and implementation
- ******************************************************************************/
-package ru.orangesoftware.financisto.model;
+package ru.orangesoftware.financisto.model
 
-import android.content.ContentValues;
-import android.database.Cursor;
+import android.content.ContentValues
+import android.database.Cursor
 
-import ru.orangesoftware.financisto.db.DatabaseHelper.TransactionAttributeColumns;
+import ru.orangesoftware.financisto.db.DatabaseHelper.TransactionAttributeColumns
 
-public class TransactionAttribute {
-	
-	public long attributeId;
-	public long transactionId;
-	public String value;
-	
-	public static TransactionAttribute fromCursor(Cursor c) {
-		TransactionAttribute v = new TransactionAttribute();
-		v.attributeId = c.getLong(TransactionAttributeColumns.Indicies.ATTRIBUTE_ID);
-		v.transactionId = c.getLong(TransactionAttributeColumns.Indicies.TRANSACTION_ID);
-		v.value = c.getString(TransactionAttributeColumns.Indicies.VALUE);
-		return v;
-	}
-	
-	public ContentValues toValues() {
-		ContentValues values = new ContentValues();
-		values.put(TransactionAttributeColumns.TRANSACTION_ID, transactionId);
-		values.put(TransactionAttributeColumns.ATTRIBUTE_ID, attributeId);
-		values.put(TransactionAttributeColumns.VALUE, value);
-		return values;
-	}
+class TransactionAttribute(
+    var attributeId: Long,
+    var transactionId: Long? = null,
+    var value: String? = null,
+) {
+    companion object {
+        @JvmStatic
+        fun fromCursor(c: Cursor): TransactionAttribute = TransactionAttribute(
+            attributeId = c.getLong(TransactionAttributeColumns.Indicies.ATTRIBUTE_ID),
+            transactionId = c.getLong(TransactionAttributeColumns.Indicies.TRANSACTION_ID),
+            value = c.getString(TransactionAttributeColumns.Indicies.VALUE),
+        )
+    }
+
+    fun toValues(): ContentValues = ContentValues().apply {
+        put(TransactionAttributeColumns.TRANSACTION_ID, transactionId)
+        put(TransactionAttributeColumns.ATTRIBUTE_ID, attributeId)
+        put(TransactionAttributeColumns.VALUE, value)
+    }
 }

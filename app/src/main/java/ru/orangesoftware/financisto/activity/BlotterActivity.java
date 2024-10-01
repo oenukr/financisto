@@ -236,7 +236,7 @@ public class BlotterActivity extends AbstractListActivity {
                     // get account type
                     Account account = db.getAccount(accountId);
                     AccountType type = AccountType.valueOf(account.type);
-                    if (type.isCreditCard) {
+                    if (type.isCreditCard()) {
                         // Show menu for Credit Cards - bill
                         MenuInflater inflater = getMenuInflater();
                         inflater.inflate(R.menu.ccard_blotter_menu, popupMenu.getMenu());

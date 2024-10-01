@@ -1,22 +1,12 @@
-/*******************************************************************************
- * Copyright (c) 2010 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
- * Contributors:
- *     Denis Solonenko - initial API and implementation
- ******************************************************************************/
-package ru.orangesoftware.financisto.model;
+package ru.orangesoftware.financisto.model
 
-import androidx.annotation.NonNull;
+import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.utils.EntityEnum
 
-import ru.orangesoftware.financisto.R;
-import ru.orangesoftware.financisto.utils.EntityEnum;
-
-public enum CardIssuer implements EntityEnum {
-
+enum class CardIssuer(
+	override val titleId: Int,
+	override val iconId: Int,
+) : EntityEnum {
 	DEFAULT(R.string.card_issuer_default, R.drawable.account_type_card_default),
 	VISA(R.string.card_issuer_visa, R.drawable.account_type_card_visa),
 	VISA_ELECTRON(R.string.card_issuer_electron, R.drawable.account_type_card_visa_electron),
@@ -30,28 +20,4 @@ public enum CardIssuer implements EntityEnum {
 	MIR(R.string.card_issuer_mir, R.drawable.account_type_card_mir),
 	NETS(R.string.card_issuer_nets, R.drawable.account_type_card_nets),
 	UNIONPAY(R.string.card_issuer_unionpay, R.drawable.account_type_card_unionpay);
-
-	public final int titleId;
-	public final int iconId;
-
-	CardIssuer(int titleId, int iconId) {
-		this.titleId = titleId;
-		this.iconId = iconId;
-	}
-
-	@Override
-	public int getTitleId() {
-		return titleId;
-	}
-
-	@Override
-	public int getIconId() {
-		return iconId;
-	}
-
-	@NonNull
-	@Override
-	public String getName() {
-		return name();
-	}
 }

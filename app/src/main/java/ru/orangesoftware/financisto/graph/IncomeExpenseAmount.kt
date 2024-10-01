@@ -1,47 +1,38 @@
-package ru.orangesoftware.financisto.graph;
+package ru.orangesoftware.financisto.graph
 
-import ru.orangesoftware.financisto.report.IncomeExpense;
+import ru.orangesoftware.financisto.report.IncomeExpense
+import java.math.BigDecimal
+import kotlin.math.abs
+import kotlin.math.max
 
-import java.math.BigDecimal;
+class IncomeExpenseAmount {
 
-/**
- * Created by IntelliJ IDEA.
- * User: Denis Solonenko
- * Date: 7/7/11 12:56 AM
- */
-public class IncomeExpenseAmount {
+    var income: BigDecimal = BigDecimal.ZERO
+    var expense: BigDecimal = BigDecimal.ZERO
 
-    public BigDecimal income = BigDecimal.ZERO;
-    public BigDecimal expense = BigDecimal.ZERO;
-
-    public void add(BigDecimal amount, boolean forceIncome) {
-        if (forceIncome || amount.longValue() > 0) {
-            income  = income.add(amount);
+    fun add(amount: BigDecimal, forceIncome: Boolean) {
+        if (forceIncome || amount.toLong() > 0) {
+            income  = income.add(amount)
         } else {
-            expense = expense.add(amount);
+            expense = expense.add(amount)
         }
     }
 
-    public long max() {
-        return Math.max(Math.abs(income.longValue()), Math.abs(expense.longValue()));
+    fun max(): Long = max(abs(income.toLong()), abs(expense.toLong()))
+
+    fun balance(): Long {
+        return income.toLong() + expense.toLong()
     }
 
-    public long balance() {
-        return income.longValue()+expense.longValue();
-    }
-
-    public void filter(IncomeExpense incomeExpense) {
-        switch (incomeExpense) {
-            case INCOME:
-                expense = BigDecimal.ZERO;
-                break;
-            case EXPENSE:
-                income = BigDecimal.ZERO;
-                break;
-            case SUMMARY:
-                income = income.add(expense);
-                expense = BigDecimal.ZERO;
-                break;
+    fun filter(incomeExpense: IncomeExpense) {
+        when (incomeExpense) {
+            IncomeExpense.INCOME -> expense = BigDecimal.ZERO
+            IncomeExpense.EXPENSE -> income = BigDecimal.ZERO
+            IncomeExpense.SUMMARY -> {
+                income = income.add(expense)
+                expense = BigDecimal.ZERO
+            }
+            else -> {}
         }
     }
 }

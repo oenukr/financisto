@@ -66,7 +66,7 @@ public class Total {
 
     public String getError(Context context) {
         if (error != null) {
-            return context.getString(R.string.rate_not_available_on_date_error, Utils.formatRateDate(context, error.datetime), error.currency, this.currency);
+            return context.getString(R.string.rate_not_available_on_date_error, Utils.formatRateDate(context, error.getDatetime()), error.getCurrency(), this.currency);
         }
         return context.getString(R.string.not_available);
     }

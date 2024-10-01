@@ -1,41 +1,24 @@
-/*******************************************************************************
- * Copyright (c) 2010 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
- * Contributors:
- *     Denis Solonenko - initial API and implementation
- ******************************************************************************/
-package ru.orangesoftware.financisto.graph;
+package ru.orangesoftware.financisto.graph
 
-import ru.orangesoftware.financisto.model.Currency;
-import ru.orangesoftware.financisto.utils.Utils;
+import ru.orangesoftware.financisto.model.Currency
+import ru.orangesoftware.financisto.utils.Utils
+import kotlin.math.abs
 
-
-public class Amount implements Comparable<Amount> {
+class Amount(
+	val currency: Currency,
+	val amount: Long,
+) : Comparable<Amount> {
 	
-	public final Currency currency;
-	public final long amount;
+	var amountTextWidth: Int = 0
+	var amountTextHeight: Int = 0
 
-	public int amountTextWidth;
-	public int amountTextHeight;
+	fun getAmountText(): String =
+		Utils.amountToString(currency, amount, true)
 
-	public Amount(Currency currency, long amount) {
-		this.currency = currency;
-		this.amount = amount;
-	}
-	
-	public String getAmountText() {
-		return Utils.amountToString(currency, amount, true);
-	}
-
-    @Override
-    public int compareTo(Amount that) {
-        long thisAmount = Math.abs(this.amount);
-        long thatAmount = Math.abs(that.amount);
-        return Long.compare(thatAmount, thisAmount);
+    override fun compareTo(other: Amount): Int {
+        val thisAmount = abs(this.amount)
+        val otherAmount = abs(other.amount)
+        return otherAmount.compareTo(thisAmount)
     }
 
 }

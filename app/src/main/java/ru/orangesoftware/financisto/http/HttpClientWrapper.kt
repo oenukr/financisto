@@ -1,60 +1,36 @@
-/*
- * Copyright (c) 2013 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- */
+package ru.orangesoftware.financisto.http
 
-package ru.orangesoftware.financisto.http;
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
+import org.json.JSONObject
+import java.io.IOException
 
-import org.json.JSONObject;
+open class HttpClientWrapper(private val client: OkHttpClient?) {
 
-import java.io.IOException;
+    @Throws(Exception::class)
+    fun getAsJson(url: String): JSONObject = JSONObject(getAsString(url).orEmpty())
 
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
+    @Throws(Exception::class)
+    open fun getAsString(url: String): String? = get(url)?.body?.string()
 
-/**
- * Created with IntelliJ IDEA.
- * User: dsolonenko
- * Date: 2/17/13
- * Time: 1:55 AM
- */
-public class HttpClientWrapper {
-
-    private final OkHttpClient client;
-
-    public HttpClientWrapper(OkHttpClient httpClient) {
-        this.client = httpClient;
-    }
-
-    public JSONObject getAsJson(String url) throws Exception {
-        String s = getAsString(url);
-        return new JSONObject(s);
-    }
-
-    public String getAsString(String url) throws Exception {
-        Response response = get(url);
-        return response.body().string();
-    }
-
-    public String getAsStringIfOk(String url) throws Exception {
-        Response response = get(url);
-        String s = response.body().string();
-        if (response.isSuccessful()) {
-            return s;
+    @Throws(Exception::class)
+    fun getAsStringIfOk(url: String): String? {
+        val response: Response? = get(url)
+        val s: String? = response?.body?.string()
+        if (response?.isSuccessful == true) {
+            return s
         } else {
-            throw new RuntimeException(s);
+            throw RuntimeException(s)
         }
     }
 
-    protected Response get(String url) throws IOException {
-        Request request = new Request.Builder()
+    @Throws(IOException::class)
+    protected fun get(url: String): Response? {
+        val request: Request = Request.Builder()
                 .url(url)
-                .build();
-        return client.newCall(request).execute();
+                .build()
+        return client?.newCall(request)?.execute()
     }
 
 }

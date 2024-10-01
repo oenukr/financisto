@@ -1,51 +1,39 @@
-package ru.orangesoftware.financisto.export.qif;
+package ru.orangesoftware.financisto.export.qif
 
-import ru.orangesoftware.financisto.export.CategoryInfo;
-import ru.orangesoftware.financisto.model.Category;
+import ru.orangesoftware.financisto.export.CategoryInfo
+import ru.orangesoftware.financisto.export.qif.QifUtils.trimFirstChar
+import ru.orangesoftware.financisto.model.Category
+import java.io.IOException
 
-import java.io.IOException;
-
-import static ru.orangesoftware.financisto.export.qif.QifUtils.trimFirstChar;
-
-/**
- * Created by IntelliJ IDEA.
- * User: Denis Solonenko
- * Date: 2/16/11 10:08 PM
- */
-public class QifCategory extends CategoryInfo {
-
-    public QifCategory() {
+class QifCategory @JvmOverloads constructor(
+    name: String? = null,
+    income: Boolean = false,
+) : CategoryInfo(name, income) {
+    companion object {
+        @JvmStatic
+        fun fromCategory(c: Category): QifCategory = QifCategory(
+            buildName(c),
+            c.isIncome,
+        )
     }
 
-    public QifCategory(String name, boolean income) {
-        super(name, income);
+    @Throws(IOException::class)
+    fun writeTo(qifWriter: QifBufferedWriter) {
+        qifWriter.write("N").write(name).newLine()
+        qifWriter.write(if (isIncome) "I" else "E").newLine()
+        qifWriter.end()
     }
 
-    public static QifCategory fromCategory(Category c) {
-        QifCategory qifCategory = new QifCategory();
-        qifCategory.name = buildName(c);
-        qifCategory.isIncome = c.isIncome();
-        return qifCategory;
-    }
-
-    public void writeTo(QifBufferedWriter qifWriter) throws IOException {
-        qifWriter.write("N").write(name).newLine();
-        qifWriter.write(isIncome ? "I" : "E").newLine();
-        qifWriter.end();
-    }
-
-    public void readFrom(QifBufferedReader r) throws IOException {
-        String line;
-        while ((line = r.readLine()) != null) {
-            if (line.startsWith("^")) {
-                break;
-            }
-            if (line.startsWith("N")) {
-                this.name = trimFirstChar(line);
-            } else if (line.startsWith("I")) {
-                this.isIncome = true;
+    @Throws(IOException::class)
+    fun readFrom(r: QifBufferedReader) {
+        r.readLinesUntil { it.startsWith("^") }.forEach { line ->
+            when {
+                line.startsWith("N") -> this.name = trimFirstChar(line)
+                line.startsWith("I") -> this.isIncome = true
             }
         }
     }
 
+    private fun QifBufferedReader.readLinesUntil(predicate: (String) -> Boolean): Sequence<String> =
+        generateSequence { readLine() }.takeWhile { !predicate(it) }
 }

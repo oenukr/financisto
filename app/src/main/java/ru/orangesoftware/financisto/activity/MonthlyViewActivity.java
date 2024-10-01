@@ -133,7 +133,7 @@ public class MonthlyViewActivity extends ListActivity {
         if (account != null) {
 
             // get account type
-            isCreditCard = AccountType.valueOf(account.type).isCreditCard;
+            isCreditCard = AccountType.valueOf(account.type).isCreditCard();
 
             currency = account.currency;
 
@@ -172,7 +172,7 @@ public class MonthlyViewActivity extends ListActivity {
                     } else {
                         // title = <ACCOUNT_TYPE_TITLE>
                         AccountType type = AccountType.valueOf(account.type);
-                        title = getString(type.titleId);
+                        title = getString(type.getTitleId());
                     }
                 } else {
                     // title = <TITLE>

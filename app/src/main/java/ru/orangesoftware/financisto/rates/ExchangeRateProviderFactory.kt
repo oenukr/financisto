@@ -1,50 +1,34 @@
-/*
- * Copyright (c) 2013 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- */
+package ru.orangesoftware.financisto.rates
 
-package ru.orangesoftware.financisto.rates;
+import android.content.SharedPreferences
 
-import android.content.SharedPreferences;
+import okhttp3.OkHttpClient
+import ru.orangesoftware.financisto.http.HttpClientWrapper
 
-import okhttp3.OkHttpClient;
-import ru.orangesoftware.financisto.http.HttpClientWrapper;
+enum class ExchangeRateProviderFactory {
 
-/**
- * Created with IntelliJ IDEA.
- * User: dsolonenko
- * Date: 2/19/13
- * Time: 12:06 AM
- */
-public enum ExchangeRateProviderFactory {
-
-    webservicex(){
-        @Override
-        public ExchangeRateProvider createProvider(SharedPreferences sharedPreferences) {
-            return new WebserviceXConversionRateDownloader(createDefaultWrapper(), System.currentTimeMillis());
+    webservicex {
+        override fun createProvider(sharedPreferences: SharedPreferences): ExchangeRateProvider {
+            return WebserviceXConversionRateDownloader(createDefaultWrapper(), System.currentTimeMillis())
         }
     },
-    openexchangerates(){
-        @Override
-        public ExchangeRateProvider createProvider(SharedPreferences sharedPreferences) {
-            String appId = sharedPreferences.getString("openexchangerates_app_id", "");
-            return new OpenExchangeRatesDownloader(createDefaultWrapper(), appId);
+    openexchangerates {
+        override fun createProvider(sharedPreferences: SharedPreferences): ExchangeRateProvider {
+            val appId: String? = sharedPreferences.getString("openexchangerates_app_id", "")
+            return OpenExchangeRatesDownloader(createDefaultWrapper(), appId)
         }
     },
-    freeCurrency(){
-        @Override
-        public ExchangeRateProvider createProvider(SharedPreferences sharedPreferences) {
-            return new FreeCurrencyRateDownloader(createDefaultWrapper(), System.currentTimeMillis());
+    freeCurrency {
+        override fun createProvider(sharedPreferences: SharedPreferences): ExchangeRateProvider {
+            return FreeCurrencyRateDownloader(createDefaultWrapper(), System.currentTimeMillis())
         }
     };
 
-    public abstract ExchangeRateProvider createProvider(SharedPreferences sharedPreferences);
+    abstract fun createProvider(sharedPreferences: SharedPreferences): ExchangeRateProvider
 
-    private static HttpClientWrapper createDefaultWrapper() {
-        return new HttpClientWrapper(new OkHttpClient());
+    companion object {
+        private fun createDefaultWrapper(): HttpClientWrapper {
+            return HttpClientWrapper(OkHttpClient())
+        }
     }
-
 }

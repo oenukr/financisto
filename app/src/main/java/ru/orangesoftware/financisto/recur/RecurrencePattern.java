@@ -48,7 +48,8 @@ public class RecurrencePattern {
 	}
 
 	public static RecurrencePattern parse(String recurrencePattern) {
-		String[] a = recurrencePattern.split(":");
+		// fix for the typo in INDEFINETELY that is used in the database
+		String[] a = recurrencePattern.replaceAll("INDEFINETELY", "INDEFINITELY").split(":");
 		return new RecurrencePattern(RecurrenceFrequency.valueOf(a[0]), a[1]);
 	}
 

@@ -136,14 +136,14 @@ public class AccountWidget extends AppWidgetProvider {
         RemoteViews updateViews = new RemoteViews(context.getPackageName(), layoutId);
         updateViews.setTextViewText(R.id.line1, a.title);
         AccountType type = AccountType.valueOf(a.type);
-        if (type.isCard && a.cardIssuer != null) {
+        if (type.isCard() && a.cardIssuer != null) {
             CardIssuer cardIssuer = CardIssuer.valueOf(a.cardIssuer);
-            updateViews.setImageViewResource(R.id.account_icon, cardIssuer.iconId);
-        } else if (type.isElectronic && a.cardIssuer != null) {
+            updateViews.setImageViewResource(R.id.account_icon, cardIssuer.getIconId());
+        } else if (type.isElectronic() && a.cardIssuer != null) {
             ElectronicPaymentType paymentType = selectEnum(ElectronicPaymentType.class, a.cardIssuer, ElectronicPaymentType.PAYPAL);
-            updateViews.setImageViewResource(R.id.account_icon, paymentType.iconId);
+            updateViews.setImageViewResource(R.id.account_icon, paymentType.getIconId());
         } else {
-            updateViews.setImageViewResource(R.id.account_icon, type.iconId);
+            updateViews.setImageViewResource(R.id.account_icon, type.getIconId());
         }
         long amount = a.totalAmount;
         updateViews.setTextViewText(R.id.note, Utils.amountToString(a.currency, amount));

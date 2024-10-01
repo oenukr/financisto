@@ -128,7 +128,7 @@ public class ReportFilterActivity extends FilterAbstractActivity {
         Criteria c = filter.get(BlotterFilter.STATUS);
         if (c != null) {
             TransactionStatus s = TransactionStatus.valueOf(c.getStringValue());
-            status.setText(getString(s.titleId));
+            status.setText(getString(s.getTitleId()));
             showMinusButton(status);
         } else {
             status.setText(R.string.no_filter);

@@ -132,7 +132,7 @@ public class TransactionBuilder {
         }
         if (a != null) {
             Map<Long, String> map = new HashMap<>();
-            map.put(a.attributeId, a.value);
+            map.put(a.getAttributeId(), a.getValue());
             split.categoryAttributes = map;
         }
         t.splits.add(split);

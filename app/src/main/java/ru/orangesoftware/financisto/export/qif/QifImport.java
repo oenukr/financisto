@@ -72,10 +72,10 @@ public class QifImport extends FullDatabaseImport {
 
     public void doImport() throws IOException {
         long t0 = System.currentTimeMillis();
-        DocumentFile file = DocumentFile.fromSingleUri(context, Uri.parse(options.filename));
+        DocumentFile file = DocumentFile.fromSingleUri(context, Uri.parse(options.getFilename()));
         InputStream inputStream = context.getContentResolver().openInputStream(file.getUri());
         QifBufferedReader r = new QifBufferedReader(new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8)));
-        QifParser parser = new QifParser(r, options.dateFormat);
+        QifParser parser = new QifParser(r, options.getDateFormat());
         parser.parse();
         long t1 = System.currentTimeMillis();
         Log.i("Financisto", "QIF Import: Parsing done in "+ TimeUnit.MILLISECONDS.toSeconds(t1-t0)+"s");
@@ -119,7 +119,7 @@ public class QifImport extends FullDatabaseImport {
 
     private void insertAccounts(List<QifAccount> accounts) {
         for (QifAccount account : accounts) {
-            Account a = account.toAccount(options.currency);
+            Account a = account.toAccount(options.getCurrency());
             dbAdapter.saveAccount(a);
             account.dbAccount = a;
             accountTitleToAccount.put(account.memo, account);

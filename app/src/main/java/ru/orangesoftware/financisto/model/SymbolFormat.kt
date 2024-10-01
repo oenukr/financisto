@@ -1,54 +1,39 @@
-/*
- * Copyright (c) 2011 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- */
+package ru.orangesoftware.financisto.model
 
-package ru.orangesoftware.financisto.model;
-
-/**
- * Created by IntelliJ IDEA.
- * User: Denis Solonenko
- * Date: 11/27/11 7:24 PM
- */
-public enum SymbolFormat {
+enum class SymbolFormat {
 
     RS {
-        @Override
-        public void appendSymbol(StringBuilder sb, String symbol) {
-            sb.append(" ").append(symbol);
+        override fun appendSymbol(sb: StringBuilder, symbol: String) {
+            sb.append(" ").append(symbol)
         }
     },
     R {
-        @Override
-        public void appendSymbol(StringBuilder sb, String symbol) {
-            sb.append(symbol);
+        override fun appendSymbol(sb: StringBuilder, symbol: String) {
+            sb.append(symbol)
         }
     },
     LS {
-        @Override
-        public void appendSymbol(StringBuilder sb, String symbol) {
-            int offset = getInsertIndex(sb);
-            sb.insert(offset, " ").insert(offset, symbol);
+        override fun appendSymbol(sb: StringBuilder, symbol: String) {
+            val offset = getInsertIndex(sb)
+            sb.insert(offset, " ").insert(offset, symbol)
         }
     },
     L {
-        @Override
-        public void appendSymbol(StringBuilder sb, String symbol) {
-            sb.insert(getInsertIndex(sb), symbol);
+        override fun appendSymbol(sb: StringBuilder, symbol: String) {
+            sb.insert(getInsertIndex(sb), symbol)
         }
     };
 
-    private static int getInsertIndex(StringBuilder sb) {
-        if (sb.length() > 0) {
-            char c = sb.charAt(0);
-            return c == '+' || c == '-' ? 1 : 0;
+    companion object {
+        @JvmStatic
+        private fun getInsertIndex(sb: StringBuilder): Int {
+            if (sb.isNotEmpty()) {
+                val c: Char = sb[0]
+                return if (c == '+' || c == '-') 1 else 0
+            }
+            return 0
         }
-        return 0;
     }
 
-    public abstract void appendSymbol(StringBuilder sb, String symbol);
-
+    abstract fun appendSymbol(sb: StringBuilder, symbol: String)
 }

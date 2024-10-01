@@ -1,5 +1,5 @@
-package ru.orangesoftware.financisto.model;
+package ru.orangesoftware.financisto.model
 
-public interface SortableEntity {
-    long getSortOrder();
+interface SortableEntity {
+    fun getSortOrder(): Long
 }

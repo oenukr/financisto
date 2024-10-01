@@ -38,10 +38,10 @@ public class ReportAdapter extends BaseAdapter {
 			for (Amount a : u) {
 				String amountText = a.getAmountText();
 				u.style.amountPaint.getTextBounds(amountText, 0, amountText.length(), rect);
-				a.amountTextWidth = rect.width();
-				a.amountTextHeight = rect.height();
-				maxAmount = Math.max(maxAmount, Math.abs(a.amount));
-				maxAmountWidth = Math.max(maxAmountWidth, a.amountTextWidth);			
+				a.setAmountTextWidth(rect.width());
+				a.setAmountTextHeight(rect.height());
+				maxAmount = Math.max(maxAmount, Math.abs(a.getAmount()));
+				maxAmountWidth = Math.max(maxAmountWidth, a.getAmountTextWidth());
 			}			
 		}
 	}
