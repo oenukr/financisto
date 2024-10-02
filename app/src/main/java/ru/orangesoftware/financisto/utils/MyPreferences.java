@@ -718,7 +718,7 @@ public class MyPreferences {
 
     private static String messageForException(Context context, Exception e) {
         if (e instanceof ImportExportException importExportException) {
-            String message = context.getString(importExportException.errorResId);
+            String message = context.getString(importExportException.getErrorResId());
             if (e.getCause() != null) {
                 message += " - " + e.getCause().getMessage();
             }

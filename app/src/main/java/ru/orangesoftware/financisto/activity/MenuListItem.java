@@ -150,7 +150,7 @@ public enum MenuListItem implements SummaryEntityEnum {
             final BackupExportTask t = new BackupExportTask(activity, d, false);
             t.setShowResultMessage(false);
             t.setListener(result -> {
-                String backupFileName = t.backupFileName;
+                String backupFileName = t.getBackupFileName();
                 DocumentFile file = Export.getBackupFile(activity, backupFileName);
                 Intent intent = new Intent(Intent.ACTION_SEND);
                 Uri backupFileUri = file.getUri();

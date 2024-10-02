@@ -4,7 +4,6 @@ import android.app.Activity
 import android.app.ProgressDialog
 import android.content.Context
 import android.util.Log
-
 import ru.orangesoftware.financisto.R
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.export.ImportExportAsyncTask
@@ -20,7 +19,7 @@ class CsvImportTask(
     override fun work(context: Context?, db: DatabaseAdapter?, vararg params: String?): Any {
         try {
             val csvimport = CsvImport(context, db, options)
-            csvimport.setProgressListener { percentage: Int ->
+            csvimport.setProgressListener { percentage ->
                 publishProgress(percentage.toString())
             }
             return csvimport.doImport()
@@ -30,7 +29,7 @@ class CsvImportTask(
                 throw e
             }
             val message: String? = e.message
-            when(message) {
+            when (message) {
                 "Import file not found" -> throw ImportExportException(R.string.import_file_not_found)
                 "Unknown category in import line" -> throw ImportExportException(R.string.import_unknown_category)
                 "Unknown project in import line" -> throw ImportExportException(R.string.import_unknown_project)
@@ -47,5 +46,5 @@ class CsvImportTask(
         dialog.setMessage(context.getString(R.string.csv_import_inprogress_update, values[0]))
     }
 
-    override fun getSuccessMessage(result: Any?): String =result.toString()
+    override fun getSuccessMessage(result: Any?): String = result.toString()
 }
