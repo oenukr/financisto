@@ -17,6 +17,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.FileWriter;
+import java.text.SimpleDateFormat;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -51,7 +52,7 @@ public class CsvImportTest extends AbstractImportExportTest {
     public void setUp() throws Exception {
         super.setUp();
         defaultOptions = createDefaultOptions();
-        defaultAccountId = defaultOptions.selectedAccountId;
+        defaultAccountId = defaultOptions.getSelectedAccountId();
     }
 
     @Test
@@ -184,7 +185,7 @@ public class CsvImportTest extends AbstractImportExportTest {
     @Test
     public void should_import_one_transaction_without_the_header() throws Exception {
         categories = CategoryBuilder.createDefaultHierarchy(db);
-        defaultOptions.useHeaderFromFile = false;
+        defaultOptions.setUseHeaderFromFile(false);
         doImport(
                 "11.07.2011,07:13:17,AAA,2100.56,SGD,1680.10,USD,B,\"\",P1,Current location,No project\n"+
                 "10.07.2011,07:13:17,AAA,2100.56,SGD,\"\",\"\",B,\"\",P1,Current location,No project,", defaultOptions);
@@ -216,35 +217,35 @@ public class CsvImportTest extends AbstractImportExportTest {
         w.write(csv);
         w.close();
         Log.d("Financisto", "Created a temporary backup file: " + tmp.getAbsolutePath());
-        options = new CsvImportOptions(options.currency, options.dateFormat.toPattern(),
-                options.selectedAccountId, options.filter, tmp.getAbsolutePath(), options.fieldSeparator, options.useHeaderFromFile);
+        options = new CsvImportOptions(options.getCurrency(), options.getDateFormat(),
+                options.getSelectedAccountId(), options.getFilter(), tmp.getAbsolutePath(), options.getFieldSeparator(), options.getUseHeaderFromFile());
         csvImport = new CsvImport(getContext(), db, options);
         csvImport.doImport();
     }
 
     private CsvTransaction newCsvTransactionWithCategory(String parent, String category) {
         CsvTransaction transaction = new CsvTransaction();
-        transaction.categoryParent = parent;
-        transaction.category = category;
+        transaction.setCategoryParent(parent);
+        transaction.setCategory(category);
         return transaction;
     }
 
     private CsvTransaction newCsvTransactionWithProject(String project) {
         CsvTransaction transaction = new CsvTransaction();
-        transaction.project = project;
+        transaction.setProject(project);
         return transaction;
     }
 
     private CsvTransaction newCsvTransactionWithPayee(String payee) {
         CsvTransaction transaction = new CsvTransaction();
-        transaction.payee = payee;
+        transaction.setPayee(payee);
         return transaction;
     }
 
     private CsvImportOptions createDefaultOptions() {
         Account a = createFirstAccount();
         Currency c = a.currency;
-        return new CsvImportOptions(c, CsvImportOptions.DEFAULT_DATE_FORMAT, a.id, WhereFilter.empty(), null, ',', true);
+        return new CsvImportOptions(c, new SimpleDateFormat(CsvImportOptions.DEFAULT_DATE_FORMAT), a.id, WhereFilter.empty(), null, ',', true);
     }
 
     private Set<CategoryInfo> asCategoryInfoSet(String...categories) {

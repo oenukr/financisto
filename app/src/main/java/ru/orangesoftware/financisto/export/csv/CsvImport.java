@@ -50,9 +50,9 @@ public class CsvImport {
     public CsvImport(Context context, DatabaseAdapter db, CsvImportOptions options) {
         this.db = db;
         this.options = options;
-        this.account = db.getAccount(options.selectedAccountId);
-        this.decimalSeparator = options.currency.decimalSeparator.charAt(1);
-        this.groupSeparator = options.currency.groupSeparator.charAt(1);
+        this.account = db.getAccount(options.getSelectedAccountId());
+        this.decimalSeparator = options.getCurrency().decimalSeparator.charAt(1);
+        this.groupSeparator = options.getCurrency().groupSeparator.charAt(1);
         this.context = context;
     }
 
@@ -77,13 +77,13 @@ public class CsvImport {
         long t6 = System.currentTimeMillis();
         Log.i("Financisto", "Inserting transactions =" + (t6 - t5) + "ms");
         Log.i("Financisto", "Overall csv import =" + ((t6 - t0) / 1000) + "s");
-        return options.filename + " imported!";
+        return options.getFilename() + " imported!";
     }
 
     public Map<String, Project> collectAndInsertProjects(List<CsvTransaction> transactions) {
         Map<String, Project> map = db.getAllProjectsByTitleMap(false);
         for (CsvTransaction transaction : transactions) {
-            String project = transaction.project;
+            String project = transaction.getProject();
             if (isNewProject(map, project)) {
                 Project p = new Project();
                 p.title = project;
@@ -102,7 +102,7 @@ public class CsvImport {
     public Map<String, Payee> collectAndInsertPayees(List<CsvTransaction> transactions) {
         Map<String, Payee> map = db.getAllPayeeByTitleMap();
         for (CsvTransaction transaction : transactions) {
-            String payee = transaction.payee;
+            String payee = transaction.getPayee();
             if (isNewEntity(map, payee)) {
                 Payee p = new Payee();
                 p.title = payee;
@@ -128,7 +128,7 @@ public class CsvImport {
     private Map<String, Currency> collectAndInsertCurrencies(List<CsvTransaction> transactions) {
         Map<String, Currency> map = db.getAllCurrenciesByTtitleMap();
         for (CsvTransaction transaction : transactions) {
-            String currency = transaction.originalCurrency;
+            String currency = transaction.getOriginalCurrency();
             if (isNewEntity(map, currency)) {
                 Currency c = new Currency();
                 c.name = currency;
@@ -173,26 +173,26 @@ public class CsvImport {
     }
 
     private List<CsvTransaction> parseTransactions() throws Exception {
-        String csvFilename = options.filename;
+        String csvFilename = options.getFilename();
         boolean parseLine = false;
         List<String> header = null;
-        if (!options.useHeaderFromFile) {
+        if (!options.getUseHeaderFromFile()) {
             parseLine = true;
             header = Arrays.asList(CsvExport.HEADER);
         }
         try {
             long deltaTime = 0;
             SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss");
-            DocumentFile file = DocumentFile.fromSingleUri(context, Uri.parse(options.filename));
+            DocumentFile file = DocumentFile.fromSingleUri(context, Uri.parse(options.getFilename()));
             InputStream inputStream = context.getContentResolver().openInputStream(file.getUri());
             Csv.Reader reader = new Csv.Reader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))
-                    .delimiter(options.fieldSeparator).ignoreComments(true);
+                    .delimiter(options.getFieldSeparator()).ignoreComments(true);
             List<CsvTransaction> transactions = new LinkedList<>();
             List<String> line;
             while ((line = reader.readLine()) != null) {
                 if (parseLine) {
                     CsvTransaction transaction = new CsvTransaction();
-                    transaction.fromAccountId = this.account.id;
+                    transaction.setFromAccountId(this.account.id);
                     int countOfColumns = line.size();
                     for (int i = 0; i < countOfColumns; i++) {
                         String transactionField = myTrim(header.get(i));
@@ -202,42 +202,42 @@ public class CsvImport {
                                 if (!fieldValue.isEmpty()) {
                                     switch (transactionField) {
                                         case "date":
-                                            transaction.date = options.dateFormat.parse(fieldValue);
+                                            transaction.setDate(options.getDateFormat().parse(fieldValue));
                                             break;
                                         case "time":
-                                            transaction.time = format.parse(fieldValue);
+                                            transaction.setTime(format.parse(fieldValue));
                                             break;
                                         case "amount":
                                             Double fromAmountDouble = parseAmount(fieldValue);
-                                            transaction.fromAmount = fromAmountDouble.longValue();
+                                            transaction.setFromAmount(fromAmountDouble.longValue());
                                             break;
                                         case "original amount":
                                             Double originalAmountDouble = parseAmount(fieldValue);
-                                            transaction.originalAmount = originalAmountDouble.longValue();
+                                            transaction.setOriginalAmount(originalAmountDouble.longValue());
                                             break;
                                         case "original currency":
-                                            transaction.originalCurrency = fieldValue;
+                                            transaction.setOriginalCurrency(fieldValue);
                                             break;
                                         case "payee":
-                                            transaction.payee = fieldValue;
+                                            transaction.setPayee(fieldValue);
                                             break;
                                         case "category":
-                                            transaction.category = fieldValue;
+                                            transaction.setCategory(fieldValue);
                                             break;
                                         case "parent":
-                                            transaction.categoryParent = fieldValue;
+                                            transaction.setCategoryParent(fieldValue);
                                             break;
                                         case "note":
-                                            transaction.note = fieldValue;
+                                            transaction.setNote(fieldValue);
                                             break;
                                         case "project":
-                                            transaction.project = fieldValue;
+                                            transaction.setProject(fieldValue);
                                             break;
                                         case "currency":
                                             if (!account.currency.name.equals(fieldValue)) {
                                                 throw new ImportExportException(R.string.import_wrong_currency_2, null, fieldValue);
                                             }
-                                            transaction.currency = fieldValue;
+                                            transaction.setCurrency(fieldValue);
                                             break;
                                     }
                                 }
@@ -248,7 +248,7 @@ public class CsvImport {
                             }
                         }
                     }
-                    transaction.delta = deltaTime++;
+                    transaction.setDelta(deltaTime++);
                     transactions.add(transaction);
                 } else {
                     // first line of csv-file is table headline
@@ -281,14 +281,14 @@ public class CsvImport {
     public Set<CategoryInfo> collectCategories(List<CsvTransaction> transactions) {
         Set<CategoryInfo> categories = new HashSet<>();
         for (CsvTransaction transaction : transactions) {
-            String category = transaction.category;
-            if (Utils.isNotEmpty(transaction.categoryParent)) {
-                category = transaction.categoryParent + CategoryInfo.SEPARATOR + category;
+            String category = transaction.getCategory();
+            if (Utils.isNotEmpty(transaction.getCategoryParent())) {
+                category = transaction.getCategoryParent() + CategoryInfo.SEPARATOR + category;
             }
             if (Utils.isNotEmpty(category)) {
                 categories.add(new CategoryInfo(category, false));
-                transaction.category = category;
-                transaction.categoryParent = null;
+                transaction.setCategory(category);
+                transaction.setCategoryParent(null);
             }
         }
         return categories;

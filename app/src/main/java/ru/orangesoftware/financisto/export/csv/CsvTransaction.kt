@@ -1,88 +1,81 @@
-/*
- * Copyright (c) 2012 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- */
+package ru.orangesoftware.financisto.export.csv
 
-package ru.orangesoftware.financisto.export.csv;
+import ru.orangesoftware.financisto.model.Category
+import ru.orangesoftware.financisto.model.Currency
+import ru.orangesoftware.financisto.model.MyEntity
+import ru.orangesoftware.financisto.model.Payee
+import ru.orangesoftware.financisto.model.Project
+import ru.orangesoftware.financisto.model.Transaction
+import java.util.Calendar
+import java.util.Date
 
-import androidx.annotation.NonNull;
+class CsvTransaction {
 
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Map;
+    var date: Date? = null
+    var time: Date? = null
+    var fromAccountId: Long = 0
+    var fromAmount: Long = 0
+    var originalAmount: Long = 0
+    var originalCurrency: String? = null
+    var payee: String? = null
+    var category: String? = null
+    var categoryParent: String? = null
+    var note: String? = null
+    var project: String? = null
+    var currency: String? = null
+    var delta: Long = 0
 
-import ru.orangesoftware.financisto.model.Category;
-import ru.orangesoftware.financisto.model.Currency;
-import ru.orangesoftware.financisto.model.MyEntity;
-import ru.orangesoftware.financisto.model.Payee;
-import ru.orangesoftware.financisto.model.Project;
-import ru.orangesoftware.financisto.model.Transaction;
-
-public class CsvTransaction {
-
-    public Date date;
-    public Date time;
-    public long fromAccountId;
-    public long fromAmount;
-    public long originalAmount;
-    public String originalCurrency;
-    public String payee;
-    public String category;
-    public String categoryParent;
-    public String note;
-    public String project;
-    public String currency;
-    public long delta;
-
-    Transaction createTransaction(Map<String, Currency> currencies, Map<String, Category> categories, Map<String, Project> projects, Map<String, Payee> payees) {
-        Transaction t = new Transaction();
-        t.dateTime = combineToMillis(date, time, delta);
-        t.fromAccountId = fromAccountId;
-        t.fromAmount = fromAmount;
-        t.categoryId = getEntityIdOrZero(categories, category);
-        t.payeeId = getEntityIdOrZero(payees, payee);
-        t.projectId = getEntityIdOrZero(projects, project);
-        if (originalAmount != 0) {
-            Currency currency = currencies.get(originalCurrency);
-            t.originalFromAmount = originalAmount;
-            t.originalCurrencyId = currency.id;
+    fun createTransaction(
+        currencies: Map<String, Currency>,
+        categories: Map<String, Category>,
+        projects: Map<String, Project>,
+        payees: Map<String, Payee>,
+    ): Transaction {
+        val t: Transaction = Transaction()
+        t.dateTime = combineToMillis(date, time, delta)
+        t.fromAccountId = fromAccountId
+        t.fromAmount = fromAmount
+        t.categoryId = getEntityIdOrZero(categories, category)
+        t.payeeId = getEntityIdOrZero(payees, payee)
+        t.projectId = getEntityIdOrZero(projects, project)
+        if (originalAmount != 0L) {
+            val currency: Currency? = currencies[originalCurrency]
+            t.originalFromAmount = originalAmount
+            t.originalCurrencyId = currency?.id ?: 0
         }
-        t.note = note;
-        return t;
+        t.note = note
+        return t
     }
 
-    private long combineToMillis(Date date, Date time, long delta) {
-        Calendar dateC = emptyCalendar(date);
-        Calendar dateT = emptyCalendar(time);
-        Calendar c = Calendar.getInstance();
-        copy(Calendar.YEAR, dateC, c);
-        copy(Calendar.MONTH, dateC, c);
-        copy(Calendar.DAY_OF_MONTH, dateC, c);
-        copy(Calendar.HOUR_OF_DAY, dateT, c);
-        copy(Calendar.MINUTE, dateT, c);
-        copy(Calendar.SECOND, dateT, c);
-        c.set(Calendar.MILLISECOND, 0);
-        return c.getTimeInMillis() + delta;
+    private fun combineToMillis(date: Date?, time: Date?, delta: Long): Long {
+        val dateC: Calendar = emptyCalendar(date)
+        val dateT: Calendar = emptyCalendar(time)
+        val c: Calendar = Calendar.getInstance()
+        copy(Calendar.YEAR, dateC, c)
+        copy(Calendar.MONTH, dateC, c)
+        copy(Calendar.DAY_OF_MONTH, dateC, c)
+        copy(Calendar.HOUR_OF_DAY, dateT, c)
+        copy(Calendar.MINUTE, dateT, c)
+        copy(Calendar.SECOND, dateT, c)
+        c.set(Calendar.MILLISECOND, 0)
+        return c.getTimeInMillis() + delta
     }
 
-    @NonNull
-    private Calendar emptyCalendar(Date date) {
-        Calendar c = Calendar.getInstance();
-        c.clear();
-        c.setTimeInMillis(date.getTime());
-        return c;
+    private fun emptyCalendar(date: Date?): Calendar {
+        val c: Calendar = Calendar.getInstance()
+        c.clear()
+        c.setTimeInMillis(date?.time ?: 0)
+        return c
     }
 
-    private void copy(int field, Calendar fromC, Calendar toC) {
-        toC.set(field, fromC.get(field));
+    private fun copy(field: Int, fromC: Calendar, toC: Calendar) {
+        toC.set(field, fromC.get(field))
     }
 
-    private static <T extends MyEntity> long getEntityIdOrZero(Map<String, T> map, String value) {
-        T e = map.get(value);
-        return e != null ? e.id : 0;
+    companion object {
+        private fun <T : MyEntity> getEntityIdOrZero(map: Map<String, T>, value: String?): Long {
+            val e: T? = map[value]
+            return e?.id ?: 0
+        }
     }
-
 }
