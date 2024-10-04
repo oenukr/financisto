@@ -1,42 +1,38 @@
-package ru.orangesoftware.financisto.adapter.async;
+package ru.orangesoftware.financisto.adapter.async
 
-import android.database.Cursor;
+import android.database.Cursor
 
-abstract public class CursorItemSource<T> implements ItemSource<T>, AutoCloseable {
-    protected Cursor cursor;
+abstract class CursorItemSource<T> : ItemSource<T>, AutoCloseable {
+    protected var cursor: Cursor? = null
 
-    @Override
-    public int getCount() {
-        prepareCursor();
-        return cursor.getCount();
+    override fun getCount(): Int {
+        prepareCursor()
+        return cursor?.count ?: 0
     }
 
-    @Override
-    public T getItem(int position) {
-        prepareCursor();
-        if(cursor.moveToPosition(position)){
-            return loadItem();
+    override fun getItem(position: Int): T? {
+        prepareCursor()
+        if(cursor?.moveToPosition(position) == true){
+            return loadItem()
         }
-        return itemOnError();
-
+        return itemOnError()
     }
 
-    public void prepareCursor() {
-        if (cursor == null || cursor.isClosed()) {
-            cursor = initCursor();
+    fun prepareCursor() {
+        if (cursor == null || cursor?.isClosed == true) {
+            cursor = initCursor()
         }
     }
 
-    protected T itemOnError() {
-        return null;
+    protected fun itemOnError(): T? {
+        return null
     }
 
-    protected abstract T loadItem();
+    protected abstract fun loadItem(): T
 
-    public abstract Cursor initCursor();
+    abstract fun initCursor(): Cursor
 
-    @Override
-    public void close() {
-        if (cursor != null) cursor.close();
+    override fun close() {
+        cursor?.close()
     }
 }

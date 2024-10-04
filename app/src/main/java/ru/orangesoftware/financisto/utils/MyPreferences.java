@@ -450,7 +450,10 @@ public class MyPreferences {
 
     private static final String DEFAULT = "default";
 
-    public static Context switchLocale(Context context) {
+    public static Context switchLocale(@Nullable Context context) {
+        if (context == null) {
+            return null;
+        }
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
         String locale = sharedPreferences.getString("ui_language", DEFAULT);
         return switchLocale(context, locale);

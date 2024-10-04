@@ -1,8 +1,8 @@
-package ru.orangesoftware.financisto.adapter.dragndrop;
+package ru.orangesoftware.financisto.adapter.dragndrop
 
-import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.RecyclerView
 
-public interface ItemTouchHelperAdapter {
+interface ItemTouchHelperAdapter {
     /**
      * Called when an item has been dragged far enough to trigger a move. This is called every time
      * an item is shifted, and not at the end of a "drop" event.
@@ -12,7 +12,7 @@ public interface ItemTouchHelperAdapter {
      * @see RecyclerView#getAdapterPositionFor(RecyclerView.ViewHolder)
      * @see RecyclerView.ViewHolder#getAdapterPosition()
      */
-    void onItemMove(int fromPosition, int toPosition);
+    fun onItemMove(fromPosition: Int, toPosition: Int)
 
 
     /**
@@ -23,5 +23,5 @@ public interface ItemTouchHelperAdapter {
      * @see RecyclerView#getAdapterPositionFor(RecyclerView.ViewHolder)
      * @see RecyclerView.ViewHolder#getAdapterPosition()
      */
-    void onItemDismiss(int position, int direction);
+    fun onItemDismiss(position: Int, direction: Int)
 }

@@ -1,4 +1,3 @@
-package ru.orangesoftware.financisto.bus;
+package ru.orangesoftware.financisto.bus
 
-public class SwitchToMenuTabEvent {
-}
+class SwitchToMenuTabEvent

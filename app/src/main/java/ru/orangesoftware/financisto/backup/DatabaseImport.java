@@ -118,7 +118,7 @@ public class DatabaseImport extends FullDatabaseImport {
                                 if (tableHasOrder(tableName) && !values.containsKey(DEF_SORT_COL)) {
                                     values.put(DEF_SORT_COL, ++rowNum);
                                 }
-                                db.insert(tableName, null, values);
+                                getDb().insert(tableName, null, values);
                             }
                         }
                         tableName = null;
@@ -148,7 +148,7 @@ public class DatabaseImport extends FullDatabaseImport {
 
     private void runRestoreAlterscripts() throws IOException {
         for (String script : RESTORE_SCRIPTS) {
-            schemaEvolution.runAlterScript(db, script);
+            schemaEvolution.runAlterScript(getDb(), script);
         }
     }
 
@@ -179,7 +179,7 @@ public class DatabaseImport extends FullDatabaseImport {
         }
         // remove unknown columns
         String sql = "select * from " + tableName + " WHERE 1=0";
-        try (Cursor c = db.rawQuery(sql, null)) {
+        try (Cursor c = getDb().rawQuery(sql, null)) {
             final String[] columnNames = c.getColumnNames();
             removeUnknownColumns(values, columnNames, tableName);
         }

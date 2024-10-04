@@ -1,37 +1,30 @@
-package ru.orangesoftware.financisto.adapter.async;
+package ru.orangesoftware.financisto.adapter.async
 
-import android.database.Cursor;
-import ru.orangesoftware.financisto.db.DatabaseAdapter;
-import ru.orangesoftware.financisto.model.SmsTemplate;
+import android.database.Cursor
+import ru.orangesoftware.financisto.db.DatabaseAdapter
+import ru.orangesoftware.financisto.model.SmsTemplate
 
-public class SmsTemplateListSource extends CursorItemSource<SmsTemplate> {
+class SmsTemplateListSource(
+    private val db: DatabaseAdapter,
+    prepareCursor: Boolean,
+) : CursorItemSource<SmsTemplate>() {
     
-    private final DatabaseAdapter db;
-    private volatile String filter;
-    
-    public SmsTemplateListSource(DatabaseAdapter db, boolean prepareCursor) {
-        this.db = db;
+    @Volatile
+    private var filter: String? = null
 
-        if (prepareCursor) prepareCursor();
+    init {
+        if (prepareCursor) prepareCursor()
     }
 
-    @Override
-    public Cursor initCursor() {
-        return db.getSmsTemplatesWithFullInfo(filter);
-    }
+    override fun initCursor(): Cursor =
+        db.getSmsTemplatesWithFullInfo(filter)
 
-    @Override
-    protected SmsTemplate loadItem() {
-        return SmsTemplate.fromListCursor(cursor);
-    }
+    override fun loadItem(): SmsTemplate =
+        SmsTemplate.fromListCursor(cursor)
 
-    @Override
-    public Class<SmsTemplate> clazz() {
-        return SmsTemplate.class;
-    }
+    override fun clazz(): Class<SmsTemplate> = SmsTemplate::class.java
 
-    @Override
-    public void setConstraint(CharSequence constraint) {
-        filter = constraint == null ? null : constraint.toString();
+    override fun setConstraint(constraint: CharSequence?) {
+        filter = constraint.toString()
     }
 }

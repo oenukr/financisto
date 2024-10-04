@@ -1,50 +1,43 @@
-package ru.orangesoftware.financisto.app;
+package ru.orangesoftware.financisto.app
 
-import static org.koin.core.context.DefaultContextExtKt.stopKoin;
+import android.app.Application
+import android.content.Context
+import android.content.res.Configuration
+import org.koin.core.context.stopKoin
 
-import android.app.Application;
-import android.content.Context;
-import android.content.res.Configuration;
+import ru.orangesoftware.financisto.bus.GreenRobotBus
+import ru.orangesoftware.financisto.export.drive.GoogleDriveClient
+import ru.orangesoftware.financisto.utils.MyPreferences
 
-import androidx.annotation.NonNull;
+class FinancistoApp : Application() {
 
-import ru.orangesoftware.financisto.bus.GreenRobotBus;
-import ru.orangesoftware.financisto.export.drive.GoogleDriveClient;
-import ru.orangesoftware.financisto.utils.MyPreferences;
+    lateinit var bus: GreenRobotBus
+    lateinit var driveClient: GoogleDriveClient
 
-public class FinancistoApp extends Application {
-
-    public GreenRobotBus bus;
-    public GoogleDriveClient driveClient;
-
-    @Override
-    public void onCreate() {
-        init();
-        super.onCreate();
+    override fun onCreate() {
+        init()
+        super.onCreate()
     }
 
-    public void init() {
-        JavaAppKoinKt.start(this);
-        DependenciesHolder dependencies = new DependenciesHolder();
-        bus = dependencies.getGreenRobotBus();
-        driveClient = dependencies.getGoogleDriveClient();
-        bus.register(driveClient);
+    fun init() {
+        start(this)
+        val dependencies = DependenciesHolder()
+        bus = dependencies.greenRobotBus
+        driveClient = dependencies.googleDriveClient
+        bus.register(driveClient)
     }
 
-    @Override
-    protected void attachBaseContext(Context base) {
-        super.attachBaseContext(MyPreferences.switchLocale(base));
+    override fun attachBaseContext(base: Context?) {
+        super.attachBaseContext(MyPreferences.switchLocale(base))
     }
 
-    @Override
-    public void onConfigurationChanged(@NonNull Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-        MyPreferences.switchLocale(this);
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        MyPreferences.switchLocale(this)
     }
 
-    @Override
-    public void onTerminate() {
-        super.onTerminate();
-        stopKoin();
+    override fun onTerminate() {
+        super.onTerminate()
+        stopKoin()
     }
 }

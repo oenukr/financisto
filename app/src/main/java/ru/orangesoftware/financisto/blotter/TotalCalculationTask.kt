@@ -1,62 +1,47 @@
-/*
- * Copyright (c) 2012 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- */
-package ru.orangesoftware.financisto.blotter;
+package ru.orangesoftware.financisto.blotter
 
-import android.content.Context;
-import android.os.AsyncTask;
-import android.util.Log;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.content.Context
+import android.os.AsyncTask
+import android.util.Log
+import android.widget.TextView
+import android.widget.Toast
 
-import ru.orangesoftware.financisto.R;
-import ru.orangesoftware.financisto.model.Currency;
-import ru.orangesoftware.financisto.model.Total;
-import ru.orangesoftware.financisto.utils.Utils;
+import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.model.Currency
+import ru.orangesoftware.financisto.model.Total
+import ru.orangesoftware.financisto.utils.Utils
 
-public abstract class TotalCalculationTask extends AsyncTask<Object, Total, Total> {
-	
-	private volatile boolean isRunning = true;
-	
-	private final Context context;
-	private final TextView totalText;
+abstract class TotalCalculationTask(
+	private val context: Context,
+	private val totalText: TextView?,
+) : AsyncTask<Any, Total, Total>() {
 
-	public TotalCalculationTask(Context context, TextView totalText) {
-		this.context = context;
-		this.totalText = totalText;
-	}
+	@Volatile
+	private var isRunning: Boolean = true
 
-    @Override
-	protected Total doInBackground(Object... params) {
+	override fun doInBackground(vararg params: Any?): Total {
 		try {
-			return getTotalInHomeCurrency();
-		} catch (Exception ex) {
-			Log.e("TotalBalance", "Unexpected error", ex);
-			return Total.ZERO;
+		    return getTotalInHomeCurrency()
+		} catch (ex: Exception) {
+			Log.e("TotalBalance", "Unexpected error", ex)
+			return Total.ZERO
 		}
 	}
 
-    public abstract Total getTotalInHomeCurrency();
+	abstract fun getTotalInHomeCurrency(): Total
+	abstract fun getTotals(): Array<Total>
 
-    public abstract Total[] getTotals();
-
-	@Override
-	protected void onPostExecute(Total result) {
+	override fun onPostExecute(result: Total?) {
 		if (isRunning) {
-            if (result.currency == Currency.EMPTY) {
-                Toast.makeText(context, R.string.currency_make_default_warning, Toast.LENGTH_LONG).show();
-            }
-            Utils u = new Utils(context);
-    	    u.setTotal(totalText, result);
+			if (result?.currency == Currency.EMPTY) {
+				Toast.makeText(context, R.string.currency_make_default_warning, Toast.LENGTH_LONG).show()
+			}
+			val u = Utils(context)
+			u.setTotal(totalText, result)
 		}
 	}
-	
-	public void stop() {
-		isRunning = false;
+
+	fun stop() {
+		isRunning = false
 	}
-	
 }
