@@ -1,43 +1,19 @@
-package ru.orangesoftware.financisto.adapter;
+package ru.orangesoftware.financisto.adapter
 
-import java.util.List;
+import android.content.Context
+import android.widget.ArrayAdapter
+import ru.orangesoftware.financisto.model.MyEntity
 
-import ru.orangesoftware.financisto.model.MyEntity;
-import android.content.Context;
-import android.widget.ArrayAdapter;
-
-public class MyEntityAdapter<T extends MyEntity> extends ArrayAdapter<T> {
-
-	public MyEntityAdapter(Context context, int resource,
-			int textViewResourceId, List<T> objects) {
-		super(context, resource, textViewResourceId, objects);
-	}
-
-	public MyEntityAdapter(Context context, int resource,
-			int textViewResourceId, T[] objects) {
-		super(context, resource, textViewResourceId, objects);
-	}
-
-	public MyEntityAdapter(Context context, int resource, int textViewResourceId) {
-		super(context, resource, textViewResourceId);
-	}
-
-	public MyEntityAdapter(Context context, int textViewResourceId,
-			List<T> objects) {
-		super(context, textViewResourceId, objects);
-	}
-
-	public MyEntityAdapter(Context context, int textViewResourceId, T[] objects) {
-		super(context, textViewResourceId, objects);
-	}
-
-	public MyEntityAdapter(Context context, int textViewResourceId) {
-		super(context, textViewResourceId);
-	}
-
-	@Override
-	public long getItemId(int position) {
-		return getItem(position).id;
-	}
-
+class MyEntityAdapter<T : MyEntity> @JvmOverloads constructor(
+	context: Context,
+	resource: Int = 0,
+	textViewResourceId: Int,
+	objects: List<T> = emptyList(),
+) : ArrayAdapter<T>(
+	context,
+	resource,
+	textViewResourceId,
+	objects,
+) {
+	override fun getItemId(position: Int): Long = getItem(position)?.id ?: 0L
 }

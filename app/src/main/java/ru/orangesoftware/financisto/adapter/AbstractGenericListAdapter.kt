@@ -1,43 +1,30 @@
-/*******************************************************************************
- * Copyright (c) 2010 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
- * Contributors:
- *     Denis Solonenko - initial API and implementation
- ******************************************************************************/
-package ru.orangesoftware.financisto.adapter;
+package ru.orangesoftware.financisto.adapter
 
-import android.content.Context;
-import android.database.Cursor;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.ResourceCursorAdapter;
+import android.content.Context
+import android.database.Cursor
+import android.view.View
+import android.view.ViewGroup
+import android.widget.ResourceCursorAdapter
 
-import ru.orangesoftware.financisto.R;
-import ru.orangesoftware.financisto.db.DatabaseAdapter;
+import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.db.DatabaseAdapter
 
-public abstract class AbstractGenericListAdapter extends ResourceCursorAdapter {
+abstract class AbstractGenericListAdapter(
+	db: DatabaseAdapter,
+	context: Context,
+	c: Cursor,
+) : ResourceCursorAdapter(context, R.layout.generic_list_item, c) {
 
-	public AbstractGenericListAdapter(DatabaseAdapter db, Context context, Cursor c) {
-		super(context, R.layout.generic_list_item, c);
+	override fun newView(context: Context?, cursor: Cursor?, parent: ViewGroup?): View {
+		val view = super.newView(context, cursor, parent)
+		GenericViewHolder.createAndTag(view)
+		return view
 	}
 
-	@Override
-	public View newView(Context context, Cursor cursor, ViewGroup parent) {
-		View view = super.newView(context, cursor, parent);
-		GenericViewHolder.createAndTag(view);
-		return view;
-	}
-	
-	@Override
-	public void bindView(View view, Context context, Cursor cursor) {
-		GenericViewHolder views = (GenericViewHolder)view.getTag();
-		bindView(views, context, cursor);
+	override fun bindView(view: View?, context: Context?, cursor: Cursor?) {
+		val views = view?.tag as? GenericViewHolder
+		bindView(views, context, cursor)
 	}
 
-	protected abstract void bindView(GenericViewHolder v, Context context, Cursor cursor);
-	
+	protected abstract fun bindView(v: GenericViewHolder?, context: Context?, cursor: Cursor?)
 }

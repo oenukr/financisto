@@ -1,45 +1,30 @@
-/*******************************************************************************
- * Copyright (c) 2010 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
- * Contributors:
- *     Denis Solonenko - initial API and implementation
- ******************************************************************************/
-package ru.orangesoftware.financisto.adapter;
+package ru.orangesoftware.financisto.adapter
 
-import android.content.Context;
-import android.database.Cursor;
-import android.graphics.drawable.Drawable;
+import android.content.Context
+import android.database.Cursor
+import android.graphics.drawable.Drawable
 
-import androidx.core.content.ContextCompat;
+import androidx.core.content.ContextCompat
 
-import ru.orangesoftware.financisto.R;
-import ru.orangesoftware.financisto.db.DatabaseAdapter;
+import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.db.DatabaseAdapter
 
-public abstract class AbstractBlotterListAdapter extends AbstractGenericListAdapter {
+abstract class AbstractBlotterListAdapter(
+	db: DatabaseAdapter,
+	context: Context,
+	c: Cursor,
+) : AbstractGenericListAdapter(db, context, c) {
 
-	protected final int transferColor;
-	protected final int futureColor;
-	protected final Drawable icBlotterIncome;
-	protected final Drawable icBlotterExpense;
-	protected final Drawable icBlotterTransfer;	
+	protected val transferColor: Int = ContextCompat.getColor(context, R.color.transfer_color)
+	protected val futureColor: Int = ContextCompat.getColor(context, R.color.future_color)
+	protected val icBlotterIncome: Drawable? = ContextCompat.getDrawable(context, R.drawable.ic_blotter_income)
+	protected val icBlotterExpense: Drawable? = ContextCompat.getDrawable(context, R.drawable.ic_blotter_expense)
+	protected val icBlotterTransfer: Drawable? = ContextCompat.getDrawable(context, R.drawable.ic_blotter_transfer)
 	
-	public AbstractBlotterListAdapter(DatabaseAdapter db, Context context, Cursor c) {
-		super(db, context, c);
-		transferColor = ContextCompat.getColor(context, R.color.transfer_color);
-		futureColor = ContextCompat.getColor(context, R.color.future_color);
-		icBlotterIncome = ContextCompat.getDrawable(context, R.drawable.ic_blotter_income);
-		icBlotterExpense = ContextCompat.getDrawable(context, R.drawable.ic_blotter_expense);
-		icBlotterTransfer = ContextCompat.getDrawable(context, R.drawable.ic_blotter_transfer);
-	}
+
+	abstract override fun bindView(v: GenericViewHolder?, context: Context?, cursor: Cursor?)
 	
-	protected abstract void bindView(GenericViewHolder v, Context context, Cursor cursor);
-	
-	protected void setIcon(GenericViewHolder v, long amount, boolean transfer) {
+	protected fun setIcon(v: GenericViewHolder, amount: Long, transfer: Boolean) {
 		// do nothing
 	}
-
 }

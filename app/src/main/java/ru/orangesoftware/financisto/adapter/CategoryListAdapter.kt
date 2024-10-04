@@ -1,68 +1,53 @@
-/*******************************************************************************
- * Copyright (c) 2010 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
- * Contributors:
- *     Denis Solonenko - initial API and implementation
- ******************************************************************************/
-package ru.orangesoftware.financisto.adapter;
+package ru.orangesoftware.financisto.adapter
 
-import android.content.Context;
-import android.database.Cursor;
-import android.view.View;
-import android.widget.ResourceCursorAdapter;
-import android.widget.TextView;
+import android.content.Context
+import android.database.Cursor
+import android.view.View
+import android.widget.ResourceCursorAdapter
+import android.widget.TextView
 
-import java.util.Map;
+import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.db.DatabaseAdapter
+import ru.orangesoftware.financisto.db.DatabaseHelper.CategoryViewColumns
+import ru.orangesoftware.financisto.model.Category
 
-import ru.orangesoftware.financisto.R;
-import ru.orangesoftware.financisto.db.DatabaseAdapter;
-import ru.orangesoftware.financisto.db.DatabaseHelper.CategoryViewColumns;
-import ru.orangesoftware.financisto.model.Category;
-
-public class CategoryListAdapter extends ResourceCursorAdapter {
+class CategoryListAdapter(
+		private val db: DatabaseAdapter,
+		context: Context,
+		layout: Int,
+		c: Cursor
+) : ResourceCursorAdapter(context, layout, c) {
 	
-	private final DatabaseAdapter db;
-	private Map<Long, String> attributes;
+	private lateinit var attributes: Map<Long, String>
 	
-	public CategoryListAdapter(DatabaseAdapter db, Context context, int layout, Cursor c) {
-		super(context, layout, c);
-		this.db = db;
-	}		
-
-	public void fetchAttributes() {
-		this.attributes = db.getAllAttributesMap();
+	fun fetchAttributes() {
+		this.attributes = db.allAttributesMap
 	}
-	
-	@Override
-	public void bindView(View view, Context context, Cursor cursor) {
-		long id = cursor.getLong(CategoryViewColumns._id.ordinal());
-		int level = cursor.getInt(CategoryViewColumns.level.ordinal());
-		String title = cursor.getString(CategoryViewColumns.title.ordinal());
-		TextView labelView = view.findViewById(android.R.id.text1);
+
+	override fun bindView(view: View?, context: Context?, cursor: Cursor) {
+		val id = cursor.getLong(CategoryViewColumns._id.ordinal)
+		val level = cursor.getInt(CategoryViewColumns.level.ordinal)
+		val title = cursor.getString(CategoryViewColumns.title.ordinal)
+		val labelView = view?.findViewById<TextView>(android.R.id.text1)
 		if (labelView != null) {
-			labelView.setText(Category.getTitle(title, level));
+			labelView.text = Category.getTitle(title, level)
 		} else {
-			TextView spanView = view.findViewById(R.id.span);
+			val spanView = view?.findViewById<TextView>(R.id.span)
 			if (level > 1) {
-				spanView.setVisibility(View.VISIBLE);
-				spanView.setText(Category.getTitleSpan(level));
+				spanView?.visibility = View.VISIBLE
+				spanView?.text = Category.getTitleSpan(level)
 			} else {
-				spanView.setVisibility(View.GONE);
+				spanView?.visibility = View.GONE
 			}
-			TextView titleView = view.findViewById(R.id.line1);
-			titleView.setText(title);
-			TextView attributesView = view.findViewById(R.id.label);
-			if (attributes != null && attributes.containsKey(id)) {
-				attributesView.setVisibility(View.VISIBLE);
-				attributesView.setText(attributes.get(id));
+			val titleView = view?.findViewById<TextView>(R.id.line1)
+			titleView?.text = title
+			val attributesView = view?.findViewById<TextView>(R.id.label)
+			if (::attributes.isInitialized && attributes.containsKey(id)) {
+				attributesView?.visibility = View.VISIBLE
+				attributesView?.text = attributes[id]
 			} else {
-				attributesView.setVisibility(View.GONE);
-			}		
+				attributesView?.visibility = View.GONE
+			}
 		}
 	}
-	
 }

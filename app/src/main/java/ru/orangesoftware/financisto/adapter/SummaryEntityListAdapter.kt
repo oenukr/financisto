@@ -1,82 +1,55 @@
-/*******************************************************************************
- * Copyright (c) 2010 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- *
- * Contributors:
- *     Denis Solonenko - initial API and implementation
- ******************************************************************************/
-package ru.orangesoftware.financisto.adapter;
+package ru.orangesoftware.financisto.adapter
 
-import android.content.Context;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.BaseAdapter;
-import android.widget.ImageView;
-import android.widget.TextView;
+import android.content.Context
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.BaseAdapter
+import android.widget.ImageView
+import android.widget.TextView
 
-import androidx.core.content.ContextCompat;
+import androidx.core.content.ContextCompat
 
-import ru.orangesoftware.financisto.R;
-import ru.orangesoftware.financisto.utils.SummaryEntityEnum;
+import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.utils.SummaryEntityEnum
 
-public class SummaryEntityListAdapter extends BaseAdapter {
+class SummaryEntityListAdapter(
+    private val context: Context,
+    private val entities: Array<SummaryEntityEnum>
+) : BaseAdapter() {
 
-    private final Context context;
-    private final SummaryEntityEnum[] entities;
-    private final LayoutInflater inflater;
+    private val inflater: LayoutInflater = LayoutInflater.from(context)
 
-    public SummaryEntityListAdapter(Context context, SummaryEntityEnum[] reports) {
-        this.entities = reports;
-        this.inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        this.context = context;
-    }
+    override fun getCount(): Int = entities.size
 
-    @Override
-    public int getCount() {
-        return entities.length;
-    }
+    override fun getItem(position: Int): Any = entities[position]
 
-    @Override
-    public Object getItem(int position) {
-        return entities[position];
-    }
+    override fun getItemId(position: Int): Long = position.toLong()
 
-    @Override
-    public long getItemId(int position) {
-        return position;
-    }
-
-    @Override
-    public View getView(int position, View convertView, ViewGroup parent) {
-        Holder h;
-        if (convertView == null) {
-            convertView = inflater.inflate(R.layout.summary_entity_list_item, parent, false);
-            h = new Holder();
-            h.icon = convertView.findViewById(R.id.icon);
-            h.title = convertView.findViewById(R.id.line1);
-            h.label = convertView.findViewById(R.id.label);
-            convertView.setTag(h);
+    override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
+        val view = convertView ?: inflater.inflate(R.layout.summary_entity_list_item, parent, false)
+        val h = if (convertView == null) {
+            Holder().apply {
+                icon = view.findViewById(R.id.icon)
+                title = view.findViewById(R.id.line1)
+                label = view.findViewById(R.id.label)
+            }.also { view.tag = it }
         } else {
-            h = (Holder) convertView.getTag();
+            convertView.tag as Holder
         }
-        SummaryEntityEnum r = entities[position];
-        h.title.setText(r.getTitleId());
-        h.label.setText(r.getSummaryId());
-        if (r.getIconId() > 0) {
-            h.icon.setImageResource(r.getIconId());
-            h.icon.setColorFilter(ContextCompat.getColor(context, R.color.colorPrimary));
+        val r = entities[position]
+        h.title?.setText(r.titleId)
+        h.label?.setText(r.getSummaryId())
+        if (r.iconId > 0) {
+            h.icon?.setImageResource(r.iconId)
+            h.icon?.setColorFilter(ContextCompat.getColor(context, R.color.colorPrimary))
         }
-        return convertView;
+        return view
     }
 
-    private static final class Holder {
-        public ImageView icon;
-        public TextView title;
-        public TextView label;
-    }
-
+    private data class Holder(
+        var icon: ImageView? = null,
+        var title: TextView? = null,
+        var label: TextView? = null,
+    )
 }
