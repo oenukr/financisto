@@ -79,7 +79,7 @@ public class PlannerActivity extends AbstractListActivity {
         long now = System.currentTimeMillis();
         if (now > criteria.getLongValue1()) {
             Period period = criteria.getPeriod();
-            period.start = now;
+            period.setStart(now);
             criteria = new DateTimeCriteria(period);
         }
         filter.put(criteria);

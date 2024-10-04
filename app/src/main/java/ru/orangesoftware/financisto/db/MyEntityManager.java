@@ -384,8 +384,8 @@ public abstract class MyEntityManager extends EntityManager {
                 budget.id = -1;
                 budget.parentBudgetId = id;
                 budget.recurNum = i;
-                budget.startDate = p.start;
-                budget.endDate = p.end;
+                budget.startDate = p.getStart();
+                budget.endDate = p.getEnd();
                 long bid = super.saveOrUpdate(budget);
                 if (i == 0) {
                     id = bid;

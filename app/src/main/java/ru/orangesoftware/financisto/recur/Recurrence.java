@@ -37,7 +37,7 @@ public class Recurrence {
 		Recurrence r = new Recurrence();
 		String[] a = recurrence.split("~");
 		try {
-			Date d = DateUtils.FORMAT_TIMESTAMP_ISO_8601.parse(a[0]);
+			Date d = DateUtils.getFORMAT_TIMESTAMP_ISO_8601().parse(a[0]);
 			Calendar c = Calendar.getInstance();
 			c.setTime(d);
 			r.startDate = c;
@@ -50,7 +50,7 @@ public class Recurrence {
 	}
 	
 	public String stateToString() {
-        return DateUtils.FORMAT_TIMESTAMP_ISO_8601.format(startDate.getTime()) + "~" +
+        return DateUtils.getFORMAT_TIMESTAMP_ISO_8601().format(startDate.getTime()) + "~" +
                 pattern.stateToString() + "~" +
                 period.stateToString();
 	}	

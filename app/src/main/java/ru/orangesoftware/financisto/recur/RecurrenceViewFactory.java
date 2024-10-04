@@ -781,14 +781,14 @@ public class RecurrenceViewFactory {
         @Override
         protected void stateToMap(HashMap<String, String> state) {
             DateUtils.startOfDay(c);
-            state.put(P_DATE, DateUtils.FORMAT_DATE_RFC_2445.format(c.getTime()));
+            state.put(P_DATE, DateUtils.getFORMAT_DATE_RFC_2445().format(c.getTime()));
         }
 
         @Override
         protected void stateFromMap(HashMap<String, String> state) {
             Date d;
             try {
-                d = DateUtils.FORMAT_DATE_RFC_2445.parse(state.get(P_DATE));
+                d = DateUtils.getFORMAT_DATE_RFC_2445().parse(state.get(P_DATE));
             } catch (ParseException e) {
                 throw new IllegalArgumentException(state.get(P_DATE));
             }

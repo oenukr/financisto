@@ -10,8 +10,8 @@
  ******************************************************************************/
 package ru.orangesoftware.financisto.export.csv;
 
-import static ru.orangesoftware.financisto.datetime.DateUtils.FORMAT_DATE_ISO_8601;
-import static ru.orangesoftware.financisto.datetime.DateUtils.FORMAT_TIME_ISO_8601;
+import static ru.orangesoftware.financisto.datetime.DateUtils.getFORMAT_DATE_ISO_8601;
+import static ru.orangesoftware.financisto.datetime.DateUtils.getFORMAT_TIME_ISO_8601;
 
 import android.content.Context;
 import android.database.Cursor;
@@ -135,8 +135,8 @@ public class CsvExport extends Export {
                            long originalAmount, long originalCurrencyId,
                            Category category, Payee payee, MyLocation location, Project project, String note) {
         if (dt != null) {
-            w.value(FORMAT_DATE_ISO_8601.format(dt));
-            w.value(FORMAT_TIME_ISO_8601.format(dt));
+            w.value(getFORMAT_DATE_ISO_8601().format(dt));
+            w.value(getFORMAT_TIME_ISO_8601().format(dt));
         } else {
             w.value("~");
             w.value("");

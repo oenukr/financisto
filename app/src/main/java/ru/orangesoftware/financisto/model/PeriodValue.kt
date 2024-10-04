@@ -13,7 +13,7 @@ data class PeriodValue(
 	/**
 	 * The reference month.
 	 */
-	val month: Calendar,
+	val month: Calendar?,
 	/**
 	 * The result value of the corresponding month.
 	 */
@@ -22,5 +22,5 @@ data class PeriodValue(
 	/**
 	 * @return The reference month in time milliseconds.
 	 */
-	fun getMonthTimeInMillis(): Long = month.getTimeInMillis()
+	fun getMonthTimeInMillis(): Long = month?.getTimeInMillis() ?: 0
 }

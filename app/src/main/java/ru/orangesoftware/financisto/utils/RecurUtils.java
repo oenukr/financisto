@@ -106,8 +106,8 @@ public class RecurUtils {
 				LinkedList<Period> periods = new LinkedList<>();
 				while (endDate < periodParam) {
 					Period p = interval.next(startDate);
-					startDate = p.end+1;
-					endDate = p.end;
+					startDate = p.getEnd() + 1;
+					endDate = p.getEnd();
 					periods.add(p);
 				}
 				return periods.toArray(new Period[0]);
@@ -129,7 +129,7 @@ public class RecurUtils {
 				LinkedList<Period> periods = new LinkedList<>();
 				while (periodParam-- > 0) {
 					Period p = interval.next(startDate);
-					startDate = p.end+1;
+					startDate = p.getEnd() + 1;
 					periods.add(p);
 				}
 				return periods.toArray(new Period[0]);

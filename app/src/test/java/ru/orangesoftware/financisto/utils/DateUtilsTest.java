@@ -64,8 +64,8 @@ public class DateUtilsTest {
 
     private void assertPeriod(PeriodType periodType, DateTime start, DateTime end) {
         Period period = periodType.calculatePeriod(refTime);
-        assertEquals("", start.atMidnight().asLong(), period.start);
-        assertEquals("", end.atDayEnd().asLong(), period.end);
+        assertEquals("", start.atMidnight().asLong(), period.getStart());
+        assertEquals("", end.atDayEnd().asLong(), period.getEnd());
     }
 
 }

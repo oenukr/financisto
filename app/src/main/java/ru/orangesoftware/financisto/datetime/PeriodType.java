@@ -109,7 +109,7 @@ public enum PeriodType implements LocalizableEnum {
         public Period calculatePeriod(long refTime) {
             Period lastWeek = LAST_WEEK.calculatePeriod(refTime);
             Period thisWeek = THIS_WEEK.calculatePeriod(refTime);
-            return new Period(PeriodType.THIS_AND_LAST_WEEK, lastWeek.start, thisWeek.end);
+            return new Period(PeriodType.THIS_AND_LAST_WEEK, lastWeek.getStart(), thisWeek.getEnd());
         }
     },
     THIS_AND_LAST_MONTH(R.string.period_this_and_last_month, true, false) {
@@ -117,7 +117,7 @@ public enum PeriodType implements LocalizableEnum {
         public Period calculatePeriod(long refTime) {
             Period lastMonth = LAST_MONTH.calculatePeriod(refTime);
             Period thisMonth = THIS_MONTH.calculatePeriod(refTime);
-            return new Period(PeriodType.THIS_AND_LAST_MONTH, lastMonth.start, thisMonth.end);
+            return new Period(PeriodType.THIS_AND_LAST_MONTH, lastMonth.getStart(), thisMonth.getEnd());
         }
     },
     TOMORROW(R.string.period_tomorrow, false, true) {
@@ -136,10 +136,10 @@ public enum PeriodType implements LocalizableEnum {
         public Period calculatePeriod(long refTime) {
             Period thisWeek = THIS_WEEK.calculatePeriod(refTime);
             Calendar start = Calendar.getInstance();
-            start.setTimeInMillis(thisWeek.start);
+            start.setTimeInMillis(thisWeek.getStart());
             start.add(Calendar.DAY_OF_MONTH, 7);
             Calendar end = Calendar.getInstance();
-            end.setTimeInMillis(thisWeek.end);
+            end.setTimeInMillis(thisWeek.getEnd());
             end.add(Calendar.DAY_OF_MONTH, 7);
             return new Period(PeriodType.NEXT_WEEK, start.getTimeInMillis(), end.getTimeInMillis());
         }
@@ -163,7 +163,7 @@ public enum PeriodType implements LocalizableEnum {
         public Period calculatePeriod(long refTime) {
             Period thisMonth = THIS_MONTH.calculatePeriod(refTime);
             Period nextMonth = NEXT_MONTH.calculatePeriod(refTime);
-            return new Period(PeriodType.THIS_AND_NEXT_MONTH, thisMonth.start, nextMonth.end);
+            return new Period(PeriodType.THIS_AND_NEXT_MONTH, thisMonth.getStart(), nextMonth.getEnd());
         }
     },
     NEXT_3_MONTHS(R.string.period_next_3_months, false, true) {

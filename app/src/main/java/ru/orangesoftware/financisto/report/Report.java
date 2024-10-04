@@ -111,7 +111,7 @@ public abstract class Report {
                     amount = TransactionsTotalCalculator.getAmountFromCursor(db, c, currency, rates, c.getColumnIndex(ReportColumns.DATETIME));
                 } catch (UnableToCalculateRateException e) {
                     amount = BigDecimal.ZERO;
-                    u.error = TotalError.atDateRateError(e.fromCurrency, e.datetime);
+                    u.error = TotalError.atDateRateError(e.getFromCurrency(), e.getDatetime());
                 }
                 u.addAmount(amount, skipTransfers && isTransfer != 0);
             }

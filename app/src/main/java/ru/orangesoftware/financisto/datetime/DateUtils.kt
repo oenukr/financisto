@@ -1,94 +1,82 @@
-/*******************************************************************************
- * Copyright (c) 2010 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
- * Contributors:
- *     Denis Solonenko - initial API and implementation
- ******************************************************************************/
-package ru.orangesoftware.financisto.datetime;
+package ru.orangesoftware.financisto.datetime
 
-import android.content.Context;
-import android.provider.Settings;
+import android.content.Context
+import android.provider.Settings
 
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
+import java.text.DateFormat
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
 
-public class DateUtils {
+object DateUtils {
+	@JvmStatic
+	val FORMAT_TIMESTAMP_ISO_8601: DateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss")
+	@JvmStatic
+	val FORMAT_DATE_ISO_8601: DateFormat = SimpleDateFormat("yyyy-MM-dd")
+	@JvmStatic
+	val FORMAT_TIME_ISO_8601: DateFormat = SimpleDateFormat("HH:mm:ss")
+	@JvmStatic
+	val FORMAT_DATE_RFC_2445: DateFormat = SimpleDateFormat("yyyyMMdd'T'HHmmss")
 
-	public static final DateFormat FORMAT_TIMESTAMP_ISO_8601 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-	public static final DateFormat FORMAT_DATE_ISO_8601 = new SimpleDateFormat("yyyy-MM-dd");
-	public static final DateFormat FORMAT_TIME_ISO_8601 = new SimpleDateFormat("HH:mm:ss");
-	public static final DateFormat FORMAT_DATE_RFC_2445 = new SimpleDateFormat("yyyyMMdd'T'HHmmss");
+	@JvmStatic
+    fun getPeriod(period: PeriodType): Period = period.calculatePeriod()
 
-    public static Period getPeriod(PeriodType period) {
-        return period.calculatePeriod();
+	@JvmStatic
+	fun startOfDay(c: Calendar): Calendar = c.apply {
+		set(Calendar.HOUR_OF_DAY, 0)
+		set(Calendar.MINUTE, 0)
+		set(Calendar.SECOND, 0)
+		set(Calendar.MILLISECOND, 0)
 	}
 
-	public static Calendar startOfDay(Calendar c) {
-		c.set(Calendar.HOUR_OF_DAY, 0);
-		c.set(Calendar.MINUTE, 0);
-		c.set(Calendar.SECOND, 0);
-		c.set(Calendar.MILLISECOND, 0);
-		return c;
+	@JvmStatic
+	fun endOfDay(c: Calendar): Calendar = c.apply {
+		c.set(Calendar.HOUR_OF_DAY, 23)
+		c.set(Calendar.MINUTE, 59)
+		c.set(Calendar.SECOND, 59)
+		c.set(Calendar.MILLISECOND, 999)
 	}
 
-	public static Calendar endOfDay(Calendar c) {
-		c.set(Calendar.HOUR_OF_DAY, 23);
-		c.set(Calendar.MINUTE, 59);
-		c.set(Calendar.SECOND, 59);
-		c.set(Calendar.MILLISECOND, 999);
-		return c;
-	}
+	@JvmStatic
+	fun atMidnight(date: Long): Long =
+		startOfDay(Calendar.getInstance().apply { setTimeInMillis(date) }).getTimeInMillis()
 
-    public static long atMidnight(long date) {
-        Calendar c = Calendar.getInstance();
-        c.setTimeInMillis(date);
-        return startOfDay(c).getTimeInMillis();
-    }
+	@JvmStatic
+    fun atDayEnd(date: Long): Long =
+        endOfDay(Calendar.getInstance().apply { setTimeInMillis(date) }).getTimeInMillis()
 
-    public static long atDayEnd(long date) {
-        Calendar c = Calendar.getInstance();
-        c.setTimeInMillis(date);
-        return endOfDay(c).getTimeInMillis();
-    }
+	@JvmStatic
+	fun atDateAtTime(now: Long, startDate: Calendar): Date = Calendar.getInstance().apply {
+		setTimeInMillis(now)
+		set(Calendar.HOUR_OF_DAY, startDate.get(Calendar.HOUR_OF_DAY))
+		set(Calendar.MINUTE, startDate.get(Calendar.MINUTE))
+		set(Calendar.SECOND, startDate.get(Calendar.SECOND))
+		set(Calendar.MILLISECOND, startDate.get(Calendar.MILLISECOND))
+	}.time
 
-	public static Date atDateAtTime(long now, Calendar startDate) {
-		Calendar c = Calendar.getInstance();
-		c.setTimeInMillis(now);
-		c.set(Calendar.HOUR_OF_DAY, startDate.get(Calendar.HOUR_OF_DAY));
-		c.set(Calendar.MINUTE, startDate.get(Calendar.MINUTE));
-		c.set(Calendar.SECOND, startDate.get(Calendar.SECOND));
-		c.set(Calendar.MILLISECOND, startDate.get(Calendar.MILLISECOND));
-		return c.getTime();
-	}
+	@JvmStatic
+	fun getShortDateFormat(context: Context): DateFormat =
+		android.text.format.DateFormat.getDateFormat(context)
 
-	public static DateFormat getShortDateFormat(Context context) {
-		return android.text.format.DateFormat.getDateFormat(context);
-	}
+	@JvmStatic
+	fun getLongDateFormat(context: Context): DateFormat =
+		android.text.format.DateFormat.getLongDateFormat(context)
 
-	public static DateFormat getLongDateFormat(Context context) {
-		return android.text.format.DateFormat.getLongDateFormat(context);
-	}
+	@JvmStatic
+	fun getMediumDateFormat(context: Context): DateFormat =
+		android.text.format.DateFormat.getMediumDateFormat(context)
 
-	public static DateFormat getMediumDateFormat(Context context) {
-		return android.text.format.DateFormat.getMediumDateFormat(context);
-	}
+	@JvmStatic
+	fun getTimeFormat(context: Context): DateFormat =
+		android.text.format.DateFormat.getTimeFormat(context)
 
-	public static DateFormat getTimeFormat(Context context) {
-		return android.text.format.DateFormat.getTimeFormat(context);
-	}
+	@JvmStatic
+	fun is24HourFormat(context: Context): Boolean =
+		"24" == Settings.System.getString(context.contentResolver, Settings.System.TIME_12_24)
 
-	public static boolean is24HourFormat(Context context) {
-		return "24".equals(Settings.System.getString(context.getContentResolver(), Settings.System.TIME_12_24));
-	}
-
-	public static void zeroSeconds(Calendar dateTime) {
-		dateTime.set(Calendar.SECOND, 0);
-		dateTime.set(Calendar.MILLISECOND, 0);
+	@JvmStatic
+	fun zeroSeconds(dateTime: Calendar) {
+		dateTime.set(Calendar.SECOND, 0)
+		dateTime.set(Calendar.MILLISECOND, 0)
 	}
 }

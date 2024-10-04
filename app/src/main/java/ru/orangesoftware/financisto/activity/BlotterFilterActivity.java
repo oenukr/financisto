@@ -161,7 +161,7 @@ public class BlotterFilterActivity extends FilterAbstractActivity {
 				long periodTo = c.getLongValue2();
 				period.setText(df.format(new Date(periodFrom))+"-"+df.format(new Date(periodTo)));
 			} else {
-				period.setText(p.type.titleId);
+				period.setText(p.getType().titleId);
 			}
             showMinusButton(period);
 		} else {

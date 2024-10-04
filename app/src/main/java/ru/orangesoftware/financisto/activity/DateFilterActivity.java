@@ -108,7 +108,7 @@ public class DateFilterActivity extends Activity {
 			WhereFilter filter = WhereFilter.fromIntent(intent);
 			DateTimeCriteria c = (DateTimeCriteria) filter.get(BlotterFilter.DATETIME);
 			if (c != null) {
-				if (c.getPeriod() == null || c.getPeriod().type == PeriodType.CUSTOM) {
+				if (c.getPeriod() == null || c.getPeriod().getType() == PeriodType.CUSTOM) {
 					selectPeriod(c.getLongValue1(), c.getLongValue2());
 				} else {
 					selectPeriod(c.getPeriod());
@@ -147,7 +147,7 @@ public class DateFilterActivity extends Activity {
     }
 
     private void selectPeriod(Period p) {
-		spinnerPeriodType.setSelection(indexOf(p.type));
+		spinnerPeriodType.setSelection(indexOf(p.getType()));
 	}
 
 	private void selectPeriod(long from, long to) {
@@ -217,8 +217,8 @@ public class DateFilterActivity extends Activity {
 	}
 
 	private void updateDate(Period p) {
-		cFrom.setTimeInMillis(p.start);
-		cTo.setTimeInMillis(p.end);
+		cFrom.setTimeInMillis(p.getStart());
+		cTo.setTimeInMillis(p.getEnd());
 		updateDate();
 	}
 	

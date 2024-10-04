@@ -119,7 +119,7 @@ public class TransactionsTotalCalculator {
                 total.balance = balance;
                 return total;
             } catch (UnableToCalculateRateException e) {
-                return new Total(e.toCurrency, TotalError.atDateRateError(e.fromCurrency, e.datetime));
+                return new Total(e.getToCurrency(), TotalError.atDateRateError(e.getFromCurrency(), e.getDatetime()));
             }
         }
     }
@@ -139,7 +139,7 @@ public class TransactionsTotalCalculator {
             long[] balance = calculateTotalFromList(db, list, toCurrency);
             return Total.asIncomeExpense(toCurrency, balance[0], balance[1]);
         } catch (UnableToCalculateRateException e) {
-            return new Total(e.toCurrency, TotalError.atDateRateError(e.fromCurrency, e.datetime));
+            return new Total(e.getToCurrency(), TotalError.atDateRateError(e.getFromCurrency(), e.getDatetime()));
         }
     }
 
