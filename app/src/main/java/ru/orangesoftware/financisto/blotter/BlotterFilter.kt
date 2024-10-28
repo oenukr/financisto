@@ -1,41 +1,48 @@
-/*******************************************************************************
- * Copyright (c) 2010 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
- * Contributors:
- *     Denis Solonenko - initial API and implementation
- ******************************************************************************/
-package ru.orangesoftware.financisto.blotter;
+package ru.orangesoftware.financisto.blotter
 
-import ru.orangesoftware.financisto.db.DatabaseHelper.BlotterColumns;
+import ru.orangesoftware.financisto.db.DatabaseHelper.BlotterColumns
 
-public interface BlotterFilter {
+object BlotterFilter {
+	@JvmField
+	val FROM_ACCOUNT_ID: String = BlotterColumns.from_account_id.name
+	@JvmField
+	val FROM_ACCOUNT_CURRENCY_ID: String = BlotterColumns.from_account_currency_id.name
+	@JvmField
+	val CATEGORY_ID: String = BlotterColumns.category_id.name
+	@JvmField
+	val CATEGORY_LEFT: String = BlotterColumns.category_left.name
+	@JvmField
+	val CATEGORY_NAME: String = BlotterColumns.category_title.name
+	@JvmField
+	val LOCATION_ID: String = BlotterColumns.location_id.name
+	@JvmField
+	val PROJECT_ID: String = BlotterColumns.project_id.name
+	@JvmField
+	val PAYEE_ID: String = BlotterColumns.payee_id.name
+	@JvmField
+	val NOTE: String = BlotterColumns.note.name
+	@JvmField
+	val TEMPLATE_NAME: String = BlotterColumns.template_name.name
+	@JvmField
+	val DATETIME: String = BlotterColumns.datetime.name
+	const val BUDGET_ID: String = "budget_id"
+	@JvmField
+	val IS_TEMPLATE: String = BlotterColumns.is_template.name
+	@JvmField
+	val PARENT_ID: String = BlotterColumns.parent_id.name
+	@JvmField
+	val STATUS: String = BlotterColumns.status.name
 
-	String FROM_ACCOUNT_ID = BlotterColumns.from_account_id.name();
-	String FROM_ACCOUNT_CURRENCY_ID = BlotterColumns.from_account_currency_id.name();
-	String CATEGORY_ID = BlotterColumns.category_id.name();
-	String CATEGORY_LEFT = BlotterColumns.category_left.name();
-	String CATEGORY_NAME = BlotterColumns.category_title.name();
-	String LOCATION_ID = BlotterColumns.location_id.name();
-	String PROJECT_ID = BlotterColumns.project_id.name();
-    String PAYEE_ID = BlotterColumns.payee_id.name();
-	String NOTE = BlotterColumns.note.name();
-	String TEMPLATE_NAME = BlotterColumns.template_name.name();
-	String DATETIME = BlotterColumns.datetime.name();
-	String BUDGET_ID = "budget_id";
-	String IS_TEMPLATE = BlotterColumns.is_template.name();
-    String PARENT_ID = BlotterColumns.parent_id.name();
-	String STATUS = BlotterColumns.status.name();
-	
-	String SORT_NEWER_TO_OLDER = BlotterColumns.datetime+" desc";
-	String SORT_OLDER_TO_NEWER = BlotterColumns.datetime+" asc";
+	@JvmField
+	val SORT_NEWER_TO_OLDER: String = "${BlotterColumns.datetime} desc"
+	@JvmField
+	val SORT_OLDER_TO_NEWER: String = "${BlotterColumns.datetime} asc"
 
-    String SORT_NEWER_TO_OLDER_BY_ID = "_id desc";
-    String SORT_OLDER_TO_NEWER_BY_ID = "_id asc";
+    const val SORT_NEWER_TO_OLDER_BY_ID: String = "_id desc"
+    const val SORT_OLDER_TO_NEWER_BY_ID: String = "_id asc"
 
-    String SORT_BY_TEMPLATE_NAME = BlotterColumns.template_name + " asc";
-    String SORY_BY_ACCOUNT_NAME = BlotterColumns.from_account_title + " asc";
+	@JvmField
+    val SORT_BY_TEMPLATE_NAME: String = "${BlotterColumns.template_name} asc"
+	@JvmField
+	val SORT_BY_ACCOUNT_NAME: String = "${BlotterColumns.from_account_title} asc"
 }

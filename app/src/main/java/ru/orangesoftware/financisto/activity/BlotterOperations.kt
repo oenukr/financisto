@@ -1,100 +1,87 @@
-/*
- * Copyright (c) 2011 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- */
+package ru.orangesoftware.financisto.activity
 
-package ru.orangesoftware.financisto.activity;
+import android.app.Activity
+import android.app.AlertDialog
+import android.content.Intent
 
-import android.app.Activity;
-import android.app.AlertDialog;
-import android.content.Intent;
+import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.db.DatabaseAdapter
+import ru.orangesoftware.financisto.model.Transaction
+import ru.orangesoftware.financisto.model.TransactionStatus
 
-import ru.orangesoftware.financisto.R;
-import ru.orangesoftware.financisto.db.DatabaseAdapter;
-import ru.orangesoftware.financisto.model.Transaction;
-import ru.orangesoftware.financisto.model.TransactionStatus;
+class BlotterOperations(
+    private val activity: BlotterActivity,
+    private val db: DatabaseAdapter,
+    transactionId: Long,
+) {
+    private val originalTransaction: Transaction = db.getTransaction(transactionId)
+    private val targetTransaction: Transaction = if (originalTransaction.isSplitChild) {
+        db.getTransaction(originalTransaction.parentId)
+    } else {
+        originalTransaction
+    }
 
-public class BlotterOperations {
+    private var newFromTemplate: Boolean = false
 
-    private static final int EDIT_TRANSACTION_REQUEST = 2;
-	private static final int EDIT_TRANSFER_REQUEST = 4;
+    fun asNewFromTemplate(): BlotterOperations = this.apply { newFromTemplate = true }
 
-    private final BlotterActivity activity;
-    private final DatabaseAdapter db;
-    private final Transaction originalTransaction;
-    private final Transaction targetTransaction;
-
-    private boolean newFromTemplate = false;
-
-    public BlotterOperations(BlotterActivity activity, DatabaseAdapter db, long transactionId) {
-        this.activity = activity;
-        this.db = db;
-        this.originalTransaction = db.getTransaction(transactionId);
-        if (this.originalTransaction.isSplitChild()) {
-            this.targetTransaction = db.getTransaction(this.originalTransaction.parentId);
+    fun editTransaction() {
+        if (targetTransaction.isTransfer) {
+            startEditTransactionActivity(TransferActivity::class.java, EDIT_TRANSFER_REQUEST)
         } else {
-            this.targetTransaction = this.originalTransaction;
+            startEditTransactionActivity(TransactionActivity::class.java, EDIT_TRANSACTION_REQUEST)
         }
     }
 
-    public BlotterOperations asNewFromTemplate() {
-        newFromTemplate = true;
-        return this;
+    private fun startEditTransactionActivity(activityClass: Class<out Activity>, requestCode: Int) {
+        val intent = Intent(activity, activityClass)
+        intent.putExtra(AbstractTransactionActivity.TRAN_ID_EXTRA, targetTransaction.id)
+        intent.putExtra(AbstractTransactionActivity.DUPLICATE_EXTRA, false)
+        intent.putExtra(AbstractTransactionActivity.NEW_FROM_TEMPLATE_EXTRA, newFromTemplate)
+        activity.startActivityForResult(intent, requestCode)
     }
 
-    public void editTransaction() {
-        if (targetTransaction.isTransfer()) {
-            startEditTransactionActivity(TransferActivity.class, EDIT_TRANSFER_REQUEST);
+    fun deleteTransaction() {
+        val titleId = if (targetTransaction.isTemplate()) {
+            R.string.delete_template_confirm
         } else {
-            startEditTransactionActivity(TransactionActivity.class, EDIT_TRANSACTION_REQUEST);
+            if (originalTransaction.isSplitChild) {
+                R.string.delete_transaction_parent_confirm
+            } else {
+                R.string.delete_transaction_confirm
+            }
         }
+        AlertDialog.Builder(activity)
+            .setMessage(titleId)
+            .setPositiveButton(R.string.yes) { _, _ ->
+                val transactionIdToDelete = targetTransaction.id
+                db.deleteTransaction(transactionIdToDelete)
+                activity.afterDeletingTransaction(transactionIdToDelete)
+            }
+            .setNegativeButton(R.string.no, null)
+            .show()
     }
 
-    private void startEditTransactionActivity(Class<? extends Activity> activityClass, int requestCode) {
-        Intent intent = new Intent(activity, activityClass);
-        intent.putExtra(AbstractTransactionActivity.TRAN_ID_EXTRA, targetTransaction.id);
-        intent.putExtra(AbstractTransactionActivity.DUPLICATE_EXTRA, false);
-        intent.putExtra(AbstractTransactionActivity.NEW_FROM_TEMPLATE_EXTRA, newFromTemplate);
-        activity.startActivityForResult(intent, requestCode);
+    fun duplicateTransaction(multiplier: Int): Long = if (multiplier > 1) {
+        db.duplicateTransactionWithMultiplier(targetTransaction.id, multiplier)
+    } else {
+        db.duplicateTransaction(targetTransaction.id)
     }
 
-    public void deleteTransaction() {
-        int titleId = targetTransaction.isTemplate() ? R.string.delete_template_confirm
-                : (originalTransaction.isSplitChild() ? R.string.delete_transaction_parent_confirm : R.string.delete_transaction_confirm);
-        new AlertDialog.Builder(activity)
-                .setMessage(titleId)
-                .setPositiveButton(R.string.yes, (arg0, arg1) -> {
-                    long transactionIdToDelete = targetTransaction.id;
-                    db.deleteTransaction(transactionIdToDelete);
-                    activity.afterDeletingTransaction(transactionIdToDelete);
-                })
-                .setNegativeButton(R.string.no, null)
-                .show();
+    fun duplicateAsTemplate() {
+        db.duplicateTransactionAsTemplate(targetTransaction.id)
     }
 
-    public long duplicateTransaction(int multiplier) {
-        long newId;
-		if (multiplier > 1) {
-			newId = db.duplicateTransactionWithMultiplier(targetTransaction.id, multiplier);
-		} else {
-			newId = db.duplicateTransaction(targetTransaction.id);
-		}
-        return newId;
+    fun clearTransaction() {
+        db.updateTransactionStatus(targetTransaction.id, TransactionStatus.CLEARED)
     }
 
-    public void duplicateAsTemplate() {
-        db.duplicateTransactionAsTemplate(targetTransaction.id);
+    fun reconcileTransaction() {
+        db.updateTransactionStatus(targetTransaction.id, TransactionStatus.RECONCILED)
     }
 
-    public void clearTransaction() {
-        db.updateTransactionStatus(targetTransaction.id, TransactionStatus.CL);
+    companion object {
+        private const val EDIT_TRANSACTION_REQUEST: Int = 2
+        private const val EDIT_TRANSFER_REQUEST: Int = 4
     }
-
-    public void reconcileTransaction() {
-        db.updateTransactionStatus(targetTransaction.id, TransactionStatus.RC);
-    }
-
 }

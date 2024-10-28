@@ -23,12 +23,12 @@ enum class TransactionStatus(
         R.drawable.transaction_status_unreconciled_2,
         R.color.unreconciled_transaction_color
     ),
-    CL(
+    CLEARED(
         R.string.transaction_status_cleared,
         R.drawable.transaction_status_cleared_2,
         R.color.cleared_transaction_color
     ),
-    RC(
+    RECONCILED(
         R.string.transaction_status_reconciled,
         R.drawable.transaction_status_reconciled_2,
         R.color.reconciled_transaction_color

@@ -1266,7 +1266,7 @@ public class DatabaseAdapter extends MyEntityManager {
      * @param ids selected transactions' ids
      */
     public void clearSelectedTransactions(long[] ids) {
-        String sql = "UPDATE " + TRANSACTION_TABLE + " SET " + TransactionColumns.status + "='" + TransactionStatus.CL + "'";
+        String sql = "UPDATE " + TRANSACTION_TABLE + " SET " + TransactionColumns.status + "='" + TransactionStatus.CLEARED + "'";
         runInTransaction(sql, ids);
     }
 
@@ -1276,7 +1276,7 @@ public class DatabaseAdapter extends MyEntityManager {
      * @param ids selected transactions' ids
      */
     public void reconcileSelectedTransactions(long[] ids) {
-        String sql = "UPDATE " + TRANSACTION_TABLE + " SET " + TransactionColumns.status + "='" + TransactionStatus.RC + "'";
+        String sql = "UPDATE " + TRANSACTION_TABLE + " SET " + TransactionColumns.status + "='" + TransactionStatus.RECONCILED + "'";
         runInTransaction(sql, ids);
     }
 
@@ -1782,7 +1782,7 @@ public class DatabaseAdapter extends MyEntityManager {
         newTransaction.fromAmount = balance;
         Payee payee = findOrInsertEntityByTitle(Payee.class, context.getString(R.string.purge_account_payee));
         newTransaction.payeeId = payee != null ? payee.id : 0;
-        newTransaction.status = TransactionStatus.CL;
+        newTransaction.status = TransactionStatus.CLEARED;
         return newTransaction;
     }
 

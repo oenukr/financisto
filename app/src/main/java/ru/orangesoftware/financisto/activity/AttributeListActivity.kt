@@ -1,94 +1,57 @@
-/*******************************************************************************
- * Copyright (c) 2010 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
- * Contributors:
- *     Denis Solonenko - initial API and implementation
- ******************************************************************************/
-package ru.orangesoftware.financisto.activity;
+package ru.orangesoftware.financisto.activity
 
-import android.app.AlertDialog;
-import android.content.Intent;
-import android.database.Cursor;
-import android.view.View;
-import android.widget.ListAdapter;
+import android.app.AlertDialog
+import android.content.Intent
+import android.database.Cursor
+import android.view.View
+import android.widget.ListAdapter
 
-import java.util.List;
+import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.adapter.AttributeListAdapter
+import ru.orangesoftware.financisto.db.DatabaseHelper.AttributeColumns
+import ru.orangesoftware.financisto.utils.MenuItemInfo
 
-import ru.orangesoftware.financisto.R;
-import ru.orangesoftware.financisto.adapter.AttributeListAdapter;
-import ru.orangesoftware.financisto.db.DatabaseHelper.AttributeColumns;
-import ru.orangesoftware.financisto.utils.MenuItemInfo;
+class AttributeListActivity : AbstractListActivity(R.layout.attributes_list) {
 
-public class AttributeListActivity extends AbstractListActivity {
-	
-	public AttributeListActivity() {
-		super(R.layout.attributes_list);
-	}
-	
-	@Override
-	protected List<MenuItemInfo> createContextMenus(long id) {
-		List<MenuItemInfo> menus = super.createContextMenus(id);
-		for (MenuItemInfo m : menus) {
-			if (m.getMenuId() == MENU_VIEW) {
-				m.setEnabled(false);
-				break;
-			}
-		}
-		return menus;
+	override fun createContextMenus(id: Long): MutableList<MenuItemInfo> =
+		super.createContextMenus(id).apply { first { it.menuId == MENU_EDIT }.enabled = true }
+
+	override fun addItem() {
+		val intent = Intent(this, AttributeActivity::class.java)
+		startActivityForResult(intent, 1)
 	}
 
-	@Override
-	protected void addItem() {
-		Intent intent = new Intent(this, AttributeActivity.class);
-		startActivityForResult(intent, 1);
-	}
+	override fun createAdapter(cursor: Cursor): ListAdapter = AttributeListAdapter(db, this, cursor)
 
-	@Override
-	protected ListAdapter createAdapter(Cursor cursor) {
-		return new AttributeListAdapter(db, this, cursor);
-	}
+	override fun createCursor(): Cursor = db.allAttributes
 
-	@Override
-	protected Cursor createCursor() {
-		return db.getAllAttributes();
-	}
-	
-	@Override
-	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-		super.onActivityResult(requestCode, resultCode, data);
+	override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+		super.onActivityResult(requestCode, resultCode, data)
 		if (resultCode == RESULT_OK) {
-			cursor.requery();
+			cursor.requery()
 		}
 	}
 
-	@Override
-	protected void deleteItem(View v, int position, final long id) {
-		new AlertDialog.Builder(this)
+	override fun deleteItem(v: View?, position: Int, id: Long) {
+		AlertDialog.Builder(this)
 			.setTitle(R.string.delete)
 			.setIcon(android.R.drawable.ic_dialog_alert)
-			.setMessage(R.string.attribute_delete_alert)			
-			.setPositiveButton(R.string.delete, (arg0, arg1) -> {
-                db.deleteAttribute(id);
-                cursor.requery();
-            })
+			.setMessage(R.string.attribute_delete_alert)
+			.setPositiveButton(R.string.delete) { _, _ ->
+				db.deleteAttribute(id)
+				cursor.requery()
+			}
 			.setNegativeButton(R.string.cancel, null)
-			.show();		
+			.show()
 	}
 
-	@Override
-	public void editItem(View v, int position, long id) {
-		Intent intent = new Intent(this, AttributeActivity.class);
-		intent.putExtra(AttributeColumns.ID, id);
-		startActivityForResult(intent, 2);		
-	}	
-	
-	@Override
-	protected void viewItem(View v, int position, long id) {
-		editItem(v, position, id);
-	}		
+	override fun editItem(v: View?, position: Int, id: Long) {
+		val intent = Intent(this, AttributeActivity::class.java)
+		intent.putExtra(AttributeColumns.ID, id)
+		startActivityForResult(intent, 2)
+	}
 
+	override fun viewItem(v: View?, position: Int, id: Long) {
+		editItem(v, position, id)
+	}
 }
