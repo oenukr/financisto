@@ -21,6 +21,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.fragment.app.FragmentActivity;
+
 import java.text.DecimalFormat;
 
 import ru.orangesoftware.financisto.R;
@@ -79,7 +81,7 @@ public class RateNode {
                 } catch (NumberFormatException ignored) {
                 }
             });
-            input.show(activity.getFragmentManager(), "calculator");
+            input.show(((FragmentActivity)activity).getSupportFragmentManager(), "calculator");
         });
         bDownload = rateInfoNode.findViewById(R.id.rateDownload);
         bDownload.setOnClickListener(v -> new RateDownloadTask().execute());

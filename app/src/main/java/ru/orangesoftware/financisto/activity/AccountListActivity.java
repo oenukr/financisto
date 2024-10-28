@@ -364,7 +364,7 @@ public class AccountListActivity extends AbstractListActivity {
 
     @Override
     public void integrityCheck() {
-        new IntegrityCheckTask(this).execute(new IntegrityCheckAutobackup(this, TimeUnit.DAYS.toMillis(7)));
+        new IntegrityCheckTask(this).execute(new IntegrityCheckAutobackup(TimeUnit.DAYS.toMillis(7)));
     }
 
 }

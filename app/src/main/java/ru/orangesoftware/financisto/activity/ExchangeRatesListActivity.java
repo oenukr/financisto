@@ -342,8 +342,8 @@ public class ExchangeRatesListActivity extends AbstractListActivity {
                 v = (GenericViewHolder) convertView.getTag();
             }
             ExchangeRate rate = getItem(position);
-            v.lineView.setText(formatRateDate(context, rate.date));
-            v.amountView.setText(nf.format(rate.rate));
+            v.getLineView().setText(formatRateDate(context, rate.date));
+            v.getAmountView().setText(nf.format(rate.rate));
             return convertView;
         }
     }

@@ -13,6 +13,8 @@ package ru.orangesoftware.financisto.report;
 
 import android.content.Context;
 
+import androidx.annotation.NonNull;
+
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.model.Currency;
 import ru.orangesoftware.financisto.utils.SummaryEntityEnum;
@@ -134,6 +136,12 @@ public enum ReportType implements SummaryEntityEnum {
 	@Override
 	public int getIconId() {
 		return iconId;
+	}
+
+	@NonNull
+	@Override
+	public String getName() {
+		return name();
 	}
 
 	public boolean isConventionalBarReport() {

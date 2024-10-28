@@ -98,7 +98,7 @@ public class TransactionTest extends AbstractDbTest {
     private Map<Long, String> asMap(TransactionAttribute... values) {
         Map<Long, String> map = new HashMap<>();
         for (TransactionAttribute value : values) {
-            map.put(value.attributeId, value.value);
+            map.put(value.getAttributeId(), value.getValue());
         }
         return map;
     }
@@ -107,7 +107,7 @@ public class TransactionTest extends AbstractDbTest {
         Map<Long, String> attributes = db.getAllAttributesForTransaction(t.id);
         assertEquals(values.length, attributes.size());
         for (TransactionAttribute value : values) {
-            assertEquals(value.value, attributes.get(value.attributeId));
+            assertEquals(value.getValue(), attributes.get(value.getAttributeId()));
         }
     }
 

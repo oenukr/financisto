@@ -46,7 +46,7 @@ public class TemplatesListActivity extends BlotterActivity {
                 break;
 
             case ACCOUNT:
-                sortOrder = BlotterFilter.SORY_BY_ACCOUNT_NAME;
+                sortOrder = BlotterFilter.SORT_BY_ACCOUNT_NAME;
                 break;
 
             default:

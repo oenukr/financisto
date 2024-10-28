@@ -82,6 +82,12 @@ public class RecurUtils {
 			return titleId;
 		}
 
+		@NonNull
+		@Override
+		public String getName() {
+			return name();
+		}
+
 		public Period next(long startDate) {
 			throw new UnsupportedOperationException();
 		}
@@ -100,14 +106,14 @@ public class RecurUtils {
 				LinkedList<Period> periods = new LinkedList<>();
 				while (endDate < periodParam) {
 					Period p = interval.next(startDate);
-					startDate = p.end+1;
-					endDate = p.end;
+					startDate = p.getEnd() + 1;
+					endDate = p.getEnd();
 					periods.add(p);
 				}
 				return periods.toArray(new Period[0]);
 			}
 		},
-//		INDEFINETELY(0, R.string.recur_indefinitely){
+//		INDEFINITELY(0, R.string.recur_indefinitely){
 //			@Override
 //			public String toSummary(Context context, long param) {
 //				return context.getString(R.string.recur_indefinitely);
@@ -123,7 +129,7 @@ public class RecurUtils {
 				LinkedList<Period> periods = new LinkedList<>();
 				while (periodParam-- > 0) {
 					Period p = interval.next(startDate);
-					startDate = p.end+1;
+					startDate = p.getEnd() + 1;
 					periods.add(p);
 				}
 				return periods.toArray(new Period[0]);
@@ -146,6 +152,12 @@ public class RecurUtils {
 		@Override
 		public int getTitleId() {
 			return titleId;
+		}
+
+		@NonNull
+		@Override
+		public String getName() {
+			return name();
 		}
 		
 		public abstract String toSummary(Context context, long param);

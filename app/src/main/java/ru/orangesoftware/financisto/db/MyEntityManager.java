@@ -11,6 +11,8 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
+import androidx.annotation.Nullable;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -183,7 +185,7 @@ public abstract class MyEntityManager extends EntityManager {
         Query<TransactionAttributeInfo> q = createQuery(TransactionAttributeInfo.class);
         q.where(Expressions.and(
                 Expressions.eq("transactionId", transactionId),
-                Expressions.eq("attributeId", sa.id)
+                Expressions.eq("attributeId", sa.getId())
         ));
         try (Cursor c = q.execute()) {
             if (c.moveToFirst()) {
@@ -202,6 +204,7 @@ public abstract class MyEntityManager extends EntityManager {
         return q.execute();
     }
 
+    @Nullable
     public Account getAccount(long id) {
         return get(Account.class, id);
     }
@@ -381,8 +384,8 @@ public abstract class MyEntityManager extends EntityManager {
                 budget.id = -1;
                 budget.parentBudgetId = id;
                 budget.recurNum = i;
-                budget.startDate = p.start;
-                budget.endDate = p.end;
+                budget.startDate = p.getStart();
+                budget.endDate = p.getEnd();
                 long bid = super.saveOrUpdate(budget);
                 if (i == 0) {
                     id = bid;
@@ -459,6 +462,7 @@ public abstract class MyEntityManager extends EntityManager {
         return (ArrayList<TransactionInfo>) q.list();
     }
 
+    @Nullable
     public Category getCategory(long id) {
         return get(Category.class, id);
     }

@@ -61,7 +61,7 @@ public class PeriodReport extends Report {
 		ArrayList<GraphUnit> units = new ArrayList<>();
         for (Period p : periods) {
             currentPeriod = p;
-            newFilter.put(Criteria.btw(ReportColumns.DATETIME, String.valueOf(p.start), String.valueOf(p.end)));
+            newFilter.put(Criteria.btw(ReportColumns.DATETIME, String.valueOf(p.getStart()), String.valueOf(p.getEnd())));
             Cursor c = db.db().query(V_REPORT_PERIOD, ReportColumns.NORMAL_PROJECTION,
                     newFilter.getSelection(), newFilter.getSelectionArgs(), null, null, null);
             ArrayList<GraphUnit> u = getUnitsFromCursor(db, c);
@@ -75,18 +75,18 @@ public class PeriodReport extends Report {
 
     @Override
     protected long getId(Cursor c) {
-        return currentPeriod.type.ordinal();
+        return currentPeriod.getType().ordinal();
     }
 
     @Override
     protected String alterName(long id, String name) {
-        return context.getString(currentPeriod.type.titleId);
+        return context.getString(currentPeriod.getType().titleId);
     }
 
     @Override
     public Criteria getCriteriaForId(DatabaseAdapter db, long id) {
         for (Period period : periods) {
-            if (period.type.ordinal() == id) {
+            if (period.getType().ordinal() == id) {
                 return new DateTimeCriteria(period);
             }
         }

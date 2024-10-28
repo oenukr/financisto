@@ -14,6 +14,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -108,7 +111,7 @@ public abstract class Report {
                     amount = TransactionsTotalCalculator.getAmountFromCursor(db, c, currency, rates, c.getColumnIndex(ReportColumns.DATETIME));
                 } catch (UnableToCalculateRateException e) {
                     amount = BigDecimal.ZERO;
-                    u.error = TotalError.atDateRateError(e.fromCurrency, e.datetime);
+                    u.error = TotalError.atDateRateError(e.getFromCurrency(), e.getDatetime());
                 }
                 u.addAmount(amount, skipTransfers && isTransfer != 0);
             }
@@ -141,7 +144,7 @@ public abstract class Report {
                 if (u.error != null) {
                     return new Total(currency, u.error);
                 }
-                long amount = a.amount;
+                long amount = a.getAmount();
                 if (amount > 0) {
                     total.amount += amount;
                 } else {
@@ -156,7 +159,7 @@ public abstract class Report {
 		return c.getLong(0);
 	}
 
-	public Intent createActivityIntent(Context context, DatabaseAdapter db, WhereFilter parentFilter, long id) {
+	public Intent createActivityIntent(@NonNull Context context, @NonNull DatabaseAdapter db, @Nullable WhereFilter parentFilter, long id) {
         WhereFilter filter = WhereFilter.empty();
         Criteria c = parentFilter.get(BlotterFilter.DATETIME);
         if (c != null) {
@@ -184,7 +187,7 @@ public abstract class Report {
 		return intent;
 	}
 
-    protected abstract Criteria getCriteriaForId(DatabaseAdapter db, long id);
+    protected abstract Criteria getCriteriaForId(@NonNull DatabaseAdapter db, long id);
 
     protected Class<? extends BlotterActivity> getBlotterActivityClass() {
         return BlotterActivity.class;

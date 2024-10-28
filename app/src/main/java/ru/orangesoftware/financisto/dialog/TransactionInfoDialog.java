@@ -201,8 +201,8 @@ public class TransactionInfoDialog {
             }
         }
         TransactionStatus status = ti.status;
-        titleData.setText(context.getString(status.titleId));
-        titleIcon.setImageResource(status.iconId);
+        titleData.setText(context.getString(status.getTitleId()));
+        titleIcon.setImageResource(status.getIconId());
         return titleView;
     }
 
@@ -227,7 +227,7 @@ public class TransactionInfoDialog {
 
     private void add(LinearLayout layout, int labelId, String data, AccountType accountType) {
         inflater.new Builder(layout, R.layout.select_entry_simple_icon)
-                .withIcon(accountType.iconId).withLabel(labelId).withData(data).create();
+                .withIcon(accountType.getIconId()).withLabel(labelId).withData(data).create();
     }
 
     private TextView add(LinearLayout layout, int labelId, String data) {

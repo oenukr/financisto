@@ -308,9 +308,9 @@ public class ReportActivity extends ListActivity implements RefreshSupportedActi
         @Override
         protected void onPostExecute(ReportData data) {
             setProgressBarIndeterminateVisibility(false);
-            displayTotal(data.total);
+            displayTotal(data.getTotal());
             ((TextView) findViewById(android.R.id.empty)).setText(R.string.empty_report);
-            ReportAdapter adapter = new ReportAdapter(ReportActivity.this, data.units);
+            ReportAdapter adapter = new ReportAdapter(ReportActivity.this, data.getUnits());
             setListAdapter(adapter);
             applyAnimationToListView();
         }
@@ -336,12 +336,12 @@ public class ReportActivity extends ListActivity implements RefreshSupportedActi
             renderer.setMargins(new int[] { 0, 0, 0, 0 });
             ReportData report = currentReport.getReportForChart(db, WhereFilter.copyOf(filter));
             CategorySeries series = new CategorySeries("AAA");
-            long total = Math.abs(report.total.amount)+Math.abs(report.total.balance);
-            int[] colors = generateColors(2*report.units.size());
+            long total = Math.abs(report.getTotal().amount)+Math.abs(report.getTotal().balance);
+            int[] colors = generateColors(2*report.getUnits().size());
             int i = 0;
-            for (GraphUnit unit : report.units) {
-                addSeries(series, renderer, unit.name, unit.getIncomeExpense().income, total, colors[i++]);
-                addSeries(series, renderer, unit.name, unit.getIncomeExpense().expense, total, colors[i++]);
+            for (GraphUnit unit : report.getUnits()) {
+                addSeries(series, renderer, unit.name, unit.getIncomeExpense().getIncome(), total, colors[i++]);
+                addSeries(series, renderer, unit.name, unit.getIncomeExpense().getExpense(), total, colors[i++]);
             }
             renderer.setZoomButtonsVisible(true);
             renderer.setZoomEnabled(true);

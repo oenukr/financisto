@@ -88,7 +88,7 @@ public class QifExport extends Export {
     }
 
     private boolean isSelectedAccount(Account a) {
-        long[] selectedAccounts = options.selectedAccounts;
+        long[] selectedAccounts = options.getSelectedAccounts();
         if (selectedAccounts == null || selectedAccounts.length == 0) {
             return true;
         }
@@ -135,7 +135,7 @@ public class QifExport extends Export {
     }
 
     private Cursor getBlotterForAccount(Account account) {
-        WhereFilter accountFilter = WhereFilter.copyOf(options.filter);
+        WhereFilter accountFilter = WhereFilter.copyOf(options.getFilter());
         accountFilter.put(Criteria.eq(BlotterFilter.FROM_ACCOUNT_ID, String.valueOf(account.id)));
         return db.getBlotterForAccount(accountFilter);
     }

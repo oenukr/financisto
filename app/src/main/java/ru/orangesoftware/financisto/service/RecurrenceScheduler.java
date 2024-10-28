@@ -84,7 +84,7 @@ public class RecurrenceScheduler {
                 Log.i(TAG, "["+restored.size()+"] scheduled transactions have been restored:");
                 for (int i=0; i<10 && i<restored.size(); i++) {
                     RestoredTransaction rt = restored.get(i);
-                    Log.i(TAG, rt.transactionId+" at "+rt.dateTime);
+                    Log.i(TAG, rt.getTransactionId()+" at "+rt.getDateTime());
                 }
                 return restored.size();
             }
@@ -127,7 +127,7 @@ public class RecurrenceScheduler {
 				}				
 			}
 			if (restored.size() > MAX_RESTORED) {
-				Collections.sort(restored, (t01, t1) -> t1.dateTime.compareTo(t01.dateTime));
+				Collections.sort(restored, (t01, t1) -> t1.getDateTime().compareTo(t01.getDateTime()));
 				restored = restored.subList(0, MAX_RESTORED);
 			}
 			return restored;

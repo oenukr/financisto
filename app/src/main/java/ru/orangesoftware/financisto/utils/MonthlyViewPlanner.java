@@ -94,7 +94,7 @@ public class MonthlyViewPlanner extends AbstractPlanner {
 
     public TransactionList getCreditCardStatement() {
         TransactionList withTotals = getPlannedTransactionsWithTotals();
-        List<TransactionInfo> transactions = withTotals.transactions;
+        List<TransactionInfo> transactions = withTotals.getTransactions();
         List<TransactionInfo> statement = new ArrayList<>(transactions.size() + 3);
         // add payments
         statement.add(PAYMENTS_HEADER);
@@ -117,7 +117,7 @@ public class MonthlyViewPlanner extends AbstractPlanner {
                 statement.add(transaction);
             }
         }
-        return new TransactionList(statement, withTotals.totals);
+        return new TransactionList(statement, withTotals.getTotals());
     }
 
     @Override

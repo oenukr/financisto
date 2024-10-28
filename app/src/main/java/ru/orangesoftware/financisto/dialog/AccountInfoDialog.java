@@ -76,21 +76,21 @@ public class AccountInfoDialog {
         titleLabel.setText(a.title);
 
         AccountType type = AccountType.valueOf(a.type);
-        titleData.setText(type.titleId);
-        titleIcon.setImageResource(type.iconId);
+        titleData.setText(type.getTitleId());
+        titleIcon.setImageResource(type.getIconId());
 
         return titleView;
     }
 
     private void createNodes(Account a, LinearLayout layout) {
         AccountType type = AccountType.valueOf(a.type);
-        if (type.isCard) {
+        if (type.isCard()) {
             CardIssuer issuer = CardIssuer.valueOf(a.cardIssuer);
             add(layout, R.string.issuer, issuerTitle(a), issuer);
         }
         add(layout, R.string.currency, a.currency.title);
 
-        if (type.isCreditCard && a.limitAmount != 0) {
+        if (type.isCreditCard() && a.limitAmount != 0) {
             long limitAmount = Math.abs(a.limitAmount);
             long balance = limitAmount + a.totalAmount;
             TextView amountView = add(layout, R.string.amount, "");
@@ -131,7 +131,7 @@ public class AccountInfoDialog {
 
     private void add(LinearLayout layout, int labelId, String data, CardIssuer cardIssuer) {
         inflater.new Builder(layout, R.layout.select_entry_simple_icon)
-                .withIcon(cardIssuer.iconId).withLabel(labelId).withData(data).create();
+                .withIcon(cardIssuer.getIconId()).withLabel(labelId).withData(data).create();
     }
 
     private TextView add(LinearLayout layout, int labelId, String data) {

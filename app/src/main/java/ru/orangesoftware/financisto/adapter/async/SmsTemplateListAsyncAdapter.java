@@ -72,8 +72,8 @@ public class SmsTemplateListAsyncAdapter extends AsyncAdapter<SmsTemplate, SmsTe
             final PopupMenu popupMenu = new PopupMenu(context, clickedView);
             int i = 0;
             for (MenuItemInfo m : createContextMenus()) {
-                if (m.enabled) {
-                    popupMenu.getMenu().add(0, m.menuId, i++, m.titleId);
+                if (m.getEnabled()) {
+                    popupMenu.getMenu().add(0, m.getMenuId(), i++, m.getTitleId());
                 }
             }
             popupMenu.setOnMenuItemClickListener(item -> onItemAction(item.getItemId(), clickedView));

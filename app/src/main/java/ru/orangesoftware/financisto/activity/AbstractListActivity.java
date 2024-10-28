@@ -89,8 +89,8 @@ public abstract class AbstractListActivity extends ListActivity implements Refre
             List<MenuItemInfo> menus = createContextMenus(id);
             int i = 0;
             for (MenuItemInfo m : menus) {
-                if (m.enabled) {
-                    menu.add(0, m.menuId, i++, m.titleId);
+                if (m.getEnabled()) {
+                    menu.add(0, m.getMenuId(), i++, m.getTitleId());
                 }
             }
             popupMenu.setOnMenuItemClickListener(item -> onPopupItemSelected(item.getItemId(), view, position, id));

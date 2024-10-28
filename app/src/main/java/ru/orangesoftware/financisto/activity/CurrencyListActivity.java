@@ -49,8 +49,8 @@ public class CurrencyListActivity extends AbstractListActivity {
     protected List<MenuItemInfo> createContextMenus(long id) {
         List<MenuItemInfo> menus = super.createContextMenus(id);
         for (MenuItemInfo m : menus) {
-            if (m.menuId == MENU_VIEW) {
-                m.enabled = false;
+            if (m.getMenuId() == MENU_VIEW) {
+                m.setEnabled(false);
                 break;
             }
         }

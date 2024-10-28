@@ -1,13 +1,13 @@
 package ru.orangesoftware.financisto.utils;
 
+import static org.junit.Assert.assertEquals;
+
 import org.junit.Test;
 
 import ru.orangesoftware.financisto.db.AbstractDbTest;
 import ru.orangesoftware.financisto.model.Account;
 import ru.orangesoftware.financisto.test.AccountBuilder;
 import ru.orangesoftware.financisto.test.TransactionBuilder;
-
-import static org.junit.Assert.*;
 
 public class IntegrityCheckRunningBalanceTest extends AbstractDbTest {
 
@@ -20,7 +20,7 @@ public class IntegrityCheckRunningBalanceTest extends AbstractDbTest {
         super.setUp();
         a1 = AccountBuilder.createDefault(db);
         a2 = AccountBuilder.createDefault(db);
-        integrity = new IntegrityCheckRunningBalance(getContext(), db);
+        integrity = new IntegrityCheckRunningBalance(db);
     }
 
     @Test
@@ -28,19 +28,19 @@ public class IntegrityCheckRunningBalanceTest extends AbstractDbTest {
         TransactionBuilder.withDb(db).account(a1).amount(1000).create();
         TransactionBuilder.withDb(db).account(a1).amount(2000).create();
         TransactionBuilder.withDb(db).account(a2).amount(-100).create();
-        assertEquals(IntegrityCheck.Level.OK, integrity.check().level);
+        assertEquals(IntegrityCheck.Level.OK, integrity.check(getContext()).getLevel());
 
         breakRunningBalanceForAccount(a1);
-        assertEquals(IntegrityCheck.Level.ERROR, integrity.check().level);
+        assertEquals(IntegrityCheck.Level.ERROR, integrity.check(getContext()).getLevel());
 
         db.rebuildRunningBalanceForAccount(a1);
-        assertEquals(IntegrityCheck.Level.OK, integrity.check().level);
+        assertEquals(IntegrityCheck.Level.OK, integrity.check(getContext()).getLevel());
 
         breakRunningBalance();
-        assertEquals(IntegrityCheck.Level.ERROR, integrity.check().level);
+        assertEquals(IntegrityCheck.Level.ERROR, integrity.check(getContext()).getLevel());
 
         db.rebuildRunningBalances();
-        assertEquals(IntegrityCheck.Level.OK, integrity.check().level);
+        assertEquals(IntegrityCheck.Level.OK, integrity.check(getContext()).getLevel());
     }
 
     private void breakRunningBalanceForAccount(Account a) {

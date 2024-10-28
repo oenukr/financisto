@@ -36,7 +36,7 @@ public class RecurrencePeriod {
     }
 
     public static RecurrencePeriod noEndDate() {
-        return new RecurrencePeriod(RecurrenceUntil.INDEFINETELY, null);
+        return new RecurrencePeriod(RecurrenceUntil.INDEFINITELY, null);
     }
 
     public static RecurrencePeriod empty(RecurrenceUntil until) {
@@ -44,7 +44,8 @@ public class RecurrencePeriod {
     }
 
     public static RecurrencePeriod parse(String string) {
-        String[] a = string.split(":");
+        // fix for the typo in INDEFINETELY that is used in the database
+        String[] a = string.replaceAll("INDEFINETELY", "INDEFINITELY").split(":");
         return new RecurrencePeriod(RecurrenceUntil.valueOf(a[0]), a[1]);
     }
 
@@ -63,7 +64,7 @@ public class RecurrencePeriod {
                 Calendar c = Calendar.getInstance();
                 String stopsOnDate = state.get(RecurrenceViewFactory.P_DATE);
                 try {
-                    c.setTime(DateUtils.FORMAT_DATE_RFC_2445.parse(stopsOnDate));
+                    c.setTime(DateUtils.getFORMAT_DATE_RFC_2445().parse(stopsOnDate));
                     c.set(Calendar.HOUR_OF_DAY, startDate.get(Calendar.HOUR_OF_DAY));
                     c.set(Calendar.MINUTE, startDate.get(Calendar.MINUTE));
                     c.set(Calendar.SECOND, startDate.get(Calendar.SECOND));

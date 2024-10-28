@@ -8,6 +8,8 @@
 
 package ru.orangesoftware.financisto.report;
 
+import androidx.annotation.NonNull;
+
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.utils.EntityEnum;
 
@@ -42,4 +44,9 @@ public enum IncomeExpense implements EntityEnum {
         return iconId;
     }
 
+    @NonNull
+    @Override
+    public String getName() {
+        return name();
+    }
 }

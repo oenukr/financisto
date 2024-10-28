@@ -128,7 +128,7 @@ public class RecurrenceActivity extends AbstractActivity {
 
     public void createNodes() {
         layout.removeAllViews();
-        x.addListNode(layout, R.id.recurrence_pattern, R.string.recurrence_pattern, getString(recurrence.pattern.frequency.titleId));
+        x.addListNode(layout, R.id.recurrence_pattern, R.string.recurrence_pattern, getString(recurrence.pattern.frequency.getTitleId()));
         if (recurrencePatternView != null) {
             recurrencePatternView.createNodes(layout);
             startDateView = x.addInfoNode(layout, R.id.start_date, R.string.recurrence_period_starts_on_date,
@@ -136,7 +136,7 @@ public class RecurrenceActivity extends AbstractActivity {
             startTimeView = x.addInfoNode(layout, R.id.start_time, R.string.recurrence_period_starts_on_time,
                     DateUtils.getTimeFormat(this).format(recurrence.getStartDate().getTime()));
             if (recurrence.pattern.frequency != RecurrenceFrequency.GEEKY) {
-                x.addListNode(layout, R.id.recurrence_period, R.string.recurrence_period, getString(recurrence.period.until.titleId));
+                x.addListNode(layout, R.id.recurrence_period, R.string.recurrence_period, getString(recurrence.period.until.getTitleId()));
                 if (recurrencePeriodView != null) {
                     recurrencePeriodView.createNodes(layout);
                 }
@@ -208,7 +208,7 @@ public class RecurrenceActivity extends AbstractActivity {
                         sb.append(n).append("...");
                     }
                     new AlertDialog.Builder(this)
-                            .setTitle(getString(r.pattern.frequency.titleId))
+                            .setTitle(getString(r.pattern.frequency.getTitleId()))
                             .setMessage(sb.toString())
                             .setPositiveButton(R.string.ok, (dialog, which) -> dialog.dismiss())
                             .show();

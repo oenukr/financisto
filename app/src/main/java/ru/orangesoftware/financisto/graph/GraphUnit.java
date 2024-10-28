@@ -53,8 +53,8 @@ public class GraphUnit implements Comparable<GraphUnit>, Iterable<Amount> {
     public void flatten(IncomeExpense incomeExpense) {
         if (amounts.isEmpty()) {
             incomeExpenseAmount.filter(incomeExpense);
-            long income = incomeExpenseAmount.income.longValue();
-            long expense = incomeExpenseAmount.expense.longValue();
+            long income = incomeExpenseAmount.getIncome().longValue();
+            long expense = incomeExpenseAmount.getExpense().longValue();
             addToAmounts(income);
             addToAmounts(expense);
             Collections.sort(amounts);

@@ -12,7 +12,6 @@ package ru.orangesoftware.financisto.widget;
 
 import android.app.Activity;
 import android.app.Dialog;
-import android.app.DialogFragment;
 import android.os.Bundle;
 import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
@@ -25,6 +24,7 @@ import android.widget.LinearLayout.LayoutParams;
 
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.fragment.app.DialogFragment;
 
 import java.math.BigDecimal;
 

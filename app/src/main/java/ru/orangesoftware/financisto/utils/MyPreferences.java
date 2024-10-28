@@ -450,7 +450,10 @@ public class MyPreferences {
 
     private static final String DEFAULT = "default";
 
-    public static Context switchLocale(Context context) {
+    public static Context switchLocale(@Nullable Context context) {
+        if (context == null) {
+            return null;
+        }
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
         String locale = sharedPreferences.getString("ui_language", DEFAULT);
         return switchLocale(context, locale);
@@ -718,7 +721,7 @@ public class MyPreferences {
 
     private static String messageForException(Context context, Exception e) {
         if (e instanceof ImportExportException importExportException) {
-            String message = context.getString(importExportException.errorResId);
+            String message = context.getString(importExportException.getErrorResId());
             if (e.getCause() != null) {
                 message += " - " + e.getCause().getMessage();
             }

@@ -72,8 +72,8 @@ public class QifTransaction {
 
     public void writeTo(QifBufferedWriter qifWriter, QifExportOptions options)
             throws IOException {
-        qifWriter.write("D").write(options.dateFormat.format(date)).newLine();
-        qifWriter.write("T").write(Utils.amountToString(options.currency, amount)).newLine();
+        qifWriter.write("D").write(options.getDateFormat().format(date)).newLine();
+        qifWriter.write("T").write(Utils.amountToString(options.getCurrency(), amount)).newLine();
         if (toAccount != null) {
             qifWriter.write("L[").write(toAccount).write("]").newLine();
         } else if (category != null && project != null) {
@@ -107,7 +107,7 @@ public class QifTransaction {
                 qifWriter.write("S<NO_CATEGORY>").newLine();
             }
         }
-        qifWriter.write("$").write(Utils.amountToString(options.currency, split.amount)).newLine();
+        qifWriter.write("$").write(Utils.amountToString(options.getCurrency(), split.amount)).newLine();
         if (Utils.isNotEmpty(split.memo)) {
             qifWriter.write("E").write(split.memo).newLine();
         }

@@ -105,7 +105,7 @@ public abstract class AbstractExportActivity extends Activity {
 				long periodTo = c.getLongValue2();
 				bPeriod.setText(df.format(new Date(periodFrom))+"-"+df.format(new Date(periodTo)));
 			} else {
-				bPeriod.setText(p.type.titleId);
+				bPeriod.setText(p.getType().titleId);
 			}		
 		}
 	}

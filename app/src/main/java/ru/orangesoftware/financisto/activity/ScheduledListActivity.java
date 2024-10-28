@@ -25,7 +25,6 @@ import ru.orangesoftware.financisto.blotter.BlotterFilter;
 import ru.orangesoftware.financisto.filter.WhereFilter;
 import ru.orangesoftware.financisto.model.TransactionInfo;
 import ru.orangesoftware.financisto.service.RecurrenceScheduler;
-import ru.orangesoftware.financisto.utils.IntegrityCheckInstalledOnSdCard;
 
 public class ScheduledListActivity extends BlotterActivity {
 
@@ -100,7 +99,6 @@ public class ScheduledListActivity extends BlotterActivity {
 
     @Override
     public void integrityCheck() {
-        new IntegrityCheckTask(this).execute(new IntegrityCheckInstalledOnSdCard(this));
     }
 
 }

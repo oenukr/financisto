@@ -161,7 +161,7 @@ public class BlotterFilterActivity extends FilterAbstractActivity {
 				long periodTo = c.getLongValue2();
 				period.setText(df.format(new Date(periodFrom))+"-"+df.format(new Date(periodTo)));
 			} else {
-				period.setText(p.type.titleId);
+				period.setText(p.getType().titleId);
 			}
             showMinusButton(period);
 		} else {
@@ -194,7 +194,7 @@ public class BlotterFilterActivity extends FilterAbstractActivity {
 		Criteria c = filter.get(BlotterFilter.STATUS);
 		if (c != null) {
 			TransactionStatus s = TransactionStatus.valueOf(c.getStringValue());
-			status.setText(getString(s.titleId));
+			status.setText(getString(s.getTitleId()));
             showMinusButton(status);
 		} else {
 			status.setText(R.string.no_filter);

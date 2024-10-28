@@ -116,11 +116,11 @@ public abstract class AbstractPlanner {
     }
 
     private Date getStartDateFromFilter() {
-        return new Date(filter.getDateTime().getPeriod().start);
+        return new Date(filter.getDateTime().getPeriod().getStart());
     }
 
     private Date getEndDateFromFilter() {
-        return new Date(filter.getDateTime().getPeriod().end);
+        return new Date(filter.getDateTime().getPeriod().getEnd());
     }
 
     private boolean insideTheRequiredPeriod(Date startDate, Date endDate, Date date) {

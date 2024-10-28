@@ -1,21 +1,22 @@
 package ru.orangesoftware.financisto.activity;
 
+import static ru.orangesoftware.financisto.activity.CategorySelector.SelectorType.SPLIT;
+
 import android.content.Intent;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.model.Category;
 import ru.orangesoftware.financisto.model.Currency;
 import ru.orangesoftware.financisto.model.TransactionAttribute;
 import ru.orangesoftware.financisto.widget.AmountInput;
 import ru.orangesoftware.financisto.widget.AmountInput_;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import static ru.orangesoftware.financisto.activity.CategorySelector.SelectorType.SPLIT;
 
 public class SplitTransactionActivity extends AbstractSplitActivity implements CategorySelector.CategorySelectorListener {
 
@@ -67,7 +68,7 @@ public class SplitTransactionActivity extends AbstractSplitActivity implements C
         List<TransactionAttribute> attributeList = categorySelector.getAttributes();
         Map<Long, String> attributes = new HashMap<>();
         for (TransactionAttribute ta : attributeList) {
-            attributes.put(ta.attributeId, ta.value);
+            attributes.put(ta.getAttributeId(), ta.getValue());
         }
         return attributes;
     }

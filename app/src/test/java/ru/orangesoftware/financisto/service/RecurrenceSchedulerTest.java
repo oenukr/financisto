@@ -65,7 +65,7 @@ public class RecurrenceSchedulerTest extends AbstractDbTest {
     private void assertRestored(List<TransactionInfo> schedules, long now, long... ids) {
         List<RestoredTransaction> restored = assertRestoredSize(schedules, now, ids.length);
         for (int i = 0; i < ids.length; i++) {
-            assertEquals(ids[i], restored.get(i).transactionId);
+            assertEquals(ids[i], restored.get(i).getTransactionId());
         }
     }
 
@@ -100,7 +100,7 @@ public class RecurrenceSchedulerTest extends AbstractDbTest {
     private TransactionInfo everyDay() {
         TransactionInfo t = new TransactionInfo();
         t.id = 2;
-        t.recurrence = "2010-10-01T00:00:00~DAILY:interval@1#~INDEFINETELY:null";
+        t.recurrence = "2010-10-01T00:00:00~DAILY:interval@1#~INDEFINITELY:null";
         t.lastRecurrence = 1;
         return t;
     }
@@ -108,7 +108,7 @@ public class RecurrenceSchedulerTest extends AbstractDbTest {
     private TransactionInfo everyDayAtNoon() {
         TransactionInfo t = new TransactionInfo();
         t.id = 2;
-        t.recurrence = "2010-10-01T12:00:00~DAILY:interval@1#~INDEFINETELY:null";
+        t.recurrence = "2010-10-01T12:00:00~DAILY:interval@1#~INDEFINITELY:null";
         t.lastRecurrence = 1;
         return t;
     }

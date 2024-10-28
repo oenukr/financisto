@@ -59,14 +59,14 @@ public class AccountListAdapter2 extends ResourceCursorAdapter {
         v.centerView.setText(a.title);
 
         AccountType type = AccountType.valueOf(a.type);
-        if (type.isCard && a.cardIssuer != null) {
+        if (type.isCard() && a.cardIssuer != null) {
             CardIssuer cardIssuer = CardIssuer.valueOf(a.cardIssuer);
-            v.iconView.setImageResource(cardIssuer.iconId);
-        } else if (type.isElectronic && a.cardIssuer != null) {
+            v.iconView.setImageResource(cardIssuer.getIconId());
+        } else if (type.isElectronic() && a.cardIssuer != null) {
             ElectronicPaymentType paymentType = ElectronicPaymentType.valueOf(a.cardIssuer);
-            v.iconView.setImageResource(paymentType.iconId);
+            v.iconView.setImageResource(paymentType.getIconId());
         } else {
-            v.iconView.setImageResource(type.iconId);
+            v.iconView.setImageResource(type.getIconId());
         }
         if (a.isActive) {
             v.iconView.getDrawable().mutate().setAlpha(0xFF);
@@ -84,7 +84,7 @@ public class AccountListAdapter2 extends ResourceCursorAdapter {
             sb.append(" #").append(a.number);
         }
         if (sb.length() == 0) {
-            sb.append(context.getString(type.titleId));
+            sb.append(context.getString(type.getTitleId()));
         }
         v.topView.setText(sb.toString());
 
