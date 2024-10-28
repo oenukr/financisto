@@ -46,7 +46,6 @@ import static ru.orangesoftware.financisto.db.DatabaseHelper.V_BLOTTER;
 import static ru.orangesoftware.financisto.db.DatabaseHelper.V_BLOTTER_FLAT_SPLITS;
 import static ru.orangesoftware.financisto.db.DatabaseHelper.V_BLOTTER_FOR_ACCOUNT_WITH_SPLITS;
 import static ru.orangesoftware.financisto.db.DatabaseHelper.V_CATEGORY;
-import static ru.orangesoftware.financisto.utils.StringUtil.generateQueryPlaceholders;
 
 import android.content.ContentValues;
 import android.content.Context;
@@ -741,7 +740,7 @@ public class DatabaseAdapter extends MyEntityManager {
         SQLiteDatabase db = db();
         List<Long> res = new LinkedList<>();
         try (Cursor c = db.query(V_CATEGORY, new String[]{CategoryViewColumns._id.name()},
-                CategoryViewColumns.left + " IN (" + generateQueryPlaceholders(leftIds.size()) + ")",
+                CategoryViewColumns.left + " IN (" + StringUtil.INSTANCE.generateQueryPlaceholders(leftIds.size()) + ")",
                 ArrUtils.strListToArr(leftIds), null, null, null)) {
             while (c.moveToNext()) {
                 res.add(c.getLong(0));
@@ -825,7 +824,7 @@ public class DatabaseAdapter extends MyEntityManager {
             query += " and (" + CategoryViewColumns.title + " like ? or " + CategoryViewColumns.title + " like ? )";
             args = new String[]{
                     "%" + titleFilter + "%", 
-                    "%" + StringUtil.capitalize(titleFilter.toString()) + "%"};
+                    "%" + StringUtil.INSTANCE.capitalize(titleFilter.toString()) + "%"};
         }
         return db().query(V_CATEGORY, 
                 CategoryViewColumns.NORMAL_PROJECTION,
@@ -1094,7 +1093,7 @@ public class DatabaseAdapter extends MyEntityManager {
                 SMS_TEMPLATES_TABLE,
                 V_CATEGORY,
                 category_id, CategoryViewColumns._id);
-        if (!StringUtil.isEmpty(filter)) {
+        if (!StringUtil.INSTANCE.isEmpty(filter)) {
             nativeQuery += String.format("where t.%s like '%%%s%%' or t.%s like '%%%2$s%%' ",
                     CategoryViewColumns.title, filter, SmsTemplateColumns.template);
         }

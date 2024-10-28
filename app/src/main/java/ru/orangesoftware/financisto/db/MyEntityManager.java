@@ -4,7 +4,6 @@ import static ru.orangesoftware.financisto.db.DatabaseHelper.ACCOUNT_TABLE;
 import static ru.orangesoftware.financisto.db.DatabaseHelper.AccountColumns;
 import static ru.orangesoftware.financisto.db.DatabaseHelper.BUDGET_TABLE;
 import static ru.orangesoftware.financisto.db.DatabaseHelper.CURRENCY_TABLE;
-import static ru.orangesoftware.financisto.utils.StringUtil.capitalize;
 
 import android.content.ContentValues;
 import android.content.Context;
@@ -69,11 +68,11 @@ public abstract class MyEntityManager extends EntityManager {
         if (onlyActive) {
             whereEx = Expressions.and(include0Ex, Expressions.eq("isActive", 1));
         }
-        if (!StringUtil.isEmpty(titleLike)) {
+        if (!StringUtil.INSTANCE.isEmpty(titleLike)) {
             titleLike = titleLike.replace(" ", "%");
             whereEx = Expressions.and(whereEx, Expressions.or(
                     Expressions.like("title", "%" + titleLike + "%"),
-                    Expressions.like("title", "%" + capitalize(titleLike) + "%")
+                    Expressions.like("title", "%" + StringUtil.INSTANCE.capitalize(titleLike) + "%")
             ));
         }
         q.where(whereEx);
@@ -527,8 +526,8 @@ public abstract class MyEntityManager extends EntityManager {
         return filterAllEntities(Payee.class, constraint);
     }
 
-    public <T extends MyEntity> Cursor filterAllEntities(Class<T> entityClass, String titleFilter) {
-        return queryEntities(entityClass, StringUtil.emptyIfNull(titleFilter), false, false);
+    public <T extends MyEntity> Cursor filterAllEntities(Class<T> entityClass, @Nullable String titleFilter) {
+        return queryEntities(entityClass, StringUtil.INSTANCE.emptyIfNull(titleFilter), false, false);
     }
 
     public List<Transaction> getSplitsForTransaction(long transactionId) {

@@ -137,7 +137,7 @@ public class TransactionUtils {
 
         @Override
         public Cursor runQueryOnBackgroundThread(CharSequence constraint) {
-            if (constraint == null || StringUtil.isEmpty(constraint.toString())) {
+            if (constraint == null || StringUtil.INSTANCE.isEmpty(constraint.toString())) {
                 return getAllRows();
             } else {
                 return filterRows(constraint);

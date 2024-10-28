@@ -327,7 +327,7 @@ public class WhereFilter {
 		IN("IN (?)") {
 			@Override
 			public String getOp(int operands) {
-				return super.getOp(operands).replace("?", StringUtil.generateSeparated("?", ",", operands));
+				return super.getOp(operands).replace("?", StringUtil.INSTANCE.generateSeparated("?", ",", operands));
 			}
 		}, 
 		ISNULL("is NULL"), LIKE("LIKE ?");

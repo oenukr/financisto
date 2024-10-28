@@ -74,7 +74,7 @@ public class OpenExchangeRatesDownloader extends AbstractMultipleRatesDownloader
     }
 
     private boolean appIdIsNotSet() {
-        return StringUtil.isEmpty(appId);
+        return StringUtil.INSTANCE.isEmpty(appId);
     }
 
     private String getLatestUrl() {

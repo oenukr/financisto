@@ -122,7 +122,7 @@ public class SmsDragListActivity extends AppCompatActivity {
                 cursorSource.setConstraint(newText);
                 adapter.reloadAsyncSource();
                 
-                if (!StringUtil.isEmpty(newText)) {
+                if (!StringUtil.INSTANCE.isEmpty(newText)) {
                     Log.i(TAG, "filtered by `" + newText + "`");
 //                    Toast.makeText(SmsDragListActivity.this, "filtered by '" + newText + "'", Toast.LENGTH_SHORT).show();
                 }

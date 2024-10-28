@@ -196,7 +196,7 @@ public class BlotterListAdapter extends ResourceCursorAdapter {
             } else {
                 long date = cursor.getLong(BlotterColumns.datetime.ordinal());
                 dt.setTime(date);
-                v.bottomView.setText(StringUtil.capitalize(DateUtils.formatDateTime(context, dt.getTime(),
+                v.bottomView.setText(StringUtil.INSTANCE.capitalize(DateUtils.formatDateTime(context, dt.getTime(),
                         DateUtils.FORMAT_SHOW_DATE | DateUtils.FORMAT_SHOW_TIME | DateUtils.FORMAT_ABBREV_MONTH | DateUtils.FORMAT_SHOW_WEEKDAY | DateUtils.FORMAT_ABBREV_WEEKDAY)));
 
                 if (isTemplate == 0 && date > System.currentTimeMillis()) {

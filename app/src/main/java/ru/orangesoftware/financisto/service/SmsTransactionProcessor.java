@@ -153,7 +153,7 @@ public class SmsTransactionProcessor {
     private long findAccountByCardNumber(String accountEnding) {
         long res = -1;
 
-        if (!StringUtil.isEmpty(accountEnding)) {
+        if (!StringUtil.INSTANCE.isEmpty(accountEnding)) {
             List<Long> accountIds = db.findAccountsByNumber(accountEnding);
             if (!accountIds.isEmpty()) {
                 res = accountIds.get(0);
@@ -201,7 +201,7 @@ public class SmsTransactionProcessor {
         String res = template;
         for (Placeholder ph : Placeholder.values()) {
             for (String synonym : ph.synonyms) {
-                res = StringUtil.replaceAllIgnoreCase(res, synonym, ph.code);
+                res = StringUtil.INSTANCE.replaceAllIgnoreCase(res, synonym, ph.code);
             }
         }
         return res;
