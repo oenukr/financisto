@@ -2,6 +2,12 @@ package ru.orangesoftware.financisto.utils
 
 import java.util.Locale
 
+object StringUtils {
+    fun String.capitalize(): String = replaceFirstChar {
+        if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
+    }
+}
+
 object StringUtil {
 
     fun capitalize(str: String?): String? = if (str.isNullOrEmpty()) {
@@ -17,7 +23,6 @@ object StringUtil {
     fun emptyIfNull(str: CharSequence?): String = str?.toString() ?: ""
 
     fun generateQueryPlaceholders(num: Int): String = generateSeparated("?", ",", num)
-
     
     fun generateSeparated(value: String, delim: String, num: Int): String {
         val res: StringBuilder = StringBuilder(value)

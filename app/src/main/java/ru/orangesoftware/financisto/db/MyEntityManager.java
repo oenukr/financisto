@@ -526,7 +526,7 @@ public abstract class MyEntityManager extends EntityManager {
         return filterAllEntities(Payee.class, constraint);
     }
 
-    public <T extends MyEntity> Cursor filterAllEntities(Class<T> entityClass, String titleFilter) {
+    public <T extends MyEntity> Cursor filterAllEntities(Class<T> entityClass, @Nullable String titleFilter) {
         return queryEntities(entityClass, StringUtil.INSTANCE.emptyIfNull(titleFilter), false, false);
     }
 

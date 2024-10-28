@@ -8,7 +8,8 @@ import android.widget.ViewFlipper
 class MyViewFlipper @JvmOverloads constructor(
 	context: Context,
 	attrs: AttributeSet,
-) : ViewFlipper(context, attrs,) {
+	defStyleAttr: Int = 0
+) : ViewFlipper(context, attrs) {
 
 	override fun onDetachedFromWindow() {
 		try {
