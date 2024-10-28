@@ -214,7 +214,7 @@ public class CalculatorInput extends DialogFragment {
     }
 
     private BigDecimal asNumber(String s) {
-        if (StringUtil.isEmpty(s)) {
+        if (StringUtil.INSTANCE.isEmpty(s)) {
             return BigDecimal.ZERO;
         }
         return new BigDecimal(s);

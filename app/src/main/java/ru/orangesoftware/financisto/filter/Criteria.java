@@ -161,7 +161,7 @@ public class Criteria {
         if (operation.getGroupOp() != null && getValues().length > operation.getValsPerGroup()) {
             int groupNum = getValues().length / operation.getValsPerGroup();
             String groupDelim = " " + operation.getGroupOp() + " ";
-            return  "(" + StringUtil.generateSeparated(exp, groupDelim, groupNum) + ")";
+            return  "(" + StringUtil.INSTANCE.generateSeparated(exp, groupDelim, groupNum) + ")";
         }
         return exp;
     }
