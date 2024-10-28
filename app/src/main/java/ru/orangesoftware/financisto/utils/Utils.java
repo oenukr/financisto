@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
-import android.content.res.Resources;
 import android.database.Cursor;
 import android.graphics.drawable.Drawable;
 import android.location.Location;
@@ -44,7 +43,6 @@ public class Utils {
     public final int splitColor;
 
     public Utils(Context context) {
-        Resources r = context.getResources();
         this.zeroColor = ContextCompat.getColor(context, android.R.color.secondary_text_dark);
         this.positiveColor = ContextCompat.getColor(context, R.color.positive_amount);
         this.negativeColor = ContextCompat.getColor(context, R.color.negative_amount);

@@ -26,7 +26,7 @@ public class IntegrityCheckAutobackupTest extends AbstractDbTest {
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        integrity = new IntegrityCheckAutobackup(getContext(), TimeUnit.MILLISECONDS.toMillis(100));
+        integrity = new IntegrityCheckAutobackup(TimeUnit.MILLISECONDS.toMillis(100));
     }
 
     @Test
@@ -36,25 +36,25 @@ public class IntegrityCheckAutobackupTest extends AbstractDbTest {
         givenAutobackupEnabledIs(false);
 
         givenFirstRunAfterRelease();
-        assertEquals(IntegrityCheck.Level.OK, integrity.check().level);
+        assertEquals(IntegrityCheck.Level.OK, integrity.check(getContext()).getLevel());
 
         sleepMillis(50);
-        assertEquals(IntegrityCheck.Level.OK, integrity.check().level);
+        assertEquals(IntegrityCheck.Level.OK, integrity.check(getContext()).getLevel());
         sleepMillis(51);
         // raise the info notification
-        assertEquals(IntegrityCheck.Level.INFO, integrity.check().level);
+        assertEquals(IntegrityCheck.Level.INFO, integrity.check(getContext()).getLevel());
         // and reset the check at the same time
-        assertEquals(IntegrityCheck.Level.OK, integrity.check().level);
+        assertEquals(IntegrityCheck.Level.OK, integrity.check(getContext()).getLevel());
 
         givenAutobackupEnabledIs(true);
         sleepMillis(101);
-        assertEquals(IntegrityCheck.Level.OK, integrity.check().level);
+        assertEquals(IntegrityCheck.Level.OK, integrity.check(getContext()).getLevel());
 
         // when reminder is disabled
         givenAutobackupReminderEnabledIs(false);
         givenAutobackupEnabledIs(false);
         sleepMillis(101);
-        assertEquals(IntegrityCheck.Level.OK, integrity.check().level);
+        assertEquals(IntegrityCheck.Level.OK, integrity.check(getContext()).getLevel());
     }
 
     @Test
@@ -64,22 +64,22 @@ public class IntegrityCheckAutobackupTest extends AbstractDbTest {
         givenAutobackupEnabledIs(true);
 
         givenFirstRunAfterRelease();
-        assertEquals(IntegrityCheck.Level.OK, integrity.check().level);
+        assertEquals(IntegrityCheck.Level.OK, integrity.check(getContext()).getLevel());
 
         givenTheLastAutobackupHasFailed();
         // raise the info notification
-        assertEquals(IntegrityCheck.Level.ERROR, integrity.check().level);
+        assertEquals(IntegrityCheck.Level.ERROR, integrity.check(getContext()).getLevel());
         // and reset the check at the same time
-        assertEquals(IntegrityCheck.Level.OK, integrity.check().level);
+        assertEquals(IntegrityCheck.Level.OK, integrity.check(getContext()).getLevel());
 
         givenTheLastAutobackupHasFailed();
         givenTheLastAutobackupHasSucceeded();
-        assertEquals(IntegrityCheck.Level.OK, integrity.check().level);
+        assertEquals(IntegrityCheck.Level.OK, integrity.check(getContext()).getLevel());
 
         // when reminder is disabled
         givenAutobackupWarningEnabledIs(false);
         givenTheLastAutobackupHasFailed();
-        assertEquals(IntegrityCheck.Level.OK, integrity.check().level);
+        assertEquals(IntegrityCheck.Level.OK, integrity.check(getContext()).getLevel());
     }
 
     private void givenTheLastAutobackupHasSucceeded() {

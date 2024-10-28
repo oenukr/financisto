@@ -87,7 +87,7 @@ public class BlotterListAdapter extends ResourceCursorAdapter {
         int count = statuses.length;
         int[] colors = new int[count];
         for (int i = 0; i < count; i++) {
-            colors[i] = ContextCompat.getColor(context, statuses[i].colorId);
+            colors[i] = ContextCompat.getColor(context, statuses[i].getColorId());
         }
         return colors;
     }

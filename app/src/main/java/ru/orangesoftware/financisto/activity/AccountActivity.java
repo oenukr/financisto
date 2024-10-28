@@ -200,15 +200,15 @@ public class AccountActivity extends AbstractActivity {
                 return;
             }
             AccountType type = AccountType.valueOf(account.type);
-            if (type.hasIssuer) {
+            if (type.getHasIssuer()) {
                 account.issuer = Utils.text(issuerName);
             }
-            if (type.hasNumber) {
+            if (type.getHasNumber()) {
                 account.number = Utils.text(numberText);
             }
 
             /********** validate closing and payment days **********/
-            if (type.isCreditCard) {
+            if (type.isCreditCard()) {
                 String closingDay = Utils.text(closingDayText);
                 account.closingDay = closingDay == null ? 0 : Integer.parseInt(closingDay);
                 if (account.closingDay != 0) {
@@ -327,22 +327,22 @@ public class AccountActivity extends AbstractActivity {
 
     private void selectAccountType(AccountType type) {
         ImageView icon = accountTypeNode.findViewById(R.id.icon);
-        icon.setImageResource(type.iconId);
+        icon.setImageResource(type.getIconId());
         TextView label = accountTypeNode.findViewById(R.id.label);
-        label.setText(type.titleId);
+        label.setText(type.getTitleId());
 
-        setVisibility(cardIssuerNode, type.isCard ? View.VISIBLE : View.GONE);
-        setVisibility(issuerNode, type.hasIssuer ? View.VISIBLE : View.GONE);
-        setVisibility(electronicPaymentNode, type.isElectronic ? View.VISIBLE : View.GONE);
-        setVisibility(numberNode, type.hasNumber ? View.VISIBLE : View.GONE);
-        setVisibility(closingDayNode, type.isCreditCard ? View.VISIBLE : View.GONE);
-        setVisibility(paymentDayNode, type.isCreditCard ? View.VISIBLE : View.GONE);
+        setVisibility(cardIssuerNode, type.isCard() ? View.VISIBLE : View.GONE);
+        setVisibility(issuerNode, type.getHasIssuer() ? View.VISIBLE : View.GONE);
+        setVisibility(electronicPaymentNode, type.isElectronic() ? View.VISIBLE : View.GONE);
+        setVisibility(numberNode, type.getHasNumber() ? View.VISIBLE : View.GONE);
+        setVisibility(closingDayNode, type.isCreditCard() ? View.VISIBLE : View.GONE);
+        setVisibility(paymentDayNode, type.isCreditCard() ? View.VISIBLE : View.GONE);
 
         setVisibility(limitAmountView, type == AccountType.CREDIT_CARD ? View.VISIBLE : View.GONE);
         account.type = type.name();
-        if (type.isCard) {
+        if (type.isCard()) {
             selectCardIssuer(selectEnum(CardIssuer.class, account.cardIssuer, CardIssuer.DEFAULT));
-        } else if (type.isElectronic) {
+        } else if (type.isElectronic()) {
             selectElectronicType(selectEnum(ElectronicPaymentType.class, account.cardIssuer, ElectronicPaymentType.PAYPAL));
         } else {
             account.cardIssuer = null;

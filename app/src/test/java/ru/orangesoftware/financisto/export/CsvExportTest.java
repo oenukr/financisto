@@ -49,13 +49,13 @@ public class CsvExportTest extends AbstractExportTest<CsvExport, CsvExportOption
 
     @Test
     public void should_include_header() throws Exception {
-        CsvExportOptions options = new CsvExportOptions(Currency.EMPTY, ',', true, false, false, WhereFilter.empty(), false);
+        CsvExportOptions options = new CsvExportOptions(CurrencyCache.createCurrencyFormat(Currency.EMPTY), ',', true, false, false, WhereFilter.empty(), false);
         assertEquals("date,time,account,amount,currency,original amount,original currency,category,parent,payee,location,project,note\n", exportAsString(options));
     }
 
     @Test
     public void should_export_regular_transaction() throws Exception {
-        CsvExportOptions options = new CsvExportOptions(createExportCurrency(), ',', false, false, false, WhereFilter.empty(), false);
+        CsvExportOptions options = new CsvExportOptions(CurrencyCache.createCurrencyFormat(createExportCurrency()), ',', false, false, false, WhereFilter.empty(), false);
         TransactionBuilder.withDb(db).dateTime(DateTime.date(2011, 8, 3).at(22, 34, 55, 10))
                 .account(a1).amount(-123456).category(categoriesMap.get("AA1")).payee("P1").location("Home").project("P1").note("My note").create();
         TransactionBuilder.withDb(db).dateTime(DateTime.date(2011, 8, 4).at(23, 34, 55, 10))
@@ -68,7 +68,7 @@ public class CsvExportTest extends AbstractExportTest<CsvExport, CsvExportOption
 
     @Test
     public void should_export_regular_transfer() throws Exception {
-        CsvExportOptions options = new CsvExportOptions(createExportCurrency(), ',', false, false, false, WhereFilter.empty(), false);
+        CsvExportOptions options = new CsvExportOptions(CurrencyCache.createCurrencyFormat(createExportCurrency()), ',', false, false, false, WhereFilter.empty(), false);
         TransferBuilder.withDb(db).dateTime(DateTime.date(2011, 8, 3).at(22, 46, 0, 0))
                 .fromAccount(a1).fromAmount(-450000).toAccount(a2).toAmount(25600).create();
         assertEquals(
@@ -79,7 +79,7 @@ public class CsvExportTest extends AbstractExportTest<CsvExport, CsvExportOption
 
     @Test
     public void should_export_split_transaction() throws Exception {
-        CsvExportOptions options = new CsvExportOptions(createExportCurrency(), ',', false, true, false, WhereFilter.empty(), false);
+        CsvExportOptions options = new CsvExportOptions(CurrencyCache.createCurrencyFormat(createExportCurrency()), ',', false, true, false, WhereFilter.empty(), false);
         TransactionBuilder.withDb(db).dateTime(DateTime.date(2011, 8, 3).at(22, 34, 55, 10))
                 .account(a1).amount(-2000).payee("P1").location("Home").project("R1").note("My note")
                 .withSplit(categoriesMap.get("A1"), -500)
@@ -94,7 +94,7 @@ public class CsvExportTest extends AbstractExportTest<CsvExport, CsvExportOption
 
     @Test
     public void should_export_split_transfer() throws Exception {
-        CsvExportOptions options = new CsvExportOptions(createExportCurrency(), ',', false, true, false, WhereFilter.empty(), false);
+        CsvExportOptions options = new CsvExportOptions(CurrencyCache.createCurrencyFormat(createExportCurrency()), ',', false, true, false, WhereFilter.empty(), false);
         TransactionBuilder.withDb(db).dateTime(DateTime.date(2011, 8, 3).at(22, 34, 55, 10))
                 .account(a1).amount(-500).payee("P1").location("Home").project("R1").note("My note")
                 .withTransferSplit(a2, -500, +100)
@@ -108,7 +108,7 @@ public class CsvExportTest extends AbstractExportTest<CsvExport, CsvExportOption
 
     @Test
     public void should_not_export_split_transactions_if_not_set_in_options() throws Exception {
-        CsvExportOptions options = new CsvExportOptions(createExportCurrency(), ',', false, false, false, WhereFilter.empty(), false);
+        CsvExportOptions options = new CsvExportOptions(CurrencyCache.createCurrencyFormat(createExportCurrency()), ',', false, false, false, WhereFilter.empty(), false);
         TransactionBuilder.withDb(db).dateTime(DateTime.date(2011, 8, 3).at(22, 34, 55, 10))
                 .account(a1).amount(-2000).payee("P1").location("Home").project("R1").note("My note")
                 .withSplit(categoriesMap.get("A1"), -500)

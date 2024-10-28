@@ -1,7 +1,6 @@
 package ru.orangesoftware.financisto.widget;
 
 import android.app.Dialog;
-import android.app.DialogFragment;
 import android.os.Bundle;
 import android.os.Vibrator;
 import android.view.View;
@@ -10,6 +9,7 @@ import android.widget.Button;
 import android.widget.TextView;
 
 import androidx.core.content.ContextCompat;
+import androidx.fragment.app.DialogFragment;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;

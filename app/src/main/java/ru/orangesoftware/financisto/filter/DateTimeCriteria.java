@@ -48,7 +48,7 @@ public class DateTimeCriteria extends Criteria {
     private final Period period;
 
     public DateTimeCriteria(Period period) {
-        super(BlotterFilter.DATETIME, WhereFilter.Operation.BTW, String.valueOf(period.start), String.valueOf(period.end));
+        super(BlotterFilter.DATETIME, WhereFilter.Operation.BTW, String.valueOf(period.getStart()), String.valueOf(period.getEnd()));
         this.period = period;
     }
 
@@ -63,11 +63,11 @@ public class DateTimeCriteria extends Criteria {
     public String toStringExtra() {
         StringBuilder sb = new StringBuilder();
         sb.append(BlotterFilter.DATETIME).append(",#,");
-        sb.append(period.type.name());
+        sb.append(period.getType().name());
         if (period.isCustom()) {
             sb.append(",");
-            sb.append(period.start).append(",");
-            sb.append(period.end);
+            sb.append(period.getStart()).append(",");
+            sb.append(period.getEnd());
         }
         return sb.toString();
     }

@@ -8,6 +8,8 @@
 
 package ru.orangesoftware.financisto.rates;
 
+import androidx.annotation.NonNull;
+
 import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -55,8 +57,9 @@ public class HistoryExchangeRates implements ExchangeRateProvider, ExchangeRates
         return rates.first();
     }
 
+    @NonNull
     @Override
-    public List<ExchangeRate> getRates(List<Currency> currencies) {
+    public List<ExchangeRate> getRates(@NonNull List<? extends Currency> currencies) {
         throw new UnsupportedOperationException();
     }
 

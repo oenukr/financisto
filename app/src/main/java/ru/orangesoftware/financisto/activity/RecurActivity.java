@@ -196,7 +196,7 @@ public class RecurActivity extends FragmentActivity {
         for (int i = 0; i < length; i++) {
             LocalizableEnum x = a[i];
             String title = getString(x.getTitleId());
-            String value = x.name();
+            String value = x.getName();
             items[i] = new SpinnerItem(title, value);
         }
         ArrayAdapter<SpinnerItem> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, items);

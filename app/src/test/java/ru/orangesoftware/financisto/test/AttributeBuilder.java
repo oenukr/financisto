@@ -41,10 +41,11 @@ public class AttributeBuilder {
     }
 
     public static TransactionAttribute attributeValue(Attribute a, String value) {
-        TransactionAttribute ta = new TransactionAttribute();
-        ta.attributeId = a.id;
-        ta.value = value;
-        return ta;
+        return new TransactionAttribute(
+                a.id,
+                null,
+                value
+        );
     }
 
 }

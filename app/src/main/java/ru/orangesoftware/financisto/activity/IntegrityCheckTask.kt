@@ -19,8 +19,9 @@ class IntegrityCheckTask(
 
     override fun doInBackground(vararg params: IntegrityCheck): IntegrityCheck.Result {
         val textView = getResultView()
-        if (textView != null) {
-            return params[0].check()
+        val context = activity.get()?.baseContext
+        if (textView != null && context != null) {
+            return params[0].check(context)
         }
         return IntegrityCheck.Result.OK
     }

@@ -260,7 +260,7 @@ public class GoogleDriveClient {
     private void handleError(Exception e) {
         if (e instanceof ImportExportException) {
             ImportExportException importExportException = (ImportExportException) e;
-            bus.post(new DriveBackupError(context.getString(importExportException.errorResId)));
+            bus.post(new DriveBackupError(context.getString(importExportException.getErrorResId())));
         } else {
             bus.post(new DriveBackupError(e.getMessage()));
         }

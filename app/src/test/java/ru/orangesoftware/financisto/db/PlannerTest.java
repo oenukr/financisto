@@ -1,5 +1,12 @@
 package ru.orangesoftware.financisto.db;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static ru.orangesoftware.financisto.test.DateTime.NULL_DATE;
+import static ru.orangesoftware.financisto.test.DateTime.date;
+
 import android.util.Log;
 
 import org.junit.Test;
@@ -28,10 +35,6 @@ import ru.orangesoftware.financisto.utils.FuturePlanner;
 import ru.orangesoftware.financisto.utils.MonthlyViewPlanner;
 import ru.orangesoftware.financisto.utils.TransactionList;
 import ru.orangesoftware.financisto.utils.Utils;
-
-import static org.junit.Assert.*;
-import static ru.orangesoftware.financisto.test.DateTime.NULL_DATE;
-import static ru.orangesoftware.financisto.test.DateTime.date;
 
 public class PlannerTest extends AbstractDbTest {
 
@@ -81,8 +84,8 @@ public class PlannerTest extends AbstractDbTest {
         //16 2011-08-16 +40            r2
         MonthlyViewPlanner planner = new MonthlyViewPlanner(db, a1, false, from, to, now);
         TransactionList list = planner.getPlannedTransactionsWithTotals();
-        logTransactions(list.transactions);
-        assertTransactions(list.transactions,
+        logTransactions(list.getTransactions());
+        assertTransactions(list.getTransactions(),
                 date(2011, 8, 8), 1000,
                 date(2011, 8, 9), -100,
                 date(2011, 8, 9), 40,
@@ -101,7 +104,7 @@ public class PlannerTest extends AbstractDbTest {
                 date(2011, 8, 16), -50,
                 date(2011, 8, 16), 40
         );
-        assertAmount(447, a1.currency, list.totals[0]);
+        assertAmount(447, a1.currency, list.getTotals()[0]);
     }
 
     @Test
@@ -109,7 +112,7 @@ public class PlannerTest extends AbstractDbTest {
         prepareData();
         MonthlyViewPlanner planner = new MonthlyViewPlanner(db, a1, true, from, to, now);
         TransactionList statement = planner.getCreditCardStatement();
-        List<TransactionInfo> transactions = statement.transactions;
+        List<TransactionInfo> transactions = statement.getTransactions();
         logTransactions(transactions);
         assertTransactions(transactions,
                 //payments
@@ -137,7 +140,7 @@ public class PlannerTest extends AbstractDbTest {
                 date(2011, 8, 16), -50
         );
         // 400 gets excluded as payment
-        assertAmount(47, a1.currency, statement.totals[0]);
+        assertAmount(47, a1.currency, statement.getTotals()[0]);
     }
 
     @Test
@@ -206,7 +209,7 @@ public class PlannerTest extends AbstractDbTest {
         prepareData();
         TransactionList transactions = planTransactions(date(2011, 7, 1), date(2011, 7, 19));
         // well, this is going to be impossible to re-verify if something breaks :)
-        assertTransactions2(transactions.transactions,
+        assertTransactions2(transactions.getTransactions(),
                 0, date(2011, 7, 1), -50, "x1",
                 1, date(2011, 7, 3), -50, "x1",
                 2, date(2011, 7, 5), -50, "x1",
@@ -218,15 +221,15 @@ public class PlannerTest extends AbstractDbTest {
                 8, date(2011, 7, 15), -50, "x1",
                 9, date(2011, 7, 17), -50, "x1",
                 10, date(2011, 7, 19), -50, "x1");
-        assertTrue(transactions.totals[0].isError());
+        assertTrue(transactions.getTotals()[0].isError());
 
         RateBuilder.withDb(db).from(c1).to(c2).at(DateTime.date(2011, 7, 1)).rate(2.0f).create();
         transactions = planTransactions(date(2011, 7, 1), date(2011, 7, 19));
-        assertFalse(transactions.totals[0].isError());
-        assertAmount(2 * 122, 10 * (-50), homeCurrency, transactions.totals[0]);
+        assertFalse(transactions.getTotals()[0].isError());
+        assertAmount(2 * 122, 10 * (-50), homeCurrency, transactions.getTotals()[0]);
 
         transactions = planTransactions(date(2011, 7, 20), date(2011, 8, 4));
-        assertTransactions2(transactions.transactions,
+        assertTransactions2(transactions.getTransactions(),
                 11, date(2011, 7, 21), -50, "x1",
                 12, date(2011, 7, 23), -50, "x1",
                 13, date(2011, 7, 25), -50, "x1",
@@ -240,7 +243,7 @@ public class PlannerTest extends AbstractDbTest {
                 21, date(2011, 8, 4), -50, "x1");
 
         transactions = planTransactions(date(2011, 8, 5), date(2011, 8, 15));
-        assertTransactions2(transactions.transactions,
+        assertTransactions2(transactions.getTransactions(),
                 22, date(2011, 8, 5), -600, "r4",
                 23, date(2011, 8, 5), -120, "r6",
                 24, date(2011, 8, 6), -50, "r1",
@@ -277,7 +280,7 @@ public class PlannerTest extends AbstractDbTest {
         filter.put(new DateTimeCriteria(now.getTime(), to.getTime()));
         FuturePlanner planner = new FuturePlanner(db, filter, now);
         TransactionList data = planner.getPlannedTransactionsWithTotals();
-        logTransactions(data.transactions);
+        logTransactions(data.getTransactions());
         return data;
     }
 
@@ -329,20 +332,20 @@ public class PlannerTest extends AbstractDbTest {
 
         //scheduled recur
         //r1
-        TransactionBuilder.withDb(db).scheduleRecur("2011-08-02T21:40:00~DAILY:interval@2#~INDEFINETELY:null")
+        TransactionBuilder.withDb(db).scheduleRecur("2011-08-02T21:40:00~DAILY:interval@2#~INDEFINITELY:null")
                 .account(a1).amount(-50).note("r1").create();
         //r2
-        TransactionBuilder.withDb(db).scheduleRecur("2011-08-02T23:00:00~WEEKLY:days@TUE#interval@1#~INDEFINETELY:null")
+        TransactionBuilder.withDb(db).scheduleRecur("2011-08-02T23:00:00~WEEKLY:days@TUE#interval@1#~INDEFINITELY:null")
                 .account(a1).amount(+40).note("r2").create();
 
         //this should not be included because the account is differ
-        TransactionBuilder.withDb(db).scheduleRecur("2011-07-01T21:40:00~DAILY:interval@2#~INDEFINETELY:null")
+        TransactionBuilder.withDb(db).scheduleRecur("2011-07-01T21:40:00~DAILY:interval@2#~INDEFINITELY:null")
                 .account(a2).amount(-50).note("x1").create();
 
         //these should not be included because the date is out of picture
         TransactionBuilder.withDb(db).scheduleOnce(date(2011, 10, 14).at(13, 0, 0, 0))
                 .account(a1).amount(-500).note("x2?").create();
-        TransactionBuilder.withDb(db).scheduleRecur("2011-10-01T21:40:00~DAILY:interval@2#~INDEFINETELY:null")
+        TransactionBuilder.withDb(db).scheduleRecur("2011-10-01T21:40:00~DAILY:interval@2#~INDEFINITELY:null")
                 .account(a1).amount(-500).note("x3?").create();
 
         //this is a scheduled transfer which should appear in the monthly view
@@ -350,7 +353,7 @@ public class PlannerTest extends AbstractDbTest {
         TransferBuilder.withDb(db).scheduleOnce(date(2011, 8, 15).at(13, 0, 0, 0))
                 .fromAccount(a1).fromAmount(-210).toAccount(a2).toAmount(51).note("r3").create();
         //r4
-        TransferBuilder.withDb(db).scheduleRecur("2011-08-02T21:20:00~WEEKLY:days@FRI#interval@1#~INDEFINETELY:null")
+        TransferBuilder.withDb(db).scheduleRecur("2011-08-02T21:20:00~WEEKLY:days@FRI#interval@1#~INDEFINITELY:null")
                 .fromAccount(a2).fromAmount(-600).toAccount(a1).toAmount(52).note("r4").create();
 
         //this is a scheduled split with a transfer which should appear in the monthly view
@@ -362,7 +365,7 @@ public class PlannerTest extends AbstractDbTest {
                 .note("r5")
                 .create();
         //r6
-        TransactionBuilder.withDb(db).scheduleRecur("2011-08-02T22:30:00~WEEKLY:days@FRI#interval@1#~INDEFINETELY:null")
+        TransactionBuilder.withDb(db).scheduleRecur("2011-08-02T22:30:00~WEEKLY:days@FRI#interval@1#~INDEFINITELY:null")
                 .account(a2).amount(-120)
                 .withSplit(categoriesMap.get("B"), -20, "r6-s1")
                 .withTransferSplit(a1, -88, 30, "r6-s2")

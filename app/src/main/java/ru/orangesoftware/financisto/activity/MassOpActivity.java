@@ -11,6 +11,8 @@ import android.widget.ListAdapter;
 import android.widget.Spinner;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+
 import java.util.Arrays;
 
 import ru.orangesoftware.financisto.R;
@@ -123,6 +125,12 @@ public class MassOpActivity extends BlotterActivity {
 		@Override
 		public int getTitleId() {
 			return titleId;
+		}
+
+		@NonNull
+		@Override
+		public String getName() {
+			return name();
 		}
 	}
 	

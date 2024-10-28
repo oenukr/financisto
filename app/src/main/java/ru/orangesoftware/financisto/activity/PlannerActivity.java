@@ -79,7 +79,7 @@ public class PlannerActivity extends AbstractListActivity {
         long now = System.currentTimeMillis();
         if (now > criteria.getLongValue1()) {
             Period period = criteria.getPeriod();
-            period.start = now;
+            period.setStart(now);
             criteria = new DateTimeCriteria(period);
         }
         filter.put(criteria);
@@ -159,9 +159,9 @@ public class PlannerActivity extends AbstractListActivity {
 
         @Override
         protected void onPostExecute(TransactionList data) {
-            ScheduledListAdapter adapter = new ScheduledListAdapter(PlannerActivity.this, data.transactions);
+            ScheduledListAdapter adapter = new ScheduledListAdapter(PlannerActivity.this, data.getTransactions());
             setListAdapter(adapter);
-            setTotals(data.totals);
+            setTotals(data.getTotals());
             updateFilterText(filter);
         }
 

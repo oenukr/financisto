@@ -18,18 +18,6 @@ public class Expressions {
 		return new Eq(field, value);
 	}
 	
-	public static Expression neq(String field, Object value) {
-		return new Neq(field, value);
-	}
-
-	public static Expression not(Expression e) {
-		return new Not(e);
-	}
-
-	public static Expression and(Expression e) {
-		return new And(e);
-	}
-	
 	public static Expression and(Expression... ee) {
 		return new And(ee);
 	}

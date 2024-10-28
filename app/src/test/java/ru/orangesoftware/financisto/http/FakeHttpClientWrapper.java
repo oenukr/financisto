@@ -1,5 +1,7 @@
 package ru.orangesoftware.financisto.http;
 
+import androidx.annotation.NonNull;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -13,7 +15,7 @@ public class FakeHttpClientWrapper extends HttpClientWrapper {
     }
 
     @Override
-    public String getAsString(String url) throws Exception {
+    public String getAsString(@NonNull String url) throws Exception {
         if (error != null) {
             throw error;
         }

@@ -10,8 +10,8 @@
  ******************************************************************************/
 package ru.orangesoftware.financisto.export.csv;
 
-import static ru.orangesoftware.financisto.datetime.DateUtils.FORMAT_DATE_ISO_8601;
-import static ru.orangesoftware.financisto.datetime.DateUtils.FORMAT_TIME_ISO_8601;
+import static ru.orangesoftware.financisto.datetime.DateUtils.getFORMAT_DATE_ISO_8601;
+import static ru.orangesoftware.financisto.datetime.DateUtils.getFORMAT_TIME_ISO_8601;
 
 import android.content.Context;
 import android.database.Cursor;
@@ -70,15 +70,15 @@ public class CsvExport extends Export {
 
     @Override
     protected void writeHeader(BufferedWriter bw) throws IOException {
-        if (options.writeUtfBom) {
+        if (options.getWriteUtfBom()) {
             byte[] bom = new byte[3];
             bom[0] = (byte) 0xEF;
             bom[1] = (byte) 0xBB;
             bom[2] = (byte) 0xBF;
             bw.write(new String(bom, StandardCharsets.UTF_8));
         }
-        if (options.includeHeader) {
-            Csv.Writer w = new Csv.Writer(bw).delimiter(options.fieldSeparator);
+        if (options.getIncludeHeader()) {
+            Csv.Writer w = new Csv.Writer(bw).delimiter(options.getFieldSeparator());
             for (String h : HEADER) {
                 w.value(h);
             }
@@ -88,14 +88,14 @@ public class CsvExport extends Export {
 
     @Override
     protected void writeBody(BufferedWriter bw) throws IOException {
-        Csv.Writer w = new Csv.Writer(bw).delimiter(options.fieldSeparator);
+        Csv.Writer w = new Csv.Writer(bw).delimiter(options.getFieldSeparator());
         try {
             accountsMap = db.getAllAccountsMap();
             categoriesMap = db.getAllCategoriesMap();
             payeeMap = db.getAllPayeeByIdMap();
             projectMap = db.getAllProjectsByIdMap(true);
             locationMap = db.getAllLocationsByIdMap(false);
-            try (Cursor c = db.getBlotter(options.filter)) {
+            try (Cursor c = db.getBlotter(options.getFilter())) {
                 while (c.moveToNext()) {
                     Transaction t = Transaction.fromBlotterCursor(c);
                     writeLine(w, t);
@@ -120,7 +120,7 @@ public class CsvExport extends Export {
             Payee payee = getPayee(t.payeeId);
             writeLine(w, dt, fromAccount.title, t.fromAmount, fromAccount.currency.id, t.originalFromAmount, t.originalCurrencyId,
                     category, payee, location, project, t.note);
-            if (category != null && category.isSplit() && options.exportSplits) {
+            if (category != null && category.isSplit() && options.getExportSplits()) {
                 List<Transaction> splits = db.getSplitsForTransaction(t.id);
                 for (Transaction split : splits) {
                     split.dateTime = 0;
@@ -135,19 +135,19 @@ public class CsvExport extends Export {
                            long originalAmount, long originalCurrencyId,
                            Category category, Payee payee, MyLocation location, Project project, String note) {
         if (dt != null) {
-            w.value(FORMAT_DATE_ISO_8601.format(dt));
-            w.value(FORMAT_TIME_ISO_8601.format(dt));
+            w.value(getFORMAT_DATE_ISO_8601().format(dt));
+            w.value(getFORMAT_TIME_ISO_8601().format(dt));
         } else {
             w.value("~");
             w.value("");
         }
         w.value(account);
-        String amountFormatted = options.amountFormat.format(new BigDecimal(amount).divide(Utils.HUNDRED));
+        String amountFormatted = options.getAmountFormat().format(new BigDecimal(amount).divide(Utils.HUNDRED));
         w.value(amountFormatted);
         Currency c = CurrencyCache.getCurrency(db, currencyId);
         w.value(c.name);
         if (originalCurrencyId > 0) {
-            w.value(options.amountFormat.format(new BigDecimal(originalAmount).divide(Utils.HUNDRED)));
+            w.value(options.getAmountFormat().format(new BigDecimal(originalAmount).divide(Utils.HUNDRED)));
             Currency originalCurrency = CurrencyCache.getCurrency(db, originalCurrencyId);
             w.value(originalCurrency.name);
         } else {

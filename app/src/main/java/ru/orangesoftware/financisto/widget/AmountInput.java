@@ -30,6 +30,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.fragment.app.FragmentActivity;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -339,13 +340,13 @@ public class AmountInput extends LinearLayout implements AmountListener {
     public void openCalculator() {
         CalculatorInput input = CalculatorInput_.builder().amount(getAbsAmountString()).build();
         input.setListener(this);
-        input.show(owner.getFragmentManager(), "calculator");
+        input.show(((FragmentActivity)owner).getSupportFragmentManager(), "calculator");
     }
 
     private void openQuickInput() {
         QuickAmountInput input = QuickAmountInput_.builder().amount(getAmount()).build();
         input.setListener(this);
-        input.show(owner.getFragmentManager(), "quick");
+        input.show(((FragmentActivity)owner).getSupportFragmentManager(), "quick");
     }
 
     @Override

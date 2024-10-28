@@ -72,10 +72,10 @@ public class QifImport extends FullDatabaseImport {
 
     public void doImport() throws IOException {
         long t0 = System.currentTimeMillis();
-        DocumentFile file = DocumentFile.fromSingleUri(context, Uri.parse(options.filename));
-        InputStream inputStream = context.getContentResolver().openInputStream(file.getUri());
+        DocumentFile file = DocumentFile.fromSingleUri(getContext(), Uri.parse(options.getFilename()));
+        InputStream inputStream = getContext().getContentResolver().openInputStream(file.getUri());
         QifBufferedReader r = new QifBufferedReader(new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8)));
-        QifParser parser = new QifParser(r, options.dateFormat);
+        QifParser parser = new QifParser(r, options.getDateFormat());
         parser.parse();
         long t1 = System.currentTimeMillis();
         Log.i("Financisto", "QIF Import: Parsing done in "+ TimeUnit.MILLISECONDS.toSeconds(t1-t0)+"s");
@@ -92,7 +92,7 @@ public class QifImport extends FullDatabaseImport {
         insertProjects(parser.classes);
         long t2 = System.currentTimeMillis();
         Log.i("Financisto", "QIF Import: Inserting projects done in "+ TimeUnit.MILLISECONDS.toSeconds(t2-t1)+"s");
-        categoryCache.insertCategories(dbAdapter, parser.categories);
+        categoryCache.insertCategories(getDbAdapter(), parser.categories);
         long t3 = System.currentTimeMillis();
         Log.i("Financisto", "QIF Import: Inserting categories done in "+ TimeUnit.MILLISECONDS.toSeconds(t3-t2)+"s");
         insertAccounts(parser.accounts);
@@ -105,22 +105,22 @@ public class QifImport extends FullDatabaseImport {
 
     private void insertPayees(Set<String> payees) {
         for (String payee : payees) {
-            Payee p = dbAdapter.findOrInsertEntityByTitle(Payee.class, payee);
+            Payee p = getDbAdapter().findOrInsertEntityByTitle(Payee.class, payee);
             payeeToId.put(payee, p.getId());
         }
     }
 
     private void insertProjects(Set<String> projects) {
         for (String project : projects) {
-            Project p = dbAdapter.findOrInsertEntityByTitle(Project.class, project);
+            Project p = getDbAdapter().findOrInsertEntityByTitle(Project.class, project);
             projectToId.put(project, p.getId());
         }
     }
 
     private void insertAccounts(List<QifAccount> accounts) {
         for (QifAccount account : accounts) {
-            Account a = account.toAccount(options.currency);
-            dbAdapter.saveAccount(a);
+            Account a = account.toAccount(options.getCurrency());
+            getDbAdapter().saveAccount(a);
             account.dbAccount = a;
             accountTitleToAccount.put(account.memo, account);
         }
@@ -235,7 +235,7 @@ public class QifImport extends FullDatabaseImport {
                 }
                 t.splits = splits;
             }
-            dbAdapter.insertWithoutUpdatingBalance(t);
+            getDbAdapter().insertWithoutUpdatingBalance(t);
         }
     }
 

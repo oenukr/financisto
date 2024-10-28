@@ -51,9 +51,11 @@ public abstract class AttributeView implements OnClickListener {
     public abstract String value();
 
     public TransactionAttribute newTransactionAttribute() {
-        TransactionAttribute ta = new TransactionAttribute();
-        ta.attributeId = attribute.id;
-        ta.value = value();
+        TransactionAttribute ta = new TransactionAttribute(
+                attribute.id,
+                null,
+                value()
+        );
         return ta;
     }
 

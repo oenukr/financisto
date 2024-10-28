@@ -8,6 +8,8 @@
 
 package ru.orangesoftware.financisto.rates;
 
+import androidx.annotation.NonNull;
+
 import java.util.List;
 
 import gnu.trove.map.TLongObjectMap;
@@ -42,8 +44,9 @@ public class LatestExchangeRates implements ExchangeRateProvider, ExchangeRatesC
         return getRate(fromCurrency, toCurrency);
     }
 
+    @NonNull
     @Override
-    public List<ExchangeRate> getRates(List<Currency> currencies) {
+    public List<ExchangeRate> getRates(@NonNull List<? extends Currency> currencies) {
         throw new UnsupportedOperationException();
     }
 
