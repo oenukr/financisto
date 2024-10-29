@@ -81,8 +81,8 @@ public class NotificationOptionsActivity extends AbstractActivity {
 	public void createNodes() {
 		layout.removeAllViews();
 		soundText = x.addListNode(layout, R.id.notification_sound, R.string.notification_sound, options.getSoundName(this));
-		vibraText = x.addListNode(layout, R.id.notification_vibra, R.string.notification_vibra, options.vibration.titleId);
-		ledText = x.addListNode(layout, R.id.notification_led, R.string.notification_led, options.ledColor.titleId);
+		vibraText = x.addListNode(layout, R.id.notification_vibra, R.string.notification_vibra, options.getVibration().getTitleId());
+		ledText = x.addListNode(layout, R.id.notification_led, R.string.notification_led, options.getLedColor().getTitleId());
 		x.addInfoNodeSingle(layout, R.id.result1, R.string.notification_options_default);			
 		x.addInfoNodeSingle(layout, R.id.result2, R.string.notification_options_off);			
 	}
@@ -92,19 +92,19 @@ public class NotificationOptionsActivity extends AbstractActivity {
 		switch (id) {
 			case R.id.notification_sound: {
 				Intent intent = new Intent(RingtoneManager.ACTION_RINGTONE_PICKER);
-				if (options.sound != null) {
-					intent.putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, Uri.parse(options.sound));
+				if (options.getSound() != null) {
+					intent.putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, Uri.parse(options.getSound()));
 				}
 				intent.putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_NOTIFICATION);
 				startActivityForResult(intent, PICKUP_RINGTONE);
 			} break;
 			case R.id.notification_vibra: {
 				ArrayAdapter<String> adapter = EnumUtils.createDropDownAdapter(this, patterns);
-				x.selectPosition(this, R.id.notification_vibra, R.string.notification_vibra, adapter, options.vibration.ordinal());
+				x.selectPosition(this, R.id.notification_vibra, R.string.notification_vibra, adapter, options.getVibration().ordinal());
 			} break;
 			case R.id.notification_led:  {
 				ArrayAdapter<String> adapter = EnumUtils.createDropDownAdapter(this, colors);
-				x.selectPosition(this, R.id.notification_led, R.string.notification_led, adapter, options.ledColor.ordinal());
+				x.selectPosition(this, R.id.notification_led, R.string.notification_led, adapter, options.getLedColor().ordinal());
 			} break;
 			case R.id.result1: {
 				options = NotificationOptions.createDefault();
@@ -122,7 +122,7 @@ public class NotificationOptionsActivity extends AbstractActivity {
 		super.onActivityResult(requestCode, resultCode, data);
 		if (requestCode == PICKUP_RINGTONE && resultCode == RESULT_OK) {
 			Uri ringtoneUri = data.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI);
-			options.sound = ringtoneUri != null ? ringtoneUri.toString() : null;
+			options.setSound(ringtoneUri != null ? ringtoneUri.toString() : null);
 			updateOptions();
 		}
 	}
@@ -134,11 +134,11 @@ public class NotificationOptionsActivity extends AbstractActivity {
 			updateOptions();
 			break;
 		case R.id.notification_vibra:
-			options.vibration = patterns[selectedPos];
+			options.setVibration(patterns[selectedPos]);
 			updateOptions();
 			break;
 		case R.id.notification_led:
-			options.ledColor = colors[selectedPos];
+			options.setLedColor(colors[selectedPos]);
 			updateOptions();
 			break;
 		}
@@ -146,8 +146,7 @@ public class NotificationOptionsActivity extends AbstractActivity {
 
 	private void updateOptions() {
 		soundText.setText(options.getSoundName(this));
-		vibraText.setText(options.vibration.titleId);
-		ledText.setText(options.ledColor.titleId);
+		vibraText.setText(options.getVibration().getTitleId());
+		ledText.setText(options.getLedColor().getTitleId());
 	}
-
 }

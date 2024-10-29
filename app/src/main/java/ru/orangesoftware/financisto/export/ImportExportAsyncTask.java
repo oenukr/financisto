@@ -20,6 +20,10 @@ import android.os.AsyncTask;
 import android.util.Log;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+
+import java.io.FileNotFoundException;
+
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.bus.RefreshCurrentTab;
@@ -62,17 +66,17 @@ public abstract class ImportExportAsyncTask extends AsyncTask<String, String, Ob
         }
     }
 
-    protected abstract Object work(Context context, DatabaseAdapter db, String... params) throws Exception;
+    protected abstract Object work(@NonNull Context context, @NonNull DatabaseAdapter db, String... params) throws Exception;
 
     protected abstract String getSuccessMessage(Object result);
 
-    protected void doUploadToDropbox(Context context, String backupFileName) throws Exception {
+    protected void doUploadToDropbox(Context context, String backupFileName) throws FileNotFoundException, ImportExportException {
         if (MyPreferences.isDropboxUploadBackups(context)) {
             doForceUploadToDropbox(context, backupFileName);
         }
     }
 
-    protected void doForceUploadToDropbox(Context context, String backupFileName) throws Exception {
+    protected void doForceUploadToDropbox(Context context, String backupFileName) throws FileNotFoundException, ImportExportException {
         publishProgress(context.getString(R.string.dropbox_uploading_file));
         uploadBackupFileToDropbox(context, backupFileName);
     }

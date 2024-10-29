@@ -13,6 +13,8 @@ import android.app.ProgressDialog;
 import android.content.Context;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
+
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
 import ru.orangesoftware.financisto.export.ImportExportAsyncTask;
@@ -33,7 +35,7 @@ public class QifImportTask extends ImportExportAsyncTask {
     }
 
     @Override
-    protected Object work(Context context, DatabaseAdapter db, String... params) throws Exception {
+    protected Object work(@NonNull Context context, @NonNull DatabaseAdapter db, String... params) throws Exception {
         try {
             QifImport qifImport = new QifImport(context, db, options);
             qifImport.importDatabase();

@@ -1,7 +1,7 @@
 package ru.orangesoftware.financisto.activity
 
 import android.content.Context
-import android.content.pm.PackageManager
+import android.content.pm.PackageManager.NameNotFoundException
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -129,9 +129,8 @@ class AboutActivity : ComponentActivity() {
     companion object {
         fun getAppVersion(context: Context): String {
             return try {
-                val info = Utils.getPackageInfo(context)
-                "v. " + info.versionName
-            } catch (e: PackageManager.NameNotFoundException) {
+                "v. " + Utils.getPackageInfo(context)?.versionName.orEmpty()
+            } catch (e: NameNotFoundException) {
                 ""
             }
         }

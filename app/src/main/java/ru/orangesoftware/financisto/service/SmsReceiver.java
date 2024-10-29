@@ -1,7 +1,7 @@
 package ru.orangesoftware.financisto.service;
 
 import static java.lang.String.format;
-import static ru.orangesoftware.financisto.service.FinancistoService.ACTION_NEW_TRANSACTION_SMS;
+import static ru.orangesoftware.financisto.service.FinancistoSmsWorkManager.ACTION_NEW_TRANSACTION_SMS;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -9,6 +9,10 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.telephony.SmsMessage;
 import android.util.Log;
+
+import androidx.work.Data;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkRequest;
 
 import java.util.Set;
 
@@ -52,10 +56,16 @@ public class SmsReceiver extends BroadcastReceiver {
             if (!fullSmsBody.isEmpty()) {
                 Log.d(FTAG, format("%s sms from %s: `%s`", msg.getTimestampMillis(), addr, fullSmsBody));
 
-                Intent serviceIntent = new Intent(ACTION_NEW_TRANSACTION_SMS, null, context, FinancistoService.class);
-                serviceIntent.putExtra(SMS_TRANSACTION_NUMBER, addr);
-                serviceIntent.putExtra(SMS_TRANSACTION_BODY, fullSmsBody);
-                FinancistoService.enqueueWork(context, serviceIntent);
+                Data inputData = new Data.Builder()
+                        .putString("action", ACTION_NEW_TRANSACTION_SMS)
+                        .putString(SMS_TRANSACTION_NUMBER, addr)
+                        .putString(SMS_TRANSACTION_BODY, fullSmsBody)
+                        .build();
+
+                WorkRequest workRequest = new OneTimeWorkRequest.Builder(FinancistoSmsWorkManager.class)
+                        .setInputData(inputData)
+                        .build();
+                FinancistoSmsWorkManager.enqueueWork(context, workRequest);
             }
                 // Display SMS message
                 //                Toast.makeText(context, String.format("%s:%s", addr, body), Toast.LENGTH_SHORT).show();

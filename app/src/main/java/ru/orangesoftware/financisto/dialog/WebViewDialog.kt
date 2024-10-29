@@ -14,15 +14,15 @@ object WebViewDialog {
     @JvmStatic
     fun checkVersionAndShowWhatsNewIfNeeded(activity: Activity): String {
         try {
-            val info: PackageInfo = Utils.getPackageInfo(activity)
+            val info: PackageInfo? = Utils.getPackageInfo(activity)
             val preferences: SharedPreferences = activity.getPreferences(0)
-            val newVersionCode = info.longVersionCode
+            val newVersionCode = info?.longVersionCode ?: -1
             val oldVersionCode = preferences.getInt("longVersionCode", -1)
             if (newVersionCode > oldVersionCode) {
                 preferences.edit().putLong("longVersionCode", newVersionCode).apply()
                 showWhatsNew(activity)
             }
-            return "v. ${info.versionName}"
+            return "v. ${info?.versionName.orEmpty()}"
         } catch (ex: Exception) {
             return "Free"
         }

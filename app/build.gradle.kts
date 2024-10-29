@@ -119,7 +119,6 @@ dependencies {
     implementation(libs.datastore.preferences)
     implementation(libs.datastore.preferences.rx)
 
-
     // Koin - dependency injection
     implementation(libs.koin.core)
     implementation(libs.koin.android)
@@ -131,6 +130,10 @@ dependencies {
 
     // Biometrics
     implementation(libs.biometric)
+
+    // WorkManager
+    implementation(libs.workmanager)
+
 
     implementation(libs.legacy.support)
     implementation(libs.appcompat)

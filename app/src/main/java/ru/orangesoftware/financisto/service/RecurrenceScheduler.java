@@ -6,6 +6,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
+import androidx.annotation.Nullable;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -48,15 +50,16 @@ public class RecurrenceScheduler {
         return restoredTransactionsCount;
     }
 
+    @Nullable
     public TransactionInfo scheduleOne(Context context, long scheduledTransactionId) {
-        Log.i(TAG, "Alarm for "+scheduledTransactionId+" received..");
+        Log.i(TAG, "Alarm for " + scheduledTransactionId + " received..");
         TransactionInfo transaction = db.getTransactionInfo(scheduledTransactionId);
         if (transaction != null) {
             long transactionId = duplicateTransactionFromTemplate(transaction);
             boolean hasBeenRescheduled = rescheduleTransaction(context, transaction);
             if (!hasBeenRescheduled) {
                 deleteTransactionIfNeeded(transaction);
-                Log.i(TAG, "Expired transaction "+transaction.id+" has been deleted");
+                Log.i(TAG, "Expired transaction " + transaction.id + " has been deleted");
             }
             transaction.id = transactionId;
             return transaction;

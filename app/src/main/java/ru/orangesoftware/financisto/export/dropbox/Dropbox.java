@@ -24,9 +24,11 @@ import com.dropbox.core.v2.files.WriteMode;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import ru.orangesoftware.financisto.R;
@@ -91,7 +93,7 @@ public class Dropbox {
         return false;
     }
 
-    public FileMetadata uploadFile(File file) throws Exception {
+    public FileMetadata uploadFile(File file) throws ImportExportException, FileNotFoundException {
         if (authSession()) {
             try {
                 InputStream is = new FileInputStream(file);
@@ -102,7 +104,7 @@ public class Dropbox {
                 } finally {
                     IOUtil.closeInput(is);
                 }
-            } catch (Exception e) {
+            } catch (IllegalArgumentException | DbxException | IOException e) {
                 Log.e("Financisto", "Dropbox: Something wrong", e);
                 throw new ImportExportException(R.string.dropbox_error, e);
             }
@@ -122,7 +124,7 @@ public class Dropbox {
                         files.add(name);
                     }
                 }
-                Collections.sort(files, (s1, s2) -> s2.compareTo(s1));
+                files.sort(Comparator.reverseOrder());
                 return files;
             } catch (Exception e) {
                 Log.e("Financisto", "Dropbox: Something wrong", e);
