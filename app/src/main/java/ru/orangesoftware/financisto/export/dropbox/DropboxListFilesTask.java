@@ -12,6 +12,8 @@ import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Context;
 
+import androidx.annotation.NonNull;
+
 import java.util.List;
 
 import ru.orangesoftware.financisto.R;
@@ -36,7 +38,7 @@ public class DropboxListFilesTask extends ImportExportAsyncTask {
     }
 
     @Override
-    protected Object work(Context context, DatabaseAdapter db, String... params) throws Exception {
+    protected Object work(@NonNull Context context, @NonNull DatabaseAdapter db, String... params) throws Exception {
         try {
             Dropbox dropbox = new Dropbox(context);
             List<String> files = dropbox.listFiles();

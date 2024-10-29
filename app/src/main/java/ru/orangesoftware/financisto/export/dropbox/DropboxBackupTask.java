@@ -11,10 +11,16 @@ package ru.orangesoftware.financisto.export.dropbox;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.pm.PackageManager;
+
+import androidx.annotation.NonNull;
+
+import java.io.IOException;
 
 import ru.orangesoftware.financisto.backup.DatabaseExport;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
 import ru.orangesoftware.financisto.export.ImportExportAsyncTask;
+import ru.orangesoftware.financisto.export.ImportExportException;
 
 /**
  * Created by IntelliJ IDEA.
@@ -28,7 +34,7 @@ public class DropboxBackupTask extends ImportExportAsyncTask {
     }
 
     @Override
-    protected Object work(Context context, DatabaseAdapter db, String... params) throws Exception {
+    protected Object work(@NonNull Context context, @NonNull DatabaseAdapter db, String... params) throws ImportExportException, IOException, PackageManager.NameNotFoundException {
         DatabaseExport export = new DatabaseExport(context, db.db(), true);
         String backupFileName = export.export();
         doForceUploadToDropbox(context, backupFileName);
