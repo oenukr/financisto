@@ -76,18 +76,8 @@ public class WhereFilter {
 		return this;
 	}
 
-	public WhereFilter gte(String column, String value) {
-		criterias.add(Criteria.gte(column, value));
-		return this;
-	}
-	
 	public WhereFilter lt(String column, String value) {
 		criterias.add(Criteria.lt(column, value));
-		return this;
-	}
-
-	public WhereFilter lte(String column, String value) {
-		criterias.add(Criteria.lte(column, value));
 		return this;
 	}
 

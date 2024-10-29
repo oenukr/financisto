@@ -72,15 +72,18 @@ public class TransactionInfo extends TransactionBase {
             fromAmount > 0 ?
                 R.drawable.notification_icon_transaction : R.drawable.ic_btn_round_minus;
 	}
-	
+
+    @NonNull
 	public String getNotificationTickerText(Context context) {
 		return context.getString(isTransfer() ? R.string.new_scheduled_transfer_text : R.string.new_scheduled_transaction_text);
 	}
 
+    @NonNull
 	public String getNotificationContentTitle(Context context) {
 		return context.getString(isTransfer() ? R.string.new_scheduled_transfer_title : R.string.new_scheduled_transaction_title);
 	}
-	
+
+    @NonNull
 	public String getNotificationContentText(Context context) {
 		if (toAccount != null) {
 			if (fromAccount.currency.id == toAccount.currency.id) {

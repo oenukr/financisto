@@ -9,6 +9,8 @@ import static ru.orangesoftware.financisto.service.SmsTransactionProcessor.Place
 
 import android.util.Log;
 
+import androidx.annotation.Nullable;
+
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
@@ -37,6 +39,7 @@ public class SmsTransactionProcessor {
      * Parses sms and adds new transaction if it matches any sms template
      * @return new transaction or null if not matched/parsed
      */
+    @Nullable
     public Transaction createTransactionBySms(String addr, String fullSmsBody, TransactionStatus status, boolean updateNote) {
         List<SmsTemplate> addrTemplates = db.getSmsTemplatesByNumber(addr);
         for (final SmsTemplate t : addrTemplates) {

@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Context;
 
+import androidx.annotation.NonNull;
+
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
 import ru.orangesoftware.financisto.export.ImportExportAsyncTask;
 
@@ -17,7 +19,7 @@ public class QifExportTask extends ImportExportAsyncTask {
 	}
 	
 	@Override
-	protected Object work(Context context, DatabaseAdapter db, String...params) throws Exception {
+	protected Object work(@NonNull Context context, @NonNull DatabaseAdapter db, String...params) throws Exception {
         QifExport qifExport = new QifExport(context, db, options);
         String backupFileName = qifExport.export();
         if (options.getUploadToDropbox()) {

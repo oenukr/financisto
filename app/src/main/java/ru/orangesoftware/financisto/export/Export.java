@@ -18,12 +18,14 @@ import android.content.pm.PackageManager.NameNotFoundException;
 import android.net.Uri;
 import android.os.Environment;
 
+import androidx.annotation.NonNull;
 import androidx.documentfile.provider.DocumentFile;
 
 import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -52,7 +54,8 @@ public abstract class Export {
         this.useGzip = useGzip;
     }
 
-    public String export() throws Exception {
+    @NonNull
+    public String export() throws ImportExportException, IOException, NameNotFoundException {
         if (!checkPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
             throw new ImportExportException(R.string.request_permissions_storage_not_granted);
         }
@@ -73,7 +76,7 @@ public abstract class Export {
         return fileName;
     }
 
-    protected void export(OutputStream outputStream) throws Exception {
+    protected void export(OutputStream outputStream) throws  IllegalArgumentException, IOException, NameNotFoundException {
         generateBackup(outputStream);
     }
 
@@ -89,7 +92,7 @@ public abstract class Export {
         return outputStream.toByteArray();
     }
 
-    private void generateBackup(OutputStream outputStream) throws Exception {
+    private void generateBackup(OutputStream outputStream) throws IllegalArgumentException, IOException, NameNotFoundException {
         OutputStreamWriter osw = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8);
         try (BufferedWriter bw = new BufferedWriter(osw, 65536)) {
             writeHeader(bw);
@@ -98,11 +101,11 @@ public abstract class Export {
         }
     }
 
-    protected abstract void writeHeader(BufferedWriter bw) throws IOException, NameNotFoundException;
+    protected abstract void writeHeader(@NonNull BufferedWriter bw) throws IOException, NameNotFoundException;
 
-    protected abstract void writeBody(BufferedWriter bw) throws IOException;
+    protected abstract void writeBody(@NonNull BufferedWriter bw) throws IOException;
 
-    protected abstract void writeFooter(BufferedWriter bw) throws IOException;
+    protected abstract void writeFooter(@NonNull BufferedWriter bw) throws IOException;
 
     protected abstract String getExtension();
 
@@ -128,16 +131,24 @@ public abstract class Export {
         return path.findFile(backupFileName);
     }
 
-    public static void uploadBackupFileToDropbox(Context context, String backupFileName) throws Exception {
+    public static boolean uploadBackupFileToDropbox(Context context, String backupFileName) throws FileNotFoundException, ImportExportException {
         DocumentFile file = getBackupFile(context, backupFileName);
         Dropbox dropbox = new Dropbox(context);
-        dropbox.uploadFile(new File(file.getUri().toString()));
+        try {
+            dropbox.uploadFile(new File(file.getUri().toString()));
+        } catch (FileNotFoundException e) {
+            throw new FileNotFoundException(e.getMessage());
+        } catch (ImportExportException e) {
+            throw new ImportExportException(R.string.dropbox_error, e);
+        }
+        return true;
     }
 
-//    public static void uploadBackupFileToGoogleDrive(Context context, String backupFileName) throws Exception {
-//        File file = getBackupFile(context, backupFileName);
+    public static boolean uploadBackupFileToGoogleDrive(Context context, String backupFileName) throws FileNotFoundException {
+        DocumentFile file = getBackupFile(context, backupFileName);
 //        GoogleDriveClient driveClient = new DependenciesHolder().getGoogleDriveClient();
 //        driveClient.uploadFile(file);
-//    }
+        return false;
+    }
 
 }

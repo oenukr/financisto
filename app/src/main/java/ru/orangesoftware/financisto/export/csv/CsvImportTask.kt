@@ -16,7 +16,7 @@ class CsvImportTask(
 ) : ImportExportAsyncTask(activity, dialog) {
 
     @Throws(ImportExportException::class)
-    override fun work(context: Context?, db: DatabaseAdapter?, vararg params: String?): Any {
+    override fun work(context: Context, db: DatabaseAdapter, vararg params: String?): Any {
         try {
             val csvimport = CsvImport(context, db, options)
             csvimport.setProgressListener { percentage ->

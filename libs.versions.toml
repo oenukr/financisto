@@ -42,6 +42,7 @@ rxjava2-rxjava = { module = "io.reactivex.rxjava2:rxjava", version = "2.2.21"}
 rxjava3-bridge = { module = "com.github.akarnokd:rxjava3-bridge", version = "3.0.2" }
 rxjava3-rxandroid = { module = "io.reactivex.rxjava3:rxandroid", version = "3.0.2" }
 rxjava3-rxjava = { module = "io.reactivex.rxjava3:rxjava", version = "3.1.8" }
+workmanager = { module = "androidx.work:work-runtime", version = "2.9.1" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "android_tools" }

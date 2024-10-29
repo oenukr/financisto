@@ -13,6 +13,8 @@ package ru.orangesoftware.financisto.export.qif;
 import android.content.Context;
 import android.database.Cursor;
 
+import androidx.annotation.NonNull;
+
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -47,12 +49,12 @@ public class QifExport extends Export {
     }
 
     @Override
-    protected void writeHeader(BufferedWriter bw) {
+    protected void writeHeader(@NonNull BufferedWriter bw) {
         // no header
     }
 
     @Override
-    protected void writeBody(BufferedWriter bw) throws IOException {
+    protected void writeBody(@NonNull BufferedWriter bw) throws IOException {
         QifBufferedWriter qifWriter = new QifBufferedWriter(bw);
         writeCategories(qifWriter);
         writeAccountsAndTransactions(qifWriter);
@@ -141,7 +143,7 @@ public class QifExport extends Export {
     }
 
     @Override
-    protected void writeFooter(BufferedWriter bw) throws IOException {
+    protected void writeFooter(@NonNull BufferedWriter bw) throws IOException {
         // no footer
     }
 

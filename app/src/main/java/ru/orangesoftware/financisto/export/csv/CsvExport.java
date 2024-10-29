@@ -16,6 +16,8 @@ import static ru.orangesoftware.financisto.datetime.DateUtils.getFORMAT_TIME_ISO
 import android.content.Context;
 import android.database.Cursor;
 
+import androidx.annotation.NonNull;
+
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -69,7 +71,7 @@ public class CsvExport extends Export {
     }
 
     @Override
-    protected void writeHeader(BufferedWriter bw) throws IOException {
+    protected void writeHeader(@NonNull BufferedWriter bw) throws IOException {
         if (options.getWriteUtfBom()) {
             byte[] bom = new byte[3];
             bom[0] = (byte) 0xEF;
@@ -87,7 +89,7 @@ public class CsvExport extends Export {
     }
 
     @Override
-    protected void writeBody(BufferedWriter bw) throws IOException {
+    protected void writeBody(@NonNull BufferedWriter bw) throws IOException {
         Csv.Writer w = new Csv.Writer(bw).delimiter(options.getFieldSeparator());
         try {
             accountsMap = db.getAllAccountsMap();
@@ -177,7 +179,7 @@ public class CsvExport extends Export {
     }
 
     @Override
-    protected void writeFooter(BufferedWriter bw) throws IOException {
+    protected void writeFooter(@NonNull BufferedWriter bw) throws IOException {
     }
 
     private Account getAccount(long accountId) {
