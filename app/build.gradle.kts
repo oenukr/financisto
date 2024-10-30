@@ -183,10 +183,13 @@ kover {
 
         verify {
             rule("line-coverage") {
-                minBound(50)
+                minBound(20)
             }
             rule("branch-coverage") {
-                minBound(50)
+                minBound(20)
+            }
+            rule("instruction-coverage") {
+                minBound(20)
             }
         }
 

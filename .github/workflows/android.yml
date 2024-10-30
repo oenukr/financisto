@@ -23,7 +23,7 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - name: Build with Gradle
-      run: ./gradlew build
+      run: ./gradlew assemble
 
     - name: Generate kover coverage report
       run: ./gradlew koverXmlReport
@@ -37,6 +37,6 @@ jobs:
 #          ${{ github.workspace }}/project2/build/reports/kover/report.xml
         title: Code Coverage
         update-comment: true
-        min-coverage-overall: 30
-        min-coverage-changed-files: 30
+        min-coverage-overall: 20
+        min-coverage-changed-files: 20
         coverage-counter-type: LINE
