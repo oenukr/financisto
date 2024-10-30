@@ -12,6 +12,7 @@ import ru.orangesoftware.financisto.model.Category
 import ru.orangesoftware.financisto.model.MyEntity
 import ru.orangesoftware.financisto.model.Project
 import ru.orangesoftware.financisto.model.Total
+import kotlin.time.measureTimedValue
 
 class BudgetBlotterActivity : BlotterActivity() {
 	
@@ -45,18 +46,18 @@ class BudgetBlotterActivity : BlotterActivity() {
     override fun createTotalCalculationTask(): TotalCalculationTask {
         return object : TotalCalculationTask(this, totalText) {
 			override fun getTotalInHomeCurrency(): Total {
-				val t0 = System.currentTimeMillis()
 				try {
-					try {
-						val budgetId = blotterFilter.getBudgetId()
-						val b = db.load(Budget::class.java, budgetId)
-						val total = Total(b.getBudgetCurrency())
-						total.balance = db.fetchBudgetBalance(categories, projects, b)
-						return total
-					} finally {
-						val t1 = System.currentTimeMillis()
-						Log.d("BUDGET TOTALS", "${(t1-t0)}ms")
+					val (total, duration) = measureTimedValue {
+						try {
+							val budgetId = blotterFilter.getBudgetId()
+							val b = db.load(Budget::class.java, budgetId)
+							val total = Total(b.getBudgetCurrency())
+							total.balance = db.fetchBudgetBalance(categories, projects, b)
+							total
+						} finally { }
 					}
+					Log.d("BUDGET TOTALS", "${duration.inWholeMilliseconds}ms")
+					return total
 				} catch (ex: Exception) {
 					Log.e("BudgetTotals", "Unexpected error", ex)
 					return Total.ZERO

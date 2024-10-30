@@ -16,7 +16,7 @@ import ru.orangesoftware.financisto.view.NodeInflater
 abstract class AbstractActivity : FragmentActivity(), ActivityLayoutListener {
 
     protected lateinit var db: DatabaseAdapter
-    protected lateinit var x: ActivityLayout
+    protected lateinit var activityLayout: ActivityLayout
 
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(MyPreferences.switchLocale(base))
@@ -26,7 +26,7 @@ abstract class AbstractActivity : FragmentActivity(), ActivityLayoutListener {
         super.onCreate(savedInstanceState)
 
         val nodeInflater = NodeInflater(LayoutInflater.from(this))
-        x = ActivityLayout(nodeInflater, this)
+        activityLayout = ActivityLayout(nodeInflater, this)
         db = DatabaseAdapter(this)
         db.open()
     }

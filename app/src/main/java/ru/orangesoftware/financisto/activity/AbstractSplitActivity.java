@@ -1,5 +1,7 @@
 package ru.orangesoftware.financisto.activity;
 
+import static ru.orangesoftware.financisto.utils.Utils.text;
+
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
@@ -9,6 +11,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.model.Account;
 import ru.orangesoftware.financisto.model.Currency;
@@ -16,8 +19,6 @@ import ru.orangesoftware.financisto.model.Transaction;
 import ru.orangesoftware.financisto.utils.CurrencyCache;
 import ru.orangesoftware.financisto.utils.MyPreferences;
 import ru.orangesoftware.financisto.utils.Utils;
-
-import static ru.orangesoftware.financisto.utils.Utils.text;
 
 /**
  * Created by IntelliJ IDEA.
@@ -51,7 +52,7 @@ public abstract class AbstractSplitActivity extends AbstractActivity {
 
         fetchData();
         // todo.mb: check selector here
-        projectSelector = new ProjectSelector<>(this, db, x);
+        projectSelector = new ProjectSelector<>(this, db, activityLayout);
         projectSelector.fetchEntities();
 
         utils  = new Utils(this);
@@ -71,10 +72,10 @@ public abstract class AbstractSplitActivity extends AbstractActivity {
     }
 
     private void createCommonUI(LinearLayout layout) {
-        unsplitAmountText = x.addInfoNode(layout, R.id.add_split, R.string.unsplit_amount, "0");
+        unsplitAmountText = activityLayout.addInfoNode(layout, R.id.add_split, R.string.unsplit_amount, "0");
 
         noteText = new EditText(this);
-        x.addEditNode(layout, R.string.note, noteText);
+        activityLayout.addEditNode(layout, R.string.note, noteText);
 
         projectSelector.createNode(layout);
 

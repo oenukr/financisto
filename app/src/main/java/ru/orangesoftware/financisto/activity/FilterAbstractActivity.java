@@ -1,5 +1,13 @@
 package ru.orangesoftware.financisto.activity;
 
+import static ru.orangesoftware.financisto.activity.CategorySelector.SelectorType.FILTER;
+import static ru.orangesoftware.financisto.blotter.BlotterFilter.CATEGORY_LEFT;
+import static ru.orangesoftware.financisto.blotter.BlotterFilter.LOCATION_ID;
+import static ru.orangesoftware.financisto.blotter.BlotterFilter.PAYEE_ID;
+import static ru.orangesoftware.financisto.blotter.BlotterFilter.PROJECT_ID;
+import static ru.orangesoftware.financisto.filter.WhereFilter.Operation.BTW;
+import static ru.orangesoftware.financisto.filter.WhereFilter.Operation.IN;
+
 import android.content.Intent;
 import android.text.TextUtils;
 import android.util.Log;
@@ -20,14 +28,6 @@ import ru.orangesoftware.financisto.model.MultiChoiceItem;
 import ru.orangesoftware.financisto.model.MyEntity;
 import ru.orangesoftware.financisto.utils.ArrUtils;
 
-import static ru.orangesoftware.financisto.activity.CategorySelector.SelectorType.FILTER;
-import static ru.orangesoftware.financisto.blotter.BlotterFilter.CATEGORY_LEFT;
-import static ru.orangesoftware.financisto.blotter.BlotterFilter.LOCATION_ID;
-import static ru.orangesoftware.financisto.blotter.BlotterFilter.PAYEE_ID;
-import static ru.orangesoftware.financisto.blotter.BlotterFilter.PROJECT_ID;
-import static ru.orangesoftware.financisto.filter.WhereFilter.Operation.BTW;
-import static ru.orangesoftware.financisto.filter.WhereFilter.Operation.IN;
-
 public abstract class FilterAbstractActivity extends AbstractActivity implements CategorySelector.CategorySelectorListener {
 
     protected WhereFilter filter = WhereFilter.empty();
@@ -40,25 +40,25 @@ public abstract class FilterAbstractActivity extends AbstractActivity implements
     protected String noFilterValue;
 
     protected void initPayeeSelector(LinearLayout layout) {
-        payeeSelector = new PayeeSelector<>(this, db, x, R.string.no_filter);
+        payeeSelector = new PayeeSelector<>(this, db, activityLayout, R.string.no_filter);
         payeeSelector.initMultiSelect();
         payeeSelector.createNode(layout);
     }
 
     protected void initProjectSelector(LinearLayout layout) {
-        projectSelector = new ProjectSelector<>(this, db, x, R.string.no_filter);
+        projectSelector = new ProjectSelector<>(this, db, activityLayout, R.string.no_filter);
         projectSelector.initMultiSelect();
         projectSelector.createNode(layout);
     }
 
     protected void initLocationSelector(LinearLayout layout) {
-        locationSelector = new LocationSelector<>(this, db, x, R.string.no_filter);
+        locationSelector = new LocationSelector<>(this, db, activityLayout, R.string.no_filter);
         locationSelector.initMultiSelect();
         locationSelector.createNode(layout);
     }
 
     protected void initCategorySelector(LinearLayout layout) {
-        categorySelector = new CategorySelector<>(this, db, x);
+        categorySelector = new CategorySelector<>(this, db, activityLayout);
         categorySelector.setListener(this);
         categorySelector.initMultiSelect();
         categorySelector.createNode(layout, FILTER);
