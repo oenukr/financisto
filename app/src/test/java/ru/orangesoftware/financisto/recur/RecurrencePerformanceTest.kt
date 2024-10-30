@@ -1,37 +1,35 @@
-package ru.orangesoftware.financisto.recur;
+package ru.orangesoftware.financisto.recur
 
-import static ru.orangesoftware.financisto.test.DateTime.date;
+import android.util.Log
+import ru.orangesoftware.financisto.test.DateTime
+import ru.orangesoftware.financisto.test.DateTime.date
+import java.util.Date
+import kotlin.time.measureTimedValue
 
-import android.util.Log;
+class RecurrencePerformanceTest {
 
-import java.util.Date;
-import java.util.List;
-
-import ru.orangesoftware.financisto.test.DateTime;
-
-public class RecurrencePerformanceTest {
-
-    public void test_should_generate_scheduled_times_for_specific_period() throws Exception {
-        String dailyPattern = "2011-08-02T21:40:00~DAILY:interval@1#~INDEFINITELY:null";
-        generateDates(dailyPattern, date(2011, 8, 1));
-        generateDates(dailyPattern, date(2011, 9, 2));
-        generateDates(dailyPattern, date(2011, 12, 2));
-        generateDates(dailyPattern, date(2012, 9, 2));
-        generateDates(dailyPattern, date(2014, 9, 2));
-        generateDates(dailyPattern, date(2016, 9, 2));
+    @Throws(Exception::class)
+    fun test_should_generate_scheduled_times_for_specific_period() {
+        val dailyPattern = "2011-08-02T21:40:00~DAILY:interval@1#~INDEFINITELY:null"
+        generateDates(dailyPattern, date(2011, 8, 1))
+        generateDates(dailyPattern, date(2011, 9, 2))
+        generateDates(dailyPattern, date(2011, 12, 2))
+        generateDates(dailyPattern, date(2012, 9, 2))
+        generateDates(dailyPattern, date(2014, 9, 2))
+        generateDates(dailyPattern, date(2016, 9, 2))
     }
 
-    private List<Date> generateDates(String pattern, DateTime date) {
-        long start = date.atMidnight().asLong();
-        long end = date.atDayEnd().asLong();
-        long t0 = System.currentTimeMillis();
-        try {
-            Recurrence r = Recurrence.parse(pattern);
-            return r.generateDates(new Date(start), new Date(end));
-        } finally {
-            long t1 = System.currentTimeMillis();
-            Log.i("RecurrencePerformanceTest", "Generated " + start + "-" + end + ": " + (t1 - t0) + "ms");
+    private fun generateDates(pattern: String, date: DateTime): List<Date> {
+        val start = date.atMidnight().asLong()
+        val end = date.atDayEnd().asLong()
+        val (dates, duration) = measureTimedValue {
+            try {
+                val r: Recurrence = Recurrence.parse(pattern)
+                r.generateDates(Date(start), Date(end))
+            } finally { }
         }
+        Log.i("RecurrencePerformanceTest", "Generated $start-$end: ${duration.inWholeMilliseconds}ms")
+        return dates
     }
 
 }
