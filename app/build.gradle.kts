@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.kover)
 }
 
 android {
@@ -170,6 +171,28 @@ dependencies {
     testImplementation("androidx.test:core:1.6.1")
     testImplementation("org.robolectric:robolectric:4.11.1") // can't be used because of the current target sdk
     testImplementation("org.hamcrest:hamcrest:2.2")
+}
+
+kover {
+    reports {
+        filters {
+            excludes {
+                annotatedBy("androidx.compose.ui.tooling.preview.Preview")
+            }
+        }
+
+        verify {
+            rule("line-coverage") {
+                minBound(50)
+            }
+            rule("branch-coverage") {
+                minBound(50)
+            }
+        }
+
+        total {
+        }
+    }
 }
 
 java {
