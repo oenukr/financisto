@@ -279,15 +279,15 @@ public class ActivityLayout {
     }
 
     public TextView addFilterNodeMinus(LinearLayout layout, int id, int minusId, int labelId, int defaultValueResId, String defaultValue) {
-        Builder b = inflater.new ListBuilder(layout, R.layout.select_entry_minus).withButtonId(minusId, listener).withId(id, listener).withLabel(labelId);
+        Builder builder = inflater.new ListBuilder(layout, R.layout.select_entry_minus).withButtonId(minusId, listener).withId(id, listener).withLabel(labelId);
         if (defaultValue != null) {
-            b.withData(defaultValue);
+            builder.withData(defaultValue);
         } else {
-            b.withData(defaultValueResId);
+            builder.withData(defaultValueResId);
         }
-        View v = b.create();
-        ImageView clearBtn = hideButton(v, minusId);
-        TextView text = v.findViewById(R.id.data);
+        View view = builder.create();
+        ImageView clearBtn = hideButton(view, minusId);
+        TextView text = view.findViewById(R.id.data);
         text.setTag(R.id.bMinus, clearBtn); // needed for dynamic toggling in any activity with filters
         return text;
     }

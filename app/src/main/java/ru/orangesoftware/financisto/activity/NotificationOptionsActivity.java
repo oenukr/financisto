@@ -80,11 +80,11 @@ public class NotificationOptionsActivity extends AbstractActivity {
 
 	public void createNodes() {
 		layout.removeAllViews();
-		soundText = x.addListNode(layout, R.id.notification_sound, R.string.notification_sound, options.getSoundName(this));
-		vibraText = x.addListNode(layout, R.id.notification_vibra, R.string.notification_vibra, options.getVibration().getTitleId());
-		ledText = x.addListNode(layout, R.id.notification_led, R.string.notification_led, options.getLedColor().getTitleId());
-		x.addInfoNodeSingle(layout, R.id.result1, R.string.notification_options_default);			
-		x.addInfoNodeSingle(layout, R.id.result2, R.string.notification_options_off);			
+		soundText = activityLayout.addListNode(layout, R.id.notification_sound, R.string.notification_sound, options.getSoundName(this));
+		vibraText = activityLayout.addListNode(layout, R.id.notification_vibra, R.string.notification_vibra, options.getVibration().getTitleId());
+		ledText = activityLayout.addListNode(layout, R.id.notification_led, R.string.notification_led, options.getLedColor().getTitleId());
+		activityLayout.addInfoNodeSingle(layout, R.id.result1, R.string.notification_options_default);
+		activityLayout.addInfoNodeSingle(layout, R.id.result2, R.string.notification_options_off);
 	}
 
 	@Override
@@ -100,11 +100,11 @@ public class NotificationOptionsActivity extends AbstractActivity {
 			} break;
 			case R.id.notification_vibra: {
 				ArrayAdapter<String> adapter = EnumUtils.createDropDownAdapter(this, patterns);
-				x.selectPosition(this, R.id.notification_vibra, R.string.notification_vibra, adapter, options.getVibration().ordinal());
+				activityLayout.selectPosition(this, R.id.notification_vibra, R.string.notification_vibra, adapter, options.getVibration().ordinal());
 			} break;
 			case R.id.notification_led:  {
 				ArrayAdapter<String> adapter = EnumUtils.createDropDownAdapter(this, colors);
-				x.selectPosition(this, R.id.notification_led, R.string.notification_led, adapter, options.getLedColor().ordinal());
+				activityLayout.selectPosition(this, R.id.notification_led, R.string.notification_led, adapter, options.getLedColor().ordinal());
 			} break;
 			case R.id.result1: {
 				options = NotificationOptions.createDefault();
