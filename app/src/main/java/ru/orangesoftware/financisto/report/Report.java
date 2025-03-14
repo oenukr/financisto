@@ -1,18 +1,9 @@
-/*******************************************************************************
- * Copyright (c) 2010 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
- * Contributors:
- *     Denis Solonenko - initial API and implementation
- ******************************************************************************/
 package ru.orangesoftware.financisto.report;
 
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -46,17 +37,15 @@ public abstract class Report {
 	public final GraphStyle style;
     public final ReportType reportType;
 	
-	protected final Context context;
     protected final boolean skipTransfers;
     protected final Currency currency;
 
     protected IncomeExpense incomeExpense = IncomeExpense.BOTH;
 
-    public Report(ReportType reportType, Context context, Currency currency) {
+    public Report(ReportType reportType, Currency currency, boolean skipTransfers, GraphStyle style) {
         this.reportType = reportType;
-        this.context = context;
-        this.skipTransfers = !MyPreferences.isIncludeTransfersIntoReports(context);
-        this.style = new GraphStyle.Builder(context).build();
+        this.skipTransfers = skipTransfers;//!MyPreferences.isIncludeTransfersIntoReports(context);
+        this.style = style;//new GraphStyle.Builder(context).build();
         this.currency = currency;
     }
 
@@ -64,8 +53,9 @@ public abstract class Report {
         this.incomeExpense = incomeExpense;
     }
 
-    protected String alterName(long id, String name) {
-		return name;
+    @NonNull
+    protected String alterName(long id, @Nullable String name) {
+		return name != null ? name : "";
 	}
 
     public abstract ReportData getReport(DatabaseAdapter db, WhereFilter filter);
@@ -89,6 +79,7 @@ public abstract class Report {
 		}
 	}
 
+    @NonNull
     protected ArrayList<GraphUnit> getUnitsFromCursor(DatabaseAdapter db, Cursor c) {
         try (c) {
             ExchangeRateProvider rates = db.getHistoryRates();
@@ -124,6 +115,9 @@ public abstract class Report {
             removeEmptyUnits(units);
             Collections.sort(units);
             return units;
+        } catch (Exception e) {
+            Log.e(this.getClass().getSimpleName(), "Error: ", e);
+            return new ArrayList<>();
         }
     }
 

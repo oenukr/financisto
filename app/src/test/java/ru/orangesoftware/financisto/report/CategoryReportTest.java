@@ -4,6 +4,7 @@ import org.junit.Test;
 
 import java.util.List;
 
+import ru.orangesoftware.financisto.graph.GraphStyle;
 import ru.orangesoftware.financisto.graph.GraphUnit;
 import ru.orangesoftware.financisto.test.DateTime;
 import ru.orangesoftware.financisto.test.TransactionBuilder;
@@ -36,7 +37,7 @@ public class CategoryReportTest extends AbstractReportTest {
 
     @Override
     protected Report createReport() {
-        return new CategoryReport(getContext(), c1);
+        return new CategoryReport(/*getContext(),*/ c1, false, new GraphStyle.Builder(getContext()).build());
     }
 
 }

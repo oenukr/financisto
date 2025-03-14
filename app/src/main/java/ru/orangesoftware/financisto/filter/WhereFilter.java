@@ -18,6 +18,7 @@ import android.content.SharedPreferences.Editor;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.util.Arrays;
 import java.util.Iterator;
@@ -120,6 +121,7 @@ public class WhereFilter {
 		return args;
 	}
 
+	@Nullable
 	public Criteria get(String name) {
 		for (Criteria c : criterias) {
 			String column = c.columnName;
@@ -168,7 +170,8 @@ public class WhereFilter {
 		f.sorts.addAll(filter.sorts);
 		return f;
 	}
-	
+
+	@NonNull
 	public static WhereFilter empty() {
 		return new WhereFilter("");
 	}

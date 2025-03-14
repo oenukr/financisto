@@ -1,13 +1,3 @@
-/*******************************************************************************
- * Copyright (c) 2010 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
- * Contributors:
- *     Denis Solonenko - initial API and implementation
- ******************************************************************************/
 package ru.orangesoftware.financisto.report;
 
 import static ru.orangesoftware.financisto.db.DatabaseHelper.V_REPORT_SUB_CATEGORY;
@@ -43,9 +33,10 @@ public class SubCategoryReport extends Report {
 	
     private final GraphStyle[] styles = new GraphStyle[3];
 
-	public SubCategoryReport(Context context, Currency currency) {
-		super(ReportType.BY_CATEGORY, context, currency);
-        createStyles(context);
+	public SubCategoryReport(Currency currency, boolean skipTransfers, GraphStyle style) {
+		super(ReportType.BY_CATEGORY, currency, skipTransfers, style);
+        // TODO
+//        createStyles(context);
 	}
 
     private void createStyles(Context context) {

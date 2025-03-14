@@ -1,14 +1,3 @@
-/*******************************************************************************
- * Copyright (c) 2010 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
- * Contributors:
- *     Denis Solonenko - initial API and implementation
- *     Abdsandryk Souza - implementing 2D chart reports
- ******************************************************************************/
 package ru.orangesoftware.financisto.activity;
 
 import android.app.ListActivity;
@@ -23,6 +12,7 @@ import java.util.ArrayList;
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.adapter.SummaryEntityListAdapter;
 import ru.orangesoftware.financisto.db.MyEntityManager;
+import ru.orangesoftware.financisto.graph.GraphStyle;
 import ru.orangesoftware.financisto.graph.Report2DChart;
 import ru.orangesoftware.financisto.model.Currency;
 import ru.orangesoftware.financisto.report.Report;
@@ -77,11 +67,11 @@ public class ReportsListActivity extends ListActivity {
 		}
 	}
 
-	public static Report createReport(Context context, MyEntityManager em, Bundle extras) {
+	public static Report createReport(MyEntityManager em, Bundle extras, boolean skipTransfers, GraphStyle style) {
 		String reportTypeName = extras.getString(EXTRA_REPORT_TYPE);
 		ReportType reportType = ReportType.valueOf(reportTypeName);
         Currency c = em.getHomeCurrency();
-		return reportType.createReport(context, c);
+		return reportType.createReport(c, skipTransfers, style);
 	}
 
 	private ReportType[] getReportsList() {

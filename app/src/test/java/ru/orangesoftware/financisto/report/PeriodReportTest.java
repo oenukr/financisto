@@ -6,6 +6,7 @@ import org.junit.Test;
 
 import java.util.List;
 
+import ru.orangesoftware.financisto.graph.GraphStyle;
 import ru.orangesoftware.financisto.graph.GraphUnit;
 import ru.orangesoftware.financisto.test.DateTime;
 import ru.orangesoftware.financisto.test.RateBuilder;
@@ -158,7 +159,7 @@ public class PeriodReportTest extends AbstractReportTest {
 
     @Override
     protected Report createReport() {
-        return new PeriodReport(getContext(), c1);
+        return new PeriodReport(/*getContext(), */c1, PreferenceManager.getDefaultSharedPreferences(getContext()).getBoolean("include_transfers_into_reports", false), new GraphStyle.Builder(getContext()).build());
     }
 
 }

@@ -19,6 +19,7 @@ abstract class TotalCalculationTask(
 	@Volatile
 	private var isRunning: Boolean = true
 
+	@Deprecated("Deprecated in Java")
 	override fun doInBackground(vararg params: Any?): Total {
 		try {
 		    return getTotalInHomeCurrency()
@@ -31,6 +32,7 @@ abstract class TotalCalculationTask(
 	abstract fun getTotalInHomeCurrency(): Total
 	abstract fun getTotals(): Array<Total>
 
+	@Deprecated("Deprecated in Java")
 	override fun onPostExecute(result: Total?) {
 		if (isRunning) {
 			if (result?.currency == Currency.EMPTY) {

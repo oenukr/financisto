@@ -23,6 +23,7 @@ class TimePreference @JvmOverloads constructor(
     private var hh: Int = 0
     private var mm: Int = 0
 
+    @Deprecated("Deprecated in Java")
     override fun onCreateDialogView(): View = TimePicker(context).apply {
         setIs24HourView(is24HourFormat(context))
         setOnTimeChangedListener(this@TimePreference)
@@ -30,6 +31,7 @@ class TimePreference @JvmOverloads constructor(
         currentMinute = getMinute()
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onDialogClosed(positiveResult: Boolean) {
         super.onDialogClosed(positiveResult)
         if (!positiveResult) {
@@ -54,6 +56,7 @@ class TimePreference @JvmOverloads constructor(
         this.mm = mm
     }
 
+    @Deprecated("Deprecated in Java")
     override fun getSummary(): CharSequence =
         context.getString(R.string.auto_backup_time_summary, getHour(), getMinute())
 }

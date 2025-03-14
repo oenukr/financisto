@@ -107,7 +107,7 @@ dependencies {
     androidTestImplementation(compose.ui.test.junit4)
     debugImplementation(compose.ui.test.manifest)
 
-    // Integration with activities
+    // Compose integration with activities
     implementation(libs.activity.compose)
 
     // Permissions
@@ -134,6 +134,16 @@ dependencies {
 
     // WorkManager
     implementation(libs.workmanager)
+
+    // Chart
+    implementation(libs.koala.chart)
+
+    // Google Kotlin extensions
+    implementation(libs.core.ktx)
+    implementation(libs.collection.ktx)
+
+    // Lifecycle extensions
+    implementation(libs.lifecycle.runtime.ktx)
 
 
     implementation(libs.legacy.support)

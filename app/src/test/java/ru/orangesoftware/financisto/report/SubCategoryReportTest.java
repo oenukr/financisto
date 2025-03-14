@@ -5,6 +5,7 @@ import org.junit.Test;
 import java.util.List;
 
 import ru.orangesoftware.financisto.filter.WhereFilter;
+import ru.orangesoftware.financisto.graph.GraphStyle;
 import ru.orangesoftware.financisto.graph.GraphUnit;
 import ru.orangesoftware.financisto.test.DateTime;
 import ru.orangesoftware.financisto.test.RateBuilder;
@@ -17,7 +18,7 @@ public class SubCategoryReportTest extends AbstractReportTest {
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        CategoryReport r = new CategoryReport(getContext(), c1);
+        CategoryReport r = new CategoryReport(/*getContext(),*/ c1, false, new GraphStyle.Builder(getContext()).build());
         filter = r.createFilterForSubCategory(db, WhereFilter.empty(), categories.get("A").id);
     }
 
@@ -106,7 +107,7 @@ public class SubCategoryReportTest extends AbstractReportTest {
 
     @Override
     protected Report createReport() {
-        return new SubCategoryReport(getContext(), c1);
+        return new SubCategoryReport(/*getContext(),*/ c1, false, new GraphStyle.Builder(getContext()).build());
     }
 
 }
