@@ -27,8 +27,8 @@ class TimePreference @JvmOverloads constructor(
     override fun onCreateDialogView(): View = TimePicker(context).apply {
         setIs24HourView(is24HourFormat(context))
         setOnTimeChangedListener(this@TimePreference)
-        currentHour = getHour()
-        currentMinute = getMinute()
+        currentHour = hour
+        currentMinute = minute
     }
 
     @Deprecated("Deprecated in Java")

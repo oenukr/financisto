@@ -1,6 +1,6 @@
 [versions]
 accompanist = "0.36.0"
-android_tools = "8.8.2"
+android_tools = "8.10.0-alpha08"
 datastore = "1.1.2"
 detekt = "1.23.7"
 glide = "4.16.0"

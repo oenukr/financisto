@@ -36,27 +36,12 @@ android {
         compose = true
     }
 
-    composeCompiler {
-        enableStrongSkippingMode = true
-    }
-
     testOptions {
         animationsDisabled = true
         unitTests {
             isReturnDefaultValues = true
             isIncludeAndroidResources = true
         }
-    }
-
-    tasks.withType<Test> {
-        testLogging {
-            events("failed", "passed", "skipped")
-            setExceptionFormat("full")
-            showStandardStreams = true
-        }
-        reports.junitXml.required.set(true)
-        reports.html.required.set(true)
-        outputs.upToDateWhen { false }
     }
 
     sourceSets["test"].resources.srcDirs("src/test/resources")
@@ -208,6 +193,10 @@ kover {
     }
 }
 
+composeCompiler {
+    enableStrongSkippingMode = true
+}
+
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
@@ -215,4 +204,15 @@ java {
 }
 kotlin {
     jvmToolchain(21)
+}
+
+tasks.withType<Test> {
+    testLogging {
+        events("failed", "passed", "skipped")
+        setExceptionFormat("full")
+        showStandardStreams = true
+    }
+    reports.junitXml.required.set(true)
+    reports.html.required.set(true)
+    outputs.upToDateWhen { false }
 }
