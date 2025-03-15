@@ -18,7 +18,7 @@ public class SubCategoryReportTest extends AbstractReportTest {
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        CategoryReport r = new CategoryReport(/*getContext(),*/ c1, false, new GraphStyle.Builder(getContext()).build());
+        CategoryReport r = new CategoryReport(c1, false, new GraphStyle.Builder(getContext()).build());
         filter = r.createFilterForSubCategory(db, WhereFilter.empty(), categories.get("A").id);
     }
 
@@ -106,8 +106,8 @@ public class SubCategoryReportTest extends AbstractReportTest {
     }
 
     @Override
-    protected Report createReport() {
-        return new SubCategoryReport(/*getContext(),*/ c1, false, new GraphStyle.Builder(getContext()).build());
+    protected Report createReport(boolean includeTransfers) {
+        return new SubCategoryReport(c1, !includeTransfers, new GraphStyle.Builder(getContext()).build());
     }
 
 }

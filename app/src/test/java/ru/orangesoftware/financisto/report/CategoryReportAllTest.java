@@ -1,5 +1,7 @@
 package ru.orangesoftware.financisto.report;
 
+import android.preference.PreferenceManager;
+
 import org.junit.Test;
 
 import java.util.List;
@@ -44,8 +46,8 @@ public class CategoryReportAllTest extends AbstractReportTest {
     }
 
     @Override
-    protected Report createReport() {
-        return new CategoryReportAll(c1, false, new GraphStyle.Builder(context).build());
+    protected Report createReport(boolean includeTransfers) {
+        return new CategoryReportAll(c1, includeTransfers, new GraphStyle.Builder(context).build());
     }
 
 }

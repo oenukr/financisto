@@ -36,8 +36,8 @@ public class CategoryReportTest extends AbstractReportTest {
     }
 
     @Override
-    protected Report createReport() {
-        return new CategoryReport(/*getContext(),*/ c1, false, new GraphStyle.Builder(getContext()).build());
+    protected Report createReport(boolean includeTransfers) {
+        return new CategoryReport(c1, !includeTransfers, new GraphStyle.Builder(getContext()).build());
     }
 
 }

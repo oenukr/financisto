@@ -27,7 +27,7 @@ public class PeriodReportTest extends AbstractReportTest {
         TransactionBuilder.withDb(db).account(a1).dateTime(DateTime.today()).amount(-2500).create();
         TransferBuilder.withDb(db).fromAccount(a1).toAccount(a2).fromAmount(-1200).toAmount(250).dateTime(DateTime.today()).create();
         //when
-        report = createReport();
+        report = createReport(false);
         List<GraphUnit> units = assertReportReturnsData();
         //then
         assertIncome(units.get(0), 0);
@@ -42,7 +42,7 @@ public class PeriodReportTest extends AbstractReportTest {
         TransactionBuilder.withDb(db).account(a1).dateTime(DateTime.today()).amount(-2500).create();
         TransferBuilder.withDb(db).fromAccount(a1).toAccount(a2).fromAmount(-1200).toAmount(250).dateTime(DateTime.today()).create();
         //when
-        report = createReport();
+        report = createReport(true);
         List<GraphUnit> units = assertReportReturnsData();
         assertIncome(units.get(0), 250);
         assertExpense(units.get(0), -4700);
@@ -57,7 +57,7 @@ public class PeriodReportTest extends AbstractReportTest {
                 .withTransferSplit(a2, -2000, 2000)
                 .create();
         //when
-        report = createReport();
+        report = createReport(false);
         List<GraphUnit> units = assertReportReturnsData();
         //then
         assertIncome(units.get(0), 0);
@@ -73,7 +73,7 @@ public class PeriodReportTest extends AbstractReportTest {
                 .withTransferSplit(a2, -2000, 2000)
                 .create();
         //when
-        report = createReport();
+        report = createReport(true);
         List<GraphUnit> units = assertReportReturnsData();
         //then
         assertIncome(units.get(0), 2000);
@@ -90,7 +90,7 @@ public class PeriodReportTest extends AbstractReportTest {
         TransactionBuilder.withDb(db).account(a3).dateTime(DateTime.today()).amount(-1500).create();
         TransferBuilder.withDb(db).fromAccount(a1).toAccount(a3).fromAmount(-1200).toAmount(250).dateTime(DateTime.today()).create();
         //when
-        report = createReport();
+        report = createReport(false);
         List<GraphUnit> units = assertReportReturnsData();
         //then
         assertIncome(units.get(0), 0);
@@ -107,7 +107,7 @@ public class PeriodReportTest extends AbstractReportTest {
         TransactionBuilder.withDb(db).account(a3).dateTime(DateTime.today()).amount(-1500).create();
         TransferBuilder.withDb(db).fromAccount(a1).toAccount(a3).fromAmount(-1200).toAmount(250).dateTime(DateTime.today()).create();
         //when
-        report = createReport();
+        report = createReport(true);
         List<GraphUnit> units = assertReportReturnsData();
         //then
         assertIncome(units.get(0), 1200);
@@ -124,25 +124,25 @@ public class PeriodReportTest extends AbstractReportTest {
         TransactionBuilder.withDb(db).account(a3).dateTime(DateTime.today()).amount(-1500).create();
         TransferBuilder.withDb(db).fromAccount(a1).toAccount(a3).fromAmount(-1200).toAmount(250).dateTime(DateTime.today()).create();
         //when
-        report = createReport();
+        report = createReport(true);
         List<GraphUnit> units = assertReportReturnsData(IncomeExpense.BOTH);
         //then
         assertIncome(units.get(0), 1200);
         assertExpense(units.get(0), -4850);
         //when
-        report = createReport();
+        report = createReport(true);
         units = assertReportReturnsData(IncomeExpense.INCOME);
         //then
         assertIncome(units.get(0), 1200);
         assertExpense(units.get(0), 0);
         //when
-        report = createReport();
+        report = createReport(true);
         units = assertReportReturnsData(IncomeExpense.EXPENSE);
         //then
         assertIncome(units.get(0), 0);
         assertExpense(units.get(0), -4850);
         //when
-        report = createReport();
+        report = createReport(true);
         units = assertReportReturnsData(IncomeExpense.SUMMARY);
         //then
         assertIncome(units.get(0), -3650);
@@ -158,8 +158,8 @@ public class PeriodReportTest extends AbstractReportTest {
     }
 
     @Override
-    protected Report createReport() {
-        return new PeriodReport(/*getContext(), */c1, PreferenceManager.getDefaultSharedPreferences(getContext()).getBoolean("include_transfers_into_reports", false), new GraphStyle.Builder(getContext()).build());
+    protected Report createReport(boolean includeTransfers) {
+        return new PeriodReport(c1, !includeTransfers, new GraphStyle.Builder(getContext()).build());
     }
 
 }
