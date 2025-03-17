@@ -33,16 +33,15 @@ public class SubCategoryReport extends Report {
 	
     private final GraphStyle[] styles = new GraphStyle[3];
 
-	public SubCategoryReport(Currency currency, boolean skipTransfers, GraphStyle style) {
-		super(ReportType.BY_CATEGORY, currency, skipTransfers, style);
-        // TODO
-//        createStyles(context);
+	public SubCategoryReport(Currency currency, boolean skipTransfers, float screenDensity) {
+		super(ReportType.BY_CATEGORY, currency, skipTransfers, screenDensity);
+        createStyles(screenDensity);
 	}
 
-    private void createStyles(Context context) {
-        styles[0] = new GraphStyle.Builder(context).dy(2).textDy(5).lineHeight(30).nameTextSize(14).amountTextSize(12).indent(0).build();
-        styles[1] = new GraphStyle.Builder(context).dy(2).textDy(5).lineHeight(20).nameTextSize(12).amountTextSize(10).indent(10).build();
-        styles[2] = new GraphStyle.Builder(context).dy(2).textDy(5).lineHeight(20).nameTextSize(12).amountTextSize(10).indent(30).build();
+    private void createStyles(float screenDensity) {
+        styles[0] = new GraphStyle.Builder(screenDensity).dy(2).textDy(5).lineHeight(30).nameTextSize(14).amountTextSize(12).indent(0).build();
+        styles[1] = new GraphStyle.Builder(screenDensity).dy(2).textDy(5).lineHeight(20).nameTextSize(12).amountTextSize(10).indent(10).build();
+        styles[2] = new GraphStyle.Builder(screenDensity).dy(2).textDy(5).lineHeight(20).nameTextSize(12).amountTextSize(10).indent(30).build();
     }
 
     @Override

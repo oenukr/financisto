@@ -14,7 +14,6 @@ import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -46,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -72,6 +72,7 @@ import ru.orangesoftware.financisto.report.PeriodReport
 import ru.orangesoftware.financisto.report.Report
 import ru.orangesoftware.financisto.reports.ReportViewModel
 import ru.orangesoftware.financisto.reports.ReportViewModel.Companion.INTENT_KEY
+import ru.orangesoftware.financisto.reports.ReportViewModel.Companion.SCREEN_DENTITY_KEY
 import ru.orangesoftware.financisto.utils.MyPreferences
 import ru.orangesoftware.financisto.utils.PinProtection
 import ru.orangesoftware.financisto.utils.Utils
@@ -96,12 +97,14 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
             val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
             val snackbarHostState = remember { SnackbarHostState() }
             val context = LocalContext.current
+            val screenDensity = LocalDensity.current
 
             val reportsViewModel: ReportViewModel = viewModel(
                 factory = ReportViewModel.Factory,
                 extras = MutableCreationExtras(defaultViewModelCreationExtras).apply {
                     set(APPLICATION_KEY, application)
 //                    set(REPORT_NAME_KEY, intent.getStringExtra(EXTRA_REPORT_TYPE).orEmpty())
+                    set(SCREEN_DENTITY_KEY, screenDensity.density)
                     set(INTENT_KEY, intent)
                 },
             )

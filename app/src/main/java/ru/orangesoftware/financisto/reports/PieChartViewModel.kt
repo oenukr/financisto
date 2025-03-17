@@ -1,6 +1,5 @@
 package ru.orangesoftware.financisto.reports
 
-import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
@@ -22,7 +21,6 @@ import ru.orangesoftware.financisto.activity.ReportsListActivity
 import ru.orangesoftware.financisto.activity.ReportsListActivity.EXTRA_REPORT_TYPE
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.filter.WhereFilter
-import ru.orangesoftware.financisto.graph.GraphStyle
 import ru.orangesoftware.financisto.model.Total
 import ru.orangesoftware.financisto.report.IncomeExpense
 import ru.orangesoftware.financisto.report.Report
@@ -54,8 +52,8 @@ class PieChartViewModel(
     private val _pieChartData = MutableStateFlow<List<ChartData>>(emptyList())
     val pieChartData: StateFlow<List<ChartData>> = _pieChartData
 
-    fun initiateReport(/*context: Context, */intent: Intent, skipTransfers: Boolean, style: GraphStyle) {
-        createReport(/*context,*/ intent.extras, skipTransfers, style)
+    fun initiateReport(intent: Intent, skipTransfers: Boolean, screenDensity: Float) {
+        createReport(intent.extras, skipTransfers, screenDensity)
         viewModelScope.launch {
             _filter.emit(WhereFilter.fromIntent(intent))
         }
@@ -166,9 +164,9 @@ class PieChartViewModel(
         }
     }
 
-    fun createReport(/*context: Context, */extras: Bundle?, skipTransfers: Boolean, style: GraphStyle) {
+    fun createReport(extras: Bundle?, skipTransfers: Boolean, screenDensity: Float) {
         viewModelScope.launch {
-            _currentReport.emit(ReportsListActivity.createReport(/*context, */db, extras, skipTransfers, style))
+            _currentReport.emit(ReportsListActivity.createReport(db, extras, skipTransfers, screenDensity))
         }
     }
 

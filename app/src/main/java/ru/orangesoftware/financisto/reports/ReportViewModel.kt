@@ -38,12 +38,12 @@ import ru.orangesoftware.financisto.report.ReportData
 class ReportViewModel(
     private val db: DatabaseAdapter,
     private val preferences: SharedPreferences,
-    private val graphStyle: GraphStyle,
+    private val screenDensity: Float,
     private val intent: Intent,
 ) : ViewModel() {
     private val _currentReport = MutableStateFlow<Report?>(null)
     val currentReport: StateFlow<Report?> = _currentReport
-        .onStart { initiateReport(intent, true, graphStyle) }
+        .onStart { initiateReport(intent, true, screenDensity) }
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000L),
@@ -78,8 +78,8 @@ class ReportViewModel(
         context.startActivity(intent)
     }
 
-    fun initiateReport(intent: Intent, skipTransfers: Boolean, style: GraphStyle) {
-        createReport(intent.extras, skipTransfers, style)
+    fun initiateReport(intent: Intent, skipTransfers: Boolean, screenDensity: Float) {
+        createReport(intent.extras, skipTransfers, screenDensity)
         viewModelScope.launch {
             _filter.emit(WhereFilter.fromIntent(intent))
         }
@@ -147,9 +147,9 @@ class ReportViewModel(
 //    private fun getPreferencesForReport(reportName: String, context: Context): SharedPreferences =
 //        context.getSharedPreferences("ReportActivity_${reportName}_DEFAULT", 0)
 
-    fun createReport(extras: Bundle?, skipTransfers: Boolean, style: GraphStyle) {
+    fun createReport(extras: Bundle?, skipTransfers: Boolean, screenDensity: Float) {
         viewModelScope.launch {
-            _currentReport.emit(ReportsListActivity.createReport(db, extras, skipTransfers, style))
+            _currentReport.emit(ReportsListActivity.createReport(db, extras, skipTransfers, screenDensity))
         }
     }
 
@@ -280,16 +280,19 @@ class ReportViewModel(
 //        val REPORT_NAME_KEY = object : CreationExtras.Key<String> {}
         @JvmField
         val INTENT_KEY = object : CreationExtras.Key<Intent> {}
+        @JvmField
+        val SCREEN_DENTITY_KEY = object : CreationExtras.Key<Float> {}
 
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val context = requireNotNull(this[APPLICATION_KEY]) { "Context is required" }
                 val intent = requireNotNull(this[INTENT_KEY]) { "Intent is required" }
+                val screenDensity = requireNotNull(this[SCREEN_DENTITY_KEY]) { "Screen density is required" }
                 val reportName = requireNotNull(intent.getStringExtra(EXTRA_REPORT_TYPE)) { "Report name is required" }
                 ReportViewModel(
                     db = DatabaseAdapter(context),
                     preferences = context.getSharedPreferences("ReportActivity_${reportName}_DEFAULT", 0),
-                    graphStyle = GraphStyle.Builder(context).build(),
+                    screenDensity = screenDensity,
                     intent = intent,
                 )
             }

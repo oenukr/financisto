@@ -37,7 +37,8 @@ public class CategoryReportTest extends AbstractReportTest {
 
     @Override
     protected Report createReport(boolean includeTransfers) {
-        return new CategoryReport(c1, !includeTransfers, new GraphStyle.Builder(getContext()).build());
+        float screenDensity = getContext().getResources().getDisplayMetrics().density;
+        return new CategoryReport(c1, !includeTransfers, screenDensity);
     }
 
 }

@@ -11,43 +11,43 @@ public enum ReportType implements SummaryEntityEnum {
 
 	BY_PERIOD(R.string.report_by_period, R.string.report_by_period_summary, R.drawable.report_icon_default){
 		@Override
-		public Report createReport(Currency currency, boolean skipTransfers, GraphStyle style) {
-			return new PeriodReport(currency, skipTransfers, style);
+		public Report createReport(Currency currency, boolean skipTransfers, float screenDensity) {
+			return new PeriodReport(currency, skipTransfers, screenDensity);
 		}
 	},
 	BY_CATEGORY(R.string.report_by_category, R.string.report_by_category_summary, R.drawable.report_icon_default){
         @Override
-        public Report createReport(Currency currency, boolean skipTransfers, GraphStyle style) {
-            return new CategoryReport(currency, skipTransfers, style);
+        public Report createReport(Currency currency, boolean skipTransfers, float screenDensity) {
+            return new CategoryReport(currency, skipTransfers, screenDensity);
         }
 	},
 	BY_SUB_CATEGORY(R.string.report_by_category, R.string.report_by_category_summary, R.drawable.report_icon_default){
 		@Override
-		public Report createReport(Currency currency, boolean skipTransfers, GraphStyle style) {
-			return new SubCategoryReport(currency, skipTransfers, style);
+		public Report createReport(Currency currency, boolean skipTransfers, float screenDensity) {
+			return new SubCategoryReport(currency, skipTransfers, screenDensity);
 		}
 	},
     BY_PAYEE(R.string.report_by_payee, R.string.report_by_payee_summary, R.drawable.report_icon_default){
         @Override
-        public Report createReport(Currency currency, boolean skipTransfers, GraphStyle style) {
-            return new PayeesReport(currency, skipTransfers, style);
+        public Report createReport(Currency currency, boolean skipTransfers, float screenDensity) {
+            return new PayeesReport(currency, skipTransfers, screenDensity);
         }
     },
 	BY_LOCATION(R.string.report_by_location, R.string.report_by_location_summary, R.drawable.report_icon_default){
 		@Override
-		public Report createReport(Currency currency, boolean skipTransfers, GraphStyle style) {
-			return new LocationsReport(currency, skipTransfers, style);
+		public Report createReport(Currency currency, boolean skipTransfers, float screenDensity) {
+			return new LocationsReport(currency, skipTransfers, screenDensity);
 		}
 	},
 	BY_PROJECT(R.string.report_by_project, R.string.report_by_project_summary, R.drawable.report_icon_default){
 		@Override
-		public Report createReport(Currency currency, boolean skipTransfers, GraphStyle style) {
-			return new ProjectsReport(currency, skipTransfers, style);
+		public Report createReport(Currency currency, boolean skipTransfers, float screenDensity) {
+			return new ProjectsReport(currency, skipTransfers, screenDensity);
 		}
 	}, 
 	BY_ACCOUNT_BY_PERIOD(R.string.report_by_account_by_period, R.string.report_by_account_by_period_summary, R.drawable.actionbar_action_line_chart){
 		@Override
-		public Report createReport(Currency currency, boolean skipTransfers, GraphStyle style) {
+		public Report createReport(Currency currency, boolean skipTransfers, float screenDensity) {
 			return null;
 		}
 		
@@ -58,7 +58,7 @@ public enum ReportType implements SummaryEntityEnum {
 	}, 
 	BY_CATEGORY_BY_PERIOD(R.string.report_by_category_by_period, R.string.report_by_category_by_period_summary, R.drawable.actionbar_action_line_chart){
 		@Override
-		public Report createReport(Currency currency, boolean skipTransfers, GraphStyle style) {
+		public Report createReport(Currency currency, boolean skipTransfers, float screenDensity) {
 			return null;
 		}
 		
@@ -69,7 +69,7 @@ public enum ReportType implements SummaryEntityEnum {
 	}, 
     BY_PAYEE_BY_PERIOD(R.string.report_by_payee_by_period, R.string.report_by_payee_by_period_summary, R.drawable.actionbar_action_line_chart){
         @Override
-        public Report createReport(Currency currency, boolean skipTransfers, GraphStyle style) {
+        public Report createReport(Currency currency, boolean skipTransfers, float screenDensity) {
             return null;
         }
 
@@ -80,7 +80,7 @@ public enum ReportType implements SummaryEntityEnum {
     },
 	BY_LOCATION_BY_PERIOD(R.string.report_by_location_by_period, R.string.report_by_location_by_period_summary, R.drawable.actionbar_action_line_chart){
 		@Override
-		public Report createReport(Currency currency, boolean skipTransfers, GraphStyle style) {
+		public Report createReport(Currency currency, boolean skipTransfers, float screenDensity) {
 			return null;
 		}
 		
@@ -91,7 +91,7 @@ public enum ReportType implements SummaryEntityEnum {
 	}, 
 	BY_PROJECT_BY_PERIOD(R.string.report_by_project_by_period, R.string.report_by_project_by_period_summary, R.drawable.actionbar_action_line_chart){
 		@Override
-		public Report createReport(Currency currency, boolean skipTransfers, GraphStyle style) {
+		public Report createReport(Currency currency, boolean skipTransfers, float screenDensity) {
 			return null;
 		}
 		
@@ -136,6 +136,6 @@ public enum ReportType implements SummaryEntityEnum {
 		return true;
 	}
 	
-	public abstract Report createReport(Currency currency, boolean skipTransfers, GraphStyle style);
+	public abstract Report createReport(Currency currency, boolean skipTransfers, float screenDensity);
 
 }

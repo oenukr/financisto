@@ -159,7 +159,8 @@ public class PeriodReportTest extends AbstractReportTest {
 
     @Override
     protected Report createReport(boolean includeTransfers) {
-        return new PeriodReport(c1, !includeTransfers, new GraphStyle.Builder(getContext()).build());
+        float screenDensity = getContext().getResources().getDisplayMetrics().density;
+        return new PeriodReport(c1, !includeTransfers, screenDensity);
     }
 
 }

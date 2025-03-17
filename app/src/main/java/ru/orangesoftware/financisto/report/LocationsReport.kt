@@ -11,8 +11,8 @@ import ru.orangesoftware.financisto.model.Currency
 class LocationsReport(
 	currency: Currency,
 	skipTransfers: Boolean,
-	style: GraphStyle,
-) : Report(ReportType.BY_LOCATION, currency, skipTransfers, style) {
+	screenDensity: Float,
+) : Report(ReportType.BY_LOCATION, currency, skipTransfers, screenDensity) {
 
 	override fun getReport(db: DatabaseAdapter?, filter: WhereFilter?): ReportData {
 		cleanupFilter(filter)

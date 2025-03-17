@@ -18,7 +18,8 @@ public class SubCategoryReportTest extends AbstractReportTest {
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        CategoryReport r = new CategoryReport(c1, false, new GraphStyle.Builder(getContext()).build());
+        float screenDensity = getContext().getResources().getDisplayMetrics().density;
+        CategoryReport r = new CategoryReport(c1, false, screenDensity);
         filter = r.createFilterForSubCategory(db, WhereFilter.empty(), categories.get("A").id);
     }
 
@@ -107,7 +108,8 @@ public class SubCategoryReportTest extends AbstractReportTest {
 
     @Override
     protected Report createReport(boolean includeTransfers) {
-        return new SubCategoryReport(c1, !includeTransfers, new GraphStyle.Builder(getContext()).build());
+        float screenDensity = getContext().getResources().getDisplayMetrics().density;
+        return new SubCategoryReport(c1, !includeTransfers, screenDensity);
     }
 
 }

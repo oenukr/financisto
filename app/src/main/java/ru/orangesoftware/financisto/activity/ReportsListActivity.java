@@ -67,11 +67,11 @@ public class ReportsListActivity extends ListActivity {
 		}
 	}
 
-	public static Report createReport(MyEntityManager em, Bundle extras, boolean skipTransfers, GraphStyle style) {
+	public static Report createReport(MyEntityManager em, Bundle extras, boolean skipTransfers, float screenDensity) {
 		String reportTypeName = extras.getString(EXTRA_REPORT_TYPE);
 		ReportType reportType = ReportType.valueOf(reportTypeName);
         Currency c = em.getHomeCurrency();
-		return reportType.createReport(c, skipTransfers, style);
+		return reportType.createReport(c, skipTransfers, screenDensity);
 	}
 
 	private ReportType[] getReportsList() {

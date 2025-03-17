@@ -42,10 +42,10 @@ public abstract class Report {
 
     protected IncomeExpense incomeExpense = IncomeExpense.BOTH;
 
-    public Report(ReportType reportType, Currency currency, boolean skipTransfers, GraphStyle style) {
+    public Report(ReportType reportType, Currency currency, boolean skipTransfers, float screenDensity) {
         this.reportType = reportType;
         this.skipTransfers = skipTransfers;//!MyPreferences.isIncludeTransfersIntoReports(context);
-        this.style = style;//new GraphStyle.Builder(context).build();
+        this.style = new GraphStyle.Builder(screenDensity).build();
         this.currency = currency;
     }
 

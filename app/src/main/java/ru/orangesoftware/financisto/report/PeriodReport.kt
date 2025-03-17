@@ -26,8 +26,8 @@ import ru.orangesoftware.financisto.model.Currency
 class PeriodReport(
     currency: Currency,
     skipTransfers: Boolean,
-    style: GraphStyle,
-) : Report(ReportType.BY_PERIOD, currency, skipTransfers, style) {
+    screenDensity: Float,
+) : Report(ReportType.BY_PERIOD, currency, skipTransfers, screenDensity) {
 
     private val periodTypes = arrayOf<PeriodType>(
         TODAY,

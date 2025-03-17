@@ -14,8 +14,8 @@ import ru.orangesoftware.financisto.model.Currency
 class CategoryReportAll(
 	currency: Currency,
 	skipTransfers: Boolean,
-	style: GraphStyle,
-) : Report(ReportType.BY_CATEGORY, currency, skipTransfers, style) {
+	screenDensity: Float,
+) : Report(ReportType.BY_CATEGORY, currency, skipTransfers, screenDensity) {
 
 	override fun getReport(db: DatabaseAdapter?, filter: WhereFilter?): ReportData {
 		cleanupFilter(filter)

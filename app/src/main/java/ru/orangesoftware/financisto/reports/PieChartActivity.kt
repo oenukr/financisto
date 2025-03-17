@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -60,6 +61,7 @@ class PieChartActivity : ComponentActivity() {
 
             val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
             val context = LocalContext.current
+            val screenDensity = LocalDensity.current
 
             DisposableEffect(lifecycleOwner) {
                 val observer = LifecycleEventObserver { _, event ->
@@ -82,7 +84,7 @@ class PieChartActivity : ComponentActivity() {
             }
 
             LaunchedEffect("calculations") {
-                pieChartViewModel.initiateReport(intent, true, GraphStyle.Builder(context).build())
+                pieChartViewModel.initiateReport(intent, true, screenDensity.density)
             }
 
             val chartData = pieChartViewModel.pieChartData.collectAsState(emptyList())

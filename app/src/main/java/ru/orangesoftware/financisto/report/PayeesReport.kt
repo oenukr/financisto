@@ -11,8 +11,8 @@ import ru.orangesoftware.financisto.model.Currency
 class PayeesReport(
 	currency: Currency,
 	skipTransfers: Boolean,
-	style: GraphStyle,
-) : Report(ReportType.BY_PAYEE, currency, skipTransfers, style) {
+	screenDensity: Float,
+) : Report(ReportType.BY_PAYEE, currency, skipTransfers, screenDensity) {
 	override fun getReport(db: DatabaseAdapter?, filter: WhereFilter?): ReportData {
 		cleanupFilter(filter)
 		return queryReport(db, V_REPORT_PAYEES, filter)

@@ -19,8 +19,8 @@ import ru.orangesoftware.financisto.model.Currency;
 
 public class CategoryReport extends Report {
 	
-	public CategoryReport(Currency currency, boolean skipTransfers, GraphStyle style) {
-		super(ReportType.BY_CATEGORY, currency, skipTransfers, style);
+	public CategoryReport(Currency currency, boolean skipTransfers, float screenDensity) {
+		super(ReportType.BY_CATEGORY, currency, skipTransfers, screenDensity);
 	}
 
 	@Override
