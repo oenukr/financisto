@@ -1,11 +1,10 @@
 [versions]
-accompanist = "0.37.2"
+accompanist = "0.36.0"
 android_tools = "8.11.0-alpha02"
 datastore = "1.1.3"
 detekt = "1.23.8"
 glide = "4.16.0"
 glide-compose = "1.0.0-beta01"
-koin = "3.5.2-RC1"
 kotlin = "2.1.20"
 workmanager = "2.10.0"
 
@@ -30,11 +29,12 @@ google-play-drive = { module = "com.google.android.gms:play-services-drive", ver
 google-play-plus = { module = "com.google.android.gms:play-services-plus", version = "17.0.0" }
 java-collections = { module = "net.sf.trove4j:core", version = "3.1.0" }
 koala-chart = { module = "io.github.koalaplot:koalaplot-core", version = "0.8.0" }
-koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
-koin-android-compat = { module = "io.insert-koin:koin-android-compat", version.ref = "koin" }
-koin-compose = { module = "io.insert-koin:koin-androidx-compose", version.ref = "koin" }
-koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
-koin-test = { module = "io.insert-koin:koin-test", version.ref = "koin" }
+koin-bom = { module = "io.insert-koin:koin-bom", version = "4.1.0-Beta5" }
+koin-android = { module = "io.insert-koin:koin-android" }
+koin-android-compat = { module = "io.insert-koin:koin-android-compat" }
+koin-compose = { module = "io.insert-koin:koin-androidx-compose" }
+koin-core = { module = "io.insert-koin:koin-core" }
+koin-test = { module = "io.insert-koin:koin-test" }
 legacy-support = { module = "androidx.legacy:legacy-support-v4", version = "1.0.0" }
 lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version = "2.8.7" }
 materialdatetimepicker = { module = "com.wdullaer:materialdatetimepicker", version = "4.2.3" }

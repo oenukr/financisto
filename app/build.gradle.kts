@@ -106,6 +106,11 @@ dependencies {
     implementation(libs.datastore.preferences.rx)
 
     // Koin - dependency injection
+    // Koin - BOM
+    val koinBom = platform(libs.koin.bom)
+    implementation(koinBom)
+    androidTestImplementation(koinBom)
+    // Koin - core
     implementation(libs.koin.core)
     implementation(libs.koin.android)
     // Koin - Java Compatibility
