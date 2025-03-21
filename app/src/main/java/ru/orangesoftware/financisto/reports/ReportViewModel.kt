@@ -85,7 +85,13 @@ class ReportViewModel(
         }
         if (intent.hasExtra(FILTER_INCOME_EXPENSE)) {
             viewModelScope.launch {
-                _incomeExpenseState.emit(IncomeExpense.valueOf(intent.getStringExtra(FILTER_INCOME_EXPENSE) ?: IncomeExpense.BOTH.name))
+                _incomeExpenseState.emit(
+                    IncomeExpense.valueOf(
+                        intent.getStringExtra(
+                            FILTER_INCOME_EXPENSE
+                        ) ?: IncomeExpense.BOTH.name
+                    )
+                )
             }
         }
         if (_filter.value.isEmpty && intentFilter.isEmpty) {
@@ -120,22 +126,22 @@ class ReportViewModel(
     }
 
     private fun loadPrefsFilter() {
-//        val preferences: SharedPreferences = getPreferencesForReport(reportName, context)
         viewModelScope.launch {
             _filter.emit(WhereFilter.fromSharedPreferences(preferences))
-            _incomeExpenseState.emit(IncomeExpense.valueOf(
-                preferences.getString(
-                    FILTER_INCOME_EXPENSE,
-                    IncomeExpense.BOTH.name,
-                ) ?: IncomeExpense.BOTH.name
-            ))
+            _incomeExpenseState.emit(
+                IncomeExpense.valueOf(
+                    preferences.getString(
+                        FILTER_INCOME_EXPENSE,
+                        IncomeExpense.BOTH.name,
+                    ) ?: IncomeExpense.BOTH.name
+                )
+            )
         }
         saveFilter = true
     }
 
     fun saveFilter() {
         if (saveFilter) {
-//            getPreferencesForReport(_currentReport.value?.reportType?.name.orEmpty(), context)
             preferences
                 .also { _filter.value.toSharedPreferences(it) }
                 .edit {
@@ -144,12 +150,16 @@ class ReportViewModel(
         }
     }
 
-//    private fun getPreferencesForReport(reportName: String, context: Context): SharedPreferences =
-//        context.getSharedPreferences("ReportActivity_${reportName}_DEFAULT", 0)
-
     fun createReport(extras: Bundle?, skipTransfers: Boolean, screenDensity: Float) {
         viewModelScope.launch {
-            _currentReport.emit(ReportsListActivity.createReport(db, extras, skipTransfers, screenDensity))
+            _currentReport.emit(
+                ReportsListActivity.createReport(
+                    db,
+                    extras,
+                    skipTransfers,
+                    screenDensity
+                )
+            )
         }
     }
 
@@ -172,10 +182,11 @@ class ReportViewModel(
 
     fun showPieChart(activity: Activity) {
         viewModelScope.launch {
-//            val chartData = createPieChart()
             Intent(activity, PieChartActivity::class.java).apply {
-//                putExtra(PieChartActivity.CHART_DATA, ArrayList(chartData))
-                putExtra(PieChartActivity.CHART_TITLE, _currentReport.value?.reportType?.name.orEmpty())
+                putExtra(
+                    PieChartActivity.CHART_TITLE,
+                    _currentReport.value?.reportType?.name.orEmpty()
+                )
 
                 putExtra(EXTRA_REPORT_TYPE, _currentReport.value?.reportType?.name.orEmpty())
                 putExtra(FILTER_INCOME_EXPENSE, _incomeExpenseState.value.name)
@@ -186,100 +197,10 @@ class ReportViewModel(
         }
     }
 
-//    private suspend fun createPieChart(): List<PieChartData> {
-////        val renderer = DefaultRenderer()
-////        renderer.labelsTextSize = context.resources.getDimension(R.dimen.report_labels_text_size)
-////        renderer.legendTextSize = context.resources.getDimension(R.dimen.report_legend_text_size)
-////        renderer.margins = intArrayOf(0, 0, 0, 0)
-//        val report: ReportData = withContext(Dispatchers.IO) {
-//            _currentReport.value?.getReportForChart(
-//                db,
-//                WhereFilter.copyOf(_filter.value),
-//            ) ?: ReportData(emptyList(), Total.ZERO)
-//        }
-////        val series = CategorySeries("AAA")
-////        val total: Long = abs(report.total.amount) + abs(report.total.balance)
-//        val chartData = mutableListOf<PieChartData>()
-//        val colors = generateColors(2 * report.units.size)
-//        var index = 0
-//        withContext(Dispatchers.Default) {
-//            report.units.forEach { unit ->
-//                chartData.add(PieChartData(
-//                    data = unit.incomeExpense.income.toDouble(),
-//                    color = colors[index++],
-//                    partName = unit.name,
-//                ))
-//                chartData.add(PieChartData(
-//                    data = unit.incomeExpense.expense.toDouble(),
-//                    color = colors[index++],
-//                    partName = unit.name,
-//                ))
-////                addSeries(
-//////                    series,
-//////                    renderer,
-////                    unit.name,
-////                    unit.incomeExpense.income,
-////                    total,
-////                    colors[index++],
-////                )
-////                addSeries(
-//////                    series,
-//////                    renderer,
-////                    unit.name,
-////                    unit.incomeExpense.expense,
-////                    total,
-////                    colors[index++],
-////                )
-//            }
-////            renderer.isZoomButtonsVisible = true
-////            renderer.isZoomEnabled = true
-////            renderer.chartTitleTextSize = 20F
-//        }
-//        return chartData
-//    }
-
-//    private fun generateColors(n: Int): List<Color> {
-//        var colors = mutableListOf<Color>()
-//        if (n == 0) {
-//            return colors
-//        }
-//
-//        for (i in 0 until n) {
-//            colors.add(
-//                Color.hsv(
-//                    hue = 360 * i.toFloat() / n.toFloat(),
-//                    saturation = 0.75f,
-//                    value = 0.85f,
-//                    colorSpace = ColorSpaces.DisplayP3,
-//                )
-//            )
-//        }
-//        return colors
-//    }
-
-//    private fun addSeries(
-////        series: CategorySeries,
-////        renderer: DefaultRenderer,
-//        name: String,
-//        expense: BigDecimal,
-//        total: Long,
-//        color: Int,
-//    ) {
-//        val amount = expense.toLong()
-//        if (amount != 0L && total != 0L) {
-//            val percentage = 100 * abs(amount) /total
-////            series.add((if (amount > 0) "+" else "-") + name + "($percentage%)", percentage.toDouble())
-////            val seriesRenderer: SimpleSeriesRenderer = SimpleSeriesRenderer()
-////            seriesRenderer.color = color
-////            renderer.addSeriesRenderer(seriesRenderer)
-//        }
-//    }
-
     companion object {
-//        @JvmField
-//        val REPORT_NAME_KEY = object : CreationExtras.Key<String> {}
         @JvmField
         val INTENT_KEY = object : CreationExtras.Key<Intent> {}
+
         @JvmField
         val SCREEN_DENTITY_KEY = object : CreationExtras.Key<Float> {}
 
@@ -287,11 +208,16 @@ class ReportViewModel(
             initializer {
                 val context = requireNotNull(this[APPLICATION_KEY]) { "Context is required" }
                 val intent = requireNotNull(this[INTENT_KEY]) { "Intent is required" }
-                val screenDensity = requireNotNull(this[SCREEN_DENTITY_KEY]) { "Screen density is required" }
-                val reportName = requireNotNull(intent.getStringExtra(EXTRA_REPORT_TYPE)) { "Report name is required" }
+                val screenDensity =
+                    requireNotNull(this[SCREEN_DENTITY_KEY]) { "Screen density is required" }
+                val reportName =
+                    requireNotNull(intent.getStringExtra(EXTRA_REPORT_TYPE)) { "Report name is required" }
                 ReportViewModel(
                     db = DatabaseAdapter(context),
-                    preferences = context.getSharedPreferences("ReportActivity_${reportName}_DEFAULT", 0),
+                    preferences = context.getSharedPreferences(
+                        "ReportActivity_${reportName}_DEFAULT",
+                        0
+                    ),
                     screenDensity = screenDensity,
                     intent = intent,
                 )

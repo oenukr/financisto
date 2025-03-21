@@ -83,10 +83,6 @@ class PieChartActivity : ComponentActivity() {
                 }
             }
 
-//            LaunchedEffect("calculations") {
-//                pieChartViewModel.initiateReport(intent, true, screenDensity.density)
-//            }
-
             val chartData = pieChartViewModel.pieChartData.collectAsStateWithLifecycle()
 
             if (chartData.value.isNotEmpty()) {

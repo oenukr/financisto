@@ -30,134 +30,99 @@ import kotlin.math.abs
 
 @Composable
 fun GraphComposable(
-	modifier: Modifier = Modifier,
-	unit: GraphUnit,
-	maxAmount: Long,
-	maxAmountWidth: Long,
-	onItemClick: (id: Long) -> Unit = {},
+    modifier: Modifier = Modifier,
+    unit: GraphUnit,
+    maxAmount: Long,
+    maxAmountWidth: Long,
+    onItemClick: (id: Long) -> Unit = {},
 ) {
-	val context = LocalContext.current
-	val density = LocalDensity.current
+    val context = LocalContext.current
+    val density = LocalDensity.current
 
-	val width by remember { mutableIntStateOf(context.resources.displayMetrics.widthPixels) }
+    val width by remember { mutableIntStateOf(context.resources.displayMetrics.widthPixels) }
 
-	val positiveColor by remember { mutableStateOf(Color(ContextCompat.getColor(context, R.color.positive_amount))) }
-	val negativeColor by remember { mutableStateOf(Color(ContextCompat.getColor(context, R.color.negative_amount))) }
-	val positiveLineColor: Color by remember { mutableStateOf(Color(124, 198, 35, 255)) }
-	val negativeLineColor: Color by remember { mutableStateOf(Color(239, 156, 0, 255)) }
+    val positiveColor by remember {
+        mutableStateOf(
+            Color(
+                ContextCompat.getColor(
+                    context,
+                    R.color.positive_amount
+                )
+            )
+        )
+    }
+    val negativeColor by remember {
+        mutableStateOf(
+            Color(
+                ContextCompat.getColor(
+                    context,
+                    R.color.negative_amount
+                )
+            )
+        )
+    }
+    val positiveLineColor: Color by remember { mutableStateOf(Color(124, 198, 35, 255)) }
+    val negativeLineColor: Color by remember { mutableStateOf(Color(239, 156, 0, 255)) }
 
-	val zeroColor: Color = colorResource(android.R.color.secondary_text_dark)
-	val style = unit.style
+    val zeroColor: Color = colorResource(android.R.color.secondary_text_dark)
+    val style = unit.style
 
-	val contentPadding = modifier.padding(
-		horizontal = style.indent.dp,
-		vertical = PaddingValues(top = 0.dp).calculateTopPadding(),
-	)
+    val contentPadding = modifier.padding(
+        horizontal = style.indent.dp,
+        vertical = PaddingValues(top = 0.dp).calculateTopPadding(),
+    )
 
-	Column(modifier = contentPadding.clickable { onItemClick(unit.id) }) {
-		val annotatedName = buildAnnotatedString {
-			withStyle(SpanStyle(color = Color(style.namePaint.color))) {
-				append(unit.name)
-			}
-		}
-		Text(text = annotatedName)
-//		Spacer(Modifier.height(style.nameHeight.dp + style.textDy.dp))
-		unit.forEach { a ->
-			val amount = a.amount
+    Column(modifier = contentPadding.clickable { onItemClick(unit.id) }) {
+        val annotatedName = buildAnnotatedString {
+            withStyle(SpanStyle(color = Color(style.namePaint.color))) {
+                append(unit.name)
+            }
+        }
+        Text(text = annotatedName)
+        unit.forEach { a ->
+            val amount = a.amount
 
-			val color: Color = when {
-				amount > 0 -> positiveLineColor
-				amount < 0 -> negativeLineColor
-				else -> zeroColor
-			}
+            val color: Color = when {
+                amount > 0 -> positiveLineColor
+                amount < 0 -> negativeLineColor
+                else -> zeroColor
+            }
 
-			val textColor: Color = when {
-				amount > 0 -> positiveColor
-				amount < 0 -> negativeColor
-				else -> zeroColor
-			}
+            val textColor: Color = when {
+                amount > 0 -> positiveColor
+                amount < 0 -> negativeColor
+                else -> zeroColor
+            }
 
-			Box {
-				val lineWidth = with(density) {
-					maxOf(
-						1f,
-						(abs(amount.toFloat()) / maxAmount * (width - (style.textDy * 5) - maxAmountWidth)).coerceAtLeast(1f)
-					).toDp()
-				}
-				val lineHeight = with(density) { style.lineHeight.toDp() }
-				val textDy = with(density) { style.textDy.toDp() }
-//				val amountHeight = with(density) { style.amountHeight.toDp() }
-				val textSize = with(density) { style.amountPaint.textSize.toSp() }
+            Box {
+                val lineWidth = with(density) {
+                    maxOf(
+                        1f,
+                        (abs(amount.toFloat()) / maxAmount * (width - (style.textDy * 5) - maxAmountWidth)).coerceAtLeast(
+                            1f
+                        )
+                    ).toDp()
+                }
+                val lineHeight = with(density) { style.lineHeight.toDp() }
+                val textDy = with(density) { style.textDy.toDp() }
+                val textSize = with(density) { style.amountPaint.textSize.toSp() }
 
-//				Row(modifier = Modifier.height(lineHeight)) {
-					Box(Modifier.height(lineHeight).width(lineWidth).background(color = color))
-					val annotatedAmount = buildAnnotatedString {
-						withStyle(SpanStyle(color = textColor)) {
-							append(a.getAmountText())
-						}
-					}
-					Text(
-						text = annotatedAmount,
-						modifier = Modifier
-//							.align(Alignment.Center)
-							.offset(x = lineWidth + textDy/*, y = (lineHeight / 2) - (amountHeight / 2)*/),
-						fontSize = textSize,
-					)
-//				}
-			}
-//			Spacer(Modifier.height(style.lineHeight.dp + style.dy.dp))
-		}
-	}
+                Box(Modifier
+					.height(lineHeight)
+					.width(lineWidth)
+					.background(color = color))
+                val annotatedAmount = buildAnnotatedString {
+                    withStyle(SpanStyle(color = textColor)) {
+                        append(a.getAmountText())
+                    }
+                }
+                Text(
+                    text = annotatedAmount,
+                    modifier = Modifier
+                        .offset(x = lineWidth + textDy),
+                    fontSize = textSize,
+                )
+            }
+        }
+    }
 }
-
-//class GraphWidget(
-//	context: Context,
-//	private val unit: GraphUnit,
-//	private val maxAmount: Long,
-//	private val maxAmountWidth: Long,
-//) : View(context) {
-//
-//	private val positiveColor: Int = ContextCompat.getColor(context, R.color.positive_amount)
-//	private val negativeColor: Int = ContextCompat.getColor(context, R.color.negative_amount)
-//	private val positiveLineColor: Int = android.graphics.Color.argb(255, 124, 198, 35)
-//	private val negativeLineColor: Int = android.graphics.Color.argb(255, 239, 156, 0)
-//
-//	override fun onDraw(canvas: Canvas) {
-//		super.onDraw(canvas)
-//		val zeroColor = ContextCompat.getColor(context, android.R.color.secondary_text_dark)
-//
-//		val style: GraphStyle = unit.style
-//		val x = (getPaddingLeft() + style.indent).toFloat()
-//		var y = paddingTop.toFloat()
-//		val w = width - getPaddingLeft() - getPaddingRight() - style.indent
-//		val u: GraphUnit = unit
-//		val name: String = u.name
-//		canvas.drawText(name, x, y + style.nameHeight, style.namePaint)
-//		y += style.nameHeight + style.textDy
-//		u.forEach { a ->
-//			val amount = a.amount
-//			val lineWidth =
-//				1.coerceAtLeast((1.0 * abs(amount) / maxAmount * (w - style.textDy - maxAmountWidth)).toInt())
-//			style.linePaint.setColor(if (amount == 0L) zeroColor else (if (amount > 0) positiveLineColor else negativeLineColor))
-//			canvas.drawRect(x, y, x + lineWidth, y + style.lineHeight, style.linePaint)
-//			style.amountPaint.setColor(if (amount == 0L) zeroColor else (if (amount > 0) positiveColor else negativeColor))
-//			canvas.drawText(
-//				a.getAmountText(),
-//				x + lineWidth + style.textDy + a.amountTextWidth / 2,
-//				y + style.lineHeight / 2 + style.amountHeight / 2,
-//				style.amountPaint
-//			)
-//			y += style.lineHeight + style.dy
-//		}
-//	}
-//
-//	override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-//		val style: GraphStyle = unit.style
-//		val specWidth = MeasureSpec.getSize(widthMeasureSpec)
-//		var h = 0
-//		h += style.nameHeight + style.textDy
-//		h += (style.lineHeight + style.dy) * unit.size()
-//		setMeasuredDimension(specWidth, paddingTop + h + paddingBottom)
-//	}
-//
-//}

@@ -30,7 +30,6 @@ import ru.orangesoftware.financisto.model.Currency;
 import ru.orangesoftware.financisto.model.Total;
 import ru.orangesoftware.financisto.model.TotalError;
 import ru.orangesoftware.financisto.rates.ExchangeRateProvider;
-import ru.orangesoftware.financisto.utils.MyPreferences;
 
 public abstract class Report {
 	
@@ -44,7 +43,7 @@ public abstract class Report {
 
     public Report(ReportType reportType, Currency currency, boolean skipTransfers, float screenDensity) {
         this.reportType = reportType;
-        this.skipTransfers = skipTransfers;//!MyPreferences.isIncludeTransfersIntoReports(context);
+        this.skipTransfers = skipTransfers;
         this.style = new GraphStyle.Builder(screenDensity).build();
         this.currency = currency;
     }

@@ -42,28 +42,18 @@ class PieChartViewModel(
     private val db: DatabaseAdapter,
     private val preferences: SharedPreferences,
     private val screenDensity: Float,
-    private val intent: Intent
+    private val intent: Intent,
 ) : ViewModel() {
     private val _currentReport = MutableStateFlow<Report?>(null)
-//    val currentReport: StateFlow<Report?> = _currentReport
-//        .onStart { initiateReport(intent, true, screenDensity) }
-//        .stateIn(
-//            viewModelScope,
-//            SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000L),
-//            null,
-//        )
 
     private val _filter = MutableStateFlow<WhereFilter>(WhereFilter.empty())
-//    val filter: StateFlow<WhereFilter> = _filter
 
     private var _incomeExpenseState = MutableStateFlow(IncomeExpense.BOTH)
-//    val incomeExpenseState: StateFlow<IncomeExpense> = _incomeExpenseState
 
     private val _pieChartData = MutableStateFlow<List<ChartData>>(emptyList())
     val pieChartData: StateFlow<List<ChartData>> = _pieChartData
         .onStart {
             initiateReport(intent, true, screenDensity)
-//            calculatePieData()
         }
         .stateIn(
             viewModelScope,
@@ -79,7 +69,13 @@ class PieChartViewModel(
         }
         if (intent.hasExtra(FILTER_INCOME_EXPENSE)) {
             viewModelScope.launch {
-                _incomeExpenseState.emit(IncomeExpense.valueOf(intent.getStringExtra(FILTER_INCOME_EXPENSE) ?: IncomeExpense.BOTH.name))
+                _incomeExpenseState.emit(
+                    IncomeExpense.valueOf(
+                        intent.getStringExtra(
+                            FILTER_INCOME_EXPENSE
+                        ) ?: IncomeExpense.BOTH.name
+                    )
+                )
             }
         }
         if (_filter.value.isEmpty && intentFilter.isEmpty) {
@@ -151,29 +147,23 @@ class PieChartViewModel(
         return colors
     }
 
-    private fun loadPrefsFilter(reportName: String/*, context: Context*/) {
-//        val preferences: SharedPreferences = getPreferencesForReport(reportName, context)
+    private fun loadPrefsFilter(reportName: String) {
         viewModelScope.launch {
             _filter.emit(WhereFilter.fromSharedPreferences(preferences))
-            _incomeExpenseState.emit(IncomeExpense.valueOf(
-                preferences.getString(
-                    FILTER_INCOME_EXPENSE,
-                    IncomeExpense.BOTH.name,
-                ) ?: IncomeExpense.BOTH.name
-            ))
+            _incomeExpenseState.emit(
+                IncomeExpense.valueOf(
+                    preferences.getString(
+                        FILTER_INCOME_EXPENSE,
+                        IncomeExpense.BOTH.name,
+                    ) ?: IncomeExpense.BOTH.name
+                )
+            )
         }
     }
 
-//    private fun getPreferencesForReport(reportName: String, context: Context): SharedPreferences =
-//        context.getSharedPreferences("ReportActivity_${reportName}_DEFAULT", 0)
-
     fun updateReport() {
         viewModelScope.launch {
-            val report = calculateReport()
-//            withContext(Dispatchers.Default) {
-//                _reportTotal.emit(report?.total ?: Total.ZERO)
-//                _graphUnits.emit(report?.units ?: emptyList())
-//            }
+            calculateReport()
         }
     }
 
@@ -186,7 +176,14 @@ class PieChartViewModel(
 
     fun createReport(extras: Bundle?, skipTransfers: Boolean, screenDensity: Float) {
         viewModelScope.launch {
-            _currentReport.emit(ReportsListActivity.createReport(db, extras, skipTransfers, screenDensity))
+            _currentReport.emit(
+                ReportsListActivity.createReport(
+                    db,
+                    extras,
+                    skipTransfers,
+                    screenDensity
+                )
+            )
         }
     }
 
@@ -195,10 +192,9 @@ class PieChartViewModel(
     fun close() = db.close()
 
     companion object {
-//        @JvmField
-//        val REPORT_NAME_KEY = object : CreationExtras.Key<String> {}
         @JvmField
         val INTENT_KEY = object : CreationExtras.Key<Intent> {}
+
         @JvmField
         val SCREEN_DENTITY_KEY = object : CreationExtras.Key<Float> {}
 
@@ -206,11 +202,16 @@ class PieChartViewModel(
             initializer {
                 val context = requireNotNull(this[APPLICATION_KEY]) { "Context is required" }
                 val intent = requireNotNull(this[INTENT_KEY]) { "Intent is required" }
-                val screenDensity = requireNotNull(this[SCREEN_DENTITY_KEY]) { "Screen density is required" }
-                val reportName = requireNotNull(intent.getStringExtra(EXTRA_REPORT_TYPE)) { "Report name is required" }
+                val screenDensity =
+                    requireNotNull(this[SCREEN_DENTITY_KEY]) { "Screen density is required" }
+                val reportName =
+                    requireNotNull(intent.getStringExtra(EXTRA_REPORT_TYPE)) { "Report name is required" }
                 PieChartViewModel(
                     db = DatabaseAdapter(context),
-                    preferences = context.getSharedPreferences("ReportActivity_${reportName}_DEFAULT", 0),
+                    preferences = context.getSharedPreferences(
+                        "ReportActivity_${reportName}_DEFAULT",
+                        0
+                    ),
                     screenDensity = screenDensity,
                     intent = intent,
                 )
