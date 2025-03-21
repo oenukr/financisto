@@ -2,7 +2,6 @@ package ru.orangesoftware.financisto.report;
 
 import static ru.orangesoftware.financisto.db.DatabaseHelper.V_REPORT_SUB_CATEGORY;
 
-import android.content.Context;
 import android.database.Cursor;
 
 import java.math.BigDecimal;
@@ -34,7 +33,7 @@ public class SubCategoryReport extends Report {
     private final GraphStyle[] styles = new GraphStyle[3];
 
 	public SubCategoryReport(Currency currency, boolean skipTransfers, float screenDensity) {
-		super(ReportType.BY_CATEGORY, currency, skipTransfers, screenDensity);
+		super(ReportType.BY_SUB_CATEGORY, currency, skipTransfers, screenDensity);
         createStyles(screenDensity);
 	}
 
