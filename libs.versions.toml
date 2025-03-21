@@ -1,23 +1,23 @@
 [versions]
-accompanist = "0.36.0"
-android_tools = "8.10.0-alpha08"
-datastore = "1.1.2"
-detekt = "1.23.7"
+accompanist = "0.37.2"
+android_tools = "8.11.0-alpha02"
+datastore = "1.1.3"
+detekt = "1.23.8"
 glide = "4.16.0"
 glide-compose = "1.0.0-beta01"
 koin = "3.5.2-RC1"
-kotlin = "2.1.0"
+kotlin = "2.1.20"
 workmanager = "2.10.0"
 
 [libraries]
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanist" }
 accompanist-webview = { module = "com.google.accompanist:accompanist-webview", version.ref = "accompanist" }
-activity-compose = { module = "androidx.activity:activity-compose", version = "1.10.0" }
+activity-compose = { module = "androidx.activity:activity-compose", version = "1.10.1" }
 androidannotations-api = { module = "org.androidannotations:androidannotations-api", version = "4.8.0" }
 appcompat = { module = "androidx.appcompat:appcompat", version = "1.7.0" }
 biometric = { module = "androidx.biometric:biometric", version = "1.1.0" }
-collection-ktx = { module = "androidx.collection:collection-ktx", version = "1.4.5" }
-commons-io = { module = "commons-io:commons-io", version = "2.17.0" }
+collection-ktx = { module = "androidx.collection:collection-ktx", version = "1.5.0" }
+commons-io = { module = "commons-io:commons-io", version = "2.18.0" }
 core-ktx = { module = "androidx.core:core-ktx", version = "1.15.0" }
 datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
 datastore-preferences-rx = { module = "androidx.datastore:datastore-preferences-rxjava3", version.ref = "datastore" }
@@ -25,11 +25,11 @@ detekt-formatting = { module = "io.gitlab.arturbosch.detekt:detekt-formatting", 
 eventbus = { module = "org.greenrobot:eventbus", version = "3.3.1" }
 glide = { module = "com.github.bumptech.glide:glide", version.ref = "glide" }
 glide-compose = { module = "com.github.bumptech.glide:compose", version.ref = "glide-compose" }
-google-play-base = { module = "com.google.android.gms:play-services-base", version = "18.5.0" }
+google-play-base = { module = "com.google.android.gms:play-services-base", version = "18.6.0" }
 google-play-drive = { module = "com.google.android.gms:play-services-drive", version = "17.0.0" }
 google-play-plus = { module = "com.google.android.gms:play-services-plus", version = "17.0.0" }
 java-collections = { module = "net.sf.trove4j:core", version = "3.1.0" }
-koala-chart = { module = "io.github.koalaplot:koalaplot-core", version = "0.7.0" }
+koala-chart = { module = "io.github.koalaplot:koalaplot-core", version = "0.8.0" }
 koin-android = { module = "io.insert-koin:koin-android", version.ref = "koin" }
 koin-android-compat = { module = "io.insert-koin:koin-android-compat", version.ref = "koin" }
 koin-compose = { module = "io.insert-koin:koin-androidx-compose", version.ref = "koin" }
@@ -38,7 +38,7 @@ koin-test = { module = "io.insert-koin:koin-test", version.ref = "koin" }
 legacy-support = { module = "androidx.legacy:legacy-support-v4", version = "1.0.0" }
 lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version = "2.8.7" }
 materialdatetimepicker = { module = "com.wdullaer:materialdatetimepicker", version = "4.2.3" }
-okio = { module = "com.squareup.okio:okio", version = "3.9.0" }
+okio = { module = "com.squareup.okio:okio", version = "3.10.2" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version = "4.12.0" }
 reactive-streams = { module = "org.reactivestreams:reactive-streams", version = "1.0.4" }
 rximagepicker = { module = "com.github.MLSDev:RxImagePicker", version = "master" }
@@ -46,7 +46,7 @@ rxjava2-rxandroid = { module = "io.reactivex.rxjava2:rxandroid", version = "2.1.
 rxjava2-rxjava = { module = "io.reactivex.rxjava2:rxjava", version = "2.2.21"}
 rxjava3-bridge = { module = "com.github.akarnokd:rxjava3-bridge", version = "3.0.2" }
 rxjava3-rxandroid = { module = "io.reactivex.rxjava3:rxandroid", version = "3.0.2" }
-rxjava3-rxjava = { module = "io.reactivex.rxjava3:rxjava", version = "3.1.8" }
+rxjava3-rxjava = { module = "io.reactivex.rxjava3:rxjava", version = "3.1.10" }
 sqlite-ktx = { module = "androidx.sqlite:sqlite-ktx", version = "2.4.0" }
 workmanager = { module = "androidx.work:work-runtime", version.ref = "workmanager" }
 workmanager-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workmanager" }
@@ -56,4 +56,4 @@ android-application = { id = "com.android.application", version.ref = "android_t
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt"}
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
-kover = { id = "org.jetbrains.kotlinx.kover", version = "0.9.0-RC" }
+kover = { id = "org.jetbrains.kotlinx.kover", version = "0.9.1" }

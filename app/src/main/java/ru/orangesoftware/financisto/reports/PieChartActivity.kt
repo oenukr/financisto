@@ -10,8 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -24,6 +22,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.MutableCreationExtras
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.koalaplot.core.ChartLayout
@@ -34,8 +33,8 @@ import io.github.koalaplot.core.pie.CircularLabelPositionProvider
 import io.github.koalaplot.core.pie.PieChart
 import io.github.koalaplot.core.pie.PieLabelPlacement
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
-import ru.orangesoftware.financisto.graph.GraphStyle
-import ru.orangesoftware.financisto.reports.ReportViewModel.Companion.INTENT_KEY
+import ru.orangesoftware.financisto.reports.PieChartViewModel.Companion.INTENT_KEY
+import ru.orangesoftware.financisto.reports.PieChartViewModel.Companion.SCREEN_DENTITY_KEY
 import ru.orangesoftware.financisto.utils.MyPreferences
 import ru.orangesoftware.financisto.utils.PinProtection
 import kotlin.math.abs
@@ -51,17 +50,18 @@ class PieChartActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
+            val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
+            val context = LocalContext.current
+            val screenDensity = LocalDensity.current
+
             val pieChartViewModel: PieChartViewModel = viewModel(
                 factory = PieChartViewModel.Factory,
                 extras = MutableCreationExtras(defaultViewModelCreationExtras).apply {
                     set(APPLICATION_KEY, application)
+                    set(SCREEN_DENTITY_KEY, screenDensity.density)
                     set(INTENT_KEY, intent)
                 },
             )
-
-            val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
-            val context = LocalContext.current
-            val screenDensity = LocalDensity.current
 
             DisposableEffect(lifecycleOwner) {
                 val observer = LifecycleEventObserver { _, event ->
@@ -83,11 +83,11 @@ class PieChartActivity : ComponentActivity() {
                 }
             }
 
-            LaunchedEffect("calculations") {
-                pieChartViewModel.initiateReport(intent, true, screenDensity.density)
-            }
+//            LaunchedEffect("calculations") {
+//                pieChartViewModel.initiateReport(intent, true, screenDensity.density)
+//            }
 
-            val chartData = pieChartViewModel.pieChartData.collectAsState(emptyList())
+            val chartData = pieChartViewModel.pieChartData.collectAsStateWithLifecycle()
 
             if (chartData.value.isNotEmpty()) {
                 ChartLayout(

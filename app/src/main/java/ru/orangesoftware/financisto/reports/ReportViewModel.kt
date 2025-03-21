@@ -28,7 +28,6 @@ import ru.orangesoftware.financisto.activity.ReportsListActivity
 import ru.orangesoftware.financisto.activity.ReportsListActivity.EXTRA_REPORT_TYPE
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.filter.WhereFilter
-import ru.orangesoftware.financisto.graph.GraphStyle
 import ru.orangesoftware.financisto.graph.GraphUnit
 import ru.orangesoftware.financisto.model.Total
 import ru.orangesoftware.financisto.report.IncomeExpense
@@ -78,17 +77,18 @@ class ReportViewModel(
         context.startActivity(intent)
     }
 
-    fun initiateReport(intent: Intent, skipTransfers: Boolean, screenDensity: Float) {
+    private fun initiateReport(intent: Intent, skipTransfers: Boolean, screenDensity: Float) {
         createReport(intent.extras, skipTransfers, screenDensity)
+        val intentFilter = WhereFilter.fromIntent(intent)
         viewModelScope.launch {
-            _filter.emit(WhereFilter.fromIntent(intent))
+            _filter.emit(intentFilter)
         }
         if (intent.hasExtra(FILTER_INCOME_EXPENSE)) {
             viewModelScope.launch {
                 _incomeExpenseState.emit(IncomeExpense.valueOf(intent.getStringExtra(FILTER_INCOME_EXPENSE) ?: IncomeExpense.BOTH.name))
             }
         }
-        if (_filter.value.isEmpty) {
+        if (_filter.value.isEmpty && intentFilter.isEmpty) {
             loadPrefsFilter(/*_currentReport.value?.reportType?.name.orEmpty()*/)
         }
 

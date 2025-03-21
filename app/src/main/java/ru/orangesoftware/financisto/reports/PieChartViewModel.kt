@@ -9,11 +9,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ru.orangesoftware.financisto.activity.ReportActivity.Companion.FILTER_INCOME_EXPENSE
@@ -25,7 +29,6 @@ import ru.orangesoftware.financisto.model.Total
 import ru.orangesoftware.financisto.report.IncomeExpense
 import ru.orangesoftware.financisto.report.Report
 import ru.orangesoftware.financisto.report.ReportData
-import ru.orangesoftware.financisto.reports.ReportViewModel.Companion.INTENT_KEY
 import java.math.BigDecimal
 import kotlin.math.abs
 
@@ -38,31 +41,48 @@ data class ChartData(
 class PieChartViewModel(
     private val db: DatabaseAdapter,
     private val preferences: SharedPreferences,
+    private val screenDensity: Float,
     private val intent: Intent
 ) : ViewModel() {
     private val _currentReport = MutableStateFlow<Report?>(null)
-    val currentReport: StateFlow<Report?> = _currentReport
+//    val currentReport: StateFlow<Report?> = _currentReport
+//        .onStart { initiateReport(intent, true, screenDensity) }
+//        .stateIn(
+//            viewModelScope,
+//            SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000L),
+//            null,
+//        )
 
     private val _filter = MutableStateFlow<WhereFilter>(WhereFilter.empty())
-    val filter: StateFlow<WhereFilter> = _filter
+//    val filter: StateFlow<WhereFilter> = _filter
 
     private var _incomeExpenseState = MutableStateFlow(IncomeExpense.BOTH)
-    val incomeExpenseState: StateFlow<IncomeExpense> = _incomeExpenseState
+//    val incomeExpenseState: StateFlow<IncomeExpense> = _incomeExpenseState
 
     private val _pieChartData = MutableStateFlow<List<ChartData>>(emptyList())
     val pieChartData: StateFlow<List<ChartData>> = _pieChartData
+        .onStart {
+            initiateReport(intent, true, screenDensity)
+//            calculatePieData()
+        }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000L),
+            emptyList(),
+        )
 
-    fun initiateReport(intent: Intent, skipTransfers: Boolean, screenDensity: Float) {
+    private fun initiateReport(intent: Intent, skipTransfers: Boolean, screenDensity: Float) {
         createReport(intent.extras, skipTransfers, screenDensity)
+        val intentFilter = WhereFilter.fromIntent(intent)
         viewModelScope.launch {
-            _filter.emit(WhereFilter.fromIntent(intent))
+            _filter.emit(intentFilter)
         }
         if (intent.hasExtra(FILTER_INCOME_EXPENSE)) {
             viewModelScope.launch {
                 _incomeExpenseState.emit(IncomeExpense.valueOf(intent.getStringExtra(FILTER_INCOME_EXPENSE) ?: IncomeExpense.BOTH.name))
             }
         }
-        if (_filter.value.isEmpty) {
+        if (_filter.value.isEmpty && intentFilter.isEmpty) {
             loadPrefsFilter(_currentReport.value?.reportType?.name.orEmpty())
         }
 
@@ -175,14 +195,23 @@ class PieChartViewModel(
     fun close() = db.close()
 
     companion object {
+//        @JvmField
+//        val REPORT_NAME_KEY = object : CreationExtras.Key<String> {}
+        @JvmField
+        val INTENT_KEY = object : CreationExtras.Key<Intent> {}
+        @JvmField
+        val SCREEN_DENTITY_KEY = object : CreationExtras.Key<Float> {}
+
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val context = requireNotNull(this[APPLICATION_KEY]) { "Context is required" }
                 val intent = requireNotNull(this[INTENT_KEY]) { "Intent is required" }
+                val screenDensity = requireNotNull(this[SCREEN_DENTITY_KEY]) { "Screen density is required" }
                 val reportName = requireNotNull(intent.getStringExtra(EXTRA_REPORT_TYPE)) { "Report name is required" }
                 PieChartViewModel(
                     db = DatabaseAdapter(context),
                     preferences = context.getSharedPreferences("ReportActivity_${reportName}_DEFAULT", 0),
+                    screenDensity = screenDensity,
                     intent = intent,
                 )
             }
