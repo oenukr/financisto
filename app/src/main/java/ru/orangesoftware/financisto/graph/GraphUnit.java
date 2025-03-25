@@ -25,7 +25,8 @@ import ru.orangesoftware.financisto.report.IncomeExpense;
 public class GraphUnit implements Comparable<GraphUnit>, Iterable<Amount> {
 
 	public final long id;
-	public final String name;
+	@NonNull
+    public final String name;
 	public final GraphStyle style;
     public final Currency currency;
 

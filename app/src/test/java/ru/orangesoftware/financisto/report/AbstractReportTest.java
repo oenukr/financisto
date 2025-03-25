@@ -37,11 +37,11 @@ public abstract class AbstractReportTest extends AbstractDbTest {
         a2 = AccountBuilder.createDefault(db, c1);
         a3 = AccountBuilder.createDefault(db, c2);
         categories = CategoryBuilder.createDefaultHierarchy(db);
-        report = createReport();
+        report = createReport(false);
         CurrencyCache.initialize(db);
     }
 
-    protected abstract Report createReport();
+    protected abstract Report createReport(boolean includeTransfers);
 
     List<GraphUnit> assertReportReturnsData() {
         return assertReportReturnsData(IncomeExpense.BOTH);

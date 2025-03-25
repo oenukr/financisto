@@ -1,9 +1,12 @@
 package ru.orangesoftware.financisto.report;
 
+import android.preference.PreferenceManager;
+
 import org.junit.Test;
 
 import java.util.List;
 
+import ru.orangesoftware.financisto.graph.GraphStyle;
 import ru.orangesoftware.financisto.graph.GraphUnit;
 import ru.orangesoftware.financisto.test.DateTime;
 import ru.orangesoftware.financisto.test.TransactionBuilder;
@@ -43,8 +46,9 @@ public class CategoryReportAllTest extends AbstractReportTest {
     }
 
     @Override
-    protected Report createReport() {
-        return new CategoryReportAll(getContext(), c1);
+    protected Report createReport(boolean includeTransfers) {
+        float screenDensity = getContext().getResources().getDisplayMetrics().density;
+        return new CategoryReportAll(c1, includeTransfers, screenDensity);
     }
 
 }

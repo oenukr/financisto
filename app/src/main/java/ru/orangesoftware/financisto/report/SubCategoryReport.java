@@ -1,18 +1,7 @@
-/*******************************************************************************
- * Copyright (c) 2010 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
- * Contributors:
- *     Denis Solonenko - initial API and implementation
- ******************************************************************************/
 package ru.orangesoftware.financisto.report;
 
 import static ru.orangesoftware.financisto.db.DatabaseHelper.V_REPORT_SUB_CATEGORY;
 
-import android.content.Context;
 import android.database.Cursor;
 
 import java.math.BigDecimal;
@@ -43,15 +32,15 @@ public class SubCategoryReport extends Report {
 	
     private final GraphStyle[] styles = new GraphStyle[3];
 
-	public SubCategoryReport(Context context, Currency currency) {
-		super(ReportType.BY_CATEGORY, context, currency);
-        createStyles(context);
+	public SubCategoryReport(Currency currency, boolean skipTransfers, float screenDensity) {
+		super(ReportType.BY_SUB_CATEGORY, currency, skipTransfers, screenDensity);
+        createStyles(screenDensity);
 	}
 
-    private void createStyles(Context context) {
-        styles[0] = new GraphStyle.Builder(context).dy(2).textDy(5).lineHeight(30).nameTextSize(14).amountTextSize(12).indent(0).build();
-        styles[1] = new GraphStyle.Builder(context).dy(2).textDy(5).lineHeight(20).nameTextSize(12).amountTextSize(10).indent(10).build();
-        styles[2] = new GraphStyle.Builder(context).dy(2).textDy(5).lineHeight(20).nameTextSize(12).amountTextSize(10).indent(30).build();
+    private void createStyles(float screenDensity) {
+        styles[0] = new GraphStyle.Builder(screenDensity).dy(2).textDy(5).lineHeight(30).nameTextSize(14).amountTextSize(12).indent(0).build();
+        styles[1] = new GraphStyle.Builder(screenDensity).dy(2).textDy(5).lineHeight(20).nameTextSize(12).amountTextSize(10).indent(10).build();
+        styles[2] = new GraphStyle.Builder(screenDensity).dy(2).textDy(5).lineHeight(20).nameTextSize(12).amountTextSize(10).indent(30).build();
     }
 
     @Override
