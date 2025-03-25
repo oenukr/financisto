@@ -150,10 +150,6 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
                 }
             }
 
-//            LaunchedEffect("calculations") {
-//                reportsViewModel.initiateReport(context, intent)
-//            }
-
             var maxAmount by remember { mutableLongStateOf(0L) }
             var maxAmountWidth by remember { mutableLongStateOf(0L) }
 
@@ -176,7 +172,6 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
                                 reportsViewModel.updateFilter(
                                     result.resultCode,
                                     result.data,
-//                                    context,
                                 )
                             },
                             onToggleIncomeExpense = {
