@@ -130,19 +130,19 @@
             </intent-filter>
         </receiver>
 
-        <service
-            android:name=".service.FinancistoService"
-            android:enabled="true"
-            android:exported="true"
-            android:permission="android.permission.BIND_JOB_SERVICE">
-            <intent-filter>
-                <action android:name=".SCHEDULE_ONE" />
-                <action android:name=".SCHEDULE_ALL" />
-                <action android:name=".ACTION_SCHEDULE_AUTO_BACKUP" />
-                <action android:name=".ACTION_AUTO_BACKUP" />
-                <action android:name=".NEW_TRANSACTON_SMS" />
-            </intent-filter>
-        </service>
+<!--        <service-->
+<!--            android:name=".service.FinancistoService"-->
+<!--            android:enabled="true"-->
+<!--            android:exported="true"-->
+<!--            android:permission="android.permission.BIND_JOB_SERVICE">-->
+<!--            <intent-filter>-->
+<!--                <action android:name=".SCHEDULE_ONE" />-->
+<!--                <action android:name=".SCHEDULE_ALL" />-->
+<!--                <action android:name=".ACTION_SCHEDULE_AUTO_BACKUP" />-->
+<!--                <action android:name=".ACTION_AUTO_BACKUP" />-->
+<!--                <action android:name=".NEW_TRANSACTON_SMS" />-->
+<!--            </intent-filter>-->
+<!--        </service>-->
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -283,6 +283,8 @@
             android:name=".activity.ReportActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:label="@string/report" />
+
+        <activity android:name=".reports.PieChartActivity" />
 
         <activity
             android:name=".activity.CurrencyActivity"

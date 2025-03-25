@@ -1,13 +1,3 @@
-/*******************************************************************************
- * Copyright (c) 2010 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
- * Contributors:
- *     Denis Solonenko - initial API and implementation
- ******************************************************************************/
 package ru.orangesoftware.financisto.report;
 
 import static ru.orangesoftware.financisto.db.DatabaseHelper.V_REPORT_CATEGORY;
@@ -15,19 +5,22 @@ import static ru.orangesoftware.financisto.db.DatabaseHelper.V_REPORT_CATEGORY;
 import android.content.Context;
 import android.content.Intent;
 
+import androidx.annotation.NonNull;
+
 import ru.orangesoftware.financisto.activity.ReportActivity;
 import ru.orangesoftware.financisto.activity.ReportsListActivity;
 import ru.orangesoftware.financisto.blotter.BlotterFilter;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
 import ru.orangesoftware.financisto.filter.Criteria;
 import ru.orangesoftware.financisto.filter.WhereFilter;
+import ru.orangesoftware.financisto.graph.GraphStyle;
 import ru.orangesoftware.financisto.model.Category;
 import ru.orangesoftware.financisto.model.Currency;
 
 public class CategoryReport extends Report {
 	
-	public CategoryReport(Context context, Currency currency) {
-		super(ReportType.BY_CATEGORY, context, currency);
+	public CategoryReport(Currency currency, boolean skipTransfers, float screenDensity) {
+		super(ReportType.BY_CATEGORY, currency, skipTransfers, screenDensity);
 	}
 
 	@Override
@@ -38,7 +31,7 @@ public class CategoryReport extends Report {
 	}
 
 	@Override
-	public Intent createActivityIntent(Context context, DatabaseAdapter db, WhereFilter parentFilter, long id) {
+	public Intent createActivityIntent(@NonNull Context context, @NonNull DatabaseAdapter db, WhereFilter parentFilter, long id) {
 		WhereFilter filter = createFilterForSubCategory(db, parentFilter, id);
 		Intent intent = new Intent(context, ReportActivity.class);
 		filter.toIntent(intent);

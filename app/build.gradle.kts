@@ -36,27 +36,12 @@ android {
         compose = true
     }
 
-    composeCompiler {
-        enableStrongSkippingMode = true
-    }
-
     testOptions {
         animationsDisabled = true
         unitTests {
             isReturnDefaultValues = true
             isIncludeAndroidResources = true
         }
-    }
-
-    tasks.withType<Test> {
-        testLogging {
-            events("failed", "passed", "skipped")
-            setExceptionFormat("full")
-            showStandardStreams = true
-        }
-        reports.junitXml.required.set(true)
-        reports.html.required.set(true)
-        outputs.upToDateWhen { false }
     }
 
     sourceSets["test"].resources.srcDirs("src/test/resources")
@@ -107,7 +92,7 @@ dependencies {
     androidTestImplementation(compose.ui.test.junit4)
     debugImplementation(compose.ui.test.manifest)
 
-    // Integration with activities
+    // Compose integration with activities
     implementation(libs.activity.compose)
 
     // Permissions
@@ -121,6 +106,11 @@ dependencies {
     implementation(libs.datastore.preferences.rx)
 
     // Koin - dependency injection
+    // Koin - BOM
+    val koinBom = platform(libs.koin.bom)
+    implementation(koinBom)
+    androidTestImplementation(koinBom)
+    // Koin - core
     implementation(libs.koin.core)
     implementation(libs.koin.android)
     // Koin - Java Compatibility
@@ -134,6 +124,16 @@ dependencies {
 
     // WorkManager
     implementation(libs.workmanager)
+
+    // Chart
+    implementation(libs.koala.chart)
+
+    // Google Kotlin extensions
+    implementation(libs.core.ktx)
+    implementation(libs.collection.ktx)
+
+    // Lifecycle extensions
+    implementation(libs.lifecycle.runtime.ktx)
 
 
     implementation(libs.legacy.support)
@@ -198,6 +198,10 @@ kover {
     }
 }
 
+composeCompiler {
+    enableStrongSkippingMode = true
+}
+
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
@@ -205,4 +209,15 @@ java {
 }
 kotlin {
     jvmToolchain(21)
+}
+
+tasks.withType<Test> {
+    testLogging {
+        events("failed", "passed", "skipped")
+        setExceptionFormat("full")
+        showStandardStreams = true
+    }
+    reports.junitXml.required.set(true)
+    reports.html.required.set(true)
+    outputs.upToDateWhen { false }
 }

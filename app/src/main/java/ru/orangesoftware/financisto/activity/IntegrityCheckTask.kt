@@ -17,6 +17,7 @@ class IntegrityCheckTask(
 
     private val activity: WeakReference<Activity> = WeakReference(activity)
 
+    @Deprecated("Deprecated in Java")
     override fun doInBackground(vararg params: IntegrityCheck): IntegrityCheck.Result {
         val textView = getResultView()
         val context = activity.get()?.baseContext
@@ -26,6 +27,7 @@ class IntegrityCheckTask(
         return IntegrityCheck.Result.OK
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onPostExecute(result: IntegrityCheck.Result?) {
         val textView = getResultView()
         if (textView != null) {

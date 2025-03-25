@@ -23,7 +23,7 @@ import ru.orangesoftware.financisto.utils.LocalizableEnum;
  * Date: 12/17/12 9:08 PM
  */
 public enum PeriodType implements LocalizableEnum {
-    TODAY(R.string.period_today, true, true) {
+    TODAY(R.string.period_today, "Today", true, true) {
         @Override
         public Period calculatePeriod(long refTime) {
             Calendar c = Calendar.getInstance();
@@ -33,7 +33,7 @@ public enum PeriodType implements LocalizableEnum {
             return new Period(PeriodType.TODAY, start, end);
         }
     },
-    YESTERDAY(R.string.period_yesterday, true, false) {
+    YESTERDAY(R.string.period_yesterday, "Yesterday", true, false) {
         @Override
         public Period calculatePeriod(long refTime) {
             Calendar c = Calendar.getInstance();
@@ -44,7 +44,7 @@ public enum PeriodType implements LocalizableEnum {
             return new Period(PeriodType.YESTERDAY, start, end);
         }
     },
-    THIS_WEEK(R.string.period_this_week, true, true) {
+    THIS_WEEK(R.string.period_this_week, "This week", true, true) {
         @Override
         public Period calculatePeriod(long refTime) {
             Calendar c = Calendar.getInstance();
@@ -60,7 +60,7 @@ public enum PeriodType implements LocalizableEnum {
             return new Period(PeriodType.THIS_WEEK, start, end);
         }
     },
-    THIS_MONTH(R.string.period_this_month, true, true) {
+    THIS_MONTH(R.string.period_this_month, "This month", true, true) {
         @Override
         public Period calculatePeriod(long refTime) {
             Calendar c = Calendar.getInstance();
@@ -73,7 +73,7 @@ public enum PeriodType implements LocalizableEnum {
             return new Period(PeriodType.THIS_MONTH, start, end);
         }
     },
-    LAST_WEEK(R.string.period_last_week, true, false) {
+    LAST_WEEK(R.string.period_last_week, "Last week", true, false) {
         @Override
         public Period calculatePeriod(long refTime) {
             Calendar c = Calendar.getInstance();
@@ -90,7 +90,7 @@ public enum PeriodType implements LocalizableEnum {
             return new Period(PeriodType.LAST_WEEK, start, end);
         }
     },
-    LAST_MONTH(R.string.period_last_month, true, false) {
+    LAST_MONTH(R.string.period_last_month, "Last month", true, false) {
         @Override
         public Period calculatePeriod(long refTime) {
             Calendar c = Calendar.getInstance();
@@ -104,7 +104,7 @@ public enum PeriodType implements LocalizableEnum {
             return new Period(PeriodType.LAST_MONTH, start, end);
         }
     },
-    THIS_AND_LAST_WEEK(R.string.period_this_and_last_week, true, false) {
+    THIS_AND_LAST_WEEK(R.string.period_this_and_last_week, "This and last week", true, false) {
         @Override
         public Period calculatePeriod(long refTime) {
             Period lastWeek = LAST_WEEK.calculatePeriod(refTime);
@@ -112,7 +112,7 @@ public enum PeriodType implements LocalizableEnum {
             return new Period(PeriodType.THIS_AND_LAST_WEEK, lastWeek.getStart(), thisWeek.getEnd());
         }
     },
-    THIS_AND_LAST_MONTH(R.string.period_this_and_last_month, true, false) {
+    THIS_AND_LAST_MONTH(R.string.period_this_and_last_month, "This and last month", true, false) {
         @Override
         public Period calculatePeriod(long refTime) {
             Period lastMonth = LAST_MONTH.calculatePeriod(refTime);
@@ -120,7 +120,7 @@ public enum PeriodType implements LocalizableEnum {
             return new Period(PeriodType.THIS_AND_LAST_MONTH, lastMonth.getStart(), thisMonth.getEnd());
         }
     },
-    TOMORROW(R.string.period_tomorrow, false, true) {
+    TOMORROW(R.string.period_tomorrow, "Tomorrow", false, true) {
         @Override
         public Period calculatePeriod(long refTime) {
             Calendar c = Calendar.getInstance();
@@ -131,7 +131,7 @@ public enum PeriodType implements LocalizableEnum {
             return new Period(PeriodType.TOMORROW, start, end);
         }
     },
-    NEXT_WEEK(R.string.period_next_week, false, true) {
+    NEXT_WEEK(R.string.period_next_week, "Next week", false, true) {
         @Override
         public Period calculatePeriod(long refTime) {
             Period thisWeek = THIS_WEEK.calculatePeriod(refTime);
@@ -144,7 +144,7 @@ public enum PeriodType implements LocalizableEnum {
             return new Period(PeriodType.NEXT_WEEK, start.getTimeInMillis(), end.getTimeInMillis());
         }
     },
-    NEXT_MONTH(R.string.period_next_month, false, true) {
+    NEXT_MONTH(R.string.period_next_month, "Next month", false, true) {
         @Override
         public Period calculatePeriod(long refTime) {
             Calendar c = Calendar.getInstance();
@@ -158,7 +158,7 @@ public enum PeriodType implements LocalizableEnum {
             return new Period(PeriodType.NEXT_MONTH, start, end);
         }
     },
-    THIS_AND_NEXT_MONTH(R.string.period_this_and_next_month, false, true) {
+    THIS_AND_NEXT_MONTH(R.string.period_this_and_next_month, "This and next month", false, true) {
         @Override
         public Period calculatePeriod(long refTime) {
             Period thisMonth = THIS_MONTH.calculatePeriod(refTime);
@@ -166,7 +166,7 @@ public enum PeriodType implements LocalizableEnum {
             return new Period(PeriodType.THIS_AND_NEXT_MONTH, thisMonth.getStart(), nextMonth.getEnd());
         }
     },
-    NEXT_3_MONTHS(R.string.period_next_3_months, false, true) {
+    NEXT_3_MONTHS(R.string.period_next_3_months, "Next 3 months", false, true) {
         @Override
         public Period calculatePeriod(long refTime) {
             Calendar c = Calendar.getInstance();
@@ -179,7 +179,7 @@ public enum PeriodType implements LocalizableEnum {
             return new Period(PeriodType.NEXT_3_MONTHS, start, end);
         }
     },
-    CUSTOM(R.string.period_custom, true, true) {
+    CUSTOM(R.string.period_custom, "Custom", true, true) {
         @Override
         public Period calculatePeriod(long refTime) {
             return null;
@@ -207,11 +207,13 @@ public enum PeriodType implements LocalizableEnum {
     }
 
     public final int titleId;
+    public final String defaultTitle;
     public final boolean inPast;
     public final boolean inFuture;
 
-    PeriodType(int titleId, boolean inPast,boolean inFuture) {
+    PeriodType(int titleId, String defaultTitle, boolean inPast,boolean inFuture) {
         this.titleId = titleId;
+        this.defaultTitle = defaultTitle;
         this.inPast = inPast;
         this.inFuture = inFuture;
     }

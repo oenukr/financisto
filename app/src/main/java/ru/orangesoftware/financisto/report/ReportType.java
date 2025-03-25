@@ -1,21 +1,9 @@
-/*******************************************************************************
- * Copyright (c) 2010 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
- * Contributors:
- *     Denis Solonenko - initial API and implementation
- *     Abdsandryk Souza - adding 2D chart reports
- ******************************************************************************/
 package ru.orangesoftware.financisto.report;
-
-import android.content.Context;
 
 import androidx.annotation.NonNull;
 
 import ru.orangesoftware.financisto.R;
+import ru.orangesoftware.financisto.graph.GraphStyle;
 import ru.orangesoftware.financisto.model.Currency;
 import ru.orangesoftware.financisto.utils.SummaryEntityEnum;
 
@@ -23,43 +11,43 @@ public enum ReportType implements SummaryEntityEnum {
 
 	BY_PERIOD(R.string.report_by_period, R.string.report_by_period_summary, R.drawable.report_icon_default){
 		@Override
-		public Report createReport(Context context, Currency currency) {
-			return new PeriodReport(context, currency);
+		public Report createReport(Currency currency, boolean skipTransfers, float screenDensity) {
+			return new PeriodReport(currency, skipTransfers, screenDensity);
 		}
 	},
 	BY_CATEGORY(R.string.report_by_category, R.string.report_by_category_summary, R.drawable.report_icon_default){
         @Override
-        public Report createReport(Context context, Currency currency) {
-            return new CategoryReport(context, currency);
+        public Report createReport(Currency currency, boolean skipTransfers, float screenDensity) {
+            return new CategoryReport(currency, skipTransfers, screenDensity);
         }
 	},
 	BY_SUB_CATEGORY(R.string.report_by_category, R.string.report_by_category_summary, R.drawable.report_icon_default){
 		@Override
-		public Report createReport(Context context, Currency currency) {
-			return new SubCategoryReport(context, currency);
+		public Report createReport(Currency currency, boolean skipTransfers, float screenDensity) {
+			return new SubCategoryReport(currency, skipTransfers, screenDensity);
 		}
 	},
     BY_PAYEE(R.string.report_by_payee, R.string.report_by_payee_summary, R.drawable.report_icon_default){
         @Override
-        public Report createReport(Context context, Currency currency) {
-            return new PayeesReport(context, currency);
+        public Report createReport(Currency currency, boolean skipTransfers, float screenDensity) {
+            return new PayeesReport(currency, skipTransfers, screenDensity);
         }
     },
 	BY_LOCATION(R.string.report_by_location, R.string.report_by_location_summary, R.drawable.report_icon_default){
 		@Override
-		public Report createReport(Context context, Currency currency) {
-			return new LocationsReport(context, currency);
+		public Report createReport(Currency currency, boolean skipTransfers, float screenDensity) {
+			return new LocationsReport(currency, skipTransfers, screenDensity);
 		}
 	},
 	BY_PROJECT(R.string.report_by_project, R.string.report_by_project_summary, R.drawable.report_icon_default){
 		@Override
-		public Report createReport(Context context, Currency currency) {
-			return new ProjectsReport(context, currency);
+		public Report createReport(Currency currency, boolean skipTransfers, float screenDensity) {
+			return new ProjectsReport(currency, skipTransfers, screenDensity);
 		}
 	}, 
 	BY_ACCOUNT_BY_PERIOD(R.string.report_by_account_by_period, R.string.report_by_account_by_period_summary, R.drawable.actionbar_action_line_chart){
 		@Override
-		public Report createReport(Context context, Currency currency) {
+		public Report createReport(Currency currency, boolean skipTransfers, float screenDensity) {
 			return null;
 		}
 		
@@ -70,7 +58,7 @@ public enum ReportType implements SummaryEntityEnum {
 	}, 
 	BY_CATEGORY_BY_PERIOD(R.string.report_by_category_by_period, R.string.report_by_category_by_period_summary, R.drawable.actionbar_action_line_chart){
 		@Override
-		public Report createReport(Context context, Currency currency) {
+		public Report createReport(Currency currency, boolean skipTransfers, float screenDensity) {
 			return null;
 		}
 		
@@ -81,7 +69,7 @@ public enum ReportType implements SummaryEntityEnum {
 	}, 
     BY_PAYEE_BY_PERIOD(R.string.report_by_payee_by_period, R.string.report_by_payee_by_period_summary, R.drawable.actionbar_action_line_chart){
         @Override
-        public Report createReport(Context context, Currency currency) {
+        public Report createReport(Currency currency, boolean skipTransfers, float screenDensity) {
             return null;
         }
 
@@ -92,7 +80,7 @@ public enum ReportType implements SummaryEntityEnum {
     },
 	BY_LOCATION_BY_PERIOD(R.string.report_by_location_by_period, R.string.report_by_location_by_period_summary, R.drawable.actionbar_action_line_chart){
 		@Override
-		public Report createReport(Context context, Currency currency) {
+		public Report createReport(Currency currency, boolean skipTransfers, float screenDensity) {
 			return null;
 		}
 		
@@ -103,7 +91,7 @@ public enum ReportType implements SummaryEntityEnum {
 	}, 
 	BY_PROJECT_BY_PERIOD(R.string.report_by_project_by_period, R.string.report_by_project_by_period_summary, R.drawable.actionbar_action_line_chart){
 		@Override
-		public Report createReport(Context context, Currency currency) {
+		public Report createReport(Currency currency, boolean skipTransfers, float screenDensity) {
 			return null;
 		}
 		
@@ -148,6 +136,6 @@ public enum ReportType implements SummaryEntityEnum {
 		return true;
 	}
 	
-	public abstract Report createReport(Context context, Currency currency);
+	public abstract Report createReport(Currency currency, boolean skipTransfers, float screenDensity);
 
 }

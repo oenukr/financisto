@@ -18,9 +18,10 @@ class PinDialogPreference @JvmOverloads constructor(
 
 	private var dialog: Dialog? = null
 
-    override fun showDialog(state: Bundle) {
+    @Deprecated("Deprecated in Java")
+	override fun showDialog(state: Bundle) {
 		val context: Context = context
-		val pinView: PinView = PinView(context, this, R.layout.lock)
+		val pinView = PinView(context, this, R.layout.lock)
 		dialog = AlertDialog.Builder(context)
         	.setTitle(R.string.set_pin)
         	.setView(pinView.view)
