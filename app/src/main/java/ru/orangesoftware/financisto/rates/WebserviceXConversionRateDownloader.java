@@ -8,13 +8,13 @@
 
 package ru.orangesoftware.financisto.rates;
 
-import android.util.Log;
-
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.http.HttpClientWrapper;
 import ru.orangesoftware.financisto.model.Currency;
+import ru.orangesoftware.financisto.utils.Logger;
 
 /**
  * Created with IntelliJ IDEA.
@@ -24,7 +24,7 @@ import ru.orangesoftware.financisto.model.Currency;
  */
 public class WebserviceXConversionRateDownloader extends AbstractMultipleRatesDownloader {
 
-    private static final String TAG = WebserviceXConversionRateDownloader.class.getSimpleName();
+    private final Logger logger = new DependenciesHolder().getLogger();
 
     private final Pattern pattern = Pattern.compile("<double.*?>(.+?)</double>");
     private final HttpClientWrapper client;
@@ -63,9 +63,9 @@ public class WebserviceXConversionRateDownloader extends AbstractMultipleRatesDo
 
     private String getResponse(Currency fromCurrency, Currency toCurrency) throws Exception {
         String url = buildUrl(fromCurrency, toCurrency);
-        Log.i(TAG, url);
+        logger.i(url);
         String s = client.getAsString(url);
-        Log.i(TAG, s);
+        logger.i(s);
         return s;
     }
 

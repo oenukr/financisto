@@ -10,7 +10,6 @@ package ru.orangesoftware.financisto.activity;
 
 import android.app.AlertDialog;
 import android.content.Context;
-import android.util.Log;
 import android.widget.Toast;
 
 import java.io.IOException;
@@ -21,10 +20,12 @@ import java.util.Collections;
 import java.util.List;
 
 import ru.orangesoftware.financisto.R;
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.db.MyEntityManager;
 import ru.orangesoftware.financisto.export.csv.Csv;
 import ru.orangesoftware.financisto.model.Currency;
 import ru.orangesoftware.financisto.utils.CurrencyCache;
+import ru.orangesoftware.financisto.utils.Logger;
 
 /**
  * Created by IntelliJ IDEA.
@@ -32,6 +33,8 @@ import ru.orangesoftware.financisto.utils.CurrencyCache;
  * Date: 6/20/11 6:40 PM
  */
 public class CurrencySelector {
+
+    private final Logger logger = new DependenciesHolder().getLogger();
 
     public interface OnCurrencyCreatedListener {
         void onCreated(long currencyId);
@@ -117,7 +120,7 @@ public class CurrencySelector {
                 return allLines;
             }
         } catch (IOException e) {
-            Log.e("Financisto", "IO error while reading currencies", e);
+            logger.e(e, "IO error while reading currencies");
             Toast.makeText(context, e.getClass() + ":" + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
         return Collections.emptyList();

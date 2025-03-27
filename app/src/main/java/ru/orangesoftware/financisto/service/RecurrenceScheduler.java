@@ -4,7 +4,6 @@ import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.util.Log;
 
 import androidx.annotation.Nullable;
 
@@ -15,6 +14,7 @@ import java.util.Date;
 import java.util.List;
 
 import ru.orangesoftware.financisto.activity.ScheduledAlarmReceiver;
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
 import ru.orangesoftware.financisto.model.RestoredTransaction;
 import ru.orangesoftware.financisto.model.SystemAttribute;
@@ -22,9 +22,12 @@ import ru.orangesoftware.financisto.model.TransactionAttributeInfo;
 import ru.orangesoftware.financisto.model.TransactionInfo;
 import ru.orangesoftware.financisto.recur.DateRecurrenceIterator;
 import ru.orangesoftware.financisto.recur.Recurrence;
+import ru.orangesoftware.financisto.utils.Logger;
 import ru.orangesoftware.financisto.utils.MyPreferences;
 
 public class RecurrenceScheduler {
+
+    private final Logger logger = new DependenciesHolder().getLogger();
 
     private static final String TAG = "RecurrenceScheduler";
 	private static final Date NULL_DATE = new Date(0);
@@ -52,14 +55,14 @@ public class RecurrenceScheduler {
 
     @Nullable
     public TransactionInfo scheduleOne(Context context, long scheduledTransactionId) {
-        Log.i(TAG, "Alarm for " + scheduledTransactionId + " received..");
+        logger.i("Alarm for " + scheduledTransactionId + " received..");
         TransactionInfo transaction = db.getTransactionInfo(scheduledTransactionId);
         if (transaction != null) {
             long transactionId = duplicateTransactionFromTemplate(transaction);
             boolean hasBeenRescheduled = rescheduleTransaction(context, transaction);
             if (!hasBeenRescheduled) {
                 deleteTransactionIfNeeded(transaction);
-                Log.i(TAG, "Expired transaction " + transaction.id + " has been deleted");
+                logger.i("Expired transaction " + transaction.id + " has been deleted");
             }
             transaction.id = transactionId;
             return transaction;
@@ -84,16 +87,16 @@ public class RecurrenceScheduler {
             List<RestoredTransaction> restored = getMissedSchedules(now);
             if (!restored.isEmpty()) {
                 db.storeMissedSchedules(restored, now);
-                Log.i(TAG, "["+restored.size()+"] scheduled transactions have been restored:");
+                logger.i("["+restored.size()+"] scheduled transactions have been restored:");
                 for (int i=0; i<10 && i<restored.size(); i++) {
                     RestoredTransaction rt = restored.get(i);
-                    Log.i(TAG, rt.getTransactionId()+" at "+rt.getDateTime());
+                    logger.i(rt.getTransactionId()+" at "+rt.getDateTime());
                 }
                 return restored.size();
             }
         } catch (Exception ex) {
             // eat all exceptions
-            Log.e(TAG, "Unexpected error while restoring schedules", ex);
+            logger.e(ex, "Unexpected error while restoring schedules");
         }
         return 0;
     }
@@ -135,7 +138,7 @@ public class RecurrenceScheduler {
 			}
 			return restored;
 		} finally {
-			Log.i(TAG, "getSortedSchedules="+(System.currentTimeMillis()-t0)+"ms");
+			logger.i("getSortedSchedules="+(System.currentTimeMillis()-t0)+"ms");
 		}		
 	}
 
@@ -149,12 +152,12 @@ public class RecurrenceScheduler {
         long t0 = System.currentTimeMillis();
         try {
             ArrayList<TransactionInfo> list = db.getAllScheduledTransactions();
-            Log.i(TAG, "Got " + list.size() + " scheduled transactions");
+            logger.i("Got " + list.size() + " scheduled transactions");
             calculateNextScheduleDateForAllTransactions(list, now);
             sortTransactionsByScheduleDate(list, now);
             return list;
         } finally {
-            Log.i(TAG, "getSortedSchedules=" + (System.currentTimeMillis() - t0) + "ms");
+            logger.i("getSortedSchedules=" + (System.currentTimeMillis() - t0) + "ms");
         }
     }
 
@@ -173,11 +176,11 @@ public class RecurrenceScheduler {
             if (service != null) {
                 PendingIntent pendingIntent = createPendingIntentForScheduledAlarm(context, transaction.id);
                 service.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, scheduleTime.getTime(), pendingIntent);
-                Log.i(TAG, "Scheduling alarm for " + transaction.id + " at " + scheduleTime);
+                logger.i("Scheduling alarm for " + transaction.id + " at " + scheduleTime);
                 return true;
             }
         }
-        Log.i(TAG, "Transactions "+transaction.id+" with next date/time "+transaction.nextDateTime+" is not selected for schedule");
+        logger.i("Transactions "+transaction.id+" with next date/time "+transaction.nextDateTime+" is not selected for schedule");
         return false;
     }
 
@@ -195,7 +198,7 @@ public class RecurrenceScheduler {
     }
 
     public void cancelPendingIntentForSchedule(Context context, long transactionId) {
-        Log.i(TAG, "Cancelling pending alarm for "+transactionId);
+        logger.i("Cancelling pending alarm for "+transactionId);
         AlarmManager service = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
         PendingIntent intent = createPendingIntentForScheduledAlarm(context, transactionId);
         service.cancel(intent);
@@ -261,7 +264,7 @@ public class RecurrenceScheduler {
         } else {
             t.nextDateTime = new Date(t.dateTime);
         }
-        Log.i(TAG, "Calculated schedule time for "+t.id+" is "+t.nextDateTime);
+        logger.i("Calculated schedule time for "+t.id+" is "+t.nextDateTime);
     }
 
 	public Date calculateNextDate(String recurrence, long now) {
@@ -271,7 +274,7 @@ public class RecurrenceScheduler {
                 return ri.next();
             }
         } catch (Exception ex) {
-            Log.e("Financisto", "Unable to calculate next date for "+recurrence+" at "+now);
+            logger.e("Unable to calculate next date for "+recurrence+" at "+now);
         }
         return null;
 	}

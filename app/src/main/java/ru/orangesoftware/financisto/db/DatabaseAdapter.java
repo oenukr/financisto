@@ -52,7 +52,6 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
-import android.util.Log;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -67,6 +66,7 @@ import java.util.Map;
 import java.util.Set;
 
 import ru.orangesoftware.financisto.R;
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.blotter.BlotterFilter;
 import ru.orangesoftware.financisto.datetime.DateUtils;
 import ru.orangesoftware.financisto.filter.Criteria;
@@ -94,9 +94,12 @@ import ru.orangesoftware.financisto.rates.ExchangeRatesCollection;
 import ru.orangesoftware.financisto.rates.HistoryExchangeRates;
 import ru.orangesoftware.financisto.rates.LatestExchangeRates;
 import ru.orangesoftware.financisto.utils.ArrUtils;
+import ru.orangesoftware.financisto.utils.Logger;
 import ru.orangesoftware.financisto.utils.StringUtil;
 
 public class DatabaseAdapter extends MyEntityManager {
+
+    private final Logger logger = new DependenciesHolder().getLogger();
 
     private boolean updateAccountBalance = true;
 
@@ -191,7 +194,7 @@ public class DatabaseAdapter extends MyEntityManager {
                     sortOrder);
         } finally {
             long t1 = System.currentTimeMillis();
-            Log.i("DB", "getBlotter " + (t1 - t0) + "ms");
+            logger.i("getBlotter " + (t1 - t0) + "ms");
         }
     }
 
@@ -217,7 +220,7 @@ public class DatabaseAdapter extends MyEntityManager {
                     sortBy);
         } finally {
             long t1 = System.currentTimeMillis();
-            Log.i("DB", "getBlotter " + (t1 - t0) + "ms");
+            logger.i("getBlotter " + (t1 - t0) + "ms");
         }
     }
 
@@ -1519,7 +1522,7 @@ public class DatabaseAdapter extends MyEntityManager {
         ContentValues values = new ContentValues();
         values.put(AccountColumns.TOTAL_AMOUNT, total.balance);
         db().update(ACCOUNT_TABLE, values, AccountColumns.ID + "=?", new String[]{String.valueOf(accountId)});
-        Log.i("DatabaseImport", "Recalculating amount for " + accountId);
+        logger.i("DatabaseImport", "Recalculating amount for " + accountId);
     }
 
     private long fetchAccountBalance(long accountId) {
@@ -1854,7 +1857,7 @@ public class DatabaseAdapter extends MyEntityManager {
             restoreLocations();
             db.setTransactionSuccessful();
         } catch (Exception e) {
-            Log.e("Financisto", "Unable to restore system entities", e);
+            logger.e("Unable to restore system entities", e);
         } finally {
             db.endTransaction();
         }

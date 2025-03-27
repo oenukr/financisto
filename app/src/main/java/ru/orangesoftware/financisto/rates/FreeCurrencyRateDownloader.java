@@ -1,11 +1,11 @@
 package ru.orangesoftware.financisto.rates;
 
-import android.util.Log;
-
 import org.json.JSONObject;
 
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.http.HttpClientWrapper;
 import ru.orangesoftware.financisto.model.Currency;
+import ru.orangesoftware.financisto.utils.Logger;
 
 /**
  * Created by vteremasov on 11/8/17.
@@ -13,7 +13,7 @@ import ru.orangesoftware.financisto.model.Currency;
 
 public class FreeCurrencyRateDownloader extends AbstractMultipleRatesDownloader {
 
-    private static final String TAG = FreeCurrencyRateDownloader.class.getSimpleName();
+    private final Logger logger = new DependenciesHolder().getLogger();
 
     private final HttpClientWrapper client;
     private final long dateTime;
@@ -43,9 +43,9 @@ public class FreeCurrencyRateDownloader extends AbstractMultipleRatesDownloader 
 
     private String getResponse(Currency fromCurrency, Currency toCurrency) throws Exception {
         String url = buildUrl(fromCurrency, toCurrency);
-        Log.i(TAG, url);
+        logger.i(url);
         JSONObject jsonObject = client.getAsJson(url);
-        Log.i(TAG, jsonObject.getString(toCurrency.name));
+        logger.i(jsonObject.getString(toCurrency.name));
         return jsonObject.getString(toCurrency.name);
     }
 

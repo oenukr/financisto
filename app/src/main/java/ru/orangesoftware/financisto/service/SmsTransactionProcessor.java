@@ -1,13 +1,10 @@
 package ru.orangesoftware.financisto.service;
 
-import static java.lang.String.format;
 import static java.math.BigDecimal.ZERO;
 import static java.util.regex.Pattern.DOTALL;
 import static ru.orangesoftware.financisto.service.SmsTransactionProcessor.Placeholder.ACCOUNT;
 import static ru.orangesoftware.financisto.service.SmsTransactionProcessor.Placeholder.ANY;
 import static ru.orangesoftware.financisto.service.SmsTransactionProcessor.Placeholder.PRICE;
-
-import android.util.Log;
 
 import androidx.annotation.Nullable;
 
@@ -19,14 +16,17 @@ import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
 import ru.orangesoftware.financisto.model.SmsTemplate;
 import ru.orangesoftware.financisto.model.Transaction;
 import ru.orangesoftware.financisto.model.TransactionStatus;
+import ru.orangesoftware.financisto.utils.Logger;
 import ru.orangesoftware.financisto.utils.StringUtil;
 
 public class SmsTransactionProcessor {
-    private static final String TAG = SmsTransactionProcessor.class.getSimpleName();
+    private final Logger logger = new DependenciesHolder().getLogger();
+
     static BigDecimal HUNDRED = new BigDecimal(100);
 
     private final DatabaseAdapter db;
@@ -45,7 +45,7 @@ public class SmsTransactionProcessor {
         for (final SmsTemplate t : addrTemplates) {
             String[] match = findTemplateMatches(t.template, fullSmsBody);
             if (match != null) {
-                Log.d(TAG, format("Found template`%s` with matches `%s`", t, Arrays.toString(match)));
+                logger.d("Found template`%s` with matches `%s`", t, Arrays.toString(match));
 
                 String account = match[ACCOUNT.ordinal()];
                 String parsedPrice = match[PRICE.ordinal()];
@@ -53,7 +53,7 @@ public class SmsTransactionProcessor {
                     BigDecimal price = toBigDecimal(parsedPrice);
                     return createNewTransaction(price, account, t, updateNote ? fullSmsBody : "", status);
                 } catch (Exception e) {
-                    Log.e(TAG, format("Failed to parse price value: `%s`", parsedPrice), e);
+                    logger.e(e, "Failed to parse price value: `%s`", parsedPrice);
                 }
             }
         }
@@ -136,9 +136,9 @@ public class SmsTransactionProcessor {
             long id = db.insertOrUpdate(res);
             res.id = id;
 
-            Log.i(TAG, format("Transaction `%s` was added with id=%s", res, id));
+            logger.i("Transaction `%s` was added with id=%s", res, id);
         } else {
-            Log.e(TAG, format("Account not found or price wrong for `%s` sms template", smsTemplate));
+            logger.e("Account not found or price wrong for `%s` sms template", smsTemplate);
         }
         return res;
     }
@@ -148,7 +148,7 @@ public class SmsTransactionProcessor {
         long matchedAccId = findAccountByCardNumber(accountLastDigits);
         if (matchedAccId > 0) {
             res = matchedAccId;
-            Log.d(TAG, format("Found account %s by sms match: `%s`", matchedAccId, accountLastDigits));
+            logger.d("Found account %s by sms match: `%s`", matchedAccId, accountLastDigits);
         }
         return res;
     }
@@ -161,7 +161,7 @@ public class SmsTransactionProcessor {
             if (!accountIds.isEmpty()) {
                 res = accountIds.get(0);
                 if (accountIds.size() > 1) {
-                    Log.e(TAG, format("Accounts ending with `%s` - more than one!", accountEnding));
+                    logger.e("Accounts ending with `%s` - more than one!", accountEnding);
                 }
             }
         }

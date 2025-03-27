@@ -2,19 +2,22 @@ package ru.orangesoftware.financisto.activity
 
 import android.database.Cursor
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import android.widget.ListAdapter
 import ru.orangesoftware.financisto.adapter.TransactionsListAdapter
+import ru.orangesoftware.financisto.app.DependenciesHolder
 import ru.orangesoftware.financisto.blotter.TotalCalculationTask
 import ru.orangesoftware.financisto.model.Budget
 import ru.orangesoftware.financisto.model.Category
 import ru.orangesoftware.financisto.model.MyEntity
 import ru.orangesoftware.financisto.model.Project
 import ru.orangesoftware.financisto.model.Total
+import ru.orangesoftware.financisto.utils.Logger
 import kotlin.time.measureTimedValue
 
 class BudgetBlotterActivity : BlotterActivity() {
+
+	private val logger: Logger = DependenciesHolder().logger
 	
 	private val categories: Map<Long, Category> by lazy {
         MyEntity.asMap(db.getCategoriesList(true))
@@ -56,10 +59,10 @@ class BudgetBlotterActivity : BlotterActivity() {
 							total
 						} finally { }
 					}
-					Log.d("BUDGET TOTALS", "${duration.inWholeMilliseconds}ms")
+					logger.d("${duration.inWholeMilliseconds}ms")
 					return total
 				} catch (ex: Exception) {
-					Log.e("BudgetTotals", "Unexpected error", ex)
+					logger.e(ex, "Unexpected error")
 					return Total.ZERO
 				}
 			}

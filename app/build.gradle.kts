@@ -135,6 +135,9 @@ dependencies {
     // Lifecycle extensions
     implementation(libs.lifecycle.runtime.ktx)
 
+    // Timber logging
+    implementation(libs.timber)
+
 
     implementation(libs.legacy.support)
     implementation(libs.appcompat)

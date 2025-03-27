@@ -12,8 +12,6 @@ import static ru.orangesoftware.financisto.export.qif.QifDateFormat.EU_FORMAT;
 import static ru.orangesoftware.financisto.export.qif.QifDateFormat.US_FORMAT;
 import static ru.orangesoftware.financisto.utils.Utils.isNotEmpty;
 
-import android.util.Log;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
@@ -22,12 +20,17 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.regex.Pattern;
 
+import ru.orangesoftware.financisto.app.DependenciesHolder;
+import ru.orangesoftware.financisto.utils.Logger;
+
 /**
  * Created by IntelliJ IDEA.
  * User: Denis Solonenko
  * Date: 10/12/11 11:40 PM
  */
 public class QifUtils {
+
+    private final static Logger logger = new DependenciesHolder().getLogger();
 
     private static final Pattern DATE_DELIMITER_PATTERN = Pattern.compile("/|'|\\.|-");
     private static final Pattern MONEY_PREFIX_PATTERN = Pattern.compile("\\D");
@@ -68,7 +71,7 @@ public class QifUtils {
                 year = Integer.parseInt(chunks[2].trim());
             } catch (Exception e) {
                 //eat it
-                Log.e("QifUtils", "Unable to parse US date", e);
+                logger.e(e, "Unable to parse US date");
             }
         } else if (format == EU_FORMAT) {
             try {
@@ -76,10 +79,10 @@ public class QifUtils {
                 month = Integer.parseInt(chunks[1].trim());
                 year = Integer.parseInt(chunks[2].trim());
             } catch (Exception e) {
-                Log.e("QifUtils", "Unable to parse EU date", e);
+                logger.e(e, "Unable to parse EU date");
             }
         } else {
-            Log.e("QifUtils", "Invalid date format specified");
+            logger.e("Invalid date format specified");
             return new Date();
         }
 
@@ -127,7 +130,7 @@ public class QifUtils {
                         bdMoney = new BigDecimal(buf.toString());
                         return moneyAsLong(bdMoney);
                     } catch (final NumberFormatException e2) {
-                        Log.e("QifUtils", "Second parse attempt failed, falling back to rounding");
+                        logger.e("Second parse attempt failed, falling back to rounding");
                     }
                 }
                 NumberFormat formatter = NumberFormat.getNumberInstance();
@@ -140,7 +143,7 @@ public class QifUtils {
                     return moneyAsLong(bd);
                 } catch (ParseException ignored) {
                 }
-                Log.e("QifUtils", "Could not parse money " + sMoney);
+                logger.e("Could not parse money " + sMoney);
             }
         }
         return 0;

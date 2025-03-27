@@ -12,13 +12,13 @@ import static ru.orangesoftware.financisto.db.DatabaseAdapter.enhanceFilterForAc
 import static ru.orangesoftware.financisto.db.DatabaseHelper.V_BLOTTER_FOR_ACCOUNT_WITH_SPLITS;
 
 import android.database.Cursor;
-import android.util.Log;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.filter.Criteria;
 import ru.orangesoftware.financisto.filter.WhereFilter;
 import ru.orangesoftware.financisto.model.Currency;
@@ -28,6 +28,7 @@ import ru.orangesoftware.financisto.model.TransactionInfo;
 import ru.orangesoftware.financisto.rates.ExchangeRate;
 import ru.orangesoftware.financisto.rates.ExchangeRateProvider;
 import ru.orangesoftware.financisto.utils.CurrencyCache;
+import ru.orangesoftware.financisto.utils.Logger;
 
 /**
  * Created by IntelliJ IDEA.
@@ -35,6 +36,8 @@ import ru.orangesoftware.financisto.utils.CurrencyCache;
  * Date: 8/1/11 11:54 PM
  */
 public class TransactionsTotalCalculator {
+
+    private final Logger logger = new DependenciesHolder().getLogger();
 
     public static final String[] BALANCE_PROJECTION = {
         "from_account_currency_id",
@@ -109,7 +112,7 @@ public class TransactionsTotalCalculator {
     }
 
     private Total getBalanceInHomeCurrency(String view, Currency toCurrency, WhereFilter filter) {
-        Log.d("Financisto", "Query balance: "+filter.getSelection()+" => "+ Arrays.toString(filter.getSelectionArgs()));
+        logger.d("Query balance: %s => %s", filter.getSelection(), Arrays.toString(filter.getSelectionArgs()));
         try (Cursor c = db.db().query(view, HOME_CURRENCY_PROJECTION,
                 filter.getSelection(), filter.getSelectionArgs(),
                 null, null, null)) {

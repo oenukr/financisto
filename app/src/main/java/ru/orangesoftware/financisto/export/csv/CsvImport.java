@@ -3,7 +3,6 @@ package ru.orangesoftware.financisto.export.csv;
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
-import android.util.Log;
 
 import androidx.documentfile.provider.DocumentFile;
 
@@ -22,6 +21,7 @@ import java.util.Map;
 import java.util.Set;
 
 import ru.orangesoftware.financisto.R;
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
 import ru.orangesoftware.financisto.export.CategoryCache;
 import ru.orangesoftware.financisto.export.CategoryInfo;
@@ -35,9 +35,12 @@ import ru.orangesoftware.financisto.model.Payee;
 import ru.orangesoftware.financisto.model.Project;
 import ru.orangesoftware.financisto.model.Transaction;
 import ru.orangesoftware.financisto.model.TransactionAttribute;
+import ru.orangesoftware.financisto.utils.Logger;
 import ru.orangesoftware.financisto.utils.Utils;
 
 public class CsvImport {
+
+    private final Logger logger = new DependenciesHolder().getLogger();
 
     private final DatabaseAdapter db;
     private final CsvImportOptions options;
@@ -60,23 +63,23 @@ public class CsvImport {
         long t0 = System.currentTimeMillis();
         List<CsvTransaction> transactions = parseTransactions();
         long t1 = System.currentTimeMillis();
-        Log.i("Financisto", "Parsing transactions =" + (t1 - t0) + "ms");
+        logger.i("Parsing transactions =" + (t1 - t0) + "ms");
         Map<String, Category> categories = collectAndInsertCategories(transactions);
         long t2 = System.currentTimeMillis();
-        Log.i("Financisto", "Collecting categories =" + (t2 - t1) + "ms");
+        logger.i("Collecting categories =" + (t2 - t1) + "ms");
         Map<String, Project> projects = collectAndInsertProjects(transactions);
         long t3 = System.currentTimeMillis();
-        Log.i("Financisto", "Collecting projects =" + (t3 - t2) + "ms");
+        logger.i("Collecting projects =" + (t3 - t2) + "ms");
         Map<String, Payee> payees = collectAndInsertPayees(transactions);
         long t4 = System.currentTimeMillis();
-        Log.i("Financisto", "Collecting payees =" + (t4 - t3) + "ms");
+        logger.i("Collecting payees =" + (t4 - t3) + "ms");
         Map<String, Currency> currencies = collectAndInsertCurrencies(transactions);
         long t5 = System.currentTimeMillis();
-        Log.i("Financisto", "Collecting currencies =" + (t5 - t4) + "ms");
+        logger.i("Collecting currencies =" + (t5 - t4) + "ms");
         importTransactions(transactions, currencies, categories, projects, payees);
         long t6 = System.currentTimeMillis();
-        Log.i("Financisto", "Inserting transactions =" + (t6 - t5) + "ms");
-        Log.i("Financisto", "Overall csv import =" + ((t6 - t0) / 1000) + "s");
+        logger.i("Inserting transactions =" + (t6 - t5) + "ms");
+        logger.i("Overall csv import =" + ((t6 - t0) / 1000) + "s");
         return options.getFilename() + " imported!";
     }
 
@@ -159,13 +162,13 @@ public class CsvImport {
                 Transaction t = transaction.createTransaction(currencies, categories, projects, payees);
                 db.insertOrUpdateInTransaction(t, emptyAttributes);
                 if (++count % 100 == 0) {
-                    Log.i("Financisto", "Inserted " + count + " out of " + totalCount);
+                    logger.i("Inserted " + count + " out of " + totalCount);
                     if (progressListener != null) {
                         progressListener.onProgress((int) (100f * count / totalCount));
                     }
                 }
             }
-            Log.i("Financisto", "Total transactions inserted: " + count);
+            logger.i("Total transactions inserted: " + count);
             database.setTransactionSuccessful();
         } finally {
             database.endTransaction();

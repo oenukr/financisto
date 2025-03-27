@@ -4,7 +4,6 @@ import android.app.AlertDialog;
 import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
-import android.util.Log;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ListAdapter;
@@ -17,12 +16,16 @@ import java.util.Arrays;
 
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.adapter.BlotterListAdapter;
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
 import ru.orangesoftware.financisto.filter.WhereFilter;
 import ru.orangesoftware.financisto.utils.EnumUtils;
 import ru.orangesoftware.financisto.utils.LocalizableEnum;
+import ru.orangesoftware.financisto.utils.Logger;
 
 public class MassOpActivity extends BlotterActivity {
+
+	private final Logger logger = new DependenciesHolder().getLogger();
 
 	public MassOpActivity() {
 		super(R.layout.blotter_mass_op);
@@ -66,7 +69,7 @@ public class MassOpActivity extends BlotterActivity {
 			.setPositiveButton(R.string.yes, (arg0, arg1) -> {
                 BlotterListAdapter adapter = ((BlotterListAdapter)getListAdapter());
                 long[] ids = adapter.getAllCheckedIds();
-                Log.d("Financisto", "Will apply "+op+" on "+Arrays.toString(ids));
+				logger.d("Will apply " + op + " on " + Arrays.toString(ids));
                 op.apply(db, ids);
                 adapter.uncheckAll();
                 adapter.changeCursor(createCursor());

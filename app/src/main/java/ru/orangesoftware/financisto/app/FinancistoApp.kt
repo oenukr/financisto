@@ -20,7 +20,6 @@ class FinancistoApp : Application() {
     }
 
     fun init() {
-        start(this)
         val dependencies = DependenciesHolder()
         bus = dependencies.greenRobotBus
         driveClient = dependencies.googleDriveClient
@@ -28,6 +27,7 @@ class FinancistoApp : Application() {
     }
 
     override fun attachBaseContext(base: Context?) {
+        start(this)
         super.attachBaseContext(MyPreferences.switchLocale(base))
     }
 

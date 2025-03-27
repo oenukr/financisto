@@ -25,7 +25,6 @@ import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.graphics.Color;
 import android.net.Uri;
-import android.util.Log;
 import android.widget.RemoteViews;
 
 import java.util.ArrayList;
@@ -33,11 +32,13 @@ import java.util.Arrays;
 import java.util.List;
 
 import ru.orangesoftware.financisto.R;
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
 import ru.orangesoftware.financisto.model.Account;
 import ru.orangesoftware.financisto.model.AccountType;
 import ru.orangesoftware.financisto.model.CardIssuer;
 import ru.orangesoftware.financisto.model.ElectronicPaymentType;
+import ru.orangesoftware.financisto.utils.Logger;
 import ru.orangesoftware.financisto.utils.MyPreferences;
 import ru.orangesoftware.financisto.utils.Utils;
 import ru.orangesoftware.orb.EntityManager;
@@ -51,6 +52,8 @@ public class AccountWidget extends AppWidgetProvider {
     private static final String PREF_PREFIX_KEY = "prefix_";
 
     public static final String WIDGET_ID = "widgetId";
+
+    private static final Logger logger = new DependenciesHolder().getLogger();
 
     public static void updateWidgets(Context context) {
         Class[] allWidgetProviders = new Class[]{AccountWidget.class, AccountWidget3x1.class, AccountWidget4x1.class};
@@ -72,7 +75,7 @@ public class AccountWidget extends AppWidgetProvider {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        Log.d("Financisto", "onReceive intent " + intent);
+        logger.d("onReceive intent " + intent);
         String action = intent.getAction();
         if (WIDGET_UPDATE_ACTION.equals(action)) {
             int widgetId = intent.getIntExtra(WIDGET_ID, INVALID_APPWIDGET_ID);
@@ -91,7 +94,7 @@ public class AccountWidget extends AppWidgetProvider {
     }
 
     private static void updateWidgets(Context context, AppWidgetManager manager, int[] appWidgetIds, boolean nextAccount) {
-        Log.d("Financisto", "updateWidgets " + Arrays.toString(appWidgetIds) + " -> " + nextAccount);
+        logger.d("updateWidgets " + Arrays.toString(appWidgetIds) + " -> " + nextAccount);
         for (int id : appWidgetIds) {
             AppWidgetProviderInfo appWidgetInfo = manager.getAppWidgetInfo(id);
             if (appWidgetInfo != null) {
@@ -99,7 +102,7 @@ public class AccountWidget extends AppWidgetProvider {
                 if (MyPreferences.isWidgetEnabled(context)) {
                     long accountId = loadAccountForWidget(context, id);
                     Class providerClass = getProviderClass(appWidgetInfo);
-                    Log.d("Financisto", "using provider " + providerClass);
+                    logger.d("using provider " + providerClass);
                     RemoteViews remoteViews = nextAccount || accountId == -1
                             ? buildUpdateForNextAccount(context, id, layoutId, providerClass, accountId)
                             : buildUpdateForCurrentAccount(context, id, layoutId, providerClass, accountId);
@@ -202,10 +205,10 @@ public class AccountWidget extends AppWidgetProvider {
         try {
             Account a = db.getAccount(accountId);
             if (a != null) {
-                Log.d("Financisto", "buildUpdateForCurrentAccount building update for " + widgetId + " -> " + accountId);
+                logger.d("buildUpdateForCurrentAccount building update for " + widgetId + " -> " + accountId);
                 return updateWidgetFromAccount(context, widgetId, layoutId, providerClass, a);
             } else {
-                Log.d("Financisto", "buildUpdateForCurrentAccount not found " + widgetId + " -> " + accountId);
+                logger.d("buildUpdateForCurrentAccount not found " + widgetId + " -> " + accountId);
                 return buildUpdateForNextAccount(context, widgetId, layoutId, providerClass, -1);
             }
         } catch (Exception ex) {
@@ -222,7 +225,7 @@ public class AccountWidget extends AppWidgetProvider {
             try (Cursor c = db.getAllActiveAccounts()) {
                 int count = c.getCount();
                 if (count > 0) {
-                    Log.d("Financisto", "buildUpdateForNextAccount " + widgetId + " -> " + accountId);
+                    logger.d("buildUpdateForNextAccount " + widgetId + " -> " + accountId);
                     if (count == 1 || accountId == -1) {
                         if (c.moveToNext()) {
                             Account a = EntityManager.loadFromCursor(c, Account.class);
@@ -234,17 +237,17 @@ public class AccountWidget extends AppWidgetProvider {
                             Account a = EntityManager.loadFromCursor(c, Account.class);
                             if (a.id == accountId) {
                                 found = true;
-                                Log.d("Financisto", "buildUpdateForNextAccount found -> " + accountId);
+                                logger.d("buildUpdateForNextAccount found -> " + accountId);
                             } else {
                                 if (found) {
-                                    Log.d("Financisto", "buildUpdateForNextAccount building update for -> " + a.id);
+                                    logger.d("buildUpdateForNextAccount building update for -> " + a.id);
                                     return updateWidgetFromAccount(context, widgetId, layoutId, providerClass, a);
                                 }
                             }
                         }
                         c.moveToFirst();
                         Account a = EntityManager.loadFromCursor(c, Account.class);
-                        Log.d("Financisto", "buildUpdateForNextAccount not found, taking the first one -> " + a.id);
+                        logger.d("buildUpdateForNextAccount not found, taking the first one -> " + a.id);
                         return updateWidgetFromAccount(context, widgetId, layoutId, providerClass, a);
                     }
                 }

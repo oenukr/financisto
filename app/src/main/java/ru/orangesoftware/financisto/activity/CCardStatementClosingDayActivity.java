@@ -5,7 +5,6 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.RadioButton;
@@ -16,7 +15,9 @@ import java.util.Calendar;
 import java.util.GregorianCalendar;
 
 import ru.orangesoftware.financisto.R;
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
+import ru.orangesoftware.financisto.utils.Logger;
 import ru.orangesoftware.financisto.utils.MyPreferences;
 
 /**
@@ -24,6 +25,8 @@ import ru.orangesoftware.financisto.utils.MyPreferences;
  *
  */
 public class CCardStatementClosingDayActivity extends Activity {
+
+	private final Logger logger = new DependenciesHolder().getLogger();
 
 	public static final String PERIOD_MONTH = "statement_period_month";
 	public static final String PERIOD_YEAR = "statement_period_year";
@@ -248,7 +251,7 @@ public class CCardStatementClosingDayActivity extends Activity {
 		}
 		if (!alertMsg.isEmpty()) {
 			// Alert message
-			Log.w("Alert", alertMsg);
+			logger.w("Alert", alertMsg);
 			AlertDialog.Builder dlgAlert  = new AlertDialog.Builder(this);
 	        dlgAlert.setMessage(alertMsg);
 	        dlgAlert.setTitle(R.string.closing_day);

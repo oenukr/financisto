@@ -1,7 +1,6 @@
 package ru.orangesoftware.financisto.ui
 
 import android.content.Intent
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -38,6 +37,8 @@ import org.koin.core.annotation.KoinExperimentalAPI
 import ru.orangesoftware.financisto.R
 import ru.orangesoftware.financisto.app.DependenciesHolder
 import ru.orangesoftware.financisto.persistance.PreferencesStore
+
+private val logger = DependenciesHolder().logger
 
 @OptIn(KoinExperimentalAPI::class)
 @Composable
@@ -118,7 +119,7 @@ private fun Storage(preferencesStore: PreferencesStore) {
                 Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
             )
             Toast.makeText(context, "Permission granted: $uri", Toast.LENGTH_LONG).show()
-            Log.d("PermissionsPreferenceContent", "Permission granted: $uri")
+            logger.d("Permission granted: $uri")
             CoroutineScope(Dispatchers.IO).launch {
                 preferencesStore.updateBackupFolderUri(uri)
             }

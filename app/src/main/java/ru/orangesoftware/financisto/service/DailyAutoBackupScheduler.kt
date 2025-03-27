@@ -4,8 +4,8 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.util.Log
 import ru.orangesoftware.financisto.activity.ScheduledAlarmReceiver
+import ru.orangesoftware.financisto.app.DependenciesHolder
 import ru.orangesoftware.financisto.utils.MyPreferences
 import java.util.Calendar
 import java.util.Date
@@ -13,8 +13,10 @@ import java.util.Date
 class DailyAutoBackupScheduler(
     private val hh: Int,
     private val mm: Int,
-    private val now: Long
+    private val now: Long,
 ) {
+
+    private val logger = DependenciesHolder().logger
 
     companion object {
         @JvmStatic
@@ -33,7 +35,7 @@ class DailyAutoBackupScheduler(
         val pendingIntent: PendingIntent = createPendingIntent(context)
         val scheduledTime: Date = getScheduledTime()
         service.set(AlarmManager.RTC_WAKEUP, scheduledTime.time, pendingIntent)
-        Log.i("Financisto", "Next auto-backup scheduled at $scheduledTime")
+        logger.i("Next auto-backup scheduled at $scheduledTime")
     }
 
     private fun createPendingIntent(context: Context): PendingIntent {

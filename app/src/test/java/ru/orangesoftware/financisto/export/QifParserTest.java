@@ -16,6 +16,8 @@ import static ru.orangesoftware.financisto.export.qif.QifDateFormat.EU_FORMAT;
 import static ru.orangesoftware.financisto.export.qif.QifDateFormat.US_FORMAT;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.RobolectricTestRunner;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -40,6 +42,7 @@ import ru.orangesoftware.financisto.test.DateTime;
  * User: Denis Solonenko
  * Date: 9/25/11 9:53 PM
  */
+@RunWith(RobolectricTestRunner.class)
 public class QifParserTest {
 
     QifParser p;
@@ -561,6 +564,4 @@ public class QifParserTest {
         Collections.sort(categories, (c1, c2) -> c1.name.compareTo(c2.name));
         return categories;
     }
-
-
 }
