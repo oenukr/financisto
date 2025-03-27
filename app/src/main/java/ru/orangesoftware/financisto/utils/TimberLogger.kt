@@ -33,3 +33,17 @@ class TimberLogger : Logger {
 
     // ... implement other logging levels with Timber as needed
 }
+
+class TimberTree : Timber.DebugTree() {
+    private val CALL_STACK_INDEX = 8
+
+    override fun createStackElementTag(element: StackTraceElement): String? {
+        val element: StackTraceElement = newStackTraceElement()
+        return super.createStackElementTag(element)
+    }
+
+    private fun newStackTraceElement(): StackTraceElement {
+        val elements = Throwable().stackTrace
+        return elements[CALL_STACK_INDEX]
+    }
+}

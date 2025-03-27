@@ -15,6 +15,7 @@ import ru.orangesoftware.financisto.export.drive.GoogleDriveClient
 import ru.orangesoftware.financisto.persistance.PreferencesStore
 import ru.orangesoftware.financisto.utils.Logger
 import ru.orangesoftware.financisto.utils.TimberLogger
+import ru.orangesoftware.financisto.utils.TimberTree
 import timber.log.Timber
 
 // A module with Kotlin and Java components
@@ -43,7 +44,7 @@ fun start(myApplication: Application) {
 
     // Plant Timber tree only once when start Koin.
     if (BuildConfig.DEBUG) {
-        Timber.plant(Timber.DebugTree())
+        Timber.plant(TimberTree())
     }
 }
 
