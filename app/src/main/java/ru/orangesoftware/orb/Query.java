@@ -2,14 +2,17 @@ package ru.orangesoftware.orb;
 
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
+import ru.orangesoftware.financisto.app.DependenciesHolder;
+import ru.orangesoftware.financisto.utils.Logger;
+
 public class Query<T> {
+	private final Logger logger = new DependenciesHolder().getLogger();
 
 	private final Class<T> clazz;
 	private final EntityDefinition ed;
@@ -73,9 +76,9 @@ public class Query<T> {
 			}
 		}
 		query = sb.toString();
-		Log.d("QUERY "+clazz, query);
-		Log.d("WHERE", where != null ? where : "");
-		Log.d("ARGS", whereArgs != null ? Arrays.toString(whereArgs) : "");
+		logger.d("QUERY %s: %s", clazz, query);
+		logger.d("WHERE: %s", where != null ? where : "");
+		logger.d("ARGS: %s", whereArgs != null ? Arrays.toString(whereArgs) : "");
 		return db.rawQuery(query, whereArgs);
 	}
 

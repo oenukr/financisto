@@ -47,7 +47,7 @@ public abstract class Export {
     private final Context context;
     private final boolean useGzip;
 
-    static final DependenciesHolder dependencies = new DependenciesHolder();
+    private static final DependenciesHolder dependencies = new DependenciesHolder();
 
     protected Export(Context context, boolean useGzip) {
         this.context = context;

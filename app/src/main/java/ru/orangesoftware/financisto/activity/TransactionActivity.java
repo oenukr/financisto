@@ -15,7 +15,6 @@ import static ru.orangesoftware.financisto.utils.Utils.isNotEmpty;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.ListAdapter;
@@ -39,6 +38,7 @@ import java.util.Map;
 import greendroid.widget.QuickActionGrid;
 import greendroid.widget.QuickActionWidget;
 import ru.orangesoftware.financisto.R;
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.model.Account;
 import ru.orangesoftware.financisto.model.Category;
 import ru.orangesoftware.financisto.model.Currency;
@@ -46,12 +46,15 @@ import ru.orangesoftware.financisto.model.MyEntity;
 import ru.orangesoftware.financisto.model.Payee;
 import ru.orangesoftware.financisto.model.Transaction;
 import ru.orangesoftware.financisto.utils.CurrencyCache;
+import ru.orangesoftware.financisto.utils.Logger;
 import ru.orangesoftware.financisto.utils.MyPreferences;
 import ru.orangesoftware.financisto.utils.SplitAdjuster;
 import ru.orangesoftware.financisto.utils.TransactionUtils;
 import ru.orangesoftware.financisto.utils.Utils;
 
 public class TransactionActivity extends AbstractTransactionActivity {
+
+    private final Logger logger = new DependenciesHolder().getLogger();
 
     public static final String CURRENT_BALANCE_EXTRA = "accountCurrentBalance";
     public static final String AMOUNT_EXTRA = "accountAmount";
@@ -510,10 +513,10 @@ public class TransactionActivity extends AbstractTransactionActivity {
     @Override
     protected void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
-        Log.d("Financisto", "onSaveInstanceState");
+        logger.d("onSaveInstanceState");
         try {
             if (categorySelector.isSplitCategorySelected()) {
-                Log.d("Financisto", "Saving splits...");
+                logger.d("Saving splits...");
                 ActivityState state = new ActivityState();
                 state.categoryId = categorySelector.getSelectedCategoryId();
                 state.idSequence = idSequence;
@@ -525,14 +528,14 @@ public class TransactionActivity extends AbstractTransactionActivity {
                 }
             }
         } catch (IOException e) {
-            Log.e("Financisto", "Unable to save state", e);
+            logger.e(e, "Unable to save state");
         }
     }
 
     @Override
     protected void onRestoreInstanceState(@NonNull Bundle savedInstanceState) {
         super.onRestoreInstanceState(savedInstanceState);
-        Log.d("Financisto", "onRestoreInstanceState");
+        logger.d("onRestoreInstanceState");
         byte[] bytes = savedInstanceState.getByteArray(ACTIVITY_STATE);
         if (bytes != null) {
             try {
@@ -540,7 +543,7 @@ public class TransactionActivity extends AbstractTransactionActivity {
                     ObjectInputStream in = new ObjectInputStream(s);
                     ActivityState state = (ActivityState) in.readObject();
                     if (state.categoryId == Category.SPLIT_CATEGORY_ID) {
-                        Log.d("Financisto", "Restoring splits...");
+                        logger.d("Restoring splits...");
                         viewToSplitMap.clear();
                         splitsLayout.removeAllViews();
                         idSequence = state.idSequence;
@@ -551,7 +554,7 @@ public class TransactionActivity extends AbstractTransactionActivity {
                     }
                 }
             } catch (Exception e) {
-                Log.e("Financisto", "Unable to restore state", e);
+                logger.e(e, "Unable to restore state");
             }
         }
     }

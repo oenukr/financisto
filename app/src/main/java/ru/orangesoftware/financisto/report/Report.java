@@ -3,7 +3,6 @@ package ru.orangesoftware.financisto.report;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -15,6 +14,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import ru.orangesoftware.financisto.activity.BlotterActivity;
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.blotter.BlotterFilter;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
 import ru.orangesoftware.financisto.db.DatabaseHelper;
@@ -30,8 +30,11 @@ import ru.orangesoftware.financisto.model.Currency;
 import ru.orangesoftware.financisto.model.Total;
 import ru.orangesoftware.financisto.model.TotalError;
 import ru.orangesoftware.financisto.rates.ExchangeRateProvider;
+import ru.orangesoftware.financisto.utils.Logger;
 
 public abstract class Report {
+
+    private final Logger logger = new DependenciesHolder().getLogger();
 	
 	public final GraphStyle style;
     public final ReportType reportType;
@@ -115,7 +118,7 @@ public abstract class Report {
             Collections.sort(units);
             return units;
         } catch (Exception e) {
-            Log.e(this.getClass().getSimpleName(), "Error: ", e);
+            logger.e(e, "Error: ");
             return new ArrayList<>();
         }
     }

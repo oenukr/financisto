@@ -19,7 +19,6 @@ import static ru.orangesoftware.orb.EntityManager.DEF_SORT_COL;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
-import android.util.Log;
 
 import androidx.documentfile.provider.DocumentFile;
 
@@ -38,13 +37,17 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.zip.GZIPInputStream;
 
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.db.Database;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
 import ru.orangesoftware.financisto.db.DatabaseSchemaEvolution;
 import ru.orangesoftware.financisto.export.Export;
 import ru.orangesoftware.financisto.export.dropbox.Dropbox;
+import ru.orangesoftware.financisto.utils.Logger;
 
 public class DatabaseImport extends FullDatabaseImport {
+
+    private final Logger logger = new DependenciesHolder().getLogger();
 
     private final DatabaseSchemaEvolution schemaEvolution;
     private final InputStream backupStream;
@@ -160,7 +163,7 @@ public class DatabaseImport extends FullDatabaseImport {
         // remove system entities
         Integer id = values.getAsInteger("_id");
         if (id != null && id <= 0) {
-            Log.w("Financisto", "Removing system entity: " + values);
+            logger.w("Removing system entity: %s", values);
             values.clear();
             return;
         }
@@ -202,7 +205,7 @@ public class DatabaseImport extends FullDatabaseImport {
         for (String key : keys) {
             if (!possibleKeys.contains(key)) {
                 values.remove(key);
-                Log.i("Financisto", "Removing "+key+" from backup values for "+tableName);
+                logger.i("Removing %s from backup values for %s", key, tableName);
             }
         }
     }

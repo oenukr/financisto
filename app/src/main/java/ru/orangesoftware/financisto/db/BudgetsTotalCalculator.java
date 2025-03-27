@@ -9,7 +9,6 @@
 package ru.orangesoftware.financisto.db;
 
 import android.os.Handler;
-import android.util.Log;
 
 import java.math.BigDecimal;
 import java.util.Collection;
@@ -17,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.model.Budget;
 import ru.orangesoftware.financisto.model.Category;
 import ru.orangesoftware.financisto.model.Currency;
@@ -26,6 +26,7 @@ import ru.orangesoftware.financisto.model.Total;
 import ru.orangesoftware.financisto.model.TotalError;
 import ru.orangesoftware.financisto.rates.ExchangeRate;
 import ru.orangesoftware.financisto.rates.ExchangeRateProvider;
+import ru.orangesoftware.financisto.utils.Logger;
 
 /**
  * Created by IntelliJ IDEA.
@@ -34,6 +35,8 @@ import ru.orangesoftware.financisto.rates.ExchangeRateProvider;
  * Time: 2:33 AM
  */
 public class BudgetsTotalCalculator {
+
+    private final Logger logger = new DependenciesHolder().getLogger();
 
     private final DatabaseAdapter db;
     private final List<Budget> budgets;
@@ -64,7 +67,7 @@ public class BudgetsTotalCalculator {
             }
         } finally {
             long t1 = System.currentTimeMillis();
-            Log.d("BUDGET UPDATE", (t1 - t0) + "ms");
+            logger.d("BUDGET UPDATE", (t1 - t0) + "ms");
         }
     }
     
@@ -107,7 +110,7 @@ public class BudgetsTotalCalculator {
             return total;
         } finally {
             long t1 = System.currentTimeMillis();
-            Log.d("BUDGET TOTALS", (t1 - t0) + "ms");
+            logger.d("BUDGET TOTALS", (t1 - t0) + "ms");
         }
     }
 

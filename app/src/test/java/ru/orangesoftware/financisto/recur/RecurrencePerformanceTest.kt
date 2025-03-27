@@ -1,8 +1,8 @@
 package ru.orangesoftware.financisto.recur
 
-import android.util.Log
 import ru.orangesoftware.financisto.test.DateTime
 import ru.orangesoftware.financisto.test.DateTime.date
+import timber.log.Timber
 import java.util.Date
 import kotlin.time.measureTimedValue
 
@@ -28,7 +28,7 @@ class RecurrencePerformanceTest {
                 r.generateDates(Date(start), Date(end))
             } finally { }
         }
-        Log.i("RecurrencePerformanceTest", "Generated $start-$end: ${duration.inWholeMilliseconds}ms")
+        Timber.i("Generated $start-$end: ${duration.inWholeMilliseconds}ms")
         return dates
     }
 

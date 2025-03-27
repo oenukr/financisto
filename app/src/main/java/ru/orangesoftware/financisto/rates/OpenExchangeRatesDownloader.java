@@ -8,13 +8,13 @@
 
 package ru.orangesoftware.financisto.rates;
 
-import android.util.Log;
-
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.http.HttpClientWrapper;
 import ru.orangesoftware.financisto.model.Currency;
+import ru.orangesoftware.financisto.utils.Logger;
 import ru.orangesoftware.financisto.utils.StringUtil;
 
 /**
@@ -26,7 +26,8 @@ import ru.orangesoftware.financisto.utils.StringUtil;
 //@NotThreadSafe
 public class OpenExchangeRatesDownloader extends AbstractMultipleRatesDownloader {
 
-    private static final String TAG = OpenExchangeRatesDownloader.class.getSimpleName();
+    private final Logger logger = new DependenciesHolder().getLogger();
+
     private static final String GET_LATEST = "https://openexchangerates.org/api/latest.json?app_id=";
 
     private final String appId;
@@ -67,9 +68,9 @@ public class OpenExchangeRatesDownloader extends AbstractMultipleRatesDownloader
             if (appIdIsNotSet()) {
                 throw new RuntimeException("App ID is not set");
             }
-            Log.i(TAG, "Downloading latest rates...");
+            logger.i("Downloading latest rates...");
             json = httpClient.getAsJson(getLatestUrl());
-            Log.i(TAG, json.toString());
+            logger.i(json.toString());
         }
     }
 

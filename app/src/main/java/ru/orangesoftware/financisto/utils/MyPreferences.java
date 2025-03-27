@@ -6,7 +6,6 @@ import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.preference.PreferenceManager;
-import android.util.Log;
 
 import androidx.annotation.Nullable;
 
@@ -14,6 +13,7 @@ import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Locale;
 
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.export.ImportExportException;
 import ru.orangesoftware.financisto.model.Currency;
 import ru.orangesoftware.financisto.model.TransactionStatus;
@@ -21,6 +21,8 @@ import ru.orangesoftware.financisto.rates.ExchangeRateProvider;
 import ru.orangesoftware.financisto.rates.ExchangeRateProviderFactory;
 
 public class MyPreferences {
+
+    private static final Logger logger = new DependenciesHolder().getLogger();
 
     private static final String DROPBOX_AUTH_TOKEN = "dropbox_auth_token";
     private static final String DROPBOX_AUTHORIZE = "dropbox_authorize";
@@ -477,7 +479,7 @@ public class MyPreferences {
         Configuration config = new Configuration(res.getConfiguration());
         config.setLocale(locale);
         context = context.createConfigurationContext(config);
-        Log.i("MyPreferences", "Switching locale to " + config.locale.getDisplayName());
+        logger.i("Switching locale to " + config.locale.getDisplayName());
         return context;
     }
 
@@ -510,11 +512,11 @@ public class MyPreferences {
             try {
                 return (Boolean) hasSystemFeatureMethod.invoke(pm, feature);
             } catch (Exception e) {
-                Log.w("Financisto", "Some problems executing PackageManager.hasSystemFeature(" + feature + ")", e);
+                logger.w(e, "Some problems executing PackageManager.hasSystemFeature(" + feature + ")");
                 return false;
             }
         }
-        Log.i("Financisto", "It's an old device - no PackageManager.hasSystemFeature");
+        logger.i("It's an old device - no PackageManager.hasSystemFeature");
         return true;
     }
 
