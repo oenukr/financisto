@@ -11,7 +11,6 @@
 package ru.orangesoftware.financisto.recur;
 
 import android.content.Context;
-import android.util.Log;
 
 import com.google.ical.values.RRule;
 
@@ -23,9 +22,13 @@ import java.util.HashMap;
 import java.util.List;
 
 import ru.orangesoftware.financisto.R;
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.datetime.DateUtils;
+import ru.orangesoftware.financisto.utils.Logger;
 
 public class Recurrence {
+
+	private final Logger logger = new DependenciesHolder().getLogger();
 
     // TODO ds: replace with time holder
     // only HH:mm:ss should be used in RRULE, not the date part
@@ -97,7 +100,7 @@ public class Recurrence {
     public DateRecurrenceIterator createIterator(Date now) {
         RRule rrule = createRRule();
         try {
-            Log.d("RRULE", "Creating iterator for "+rrule.toIcal());
+            logger.d("Creating iterator for "+rrule.toIcal());
             if (now.before(startDate.getTime())) {
                 now = startDate.getTime();
             }
@@ -109,7 +112,7 @@ public class Recurrence {
             c.set(Calendar.MILLISECOND, 0);
             return DateRecurrenceIterator.create(rrule, now, c.getTime());
         } catch (ParseException e) {
-            Log.w("RRULE", "Unable to create iterator for "+rrule.toIcal());
+            logger.w("Unable to create iterator for "+rrule.toIcal());
             return DateRecurrenceIterator.empty();
         }
     }

@@ -462,8 +462,6 @@
             android:name=".activity.PurgeAccountActivity"
             android:label="@string/delete_old_transactions" />
 
-        <activity android:name="org.achartengine.GraphicalActivity" />
-
         <activity
             android:name=".activity.RequestPermissionActivity"
             android:label="@string/permissions" />

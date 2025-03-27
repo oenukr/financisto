@@ -48,6 +48,7 @@ rxjava3-bridge = { module = "com.github.akarnokd:rxjava3-bridge", version = "3.0
 rxjava3-rxandroid = { module = "io.reactivex.rxjava3:rxandroid", version = "3.0.2" }
 rxjava3-rxjava = { module = "io.reactivex.rxjava3:rxjava", version = "3.1.10" }
 sqlite-ktx = { module = "androidx.sqlite:sqlite-ktx", version = "2.4.0" }
+timber = { module = "com.jakewharton.timber:timber", version = "5.0.1" }
 workmanager = { module = "androidx.work:work-runtime", version.ref = "workmanager" }
 workmanager-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workmanager" }
 

@@ -16,7 +16,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Window;
 import android.widget.TabHost;
 
@@ -34,10 +33,13 @@ import ru.orangesoftware.financisto.db.DatabaseAdapter;
 import ru.orangesoftware.financisto.db.DatabaseHelper;
 import ru.orangesoftware.financisto.dialog.WebViewDialog;
 import ru.orangesoftware.financisto.utils.CurrencyCache;
+import ru.orangesoftware.financisto.utils.Logger;
 import ru.orangesoftware.financisto.utils.MyPreferences;
 import ru.orangesoftware.financisto.utils.PinProtection;
 
 public class MainActivity extends TabActivity implements TabHost.OnTabChangeListener {
+
+    private final Logger logger = new DependenciesHolder().getLogger();
 
     private final GreenRobotBus greenRobotBus = new DependenciesHolder().getGreenRobotBus();
 
@@ -134,7 +136,7 @@ public class MainActivity extends TabActivity implements TabHost.OnTabChangeList
             db.close();
         }
         long t4 = System.currentTimeMillis();
-        Log.d("Financisto", "Load time = " + (t4 - t0) + "ms = " + (t2 - t1) + "ms+" + (t3 - t2) + "ms+" + (t4 - t3) + "ms");
+        logger.d("Load time = " + (t4 - t0) + "ms = " + (t2 - t1) + "ms+" + (t3 - t2) + "ms+" + (t4 - t3) + "ms");
     }
 
     private void updateFieldInTable(SQLiteDatabase db, String table, long id, String field, String value) {
@@ -143,11 +145,11 @@ public class MainActivity extends TabActivity implements TabHost.OnTabChangeList
 
     @Override
     public void onTabChanged(String tabId) {
-        Log.d("Financisto", "About to update tab " + tabId);
+        logger.d("About to update tab " + tabId);
         long t0 = System.currentTimeMillis();
         refreshCurrentTab();
         long t1 = System.currentTimeMillis();
-        Log.d("Financisto", "Tab " + tabId + " updated in " + (t1 - t0) + "ms");
+        logger.d("Tab " + tabId + " updated in " + (t1 - t0) + "ms");
     }
 
     public void refreshCurrentTab() {

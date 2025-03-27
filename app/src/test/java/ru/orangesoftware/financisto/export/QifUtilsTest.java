@@ -16,10 +16,12 @@ import static ru.orangesoftware.financisto.export.qif.QifUtils.parseMoney;
 import static ru.orangesoftware.financisto.export.qif.QifUtils.trimFirstChar;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.RobolectricTestRunner;
 
 import ru.orangesoftware.financisto.test.DateTime;
 
-
+@RunWith(RobolectricTestRunner.class)
 public class QifUtilsTest {
 
     @Test

@@ -16,7 +16,6 @@ import org.junit.Test;
 import ru.orangesoftware.financisto.db.AbstractDbTest;
 import ru.orangesoftware.financisto.model.Currency;
 
-
 public class CurrencySelectorTest extends AbstractDbTest {
 
     CurrencySelector selector;

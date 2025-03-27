@@ -9,7 +9,6 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncTask;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.View;
@@ -31,9 +30,11 @@ import ru.orangesoftware.financisto.activity.SmsDragListActivity;
 import ru.orangesoftware.financisto.activity.SmsTemplateActivity;
 import ru.orangesoftware.financisto.adapter.dragndrop.ItemTouchHelperAdapter;
 import ru.orangesoftware.financisto.adapter.dragndrop.ItemTouchHelperViewHolder;
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
 import ru.orangesoftware.financisto.model.Category;
 import ru.orangesoftware.financisto.model.SmsTemplate;
+import ru.orangesoftware.financisto.utils.Logger;
 import ru.orangesoftware.financisto.utils.MenuItemInfo;
 
 /**
@@ -42,7 +43,8 @@ import ru.orangesoftware.financisto.utils.MenuItemInfo;
  */
 public class SmsTemplateListAsyncAdapter extends AsyncAdapter<SmsTemplate, SmsTemplateListAsyncAdapter.LocalViewHolder> 
         implements ItemTouchHelperAdapter {
-    public static final String TAG = "Financisto." + SmsTemplateListAsyncAdapter.class.getSimpleName();
+
+    private final Logger logger = new DependenciesHolder().getLogger();
 
     static final int MENU_EDIT = Menu.FIRST + 1;
     static final int MENU_DUPLICATE = Menu.FIRST + 2;
@@ -144,14 +146,13 @@ public class SmsTemplateListAsyncAdapter extends AsyncAdapter<SmsTemplate, SmsTe
         final SmsTemplate itemSrc = listUtil.getItem(fromPosition);
         final SmsTemplate itemTarget = listUtil.getItem(toPosition);
         draggedItemId.set(itemTarget.getId());
-        Log.d(TAG, String.format("dragged %s item to %s item", itemSrc.getId(), itemTarget.getId()));
+        logger.d("dragged %s item to %s item", itemSrc.getId(), itemTarget.getId());
         notifyItemMoved(fromPosition, toPosition);
     }
 
     @Override
     public void onItemDismiss(int position, int dir) {
-        Log.d (TAG, String.format("swipped %s pos to %s (%s)",
-            position, dir == START ? "left" : dir == END ? "right" : "??", dir));
+        logger.d("swipped %s pos to %s (%s)", position, dir == START ? "left" : dir == END ? "right" : "??", dir);
 
         final long itemId = listUtil.getItem(position).id;
         switch (dir) {
@@ -162,7 +163,7 @@ public class SmsTemplateListAsyncAdapter extends AsyncAdapter<SmsTemplate, SmsTe
                 deleteItem(itemId, position);
                 break;
             default:
-                Log.e(TAG, "unknown move: " + dir);
+                logger.e("unknown move: " + dir);
         }
     }
 
@@ -196,7 +197,7 @@ public class SmsTemplateListAsyncAdapter extends AsyncAdapter<SmsTemplate, SmsTe
         @Override
         public void onItemSelected() {
             //numberView.setTextColor(Color.RED);
-            Log.i(TAG, String.format("selected: %s", numberView.getText()));
+            logger.i("selected: %s", numberView.getText());
         }
 
         @Override
@@ -205,7 +206,7 @@ public class SmsTemplateListAsyncAdapter extends AsyncAdapter<SmsTemplate, SmsTe
             long targetId = draggedItemId.get();
             if (targetId > 0) { // dragged up or down
                 long srcId = (long) itemView.getTag(R.id.sms_tpl_id);
-                Log.d(TAG, String.format("`%s` moving to `%s`...", numberView.getText(), targetId));
+                logger.d("`%s` moving to `%s`...", numberView.getText(), targetId);
 
                 new UpdateSortOrderTask().execute(srcId, targetId);
                 draggedItemId.set(0);
@@ -223,7 +224,7 @@ public class SmsTemplateListAsyncAdapter extends AsyncAdapter<SmsTemplate, SmsTe
         @Override
         protected void onPostExecute(Boolean res) {
             super.onPostExecute(res);
-            Log.d(TAG, "moved finished: " + res);
+            logger.d("moved finished: " + res);
             if (res) {
                 reloadVisibleItems();
             }
@@ -240,7 +241,7 @@ public class SmsTemplateListAsyncAdapter extends AsyncAdapter<SmsTemplate, SmsTe
         @Override
         protected void onPostExecute(Integer res) {
             super.onPostExecute(res);
-            Log.d(TAG, "deleted: " + res);
+            logger.d("deleted: " + res);
             if (res > 0) {
                 reloadAsyncSource();
             }

@@ -10,8 +10,6 @@ package ru.orangesoftware.financisto.export;
 
 import static org.junit.Assert.assertEquals;
 
-import android.util.Log;
-
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -37,6 +35,7 @@ import ru.orangesoftware.financisto.model.Project;
 import ru.orangesoftware.financisto.model.TransactionInfo;
 import ru.orangesoftware.financisto.test.CategoryBuilder;
 import ru.orangesoftware.financisto.test.DateTime;
+import timber.log.Timber;
 
 /**
  * Default format described here
@@ -216,7 +215,7 @@ public class CsvImportTest extends AbstractImportExportTest {
         FileWriter w = new FileWriter(tmp);
         w.write(csv);
         w.close();
-        Log.d("Financisto", "Created a temporary backup file: " + tmp.getAbsolutePath());
+        Timber.d("Created a temporary backup file: %s", tmp.getAbsolutePath());
         options = new CsvImportOptions(options.getCurrency(), options.getDateFormat(),
                 options.getSelectedAccountId(), options.getFilter(), tmp.getAbsolutePath(), options.getFieldSeparator(), options.getUseHeaderFromFile());
         csvImport = new CsvImport(getContext(), db, options);

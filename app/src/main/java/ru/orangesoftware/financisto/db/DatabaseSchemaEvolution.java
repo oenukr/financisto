@@ -17,12 +17,14 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.util.Log;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Scanner;
+
+import ru.orangesoftware.financisto.app.DependenciesHolder;
+import ru.orangesoftware.financisto.utils.Logger;
 
 /**
  * Schema evolution helper.
@@ -40,9 +42,9 @@ import java.util.Scanner;
  */
 public class DatabaseSchemaEvolution extends SQLiteOpenHelper {
 
-	private static final String TAG = "DatabaseSchemaEvolution";
-	
-	private static final String ALTERLOG = "alterlog";	
+	private final Logger logger = new DependenciesHolder().getLogger();
+
+	private static final String ALTERLOG = "alterlog";
 	
 	private static final String DATABASE_PATH = "database";
 	private static final String CREATE_PATH = DATABASE_PATH + "/create";
@@ -69,14 +71,14 @@ public class DatabaseSchemaEvolution extends SQLiteOpenHelper {
 	@Override
 	public void onCreate(SQLiteDatabase db) {
 		try {
-			Log.i(TAG, "Creating ALTERLOG table");
+			logger.i("Creating ALTERLOG table");
 			db.execSQL("create table "+ALTERLOG+" (script text not null, datetime long not null);");
 			db.execSQL("create index "+ALTERLOG+"_script_idx on "+ALTERLOG+" (script);");
-			Log.i(TAG, "Running create scripts...");
+			logger.i("Running create scripts...");
 			runAllScripts(db, CREATE_PATH, false);
-			Log.i(TAG, "Running alter scripts...");
+			logger.i("Running alter scripts...");
 			runAllScripts(db, ALTER_PATH, true);
-			Log.i(TAG, "Running create view scripts...");
+			logger.i("Running create view scripts...");
 			runAllScripts(db, VIEW_PATH, false);
 		} catch (Exception ex) {
 			throw new RuntimeException("Failed to create database", ex);
@@ -86,10 +88,10 @@ public class DatabaseSchemaEvolution extends SQLiteOpenHelper {
 	@Override
 	public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
 		try {
-			Log.i(TAG, "Upgrading database from version "+oldVersion+" to version "+newVersion+"...");
-			Log.i(TAG, "Running alter scripts...");
+			logger.i("Upgrading database from version "+oldVersion+" to version "+newVersion+"...");
+			logger.i("Running alter scripts...");
 			runAllScripts(db, ALTER_PATH, true);
-			Log.i(TAG, "Running create view scripts...");
+			logger.i("Running create view scripts...");
 			runAllScripts(db, VIEW_PATH, false);
 		} catch (Exception ex) {
 			throw new RuntimeException("Failed to upgrade database", ex);
@@ -114,7 +116,7 @@ public class DatabaseSchemaEvolution extends SQLiteOpenHelper {
 			String script = path + "/" + scriptFile;
 			if (checkAlterlog) {
 				if (alreadyRun(db, script)) {
-					Log.d("DatabaseSchema", "Skipping " + script);
+					logger.d("Skipping " + script);
 					continue;
 				}
 			}
@@ -122,7 +124,7 @@ public class DatabaseSchemaEvolution extends SQLiteOpenHelper {
 				String viewName = getViewNameFromScriptName(scriptFile);
 				db.execSQL("DROP VIEW IF EXISTS "+viewName);
 			}
-			Log.i("DatabaseSchema", "Running " + script);
+			logger.i("Running " + script);
 			runScript(db, script);
 			if (checkAlterlog) {
 				saveScriptToAlterlog(db, script);
@@ -138,7 +140,7 @@ public class DatabaseSchemaEvolution extends SQLiteOpenHelper {
 				try {
 					db.execSQL(sql);
 				} catch (SQLiteException ex) {
-					Log.e("DatabaseSchema", "Unable to run sql: "+sql, ex);
+					logger.e(ex,"Unable to run sql: $s", sql);
 					throw ex;
 				}
 			}

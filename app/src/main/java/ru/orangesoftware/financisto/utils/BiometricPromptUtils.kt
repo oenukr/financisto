@@ -1,18 +1,19 @@
 package ru.orangesoftware.financisto.utils
 
 import android.content.Context
-import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.app.DependenciesHolder
 
 object BiometricPromptUtils {
-    private const val TAG = "BiometricPromptUtils"
+    private val logger = DependenciesHolder().logger
+
     fun createBiometricPrompt(
         activity: AppCompatActivity,
-        processSuccess: (BiometricPrompt.AuthenticationResult) -> Unit
+        processSuccess: (BiometricPrompt.AuthenticationResult) -> Unit,
     ): BiometricPrompt {
         val executor = ContextCompat.getMainExecutor(activity)
 
@@ -20,17 +21,17 @@ object BiometricPromptUtils {
 
             override fun onAuthenticationError(errCode: Int, errString: CharSequence) {
                 super.onAuthenticationError(errCode, errString)
-                Log.d(TAG, "errCode is $errCode and errString is: $errString")
+                logger.d("errCode is $errCode and errString is: $errString")
             }
 
             override fun onAuthenticationFailed() {
                 super.onAuthenticationFailed()
-                Log.d(TAG, "User biometric rejected.")
+                logger.d("User biometric rejected.")
             }
 
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                 super.onAuthenticationSucceeded(result)
-                Log.d(TAG, "Authentication was successful")
+                logger.d("Authentication was successful")
                 processSuccess(result)
             }
         }
@@ -56,11 +57,13 @@ object BiometricPromptUtils {
         when (BiometricManager.from(context).canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK)) {
             BiometricManager.BIOMETRIC_SUCCESS -> "Success"
             BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE,
-            BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE -> context.getString(R.string.fingerprint_unavailable_hardware)
+            BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE,
+                -> context.getString(R.string.fingerprint_unavailable_hardware)
             BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> context.getString(R.string.fingerprint_unavailable_enrolled_fingerprints)
             BiometricManager.BIOMETRIC_ERROR_SECURITY_UPDATE_REQUIRED -> context.getString(R.string.fingerprint_security_update_required)
             BiometricManager.BIOMETRIC_ERROR_UNSUPPORTED,
-            BiometricManager.BIOMETRIC_STATUS_UNKNOWN -> context.getString(R.string.fingerprint_unavailable_unknown)
+            BiometricManager.BIOMETRIC_STATUS_UNKNOWN,
+                -> context.getString(R.string.fingerprint_unavailable_unknown)
             else -> context.getString(R.string.fingerprint_unavailable_unknown)
         }
 }

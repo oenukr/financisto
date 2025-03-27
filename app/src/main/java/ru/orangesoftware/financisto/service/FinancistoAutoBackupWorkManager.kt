@@ -1,9 +1,9 @@
 package ru.orangesoftware.financisto.service
 
 import android.content.Context
-import android.util.Log
 import androidx.work.Worker
 import androidx.work.WorkerParameters
+import ru.orangesoftware.financisto.app.DependenciesHolder
 import ru.orangesoftware.financisto.backup.DatabaseExport
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.export.Export
@@ -11,12 +11,12 @@ import ru.orangesoftware.financisto.service.DailyAutoBackupScheduler.Companion.s
 import ru.orangesoftware.financisto.utils.MyPreferences
 import kotlin.time.measureTime
 
-private const val TAG: String = "FinancistoAutoBackupWorkManager"
-
 class FinancistoAutoBackupWorkManager(
     context: Context,
     workerParams: WorkerParameters,
 ): Worker(context, workerParams), NotificationPresentation {
+    private val logger = DependenciesHolder().logger
+
     private val db = DatabaseAdapter(context).also { it.open() }
 
     override fun onStopped() {
@@ -28,7 +28,7 @@ class FinancistoAutoBackupWorkManager(
         var successful = true
         try {
             try {
-                Log.e(TAG, "Auto-backup started at ${System.currentTimeMillis()}")
+                logger.e("Auto-backup started at ${System.currentTimeMillis()}")
                 val duration = measureTime {
                     val fileName = DatabaseExport(applicationContext, db.db(), true).export()
                     if (MyPreferences.isDropboxUploadAutoBackups(applicationContext)) {
@@ -38,15 +38,12 @@ class FinancistoAutoBackupWorkManager(
                         successful = uploadToGoogleDrive(fileName)
                     }
                 }
-                Log.e(
-                    TAG,
-                    "Auto-backup completed in ${duration.inWholeMilliseconds}ms"
-                )
+                logger.e("Auto-backup completed in ${duration.inWholeMilliseconds}ms")
                 if (successful) {
                     MyPreferences.notifyAutobackupSucceeded(applicationContext)
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Auto-backup unsuccessful", e)
+                logger.e(e, "Auto-backup unsuccessful")
                 MyPreferences.notifyAutobackupFailed(applicationContext, e)
                 successful = false
             }
@@ -62,7 +59,7 @@ class FinancistoAutoBackupWorkManager(
         try {
             successful = Export.uploadBackupFileToGoogleDrive(applicationContext, fileName)
         } catch (e: Exception) {
-            Log.e(TAG, "Unable to upload auto-backup to Google Drive", e)
+            logger.e(e, "Unable to upload auto-backup to Google Drive")
             MyPreferences.notifyAutobackupFailed(applicationContext, e)
             successful = false
         }
@@ -74,7 +71,7 @@ class FinancistoAutoBackupWorkManager(
         try {
             successful = Export.uploadBackupFileToDropbox(applicationContext, fileName)
         } catch (e: Exception) {
-            Log.e(TAG, "Unable to upload auto-backup to Dropbox", e)
+            logger.e(e, "Unable to upload auto-backup to Dropbox")
             MyPreferences.notifyAutobackupFailed(applicationContext, e)
             successful = false
         }

@@ -3,8 +3,8 @@ package ru.orangesoftware.financisto.export.csv
 import android.app.Activity
 import android.app.ProgressDialog
 import android.content.Context
-import android.util.Log
 import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.app.DependenciesHolder
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.export.ImportExportAsyncTask
 import ru.orangesoftware.financisto.export.ImportExportException
@@ -15,6 +15,8 @@ class CsvImportTask(
     private val options: CsvImportOptions,
 ) : ImportExportAsyncTask(activity, dialog) {
 
+    private val logger = DependenciesHolder().logger
+
     @Throws(ImportExportException::class)
     override fun work(context: Context, db: DatabaseAdapter, vararg params: String?): Any {
         try {
@@ -24,7 +26,7 @@ class CsvImportTask(
             }
             return csvimport.doImport()
         } catch (e: Exception) {
-            Log.e("Financisto", "Csv import error", e)
+            logger.e(e, "Csv import error")
             if (e is ImportExportException) {
                 throw e
             }

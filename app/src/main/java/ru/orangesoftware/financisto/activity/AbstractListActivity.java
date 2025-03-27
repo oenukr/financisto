@@ -16,7 +16,6 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.os.Parcelable;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.View;
@@ -34,11 +33,14 @@ import java.util.List;
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
+import ru.orangesoftware.financisto.utils.Logger;
 import ru.orangesoftware.financisto.utils.MenuItemInfo;
 import ru.orangesoftware.financisto.utils.MyPreferences;
 import ru.orangesoftware.financisto.utils.PinProtection;
 
 public abstract class AbstractListActivity extends ListActivity implements RefreshSupportedActivity {
+
+    private final Logger logger = new DependenciesHolder().getLogger();
 
     protected static final int MENU_VIEW = Menu.FIRST + 1;
     protected static final int MENU_EDIT = Menu.FIRST + 2;
@@ -176,7 +178,7 @@ public abstract class AbstractListActivity extends ListActivity implements Refre
     protected abstract void viewItem(View v, int position, long id);
 
     public void recreateCursor() {
-        Log.i("AbstractListActivity", "Recreating cursor");
+        logger.i("Recreating cursor");
         Parcelable state = getListView().onSaveInstanceState();
         try {
             if (cursor != null) {

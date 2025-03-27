@@ -17,7 +17,6 @@ import android.database.Cursor;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
-import android.util.Log;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ListAdapter;
@@ -28,6 +27,7 @@ import java.util.ArrayList;
 
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.adapter.BudgetListAdapter;
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.blotter.BlotterFilter;
 import ru.orangesoftware.financisto.datetime.PeriodType;
 import ru.orangesoftware.financisto.db.BudgetsTotalCalculator;
@@ -36,12 +36,15 @@ import ru.orangesoftware.financisto.filter.DateTimeCriteria;
 import ru.orangesoftware.financisto.filter.WhereFilter;
 import ru.orangesoftware.financisto.model.Budget;
 import ru.orangesoftware.financisto.model.Total;
+import ru.orangesoftware.financisto.utils.Logger;
 import ru.orangesoftware.financisto.utils.RecurUtils;
 import ru.orangesoftware.financisto.utils.RecurUtils.Recur;
 import ru.orangesoftware.financisto.utils.RecurUtils.RecurInterval;
 import ru.orangesoftware.financisto.utils.Utils;
 
 public class BudgetListActivity extends AbstractListActivity {
+
+    private final Logger logger = new DependenciesHolder().getLogger();
 
     private static final int NEW_BUDGET_REQUEST = 1;
     private static final int EDIT_BUDGET_REQUEST = 2;
@@ -232,7 +235,7 @@ public class BudgetListActivity extends AbstractListActivity {
                 c.updateBudgets(handler);
                 return c.calculateTotalInHomeCurrency();
             } catch (Exception ex) {
-                Log.e("BudgetTotals", "Unexpected error", ex);
+                logger.e(ex, "Unexpected error");
                 return Total.ZERO;
             }
 

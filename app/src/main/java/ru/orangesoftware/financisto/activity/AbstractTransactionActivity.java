@@ -11,7 +11,6 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.text.InputType;
-import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.widget.ArrayAdapter;
@@ -41,6 +40,7 @@ import greendroid.widget.QuickActionWidget;
 import hu.akarnokd.rxjava3.bridge.RxJavaBridge;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import ru.orangesoftware.financisto.R;
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.datetime.DateUtils;
 import ru.orangesoftware.financisto.db.DatabaseHelper.AccountColumns;
 import ru.orangesoftware.financisto.db.DatabaseHelper.TransactionColumns;
@@ -54,6 +54,7 @@ import ru.orangesoftware.financisto.model.TransactionStatus;
 import ru.orangesoftware.financisto.recur.NotificationOptions;
 import ru.orangesoftware.financisto.recur.Recurrence;
 import ru.orangesoftware.financisto.utils.EnumUtils;
+import ru.orangesoftware.financisto.utils.Logger;
 import ru.orangesoftware.financisto.utils.MyPreferences;
 import ru.orangesoftware.financisto.utils.PicturesUtil;
 import ru.orangesoftware.financisto.utils.TransactionUtils;
@@ -62,6 +63,8 @@ import ru.orangesoftware.financisto.view.AttributeViewFactory;
 import ru.orangesoftware.financisto.widget.RateLayoutView;
 
 public abstract class AbstractTransactionActivity extends AbstractActivity implements CategorySelector.CategorySelectorListener {
+
+    private final Logger logger = new DependenciesHolder().getLogger();
 
     public static final String TRAN_ID_EXTRA = "tranId";
     public static final String ACCOUNT_ID_EXTRA = "accountId";
@@ -308,7 +311,7 @@ public abstract class AbstractTransactionActivity extends AbstractActivity imple
         setupPickImageActionGrid();
 
         long t1 = System.currentTimeMillis();
-        Log.i("TransactionActivity", "onCreate " + (t1 - t0) + "ms");
+        logger.i("onCreate " + (t1 - t0) + "ms");
     }
 
     protected void setupPickImageActionGrid() {

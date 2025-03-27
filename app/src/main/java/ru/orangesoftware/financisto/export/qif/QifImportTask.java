@@ -11,14 +11,15 @@ package ru.orangesoftware.financisto.export.qif;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Context;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 
 import ru.orangesoftware.financisto.R;
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
 import ru.orangesoftware.financisto.export.ImportExportAsyncTask;
 import ru.orangesoftware.financisto.export.ImportExportException;
+import ru.orangesoftware.financisto.utils.Logger;
 
 /**
  * Created by IntelliJ IDEA.
@@ -26,6 +27,7 @@ import ru.orangesoftware.financisto.export.ImportExportException;
  * Date: 11/7/11 10:45 PM
  */
 public class QifImportTask extends ImportExportAsyncTask {
+    private final Logger logger = new DependenciesHolder().getLogger();
 
     private final QifImportOptions options;
 
@@ -35,13 +37,13 @@ public class QifImportTask extends ImportExportAsyncTask {
     }
 
     @Override
-    protected Object work(@NonNull Context context, @NonNull DatabaseAdapter db, String... params) throws Exception {
+    protected Object work(@NonNull Context context, @NonNull DatabaseAdapter db, String... params) throws ImportExportException {
         try {
             QifImport qifImport = new QifImport(context, db, options);
             qifImport.importDatabase();
             return null;
         } catch (Exception e) {
-            Log.e("Financisto", "Qif import error", e);
+            logger.e(e, "Qif import error");
             throw new ImportExportException(R.string.qif_import_error);
         }
     }

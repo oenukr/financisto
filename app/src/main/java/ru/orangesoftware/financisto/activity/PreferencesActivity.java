@@ -28,7 +28,6 @@ import android.preference.Preference;
 import android.preference.Preference.OnPreferenceChangeListener;
 import android.preference.PreferenceActivity;
 import android.preference.PreferenceScreen;
-import android.util.Log;
 import android.widget.Toast;
 
 import com.google.android.gms.common.AccountPicker;
@@ -40,10 +39,13 @@ import ru.orangesoftware.financisto.export.Export;
 import ru.orangesoftware.financisto.export.dropbox.Dropbox;
 import ru.orangesoftware.financisto.rates.ExchangeRateProviderFactory;
 import ru.orangesoftware.financisto.utils.BiometricPromptUtils;
+import ru.orangesoftware.financisto.utils.Logger;
 import ru.orangesoftware.financisto.utils.MyPreferences;
 import ru.orangesoftware.financisto.utils.PinProtection;
 
 public class PreferencesActivity extends PreferenceActivity {
+
+    private final Logger logger = new DependenciesHolder().getLogger();
 
     private static final int SELECT_DATABASE_FOLDER = 100;
     private static final int CHOOSE_ACCOUNT = 101;
@@ -196,7 +198,7 @@ public class PreferencesActivity extends PreferenceActivity {
                     if (data != null) {
                         Bundle b = data.getExtras();
                         String accountName = b.getString(AccountManager.KEY_ACCOUNT_NAME);
-                        Log.d("Preferences", "Selected account: " + accountName);
+                        logger.d("Selected account: " + accountName);
                         if (accountName != null && !accountName.isEmpty()) {
                             MyPreferences.setGoogleDriveAccount(this, accountName);
                             selectAccount();

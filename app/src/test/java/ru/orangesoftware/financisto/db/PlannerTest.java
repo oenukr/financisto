@@ -7,8 +7,6 @@ import static org.junit.Assert.fail;
 import static ru.orangesoftware.financisto.test.DateTime.NULL_DATE;
 import static ru.orangesoftware.financisto.test.DateTime.date;
 
-import android.util.Log;
-
 import org.junit.Test;
 
 import java.text.SimpleDateFormat;
@@ -35,6 +33,7 @@ import ru.orangesoftware.financisto.utils.FuturePlanner;
 import ru.orangesoftware.financisto.utils.MonthlyViewPlanner;
 import ru.orangesoftware.financisto.utils.TransactionList;
 import ru.orangesoftware.financisto.utils.Utils;
+import timber.log.Timber;
 
 public class PlannerTest extends AbstractDbTest {
 
@@ -374,12 +373,12 @@ public class PlannerTest extends AbstractDbTest {
     }
 
     private void logTransactions(List<TransactionInfo> transactions) {
-        Log.d("PlannerTest", "===== Planned transactions: " + transactions.size() + " =====");
+        Timber.d("===== Planned transactions: " + transactions.size() + " =====");
         SimpleDateFormat df = new SimpleDateFormat("dd-MM-yyyy");
         for (TransactionInfo transaction : transactions) {
-            Log.d("PlannerTest", df.format(new Date(transaction.dateTime)) + " " + Utils.amountToString(Currency.EMPTY, transaction.fromAmount) + " " + transaction.note);
+            Timber.d(df.format(new Date(transaction.dateTime)) + " " + Utils.amountToString(Currency.EMPTY, transaction.fromAmount) + " " + transaction.note);
         }
-        Log.d("PlannerTest", "==========");
+        Timber.d("==========");
     }
 
     private void assertTransactions(List<TransactionInfo> transactions, Object... data) {

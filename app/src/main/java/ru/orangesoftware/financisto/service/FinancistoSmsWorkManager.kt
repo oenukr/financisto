@@ -3,7 +3,6 @@ package ru.orangesoftware.financisto.service
 import android.app.Notification
 import android.app.NotificationManager
 import android.content.Context
-import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.core.content.ContextCompat.getSystemService
 import androidx.work.WorkManager
@@ -12,16 +11,17 @@ import androidx.work.Worker
 import androidx.work.WorkerParameters
 import ru.orangesoftware.financisto.R
 import ru.orangesoftware.financisto.activity.AccountWidget
+import ru.orangesoftware.financisto.app.DependenciesHolder
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.model.TransactionInfo
 import ru.orangesoftware.financisto.utils.MyPreferences
-
-private const val TAG: String = "FinancistoSmsWorkManager"
 
 class FinancistoSmsWorkManager(
     context: Context,
     workerParams: WorkerParameters,
 ): Worker(context, workerParams), NotificationPresentation {
+    private val logger = DependenciesHolder().logger
+
     private val db = DatabaseAdapter(context).also { it.open() }
     private val smsProcessor = SmsTransactionProcessor(db)
 
@@ -54,7 +54,7 @@ class FinancistoSmsWorkManager(
                     transaction.id.toInt(),
                 )
                 AccountWidget.updateWidgets(applicationContext)
-            } ?: Log.e(TAG, "Transaction info does not exist for ${transaction.id}")
+            } ?: logger.e("Transaction info does not exist for ${transaction.id}")
         }
     }
 

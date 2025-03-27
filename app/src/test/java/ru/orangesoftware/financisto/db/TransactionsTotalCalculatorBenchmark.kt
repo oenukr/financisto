@@ -1,6 +1,5 @@
 package ru.orangesoftware.financisto.db
 
-import android.util.Log
 import org.junit.Test
 import ru.orangesoftware.financisto.filter.WhereFilter
 import ru.orangesoftware.financisto.model.Account
@@ -10,10 +9,9 @@ import ru.orangesoftware.financisto.test.CurrencyBuilder
 import ru.orangesoftware.financisto.test.DateTime
 import ru.orangesoftware.financisto.test.RateBuilder
 import ru.orangesoftware.financisto.test.TransactionBuilder
+import timber.log.Timber
 import java.util.Calendar
 import kotlin.time.measureTime
-
-private const val TAG = "TransactionsTotalCalculatorBenchmark"
 
 class TransactionsTotalCalculatorBenchmark : AbstractDbTest() {
     private lateinit var currency1: Currency
@@ -48,12 +46,12 @@ class TransactionsTotalCalculatorBenchmark : AbstractDbTest() {
                 calendar.add(Calendar.DAY_OF_YEAR, 1)
             }
         }
-        Log.d(TAG, "Time to create a year amount of data: ${yearAmountOfDataDuration.inWholeMilliseconds}ms")
+        Timber.d("Time to create a year amount of data: ${yearAmountOfDataDuration.inWholeMilliseconds}ms")
 
         val totalCalculationDuration = measureTime {
             totalCalculator.getAccountBalance(currency2, account1.id)
         }
-        Log.d(TAG, "Time to get account total: ${totalCalculationDuration.inWholeMilliseconds}ms")
+        Timber.d("Time to get account total: ${totalCalculationDuration.inWholeMilliseconds}ms")
     }
 
     private fun createTransaction(date: DateTime, amount: Long) {

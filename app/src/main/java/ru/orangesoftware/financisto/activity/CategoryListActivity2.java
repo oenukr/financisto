@@ -14,7 +14,6 @@ import android.app.AlertDialog;
 import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -29,10 +28,14 @@ import java.util.Map;
 
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.adapter.CategoryListAdapter2;
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.model.Category;
 import ru.orangesoftware.financisto.model.CategoryTree;
+import ru.orangesoftware.financisto.utils.Logger;
 
 public class CategoryListActivity2 extends AbstractListActivity {
+
+    private final Logger logger = new DependenciesHolder().getLogger();
 
     private static final int NEW_CATEGORY_REQUEST = 1;
     private static final int EDIT_CATEGORY_REQUEST = 2;
@@ -101,7 +104,7 @@ public class CategoryListActivity2 extends AbstractListActivity {
         attributes = db.getAllAttributesMap();
         updateAdapter();
         long t1 = System.currentTimeMillis();
-        Log.d("CategoryListActivity2", "Requery in " + (t1 - t0) + "ms");
+        logger.d("Requery in " + (t1 - t0) + "ms");
     }
 
     private void updateAdapter() {

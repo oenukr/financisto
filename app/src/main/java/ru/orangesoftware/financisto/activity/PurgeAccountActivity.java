@@ -15,7 +15,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -29,9 +28,11 @@ import java.text.DateFormat;
 import java.util.Calendar;
 
 import ru.orangesoftware.financisto.R;
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.backup.DatabaseExport;
 import ru.orangesoftware.financisto.datetime.DateUtils;
 import ru.orangesoftware.financisto.model.Account;
+import ru.orangesoftware.financisto.utils.Logger;
 
 /**
  * Created by IntelliJ IDEA.
@@ -39,6 +40,8 @@ import ru.orangesoftware.financisto.model.Account;
  * Date: 6/12/12 11:14 PM
  */
 public class PurgeAccountActivity extends AbstractActivity {
+
+    private final Logger logger = new DependenciesHolder().getLogger();
 
     public static final String ACCOUNT_ID = "ACCOUNT_ID";
 
@@ -178,7 +181,7 @@ public class PurgeAccountActivity extends AbstractActivity {
                 try {
                     export.export();
                 } catch (Exception e) {
-                    Log.e("Financisto", "Unexpected error", e);
+                    logger.e(e, "Unexpected error");
                     return e;
                 }
             }

@@ -13,7 +13,6 @@ package ru.orangesoftware.financisto.activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.widget.ArrayAdapter;
@@ -30,6 +29,7 @@ import java.util.Calendar;
 import java.util.Date;
 
 import ru.orangesoftware.financisto.R;
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.datetime.DateUtils;
 import ru.orangesoftware.financisto.recur.DateRecurrenceIterator;
 import ru.orangesoftware.financisto.recur.Recurrence;
@@ -40,8 +40,11 @@ import ru.orangesoftware.financisto.recur.RecurrenceUntil;
 import ru.orangesoftware.financisto.recur.RecurrenceView;
 import ru.orangesoftware.financisto.recur.RecurrenceViewFactory;
 import ru.orangesoftware.financisto.utils.EnumUtils;
+import ru.orangesoftware.financisto.utils.Logger;
 
 public class RecurrenceActivity extends AbstractActivity {
+
+    private final Logger logger = new DependenciesHolder().getLogger();
 
     public static final String RECURRENCE_PATTERN = "recurrence_pattern";
 
@@ -190,7 +193,7 @@ public class RecurrenceActivity extends AbstractActivity {
             case R.id.result: {
                 try {
                     String stateAsString = stateToString();
-                    Log.d("RRULE", stateAsString);
+                    logger.d("RRULE", stateAsString);
                     Recurrence r = Recurrence.parse(stateAsString);
                     DateRecurrenceIterator ri = r.createIterator(new Date());
                     StringBuilder sb = new StringBuilder();

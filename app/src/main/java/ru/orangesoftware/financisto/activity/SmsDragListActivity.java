@@ -3,7 +3,6 @@ package ru.orangesoftware.financisto.activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Parcelable;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -20,10 +19,14 @@ import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.adapter.async.SmsTemplateListAsyncAdapter;
 import ru.orangesoftware.financisto.adapter.async.SmsTemplateListSource;
 import ru.orangesoftware.financisto.adapter.dragndrop.SimpleItemTouchHelperCallback;
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
+import ru.orangesoftware.financisto.utils.Logger;
 import ru.orangesoftware.financisto.utils.StringUtil;
 
 public class SmsDragListActivity extends AppCompatActivity {
+
+    private final Logger logger = new DependenciesHolder().getLogger();
 
     private static final String TAG = "Financisto." + SmsDragListActivity.class.getSimpleName();
     private static final String LIST_STATE_KEY = "LIST_STATE";
@@ -123,7 +126,7 @@ public class SmsDragListActivity extends AppCompatActivity {
                 adapter.reloadAsyncSource();
                 
                 if (!StringUtil.INSTANCE.isEmpty(newText)) {
-                    Log.i(TAG, "filtered by `" + newText + "`");
+                    logger.i("filtered by `" + newText + "`");
 //                    Toast.makeText(SmsDragListActivity.this, "filtered by '" + newText + "'", Toast.LENGTH_SHORT).show();
                 }
                 return true;

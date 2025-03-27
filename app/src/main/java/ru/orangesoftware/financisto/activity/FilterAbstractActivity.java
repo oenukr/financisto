@@ -10,7 +10,6 @@ import static ru.orangesoftware.financisto.filter.WhereFilter.Operation.IN;
 
 import android.content.Intent;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -20,6 +19,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import ru.orangesoftware.financisto.R;
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.blotter.BlotterFilter;
 import ru.orangesoftware.financisto.filter.Criteria;
 import ru.orangesoftware.financisto.filter.WhereFilter;
@@ -27,8 +27,11 @@ import ru.orangesoftware.financisto.model.Category;
 import ru.orangesoftware.financisto.model.MultiChoiceItem;
 import ru.orangesoftware.financisto.model.MyEntity;
 import ru.orangesoftware.financisto.utils.ArrUtils;
+import ru.orangesoftware.financisto.utils.Logger;
 
 public abstract class FilterAbstractActivity extends AbstractActivity implements CategorySelector.CategorySelectorListener {
+
+    private final Logger logger = new DependenciesHolder().getLogger();
 
     protected WhereFilter filter = WhereFilter.empty();
 
@@ -227,7 +230,7 @@ public abstract class FilterAbstractActivity extends AbstractActivity implements
         Criteria c = filter.get(CATEGORY_LEFT);
         if (c != null) {
             if (c.operation != BTW) { // todo.mb: only for backward compatibility, just remove in next releases
-                Log.i("Financisto", "Found category filter with deprecated op: " + c.operation);
+                logger.i("Found category filter with deprecated op: " + c.operation);
                 filter.remove(CATEGORY_LEFT);
                 return;
             }

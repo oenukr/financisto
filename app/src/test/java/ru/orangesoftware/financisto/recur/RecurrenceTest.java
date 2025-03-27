@@ -5,8 +5,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static ru.orangesoftware.financisto.test.DateTime.date;
 
-import android.util.Log;
-
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -15,6 +13,7 @@ import java.util.List;
 import java.util.TimeZone;
 
 import ru.orangesoftware.financisto.test.DateTime;
+import timber.log.Timber;
 
 public class RecurrenceTest {
 
@@ -80,17 +79,17 @@ public class RecurrenceTest {
     }
 
     private void logDates(String[] expectedDates, List<Date> dates) throws ParseException {
-        Log.d("RecurrenceTest", "===== Local timezone: " + TimeZone.getDefault());
-        Log.d("RecurrenceTest", "===== Current datetime: " + Calendar.getInstance());
-        Log.d("RecurrenceTest", "===== Expected dates: " + expectedDates.length + " =====");
+        Timber.d("===== Local timezone: %s", TimeZone.getDefault().toString());
+        Timber.d("===== Current datetime: %s", Calendar.getInstance().toString());
+        Timber.d("===== Expected dates: %d =====", expectedDates.length);
         for (String expectedDate : expectedDates) {
-            Log.d("RecurrenceTest", expectedDate);
+            Timber.d(expectedDate);
         }
-        Log.d("RecurrenceTest", "===== Actual dates: " + dates.size() + " =====");
+        Timber.d("===== Actual dates: %d =====", dates.size());
         for (Date date : dates) {
-            Log.d("RecurrenceTest", formatDateTime(date));
+            Timber.d(formatDateTime(date));
         }
-        Log.d("RecurrenceTest", "==========");
+        Timber.d("==========");
     }
 
     private void assertDates(String pattern, DateTime startDateTime, String datesAsString) throws ParseException {

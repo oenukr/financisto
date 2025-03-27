@@ -17,7 +17,6 @@ import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.os.AsyncTask;
-import android.util.Log;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -28,10 +27,13 @@ import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.bus.RefreshCurrentTab;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
+import ru.orangesoftware.financisto.utils.Logger;
 import ru.orangesoftware.financisto.utils.MyPreferences;
 //import static ru.orangesoftware.financisto.export.Export.uploadBackupFileToGoogleDrive;
 
 public abstract class ImportExportAsyncTask extends AsyncTask<String, String, Object> {
+
+    private final Logger logger = new DependenciesHolder().getLogger();
 
     protected final Activity context;
     protected final ProgressDialog dialog;
@@ -59,7 +61,7 @@ public abstract class ImportExportAsyncTask extends AsyncTask<String, String, Ob
         try {
             return work(context, db, params);
         } catch (Exception ex) {
-            Log.e("Financisto", "Unable to do import/export", ex);
+            logger.e(ex, "Unable to do import/export");
             return ex;
         } finally {
             db.close();

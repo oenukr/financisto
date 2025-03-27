@@ -12,8 +12,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static ru.orangesoftware.financisto.export.qif.QifDateFormat.EU_FORMAT;
 
-import android.util.Log;
-
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -30,6 +28,7 @@ import ru.orangesoftware.financisto.model.AccountType;
 import ru.orangesoftware.financisto.model.Currency;
 import ru.orangesoftware.financisto.model.TransactionInfo;
 import ru.orangesoftware.financisto.test.DateTime;
+import timber.log.Timber;
 
 /**
  * Created by IntelliJ IDEA.
@@ -214,7 +213,7 @@ public class QifImportTestCases extends AbstractDbTest {
         FileWriter w = new FileWriter(tmp);
         w.write(qif);
         w.close();
-        Log.d("Financisto", "Created a temporary backup file: "+tmp.getAbsolutePath());
+        Timber.d("Created a temporary backup file: %s", tmp.getAbsolutePath());
         QifImportOptions options = new QifImportOptions(tmp.getAbsolutePath(), EU_FORMAT, Currency.EMPTY);
         qifImport = new QifImport(getContext(), db, options);
         qifImport.importDatabase();

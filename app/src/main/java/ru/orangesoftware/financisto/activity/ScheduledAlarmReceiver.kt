@@ -1,14 +1,15 @@
-package ru.orangesoftware.financisto.activity;
+package ru.orangesoftware.financisto.activity
 
 import android.content.Context
 import android.content.Intent
-import android.util.Log
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import ru.orangesoftware.financisto.app.DependenciesHolder
 import ru.orangesoftware.financisto.service.FinancistoAutoBackupWorkManager
 import ru.orangesoftware.financisto.service.FinancistoScheduleOneWorkManager
 import ru.orangesoftware.financisto.service.RecurrenceScheduler
+import ru.orangesoftware.financisto.utils.Logger
 
 private const val BOOT_COMPLETED = "android.intent.action.BOOT_COMPLETED"
 private const val SCHEDULED_BACKUP = "ru.orangesoftware.financisto.SCHEDULED_BACKUP"
@@ -17,8 +18,10 @@ private const val TAG = "ScheduledAlarmReceiver"
 
 class ScheduledAlarmReceiver : PackageReplaceReceiver() {
 
+    private val logger: Logger = DependenciesHolder().logger
+
     override fun onReceive(context: Context?, intent: Intent?) {
-        Log.i(TAG, "Received ${intent?.action}")
+        logger.i(TAG, "Received ${intent?.action}")
         if (context == null || intent == null) return
 
         when(intent.action) {
