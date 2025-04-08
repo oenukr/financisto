@@ -10,7 +10,7 @@ package ru.orangesoftware.financisto.export;
 
 import static ru.orangesoftware.financisto.utils.Utils.isEmpty;
 
-import android.database.sqlite.SQLiteDatabase;
+import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -76,7 +76,7 @@ public class CategoryCache {
         } else {
             categoryTree.reIndex();
         }
-        SQLiteDatabase database = dbAdapter.db();
+        SupportSQLiteDatabase database = dbAdapter.db();
         database.beginTransaction();
         try {
             dbAdapter.insertCategoryTreeInTransaction(categoryTree);

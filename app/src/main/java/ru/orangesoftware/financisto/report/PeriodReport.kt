@@ -1,5 +1,10 @@
 package ru.orangesoftware.financisto.report
 
+import android.database.Cursor
+import androidx.sqlite.db.SupportSQLiteQuery
+import androidx.sqlite.db.SupportSQLiteQueryBuilder
+import ru.orangesoftware.financisto.datetime.Period
+import ru.orangesoftware.financisto.datetime.PeriodType
 import ru.orangesoftware.financisto.datetime.PeriodType.LAST_MONTH
 import ru.orangesoftware.financisto.datetime.PeriodType.LAST_WEEK
 import ru.orangesoftware.financisto.datetime.PeriodType.THIS_AND_LAST_MONTH
@@ -8,18 +13,12 @@ import ru.orangesoftware.financisto.datetime.PeriodType.THIS_MONTH
 import ru.orangesoftware.financisto.datetime.PeriodType.THIS_WEEK
 import ru.orangesoftware.financisto.datetime.PeriodType.TODAY
 import ru.orangesoftware.financisto.datetime.PeriodType.YESTERDAY
-import ru.orangesoftware.financisto.db.DatabaseHelper.V_REPORT_PERIOD
-
-import android.database.Cursor
-
-import ru.orangesoftware.financisto.datetime.Period
-import ru.orangesoftware.financisto.datetime.PeriodType
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.db.DatabaseHelper.ReportColumns
+import ru.orangesoftware.financisto.db.DatabaseHelper.V_REPORT_PERIOD
 import ru.orangesoftware.financisto.filter.Criteria
 import ru.orangesoftware.financisto.filter.DateTimeCriteria
 import ru.orangesoftware.financisto.filter.WhereFilter
-import ru.orangesoftware.financisto.graph.GraphStyle
 import ru.orangesoftware.financisto.graph.GraphUnit
 import ru.orangesoftware.financisto.model.Currency
 
@@ -61,16 +60,13 @@ class PeriodReport(
                     it.end.toString()
                 )
             )
-            val c = db.db().query(
-                V_REPORT_PERIOD,
-                ReportColumns.NORMAL_PROJECTION,
-                newFilter.selection,
-                newFilter.selectionArgs,
-                null,
-                null,
-                null,
-            )
-            val u = getUnitsFromCursor(db, c)
+            val query: SupportSQLiteQuery = SupportSQLiteQueryBuilder
+                .builder(V_REPORT_PERIOD)
+                .columns(ReportColumns.NORMAL_PROJECTION)
+                .selection(newFilter.selection, newFilter.selectionArgs)
+                .create()
+            val cursor = db.db().query(query)
+            val u = getUnitsFromCursor(db, cursor)
             if (!u.isEmpty() && u[0].size() > 0) {
                 units.add(u[0])
             }

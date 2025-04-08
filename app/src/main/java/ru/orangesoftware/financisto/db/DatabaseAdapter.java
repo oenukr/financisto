@@ -11,6 +11,7 @@
  ******************************************************************************/
 package ru.orangesoftware.financisto.db;
 
+import static android.database.sqlite.SQLiteDatabase.CONFLICT_NONE;
 import static ru.orangesoftware.financisto.db.DatabaseHelper.ACCOUNT_TABLE;
 import static ru.orangesoftware.financisto.db.DatabaseHelper.ATTRIBUTES_TABLE;
 import static ru.orangesoftware.financisto.db.DatabaseHelper.AccountColumns;
@@ -50,8 +51,11 @@ import static ru.orangesoftware.financisto.db.DatabaseHelper.V_CATEGORY;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
+
+import androidx.sqlite.db.SupportSQLiteDatabase;
+import androidx.sqlite.db.SupportSQLiteQuery;
+import androidx.sqlite.db.SupportSQLiteQueryBuilder;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -131,7 +135,7 @@ public class DatabaseAdapter extends MyEntityManager {
             TransactionColumns.to_account_id + ">0";
 
     public int deleteAccount(long id) {
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         db.beginTransaction();
         try {
             String[] sid = new String[]{String.valueOf(id)};
@@ -189,9 +193,12 @@ public class DatabaseAdapter extends MyEntityManager {
         long t0 = System.currentTimeMillis();
         try {
             String sortOrder = getBlotterSortOrder(filter);
-            return db().query(view, BlotterColumns.NORMAL_PROJECTION,
-                    filter.getSelection(), filter.getSelectionArgs(), null, null,
-                    sortOrder);
+            SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(view)
+                    .columns(BlotterColumns.NORMAL_PROJECTION)
+                    .selection(filter.getSelection(), filter.getSelectionArgs())
+                    .orderBy(sortOrder)
+                    .create();
+            return db().query(query);
         } finally {
             long t1 = System.currentTimeMillis();
             logger.i("getBlotter " + (t1 - t0) + "ms");
@@ -215,9 +222,12 @@ public class DatabaseAdapter extends MyEntityManager {
     public Cursor getAllTemplates(WhereFilter filter, String sortBy) {
         long t0 = System.currentTimeMillis();
         try {
-            return db().query(V_ALL_TRANSACTIONS, BlotterColumns.NORMAL_PROJECTION,
-                    filter.getSelection(), filter.getSelectionArgs(), null, null,
-                    sortBy);
+            SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(V_ALL_TRANSACTIONS)
+                    .columns(BlotterColumns.NORMAL_PROJECTION)
+                    .selection(filter.getSelection(), filter.getSelectionArgs())
+                    .orderBy(sortBy)
+                    .create();
+            return db().query(query);
         } finally {
             long t1 = System.currentTimeMillis();
             logger.i("getBlotter " + (t1 - t0) + "ms");
@@ -225,8 +235,12 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     public Cursor getBlotterWithSplits(String where) {
-        return db().query(V_BLOTTER_FOR_ACCOUNT_WITH_SPLITS, BlotterColumns.NORMAL_PROJECTION, where, null, null, null,
-                BlotterColumns.datetime + " DESC");
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(V_BLOTTER_FOR_ACCOUNT_WITH_SPLITS)
+                .columns(BlotterColumns.NORMAL_PROJECTION)
+                .selection(where, new String[]{})
+                .orderBy(BlotterColumns.datetime + " DESC")
+                .create();
+        return db().query(query);
     }
 
     private static final String LOCATION_COUNT_UPDATE = "UPDATE " + LOCATIONS_TABLE
@@ -254,7 +268,7 @@ public class DatabaseAdapter extends MyEntityManager {
             + " SET last_project_id=(?) WHERE _id=?";
 
     private void updateLastUsed(Transaction t) {
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         if (t.isTransfer()) {
             db.execSQL(ACCOUNT_LAST_ACCOUNT_UPDATE, new Object[]{t.toAccountId, t.fromAccountId});
         }
@@ -277,7 +291,7 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     private long duplicateTransaction(long id, int isTemplate, int multiplier) {
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         db.beginTransaction();
         try {
             long now = System.currentTimeMillis();
@@ -336,7 +350,7 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     public long insertOrUpdate(Transaction transaction, List<TransactionAttribute> attributes) {
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         db.beginTransaction();
         try {
             long id = insertOrUpdateInTransaction(transaction, attributes);
@@ -383,7 +397,7 @@ public class DatabaseAdapter extends MyEntityManager {
         for (TransactionAttribute a : attributes) {
             a.setTransactionId(transactionId);
             ContentValues values = a.toValues();
-            db().insert(TRANSACTION_ATTRIBUTE_TABLE, null, values);
+            db().insert(TRANSACTION_ATTRIBUTE_TABLE, CONFLICT_NONE, values);
         }
     }
 
@@ -442,7 +456,7 @@ public class DatabaseAdapter extends MyEntityManager {
 
     private long insertTransaction(Transaction t) {
         t.updatedOn = System.currentTimeMillis();
-        long id = db().insert(TRANSACTION_TABLE, null, t.toValues());
+        long id = db().insert(TRANSACTION_TABLE, CONFLICT_NONE, t.toValues());
         if (updateAccountBalance) {
             if (!t.isTemplateLike()) {
                 if (t.isSplitChild()) {
@@ -483,7 +497,7 @@ public class DatabaseAdapter extends MyEntityManager {
             }
         }
         t.updatedOn = System.currentTimeMillis();
-        db().update(TRANSACTION_TABLE, t.toValues(), TransactionColumns._id + "=?",
+        db().update(TRANSACTION_TABLE, CONFLICT_NONE, t.toValues(), TransactionColumns._id + "=?",
                 new String[]{String.valueOf(t.id)});
         if (oldT != null) {
             updateAccountLastTransactionDate(oldT.fromAccountId);
@@ -498,7 +512,7 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     public void deleteTransaction(long id) {
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         db.beginTransaction();
         try {
             deleteTransactionNoDbTransaction(id);
@@ -518,7 +532,7 @@ public class DatabaseAdapter extends MyEntityManager {
             updateLocationCount(t.locationId, -1);
         }
         String[] sid = new String[]{String.valueOf(id)};
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         db.delete(TRANSACTION_ATTRIBUTE_TABLE, TransactionAttributeColumns.TRANSACTION_ID + "=?", sid);
         db.delete(TRANSACTION_TABLE, TransactionColumns._id + "=?", sid);
         deleteSplitsForParentTransaction(id);
@@ -526,7 +540,7 @@ public class DatabaseAdapter extends MyEntityManager {
 
     private void deleteSplitsForParentTransaction(long parentId) {
         List<Transaction> splits = getSplitsForTransaction(parentId);
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         for (Transaction split : splits) {
             if (split.isTransfer()) {
                 revertToAccountBalance(split);
@@ -583,7 +597,7 @@ public class DatabaseAdapter extends MyEntityManager {
             return;
         }
         long previousTransactionBalance = fetchAccountBalanceAtTheTime(accountId, datetime);
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         db.execSQL(INSERT_RUNNING_BALANCE, new Object[]{accountId, transactionId, datetime, previousTransactionBalance + amount});
         db.execSQL(UPDATE_RUNNING_BALANCE, new Object[]{deltaAmount, accountId, datetime});
     }
@@ -601,7 +615,7 @@ public class DatabaseAdapter extends MyEntityManager {
         if (accountId <= 0) {
             return;
         }
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         db.execSQL(DELETE_RUNNING_BALANCE, new Object[]{accountId, transactionId});
         db.execSQL(UPDATE_RUNNING_BALANCE, new Object[]{-amount, accountId, dateTime});
     }
@@ -616,7 +630,7 @@ public class DatabaseAdapter extends MyEntityManager {
     // ===================================================================
 
     public long insertOrUpdate(Category category, List<Attribute> attributes) {
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         db.beginTransaction();
         try {
             long id;
@@ -636,14 +650,14 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     private void addAttributes(long categoryId, List<Attribute> attributes) {
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         db.delete(CATEGORY_ATTRIBUTE_TABLE, CategoryAttributeColumns.CATEGORY_ID + "=?", new String[]{String.valueOf(categoryId)});
         if (attributes != null) {
             ContentValues values = new ContentValues();
             values.put(CategoryAttributeColumns.CATEGORY_ID, categoryId);
             for (Attribute a : attributes) {
                 values.put(CategoryAttributeColumns.ATTRIBUTE_ID, a.id);
-                db.insert(CATEGORY_ATTRIBUTE_TABLE, null, values);
+                db.insert(CATEGORY_ATTRIBUTE_TABLE, CONFLICT_NONE, values);
             }
         }
     }
@@ -721,13 +735,22 @@ public class DatabaseAdapter extends MyEntityManager {
             + " ORDER BY parent." + CategoryColumns.left + " DESC)";
 
     public Category getCategoryWithParent(long id) {
-        SQLiteDatabase db = db();
-        try (Cursor c = db.query(V_CATEGORY, CategoryViewColumns.NORMAL_PROJECTION,
-            CategoryViewColumns._id + "=?", new String[]{String.valueOf(id)}, null, null, null)) {
+        SupportSQLiteDatabase db = db();
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(V_CATEGORY)
+                .columns(CategoryViewColumns.NORMAL_PROJECTION)
+                .selection(CategoryViewColumns._id + "=?", new String[]{String.valueOf(id)})
+                .create();
+        try (Cursor c = db.query(query)) {
             if (c.moveToNext()) {
                 Category cat = Category.formCursor(c);
                 String s = String.valueOf(id);
-                try (Cursor c2 = db.query(GET_PARENT_SQL, new String[]{CategoryColumns._id.name()}, null, new String[]{s, s}, null, null, null, "1")) {
+                SupportSQLiteQuery parentQuery = SupportSQLiteQueryBuilder.builder(GET_PARENT_SQL)
+                        .columns(new String[]{CategoryColumns._id.name()})
+                        .selection(null, new String[]{s, s})
+                        .limit("1")
+                        .create();
+//                try (Cursor c2 = db.query(GET_PARENT_SQL, new String[]{CategoryColumns._id.name()}, null, new String[]{s, s}, null, null, null, "1")) {
+                try (Cursor c2 = db.query(parentQuery)) {
                     if (c2.moveToFirst()) {
                         cat.parent = new Category(c2.getLong(0));
                     }
@@ -740,11 +763,13 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     public List<Long> getCategoryIdsByLeftIds(List<String> leftIds) {
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         List<Long> res = new LinkedList<>();
-        try (Cursor c = db.query(V_CATEGORY, new String[]{CategoryViewColumns._id.name()},
-                CategoryViewColumns.left + " IN (" + StringUtil.INSTANCE.generateQueryPlaceholders(leftIds.size()) + ")",
-                ArrUtils.strListToArr(leftIds), null, null, null)) {
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(V_CATEGORY)
+                .columns(new String[]{CategoryViewColumns._id.name()})
+                .selection(CategoryViewColumns.left + " IN (" + StringUtil.INSTANCE.generateQueryPlaceholders(leftIds.size()) + ")", ArrUtils.strListToArr(leftIds))
+                .create();
+        try (Cursor c = db.query(query)) {
             while (c.moveToNext()) {
                 res.add(c.getLong(0));
             }
@@ -753,9 +778,12 @@ public class DatabaseAdapter extends MyEntityManager {
     }
     
     public Category getCategoryByLeft(long left) {
-        SQLiteDatabase db = db();
-        try (Cursor c = db.query(V_CATEGORY, CategoryViewColumns.NORMAL_PROJECTION,
-            CategoryViewColumns.left + "=?", new String[]{String.valueOf(left)}, null, null, null)) {
+        SupportSQLiteDatabase db = db();
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(V_CATEGORY)
+                .columns(CategoryViewColumns.NORMAL_PROJECTION)
+                .selection(CategoryViewColumns.left + "=?", new String[]{String.valueOf(left)})
+                .create();
+        try (Cursor c = db.query(query)) {
             if (c.moveToNext()) {
                 return Category.formCursor(c);
             } else {
@@ -792,7 +820,10 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     public Cursor getAllCategories() {
-        return db().query(V_CATEGORY, CategoryViewColumns.NORMAL_PROJECTION, null, null, null, null, null);
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(V_CATEGORY)
+                .columns(CategoryViewColumns.NORMAL_PROJECTION)
+                .create();
+        return db().query(query);
     }
 
     public List<Category> getAllCategoriesList() {
@@ -829,26 +860,31 @@ public class DatabaseAdapter extends MyEntityManager {
                     "%" + titleFilter + "%", 
                     "%" + StringUtil.INSTANCE.capitalize(titleFilter.toString()) + "%"};
         }
-        return db().query(V_CATEGORY, 
-                CategoryViewColumns.NORMAL_PROJECTION,
-                query,
-                args, null, null, null);
+        SupportSQLiteQuery q = SupportSQLiteQueryBuilder.builder(V_CATEGORY)
+                .columns(CategoryViewColumns.NORMAL_PROJECTION)
+                .selection(query, args)
+                .create();
+        return db().query(q);
     }
 
     public Cursor getCategoriesWithoutSubtree(long id, boolean includeNoCategory) {
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         long left = 0, right = 0;
-        try (Cursor c = db.query(CATEGORY_TABLE, new String[]{CategoryColumns.left.name(), CategoryColumns.right.name()},
-                CategoryColumns._id + "=?", new String[]{String.valueOf(id)},null,null,null)) {
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(CATEGORY_TABLE)
+                .columns(new String[]{CategoryColumns.left.name(), CategoryColumns.right.name()})
+                .selection(CategoryColumns._id + "=?", new String[]{String.valueOf(id)})
+                .create();
+        try (Cursor c = db.query(query)) {
             if (c.moveToFirst()) {
                 left = c.getLong(0);
                 right = c.getLong(1);
             }
         }
-        return db.query(V_CATEGORY, CategoryViewColumns.NORMAL_PROJECTION,
-                "(NOT (" + CategoryViewColumns.left + ">=? AND " + CategoryColumns.right + "<=?)) AND "
-                    + CategoryViewColumns._id + (includeNoCategory ? ">=0" : ">0"),
-                new String[]{String.valueOf(left), String.valueOf(right)}, null, null, null);
+        SupportSQLiteQuery q = SupportSQLiteQueryBuilder.builder(V_CATEGORY)
+                .columns(CategoryViewColumns.NORMAL_PROJECTION)
+                .selection("(NOT (" + CategoryViewColumns.left + ">=? AND " + CategoryColumns.right + "<=?)) AND " + CategoryViewColumns._id + (includeNoCategory ? ">=0" : ">0"), new String[]{String.valueOf(left), String.valueOf(right)})
+                .create();
+        return db.query(q);
     }
 
     public List<Category> getCategoriesWithoutSubtreeAsList(long categoryId) {
@@ -898,9 +934,12 @@ public class DatabaseAdapter extends MyEntityManager {
 
     private long insertCategory(String field, long categoryId, String title, int type) {
         int num = 0;
-        SQLiteDatabase db = db();
-        try (Cursor c = db.query(CATEGORY_TABLE, new String[]{field},
-                CategoryColumns._id + "=?", new String[]{String.valueOf(categoryId)}, null, null, null)) {
+        SupportSQLiteDatabase db = db();
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(CATEGORY_TABLE)
+                .columns(new String[]{field})
+                .selection(CategoryColumns._id + "=?", new String[]{String.valueOf(categoryId)})
+                .create();
+        try (Cursor c = db.query(query)) {
             if (c.moveToFirst()) {
                 num = c.getInt(0);
             }
@@ -915,7 +954,7 @@ public class DatabaseAdapter extends MyEntityManager {
         values.put(CategoryColumns.left.name(), left);
         values.put(CategoryColumns.right.name(), right);
         values.put(CategoryColumns.type.name(), type);
-        long id = db.insert(CATEGORY_TABLE, null, values);
+        long id = db.insert(CATEGORY_TABLE, CONFLICT_NONE, values);
         updateChildCategoriesType(type, left, right);
         return id;
     }
@@ -954,10 +993,13 @@ public class DatabaseAdapter extends MyEntityManager {
         //	`r` = `r` - v_width
         //WHERE
         //	`r` > v_rightkey;
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         int left = 0, right = 0;
-        try (Cursor c = db.query(CATEGORY_TABLE, new String[]{CategoryColumns.left.name(), CategoryColumns.right.name()},
-                CategoryColumns._id + "=?", new String[]{String.valueOf(categoryId)}, null, null, null)) {
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(CATEGORY_TABLE)
+                .columns(new String[]{CategoryColumns.left.name(), CategoryColumns.right.name()})
+                .selection(CategoryColumns._id + "=?", new String[]{String.valueOf(categoryId)})
+                .create();
+        try (Cursor c = db.query(query)) {
             if (c.moveToFirst()) {
                 left = c.getInt(0);
                 right = c.getInt(1);
@@ -980,7 +1022,7 @@ public class DatabaseAdapter extends MyEntityManager {
         ContentValues values = new ContentValues();
         values.put(CategoryColumns.title.name(), title);
         values.put(CategoryColumns.type.name(), type);
-        db().update(CATEGORY_TABLE, values, CategoryColumns._id + "=?", new String[]{String.valueOf(id)});
+        db().update(CATEGORY_TABLE, CONFLICT_NONE, values, CategoryColumns._id + "=?", new String[]{String.valueOf(id)});
     }
 
     public void insertCategoryTreeInTransaction(CategoryTree<Category> tree) {
@@ -999,7 +1041,7 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     public void updateCategoryTree(CategoryTree<Category> tree) {
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         db.beginTransaction();
         try {
             updateCategoryTreeInTransaction(tree);
@@ -1020,7 +1062,7 @@ public class DatabaseAdapter extends MyEntityManager {
             values.put(CategoryColumns.left.name(), c.left);
             values.put(CategoryColumns.right.name(), c.right);
             sid[0] = String.valueOf(c.id);
-            db().update(CATEGORY_TABLE, values, WHERE_CATEGORY_ID, sid);
+            db().update(CATEGORY_TABLE, CONFLICT_NONE, values, WHERE_CATEGORY_ID, sid);
             if (c.hasChildren()) {
                 updateCategoryTreeInTransaction(c.children);
             }
@@ -1034,7 +1076,7 @@ public class DatabaseAdapter extends MyEntityManager {
         values.put(CategoryColumns.left.name(), left - 1);
         values.put(CategoryColumns.right.name(), right + 1);
         sid[0] = String.valueOf(Category.NO_CATEGORY_ID);
-        db().update(CATEGORY_TABLE, values, WHERE_CATEGORY_ID, sid);
+        db().update(CATEGORY_TABLE, CONFLICT_NONE, values, WHERE_CATEGORY_ID, sid);
     }
 
     // ===================================================================
@@ -1042,8 +1084,12 @@ public class DatabaseAdapter extends MyEntityManager {
     // ===================================================================
 
     public List<SmsTemplate> getSmsTemplatesForCategory(long categoryId) {
-        try (Cursor c = db().query(SMS_TEMPLATES_TABLE, NORMAL_PROJECTION, category_id + "=?",
-                new String[]{String.valueOf(categoryId)}, null, null, title.name())) {
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(SMS_TEMPLATES_TABLE)
+                .columns(NORMAL_PROJECTION)
+                .selection(category_id + "=?", new String[]{String.valueOf(categoryId)})
+                .orderBy(title.name())
+                .create();
+        try (Cursor c = db().query(query)) {
             List<SmsTemplate> res = new ArrayList<>(c.getCount());
             while (c.moveToNext()) {
                 SmsTemplate a = SmsTemplate.fromCursor(c);
@@ -1054,7 +1100,7 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     public List<SmsTemplate> getSmsTemplatesByNumber(String smsNumber) {
-        try (Cursor c = db().rawQuery(
+        try (Cursor c = db().query(
                 String.format("select %s from %s where %s=? order by %s, length(%s) desc",
                     DatabaseUtils.generateSelectClause(NORMAL_PROJECTION, null),
                     SMS_TEMPLATES_TABLE, title, sort_order, template), new String[]{smsNumber})) {
@@ -1068,7 +1114,7 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     public Set<String> findAllSmsTemplateNumbers() {
-        try (Cursor c = db().rawQuery("select distinct " + title + " from " + SMS_TEMPLATES_TABLE +
+        try (Cursor c = db().query("select distinct " + title + " from " + SMS_TEMPLATES_TABLE +
                 " where " + SmsTemplateColumns.template + " is not null", null)) {
             Set<String> res = new HashSet<>(c.getCount());
             while (c.moveToNext()) {
@@ -1079,8 +1125,12 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     public Cursor getAllSmsTemplates() {
-        return db().query(SMS_TEMPLATES_TABLE, NORMAL_PROJECTION,
-                SmsTemplateColumns.template + " is not null", null, null, null, title.name());
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(SMS_TEMPLATES_TABLE)
+                .columns(NORMAL_PROJECTION)
+                .selection(SmsTemplateColumns.template + " is not null", null)
+                .orderBy(title.name())
+                .create();
+        return db().query(query);
     }
 
     public Cursor getSmsTemplatesWithFullInfo() {
@@ -1102,7 +1152,7 @@ public class DatabaseAdapter extends MyEntityManager {
         }
         nativeQuery += "order by t." + sort_order;
         
-        return db().rawQuery(nativeQuery, new String[]{});
+        return db().query(nativeQuery, new String[]{});
     }
 
     public long duplicateSmsTemplateBelowOriginal(long id) {
@@ -1119,9 +1169,12 @@ public class DatabaseAdapter extends MyEntityManager {
     // ===================================================================
 
     public ArrayList<Attribute> getAttributesForCategory(long categoryId) {
-        try (Cursor c = db().query(V_ATTRIBUTES, AttributeColumns.NORMAL_PROJECTION,
-                CategoryAttributeColumns.CATEGORY_ID + "=?", new String[]{String.valueOf(categoryId)},
-                null, null, AttributeColumns.TITLE)) {
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(V_ATTRIBUTES)
+                .columns(AttributeColumns.NORMAL_PROJECTION)
+                .selection(CategoryAttributeColumns.CATEGORY_ID + "=?", new String[]{String.valueOf(categoryId)})
+                .orderBy(AttributeColumns.TITLE)
+                .create();
+        try (Cursor c = db().query(query)) {
             ArrayList<Attribute> list = new ArrayList<>(c.getCount());
             while (c.moveToNext()) {
                 Attribute a = Attribute.fromCursor(c);
@@ -1133,10 +1186,12 @@ public class DatabaseAdapter extends MyEntityManager {
 
     public ArrayList<Attribute> getAllAttributesForCategory(long categoryId) {
         Category category = getCategoryWithParent(categoryId);
-        try (Cursor c = db().query(V_ATTRIBUTES, AttributeColumns.NORMAL_PROJECTION,
-                AttributeViewColumns.CATEGORY_LEFT + "<= ? AND " + AttributeViewColumns.CATEGORY_RIGHT + " >= ?",
-                new String[]{String.valueOf(category.left), String.valueOf(category.right)},
-                null, null, AttributeColumns.TITLE)) {
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(V_ATTRIBUTES)
+                .columns(AttributeColumns.NORMAL_PROJECTION)
+                .selection(AttributeViewColumns.CATEGORY_LEFT + "<= ? AND " + AttributeViewColumns.CATEGORY_RIGHT + " >= ?",new String[]{String.valueOf(category.left), String.valueOf(category.right)})
+                .orderBy(AttributeColumns.TITLE)
+                .create();
+        try (Cursor c = db().query(query)) {
             ArrayList<Attribute> list = new ArrayList<>(c.getCount());
             while (c.moveToNext()) {
                 Attribute a = Attribute.fromCursor(c);
@@ -1153,9 +1208,11 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     public Attribute getAttribute(long id) {
-        try (Cursor c = db().query(ATTRIBUTES_TABLE, AttributeColumns.NORMAL_PROJECTION,
-                AttributeColumns.ID + "=?", new String[]{String.valueOf(id)},
-                null, null, null)) {
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(ATTRIBUTES_TABLE)
+                .columns(AttributeColumns.NORMAL_PROJECTION)
+                .selection(AttributeColumns.ID + "=?", new String[]{String.valueOf(id)})
+                .create();
+        try (Cursor c = db().query(query)) {
             if (c.moveToFirst()) {
                 return Attribute.fromCursor(c);
             }
@@ -1173,7 +1230,7 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     public void deleteAttribute(long id) {
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         db.beginTransaction();
         try {
             Attribute attr = getAttribute(id);
@@ -1188,21 +1245,28 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     private long insertAttribute(Attribute attribute) {
-        return db().insert(ATTRIBUTES_TABLE, null, attribute.toValues());
+        return db().insert(ATTRIBUTES_TABLE, CONFLICT_NONE, attribute.toValues());
     }
 
     private void updateAttribute(Attribute attribute) {
-        db().update(ATTRIBUTES_TABLE, attribute.toValues(), AttributeColumns.ID + "=?", new String[]{String.valueOf(attribute.id)});
+        db().update(ATTRIBUTES_TABLE, CONFLICT_NONE, attribute.toValues(), AttributeColumns.ID + "=?", new String[]{String.valueOf(attribute.id)});
     }
 
     public Cursor getAllAttributes() {
-        return db().query(ATTRIBUTES_TABLE, AttributeColumns.NORMAL_PROJECTION,
-                AttributeColumns.ID + ">0", null, null, null, AttributeColumns.TITLE);
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(ATTRIBUTES_TABLE)
+                .columns(AttributeColumns.NORMAL_PROJECTION)
+                .selection(AttributeColumns.ID + ">0", null)
+                .orderBy(AttributeColumns.TITLE)
+                .create();
+        return db().query(query);
     }
 
     public Map<Long, String> getAllAttributesMap() {
-        try (Cursor c = db().query(V_ATTRIBUTES, AttributeViewColumns.NORMAL_PROJECTION, null, null, null, null,
-                AttributeViewColumns.CATEGORY_ID + ", " + AttributeViewColumns.TITLE)) {
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(V_ATTRIBUTES)
+                .columns(AttributeViewColumns.NORMAL_PROJECTION)
+                .orderBy(AttributeViewColumns.CATEGORY_ID + ", " + AttributeViewColumns.TITLE)
+                .create();
+        try (Cursor c = db().query(query)) {
             HashMap<Long, String> attributes = new HashMap<>();
             StringBuilder sb = null;
             long prevCategoryId = -1;
@@ -1232,10 +1296,11 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     public Map<Long, String> getAllAttributesForTransaction(long transactionId) {
-        try (Cursor c = db().query(TRANSACTION_ATTRIBUTE_TABLE, TransactionAttributeColumns.NORMAL_PROJECTION,
-                TransactionAttributeColumns.TRANSACTION_ID + "=? AND " + TransactionAttributeColumns.ATTRIBUTE_ID + ">=0",
-                new String[]{String.valueOf(transactionId)},
-                null, null, null)) {
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(TRANSACTION_ATTRIBUTE_TABLE)
+                .columns(TransactionAttributeColumns.NORMAL_PROJECTION)
+                .selection(TransactionAttributeColumns.TRANSACTION_ID + "=? AND " + TransactionAttributeColumns.ATTRIBUTE_ID + ">=0", new String[]{String.valueOf(transactionId)})
+                .create();
+        try (Cursor c = db().query(query)) {
             HashMap<Long, String> attributes = new HashMap<>();
             while (c.moveToNext()) {
                 long attributeId = c.getLong(TransactionAttributeColumns.Indicies.ATTRIBUTE_ID);
@@ -1247,10 +1312,11 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     public EnumMap<SystemAttribute, String> getSystemAttributesForTransaction(long transactionId) {
-        try (Cursor c = db().query(TRANSACTION_ATTRIBUTE_TABLE, TransactionAttributeColumns.NORMAL_PROJECTION,
-                TransactionAttributeColumns.TRANSACTION_ID + "=? AND " + TransactionAttributeColumns.ATTRIBUTE_ID + "<0",
-                new String[]{String.valueOf(transactionId)},
-                null, null, null)) {
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(TRANSACTION_ATTRIBUTE_TABLE)
+                .columns(TransactionAttributeColumns.NORMAL_PROJECTION)
+                .selection(TransactionAttributeColumns.TRANSACTION_ID + "=? AND " + TransactionAttributeColumns.ATTRIBUTE_ID + "<0", new String[]{String.valueOf(transactionId)})
+                .create();
+        try (Cursor c = db().query(query)) {
             EnumMap<SystemAttribute, String> attributes = new EnumMap<>(SystemAttribute.class);
             while (c.moveToNext()) {
                 long attributeId = c.getLong(TransactionAttributeColumns.Indicies.ATTRIBUTE_ID);
@@ -1288,7 +1354,7 @@ public class DatabaseAdapter extends MyEntityManager {
      * @param ids selected transactions' ids
      */
     public void deleteSelectedTransactions(long[] ids) {
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         db.beginTransaction();
         try {
             for (long id : ids) {
@@ -1301,7 +1367,7 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     private void runInTransaction(String sql, long[] ids) {
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         db.beginTransaction();
         try {
             int count = ids.length;
@@ -1342,7 +1408,7 @@ public class DatabaseAdapter extends MyEntityManager {
             "UPDATE " + TRANSACTION_TABLE + " SET " + TransactionColumns.last_recurrence + "=? WHERE " + TransactionColumns._id + "=?";
 
     public long[] storeMissedSchedules(List<RestoredTransaction> restored, long now) {
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         db.beginTransaction();
         try {
             int count = restored.size();
@@ -1382,8 +1448,11 @@ public class DatabaseAdapter extends MyEntityManager {
         String where = CreditCardClosingDateColumns.ACCOUNT_ID + "=? AND " +
                 CreditCardClosingDateColumns.PERIOD + "=?";
 
-        Cursor c = db().query(CCARD_CLOSING_DATE_TABLE, new String[]{CreditCardClosingDateColumns.CLOSING_DAY},
-                where, new String[]{Long.toString(accountId), Integer.toString(period)}, null, null, null);
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(CCARD_CLOSING_DATE_TABLE)
+                .columns(new String[]{CreditCardClosingDateColumns.CLOSING_DAY})
+                .selection(where, new String[]{Long.toString(accountId), Integer.toString(period)})
+                .create();
+        Cursor c = db().query(query);
 
         int res = 0;
         try {
@@ -1412,7 +1481,7 @@ public class DatabaseAdapter extends MyEntityManager {
         values.put(CreditCardClosingDateColumns.ACCOUNT_ID, Long.toString(accountId));
         values.put(CreditCardClosingDateColumns.PERIOD, Integer.toString(period));
         values.put(CreditCardClosingDateColumns.CLOSING_DAY, Integer.toString(closingDay));
-        db().insert(CCARD_CLOSING_DATE_TABLE, null, values);
+        db().insert(CCARD_CLOSING_DATE_TABLE, CONFLICT_NONE, values);
     }
 
     public void deleteCustomClosingDay(long accountId, int period) {
@@ -1446,7 +1515,7 @@ public class DatabaseAdapter extends MyEntityManager {
      * @param account selected account
      */
     public void rebuildRunningBalanceForAccount(Account account) {
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         db.beginTransaction();
         try {
             String accountId = String.valueOf(account.getId());
@@ -1493,7 +1562,11 @@ public class DatabaseAdapter extends MyEntityManager {
 
     public long fetchBudgetBalance(Map<Long, Category> categories, Map<Long, Project> projects, Budget b) {
         String where = Budget.createWhere(b, categories, projects);
-        try (Cursor c = db().query(V_BLOTTER_FOR_ACCOUNT_WITH_SPLITS, SUM_FROM_AMOUNT, where, null, null, null, null)) {
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(V_BLOTTER_FOR_ACCOUNT_WITH_SPLITS)
+                .columns(SUM_FROM_AMOUNT)
+                .selection(where, null)
+                .create();
+        try (Cursor c = db().query(query)) {
             if (c.moveToNext()) {
                 return c.getLong(0);
             }
@@ -1502,7 +1575,7 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     public void recalculateAccountsBalances() {
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         db.beginTransaction();
         try {
             for (Account account : getAllAccountsList()) {
@@ -1521,14 +1594,16 @@ public class DatabaseAdapter extends MyEntityManager {
         Total total = calculator.getAccountTotal();
         ContentValues values = new ContentValues();
         values.put(AccountColumns.TOTAL_AMOUNT, total.balance);
-        db().update(ACCOUNT_TABLE, values, AccountColumns.ID + "=?", new String[]{String.valueOf(accountId)});
+        db().update(ACCOUNT_TABLE, CONFLICT_NONE, values, AccountColumns.ID + "=?", new String[]{String.valueOf(accountId)});
         logger.i("DatabaseImport", "Recalculating amount for " + accountId);
     }
 
     private long fetchAccountBalance(long accountId) {
-        try (Cursor c = db().query(V_BLOTTER_FOR_ACCOUNT_WITH_SPLITS, new String[]{"SUM(" + BlotterColumns.from_amount + ")"},
-                BlotterColumns.from_account_id + "=? and (" + BlotterColumns.parent_id + "=0 or " + BlotterColumns.is_transfer + "=-1)",
-                new String[]{String.valueOf(accountId)}, null, null, null)) {
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(V_BLOTTER_FOR_ACCOUNT_WITH_SPLITS)
+                .columns(new String[]{"SUM(" + BlotterColumns.from_amount + ")"})
+                .selection(BlotterColumns.from_account_id + "=? and (" + BlotterColumns.parent_id + "=0 or " + BlotterColumns.is_transfer + "=-1)", new String[]{String.valueOf(accountId)})
+                .create();
+        try (Cursor c = db().query(query)) {
             if (c.moveToFirst()) {
                 return c.getLong(0);
             }
@@ -1541,7 +1616,7 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     public void replaceRate(ExchangeRate rate, long originalDate) {
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         db.beginTransaction();
         try {
             replaceRateInTransaction(rate, originalDate, db);
@@ -1551,23 +1626,23 @@ public class DatabaseAdapter extends MyEntityManager {
         }
     }
 
-    private void replaceRateInTransaction(ExchangeRate rate, long originalDate, SQLiteDatabase db) {
+    private void replaceRateInTransaction(ExchangeRate rate, long originalDate, SupportSQLiteDatabase db) {
         deleteRateInTransaction(rate.fromCurrencyId, rate.toCurrencyId, originalDate, db);
         saveBothRatesInTransaction(rate, db);
     }
 
-    private void saveBothRatesInTransaction(ExchangeRate r, SQLiteDatabase db) {
+    private void saveBothRatesInTransaction(ExchangeRate r, SupportSQLiteDatabase db) {
         r.date = DateUtils.atMidnight(r.date);
         saveRateInTransaction(db, r);
         saveRateInTransaction(db, r.flip());
     }
 
-    private void saveRateInTransaction(SQLiteDatabase db, ExchangeRate r) {
-        db.insert(EXCHANGE_RATES_TABLE, null, r.toValues());
+    private void saveRateInTransaction(SupportSQLiteDatabase db, ExchangeRate r) {
+        db.insert(EXCHANGE_RATES_TABLE, CONFLICT_NONE, r.toValues());
     }
 
     public void saveDownloadedRates(List<ExchangeRate> downloadedRates) {
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         db.beginTransaction();
         try {
             for (ExchangeRate r : downloadedRates) {
@@ -1583,8 +1658,11 @@ public class DatabaseAdapter extends MyEntityManager {
 
     public ExchangeRate findRate(Currency fromCurrency, Currency toCurrency, long date) {
         long day = DateUtils.atMidnight(date);
-        try (Cursor c = db().query(EXCHANGE_RATES_TABLE, ExchangeRateColumns.NORMAL_PROJECTION, ExchangeRateColumns.NORMAL_PROJECTION_WHERE,
-                new String[]{String.valueOf(fromCurrency.id), String.valueOf(toCurrency.id), String.valueOf(day)}, null, null, null)) {
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(EXCHANGE_RATES_TABLE)
+                .columns(ExchangeRateColumns.NORMAL_PROJECTION)
+                .selection(ExchangeRateColumns.NORMAL_PROJECTION_WHERE, new String[]{String.valueOf(fromCurrency.id), String.valueOf(toCurrency.id), String.valueOf(day)})
+                .create();
+        try (Cursor c = db().query(query)) {
             if (c.moveToFirst()) {
                 return ExchangeRate.fromCursor(c);
             }
@@ -1594,8 +1672,12 @@ public class DatabaseAdapter extends MyEntityManager {
 
     public List<ExchangeRate> findRates(Currency fromCurrency) {
         List<ExchangeRate> rates = new ArrayList<>();
-        try (Cursor c = db().query(EXCHANGE_RATES_TABLE, ExchangeRateColumns.NORMAL_PROJECTION, ExchangeRateColumns.from_currency_id + "=?",
-                new String[]{String.valueOf(fromCurrency.id)}, null, null, ExchangeRateColumns.rate_date + " desc")) {
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(EXCHANGE_RATES_TABLE)
+                .columns(ExchangeRateColumns.NORMAL_PROJECTION)
+                .selection(ExchangeRateColumns.from_currency_id + "=?", new String[]{String.valueOf(fromCurrency.id)})
+                .orderBy(ExchangeRateColumns.rate_date + " desc")
+                .create();
+        try (Cursor c = db().query(query)) {
             while (c.moveToNext()) {
                 rates.add(ExchangeRate.fromCursor(c));
             }
@@ -1605,10 +1687,12 @@ public class DatabaseAdapter extends MyEntityManager {
 
     public List<ExchangeRate> findRates(Currency fromCurrency, Currency toCurrency) {
         List<ExchangeRate> rates = new ArrayList<>();
-        try (Cursor c = db().query(EXCHANGE_RATES_TABLE, ExchangeRateColumns.NORMAL_PROJECTION,
-                ExchangeRateColumns.from_currency_id + "=? and " + ExchangeRateColumns.to_currency_id + "=?",
-                new String[]{String.valueOf(fromCurrency.id), String.valueOf(toCurrency.id)},
-                null, null, ExchangeRateColumns.rate_date + " desc")) {
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(EXCHANGE_RATES_TABLE)
+                .columns(ExchangeRateColumns.NORMAL_PROJECTION)
+                .selection(ExchangeRateColumns.from_currency_id + "=? and " + ExchangeRateColumns.to_currency_id + "=?", new String[]{String.valueOf(fromCurrency.id), String.valueOf(toCurrency.id)})
+                .orderBy(ExchangeRateColumns.rate_date + " desc")
+                .create();
+        try (Cursor c = db().query(query)) {
             while (c.moveToNext()) {
                 rates.add(ExchangeRate.fromCursor(c));
             }
@@ -1618,14 +1702,21 @@ public class DatabaseAdapter extends MyEntityManager {
 
     public ExchangeRateProvider getLatestRates() {
         LatestExchangeRates m = new LatestExchangeRates();
-        Cursor c = db().query(EXCHANGE_RATES_TABLE, ExchangeRateColumns.LATEST_RATE_PROJECTION, null, null, ExchangeRateColumns.LATEST_RATE_GROUP_BY, null, null);
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(EXCHANGE_RATES_TABLE)
+                .columns(ExchangeRateColumns.LATEST_RATE_PROJECTION)
+                .groupBy(ExchangeRateColumns.LATEST_RATE_GROUP_BY)
+                .create();
+        Cursor c = db().query(query);
         fillRatesCollection(m, c);
         return m;
     }
 
     public ExchangeRateProvider getHistoryRates() {
         HistoryExchangeRates m = new HistoryExchangeRates();
-        Cursor c = db().query(EXCHANGE_RATES_TABLE, ExchangeRateColumns.NORMAL_PROJECTION, null, null, null, null, null);
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(EXCHANGE_RATES_TABLE)
+                .columns(ExchangeRateColumns.NORMAL_PROJECTION)
+                .create();
+        Cursor c = db().query(query);
         fillRatesCollection(m, c);
         return m;
     }
@@ -1646,7 +1737,7 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     public void deleteRate(long fromCurrencyId, long toCurrencyId, long date) {
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         db.beginTransaction();
         try {
             deleteRateInTransaction(fromCurrencyId, toCurrencyId, date, db);
@@ -1656,7 +1747,7 @@ public class DatabaseAdapter extends MyEntityManager {
         }
     }
 
-    private void deleteRateInTransaction(long fromCurrencyId, long toCurrencyId, long date, SQLiteDatabase db) {
+    private void deleteRateInTransaction(long fromCurrencyId, long toCurrencyId, long date, SupportSQLiteDatabase db) {
         long d = DateUtils.atMidnight(date);
         db.delete(EXCHANGE_RATES_TABLE, ExchangeRateColumns.DELETE_CLAUSE,
                 new String[]{String.valueOf(fromCurrencyId), String.valueOf(toCurrencyId), String.valueOf(d)});
@@ -1717,7 +1808,7 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     public List<Long> findAccountsByNumber(String numberEnding) {
-        try (Cursor c = db().rawQuery(
+        try (Cursor c = db().query(
                 "select " + AccountColumns.ID + " from " + ACCOUNT_TABLE +
                         " where " + AccountColumns.NUMBER + " like ?",
                 new String[]{"%" + numberEnding})) {
@@ -1736,8 +1827,8 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     private long getSingleCurrencyId() {
-        try (Cursor c = db().rawQuery("select distinct " + AccountColumns.CURRENCY_ID + " from " + ACCOUNT_TABLE +
-                " where " + AccountColumns.IS_INCLUDE_INTO_TOTALS + "=1 and " + AccountColumns.IS_ACTIVE + "=1", null)) {
+        try (Cursor c = db().query("select distinct " + AccountColumns.CURRENCY_ID + " from " + ACCOUNT_TABLE +
+                " where " + AccountColumns.IS_INCLUDE_INTO_TOTALS + "=? and " + AccountColumns.IS_ACTIVE + "=?", new String[]{"1", "1"})) {
 
             if (c.getCount() == 1) {
                 c.moveToFirst();
@@ -1760,7 +1851,7 @@ public class DatabaseAdapter extends MyEntityManager {
     public void purgeAccountAtDate(Account account, long date) {
         long nearestTransactionId = findNearestOlderTransactionId(account, date);
         if (nearestTransactionId > 0) {
-            SQLiteDatabase db = db();
+            SupportSQLiteDatabase db = db();
             db.beginTransaction();
             try {
                 Transaction newTransaction = createTransactionFromNearest(account, nearestTransactionId);
@@ -1794,7 +1885,7 @@ public class DatabaseAdapter extends MyEntityManager {
             "AND " + TransactionColumns.datetime + "<=?";
 
     private void breakSplitTransactions(Account account, long date) {
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         long dayEnd = DateUtils.atDayEnd(date);
         db.execSQL(BREAK_SPLIT_TRANSACTIONS_1, new Object[]{account.id, dayEnd});
         db.execSQL(BREAK_SPLIT_TRANSACTIONS_2, new Object[]{account.id, dayEnd});
@@ -1804,7 +1895,7 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     public void deleteOldTransactions(Account account, long date) {
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         long dayEnd = DateUtils.atDayEnd(date);
         db.delete("transactions", "from_account_id=? and datetime<=? and is_template=0",
                 new String[]{String.valueOf(account.id), String.valueOf(dayEnd)});
@@ -1848,7 +1939,7 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     public void restoreSystemEntities() {
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         db.beginTransaction();
         try {
             restoreCategories();

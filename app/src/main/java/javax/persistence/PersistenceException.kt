@@ -1,26 +1,14 @@
-package javax.persistence;
+package javax.persistence
 
-import java.io.Serial;
+import kotlinx.serialization.Contextual
+import kotlinx.serialization.Serializable
 
-public class PersistenceException extends RuntimeException {
-
-	@Serial
-	private static final long serialVersionUID = 1L;
-
-	public PersistenceException() {
-		super();
-	}
-
-	public PersistenceException(String detailMessage, Throwable throwable) {
-		super(detailMessage, throwable);
-	}
-
-	public PersistenceException(String detailMessage) {
-		super(detailMessage);
-	}
-
-	public PersistenceException(Throwable throwable) {
-		super(throwable);
-	}
-	
+// Base exception for all persistence-related problems
+@Serializable
+open class PersistenceException(
+	override val message: String? = null,
+	@Contextual
+	override val cause: Throwable? = null,
+) : RuntimeException(message, cause) {
+	open val serialVersionUID: Long = 1L
 }

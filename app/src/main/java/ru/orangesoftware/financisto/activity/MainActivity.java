@@ -14,12 +14,12 @@ import android.app.Activity;
 import android.app.TabActivity;
 import android.content.Context;
 import android.content.Intent;
-import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.view.Window;
 import android.widget.TabHost;
 
 import androidx.core.content.ContextCompat;
+import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
@@ -107,7 +107,7 @@ public class MainActivity extends TabActivity implements TabHost.OnTabChangeList
         DatabaseAdapter db = new DatabaseAdapter(this);
         db.open();
         try {
-            SQLiteDatabase x = db.db();
+            SupportSQLiteDatabase x = db.db();
             x.beginTransaction();
             t1 = System.currentTimeMillis();
             try {
@@ -139,7 +139,7 @@ public class MainActivity extends TabActivity implements TabHost.OnTabChangeList
         logger.d("Load time = " + (t4 - t0) + "ms = " + (t2 - t1) + "ms+" + (t3 - t2) + "ms+" + (t4 - t3) + "ms");
     }
 
-    private void updateFieldInTable(SQLiteDatabase db, String table, long id, String field, String value) {
+    private void updateFieldInTable(SupportSQLiteDatabase db, String table, long id, String field, String value) {
         db.execSQL("update " + table + " set " + field + "=? where _id=?", new Object[]{value, id});
     }
 

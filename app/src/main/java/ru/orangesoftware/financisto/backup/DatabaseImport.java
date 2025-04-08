@@ -10,6 +10,7 @@
  ******************************************************************************/
 package ru.orangesoftware.financisto.backup;
 
+import static android.database.sqlite.SQLiteDatabase.CONFLICT_NONE;
 import static ru.orangesoftware.financisto.backup.Backup.RESTORE_SCRIPTS;
 import static ru.orangesoftware.financisto.backup.Backup.tableHasOrder;
 import static ru.orangesoftware.financisto.db.DatabaseHelper.ATTRIBUTES_TABLE;
@@ -121,7 +122,7 @@ public class DatabaseImport extends FullDatabaseImport {
                                 if (tableHasOrder(tableName) && !values.containsKey(DEF_SORT_COL)) {
                                     values.put(DEF_SORT_COL, ++rowNum);
                                 }
-                                getDb().insert(tableName, null, values);
+                                getDb().insert(tableName, CONFLICT_NONE, values);
                             }
                         }
                         tableName = null;
@@ -182,7 +183,7 @@ public class DatabaseImport extends FullDatabaseImport {
         }
         // remove unknown columns
         String sql = "select * from " + tableName + " WHERE 1=0";
-        try (Cursor c = getDb().rawQuery(sql, null)) {
+        try (Cursor c = getDb().query(sql, null)) {
             final String[] columnNames = c.getColumnNames();
             removeUnknownColumns(values, columnNames, tableName);
         }

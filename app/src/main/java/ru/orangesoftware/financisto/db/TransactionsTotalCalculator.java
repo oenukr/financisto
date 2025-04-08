@@ -13,6 +13,9 @@ import static ru.orangesoftware.financisto.db.DatabaseHelper.V_BLOTTER_FOR_ACCOU
 
 import android.database.Cursor;
 
+import androidx.sqlite.db.SupportSQLiteQuery;
+import androidx.sqlite.db.SupportSQLiteQueryBuilder;
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -68,9 +71,12 @@ public class TransactionsTotalCalculator {
         if (filter.getAccountId() == -1) {
             filter = excludeAccountsNotIncludedInTotalsAndSplits(filter);
         }
-        try (Cursor c = db.db().query(V_BLOTTER_FOR_ACCOUNT_WITH_SPLITS, BALANCE_PROJECTION,
-                filter.getSelection(), filter.getSelectionArgs(),
-                BALANCE_GROUPBY, null, null)) {
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(V_BLOTTER_FOR_ACCOUNT_WITH_SPLITS)
+                .columns(BALANCE_PROJECTION)
+                .selection(filter.getSelection(), filter.getSelectionArgs())
+                .groupBy(BALANCE_GROUPBY)
+                .create();
+        try (Cursor c = db.db().query(query)) {
             int count = c.getCount();
             List<Total> totals = new ArrayList<>(count);
             while (c.moveToNext()) {
@@ -113,9 +119,11 @@ public class TransactionsTotalCalculator {
 
     private Total getBalanceInHomeCurrency(String view, Currency toCurrency, WhereFilter filter) {
         logger.d("Query balance: %s => %s", filter.getSelection(), Arrays.toString(filter.getSelectionArgs()));
-        try (Cursor c = db.db().query(view, HOME_CURRENCY_PROJECTION,
-                filter.getSelection(), filter.getSelectionArgs(),
-                null, null, null)) {
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(view)
+                .columns(HOME_CURRENCY_PROJECTION)
+                .selection(filter.getSelection(), filter.getSelectionArgs())
+                .create();
+        try (Cursor c = db.db().query(query)) {
             try {
                 long balance = calculateTotalFromCursor(db, c, toCurrency);
                 Total total = new Total(toCurrency);

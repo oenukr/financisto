@@ -1,5 +1,6 @@
 package ru.orangesoftware.financisto.db;
 
+import static android.database.sqlite.SQLiteDatabase.CONFLICT_NONE;
 import static ru.orangesoftware.financisto.db.DatabaseHelper.ACCOUNT_TABLE;
 import static ru.orangesoftware.financisto.db.DatabaseHelper.AccountColumns;
 import static ru.orangesoftware.financisto.db.DatabaseHelper.BUDGET_TABLE;
@@ -8,9 +9,9 @@ import static ru.orangesoftware.financisto.db.DatabaseHelper.CURRENCY_TABLE;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 
 import androidx.annotation.Nullable;
+import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -138,13 +139,13 @@ public abstract class MyEntityManager extends EntityManager {
     }
 
     public void deleteLocation(long id) {
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         db.beginTransaction();
         try {
             delete(MyLocation.class, id);
             ContentValues values = new ContentValues();
             values.put("location_id", 0);
-            db.update("transactions", values, "location_id=?", new String[]{String.valueOf(id)});
+            db.update("transactions", CONFLICT_NONE, values, "location_id=?", new String[]{String.valueOf(id)});
             db.setTransactionSuccessful();
         } finally {
             db.endTransaction();
@@ -276,7 +277,7 @@ public abstract class MyEntityManager extends EntityManager {
     private static final String UPDATE_DEFAULT_FLAG = "update currency set is_default=0";
 
     public long saveOrUpdate(Currency currency) {
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         db.beginTransaction();
         try {
             if (currency.isDefault) {
@@ -367,7 +368,7 @@ public abstract class MyEntityManager extends EntityManager {
     }
 
     public long insertBudget(Budget budget) {
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         budget.remoteKey = null;
 
         db.beginTransaction();
@@ -398,7 +399,7 @@ public abstract class MyEntityManager extends EntityManager {
     }
 
     public void deleteBudget(long id) {
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         db.delete(BUDGET_TABLE, "_id=?", new String[]{String.valueOf(id)});
         db.delete(BUDGET_TABLE, "parent_budget_id=?", new String[]{String.valueOf(id)});
     }
@@ -440,13 +441,13 @@ public abstract class MyEntityManager extends EntityManager {
     }
 
     public void deleteProject(long id) {
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         db.beginTransaction();
         try {
             delete(Project.class, id);
             ContentValues values = new ContentValues();
             values.put("project_id", 0);
-            db.update("transactions", values, "project_id=?", new String[]{String.valueOf(id)});
+            db.update("transactions", CONFLICT_NONE, values, "project_id=?", new String[]{String.valueOf(id)});
             db.setTransactionSuccessful();
         } finally {
             db.endTransaction();

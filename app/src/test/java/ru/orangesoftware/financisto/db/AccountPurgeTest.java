@@ -174,7 +174,7 @@ public class AccountPurgeTest extends AbstractDbTest {
     }
 
     private void assertAccountRunningBalance(Account account, long... expectedBalance) {
-        Cursor c = db.db().rawQuery("select balance from running_balance where account_id=? order by datetime desc, transaction_id desc", new String[]{String.valueOf(account.id)});
+        Cursor c = db.db().query("select balance from running_balance where account_id=? order by datetime desc, transaction_id desc", new String[]{String.valueOf(account.id)});
         long[] actualBalance = new long[c.getCount()];
         try {
             int i = 0;

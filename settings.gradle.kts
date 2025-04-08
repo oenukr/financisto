@@ -24,7 +24,9 @@ dependencyResolutionManagement {
 }
 
 plugins {
-    id("org.gradle.toolchains.foojay-resolver-convention") version "0.7.0"
+    id("org.gradle.toolchains.foojay-resolver-convention") version "0.9.0"
+//    kotlin("plugin.serialization") version "2.1.20"
 }
 
 include(":app")
+//include(":repository")

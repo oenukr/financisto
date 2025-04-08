@@ -26,14 +26,18 @@ object StringUtil {
     
     fun generateSeparated(value: String, delim: String, num: Int): String {
         val res: StringBuilder = StringBuilder(value)
-        if (num <= 1) return res.toString()
-        if (num == 2) return res.append(delim).append(value).toString()
-        if (num == 3) return res.append(delim).append(value).append(delim).append(value).toString()
-
-        for (i in 1 until num) {
-            res.append(delim).append(value)
+        return if (num <= 1) {
+            res.toString()
+        } else if (num == 2) {
+            res.append(delim).append(value).toString()
+        } else if (num == 3) {
+            res.append(delim).append(value).append(delim).append(value).toString()
+        } else {
+            for (i in 1 until num) {
+                res.append(delim).append(value)
+            }
+            res.toString()
         }
-        return res.toString()
     }
     
     /**

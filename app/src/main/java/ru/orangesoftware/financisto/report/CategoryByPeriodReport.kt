@@ -1,7 +1,8 @@
 package ru.orangesoftware.financisto.report
 
 import android.content.Context
-import android.database.sqlite.SQLiteDatabase
+import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.sqlite.db.SupportSQLiteQueryBuilder
 import ru.orangesoftware.financisto.R
 import ru.orangesoftware.financisto.db.DatabaseHelper
 import ru.orangesoftware.financisto.db.DatabaseHelper.CategoryColumns
@@ -74,22 +75,19 @@ class CategoryByPeriodReport(
     override fun build() {
     val addSubs: Boolean = MyPreferences.addSubCategoriesToSum(context)
     if (addSubs) {
-        val db: SQLiteDatabase = em.db()
+        val db: SupportSQLiteDatabase = em.db()
         val categoryId: Long = filterIds[currentFilterOrder]
         val parent: Category? = em.getCategory(categoryId)
         val where: String = "${CategoryColumns.left} BETWEEN ? AND ?"
         val pars: Array<String> = arrayOf(parent?.left.toString(), parent?.right.toString())
 
         val categories = mutableListOf<Int>()
-        db.query(
-            DatabaseHelper.CATEGORY_TABLE,
-            arrayOf(CategoryColumns._id.name),
-            where,
-            pars,
-            null,
-            null,
-            null
-        ).use { cursor ->
+        val query = SupportSQLiteQueryBuilder
+            .builder(DatabaseHelper.CATEGORY_TABLE)
+            .columns(arrayOf(CategoryColumns._id.name))
+            .selection(where, pars)
+            .create()
+        db.query(query).use { cursor ->
             while (cursor.moveToNext()) {
                 categories.add(cursor.getInt(0))
             }

@@ -1,7 +1,7 @@
 package ru.orangesoftware.financisto.db
 
 import android.database.Cursor
-import android.database.sqlite.SQLiteDatabase
+import androidx.sqlite.db.SupportSQLiteDatabase
 import ru.orangesoftware.financisto.model.MyEntity
 
 object DatabaseUtils {
@@ -16,8 +16,8 @@ object DatabaseUtils {
     }
 
     @JvmStatic
-    fun rawFetchLong(db: SQLiteDatabase, query: String, selectionArgs: Array<String>, defaultValue: Long): Long {
-        db.rawQuery(query, selectionArgs).use { c ->
+    fun rawFetchLong(db: SupportSQLiteDatabase, query: String, selectionArgs: Array<String>, defaultValue: Long): Long {
+        db.query(query, selectionArgs).use { c ->
             if (c.moveToFirst())
                 return c.getLong(0)
             }
