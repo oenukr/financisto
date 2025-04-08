@@ -7,7 +7,6 @@ plugins {
 
 android {
     namespace = "ru.orangesoftware.financisto"
-
     compileSdk = 35
 
     defaultConfig {
@@ -109,15 +108,18 @@ dependencies {
     // Koin - BOM
     val koinBom = platform(libs.koin.bom)
     implementation(koinBom)
+    testImplementation(koinBom)
     androidTestImplementation(koinBom)
     // Koin - core
     implementation(libs.koin.core)
     implementation(libs.koin.android)
     // Koin - Java Compatibility
     implementation(libs.koin.android.compat)
+    // Koin - Compose
     implementation(libs.koin.compose)
     // Koin - tests
     testImplementation(libs.koin.test)
+    androidTestImplementation(libs.koin.test)
 
     // Biometrics
     implementation(libs.biometric)
@@ -138,6 +140,14 @@ dependencies {
     // Timber logging
     implementation(libs.timber)
 
+    // SQLite
+    implementation(libs.sqlite)
+    implementation(libs.sqlite.bundled)
+    implementation(libs.sqlite.framework)
+    implementation(libs.sqlite.ktx)
+
+    // Kotlin Serialization
+    implementation(libs.kotlinx.serialization.core)
 
     implementation(libs.legacy.support)
     implementation(libs.appcompat)

@@ -10,12 +10,14 @@
  ******************************************************************************/
 package ru.orangesoftware.orb;
 
+import static android.database.sqlite.SQLiteDatabase.CONFLICT_NONE;
 import static ru.orangesoftware.financisto.db.DatabaseHelper.SmsTemplateColumns.sort_order;
 
 import android.content.ContentValues;
 import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteOpenHelper;
+
+import androidx.sqlite.db.SupportSQLiteDatabase;
+import androidx.sqlite.db.SupportSQLiteOpenHelper;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -47,15 +49,15 @@ public abstract class EntityManager {
     private static final ConcurrentMap<Class<?>, EntityDefinition> definitions = new ConcurrentHashMap<>();
 
     // effectively immutable
-    protected SQLiteOpenHelper databaseHelper;
+    protected SupportSQLiteOpenHelper databaseHelper;
     private final Plugin[] plugins;
 
-    public EntityManager(SQLiteOpenHelper databaseHelper, Plugin... plugins) {
+    public EntityManager(SupportSQLiteOpenHelper databaseHelper, Plugin... plugins) {
         this.databaseHelper = databaseHelper;
         this.plugins = plugins;
     }
 
-    public SQLiteDatabase db() {
+    public SupportSQLiteDatabase db() {
         return databaseHelper.getWritableDatabase();
     }
 
@@ -150,7 +152,7 @@ public abstract class EntityManager {
         if (entity == null) {
             throw new IllegalArgumentException("Entity is null");
         }
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         final EntityDefinition ed = getEntityDefinitionOrThrow(entity.getClass());
         final ContentValues values = getContentValues(ed, entity);
         long id = ed.getId(entity);
@@ -162,12 +164,16 @@ public abstract class EntityManager {
                     && values.getAsLong(DEF_SORT_COL) <= 0) {
                 values.put(DEF_SORT_COL, getMaxOrder(ed) + 1);
             }
-            id = db.insertOrThrow(ed.tableName, null, values);
+            id = db.insert(ed.tableName, CONFLICT_NONE, values);
             ed.setId(entity, id);
         } else {
             values.remove("updated_on");
             values.put("updated_on", System.currentTimeMillis());
-            db.update(ed.tableName, values, ed.idField.columnName + "=?", new String[]{String.valueOf(id)});
+            db.update(ed.tableName,
+                    CONFLICT_NONE,
+                    values,
+                    ed.idField.columnName + "=?",
+                    new String[]{String.valueOf(id)});
         }
         return id;
     }
@@ -181,11 +187,11 @@ public abstract class EntityManager {
         if (entity == null) {
             throw new IllegalArgumentException("Entity is null");
         }
-        SQLiteDatabase db = db();
+        SupportSQLiteDatabase db = db();
         EntityDefinition ed = getEntityDefinitionOrThrow(entity.getClass());
         ContentValues values = getContentValues(ed, entity);
         long id = ed.getId(entity);
-        long newId = db.insertOrThrow(ed.tableName, null, values);
+        long newId = db.insert(ed.tableName, CONFLICT_NONE, values);
         if (id != newId) {
             throw new IllegalArgumentException("Unable to re-insert " + entity.getClass() + " with id " + id);
         }
@@ -230,7 +236,7 @@ public abstract class EntityManager {
         if (e != null) {
             return e;
         } else {
-            throw new EntityNotFoundException(clazz, id);
+            throw new EntityNotFoundException(kotlin.jvm.JvmClassMappingKt.getKotlinClass(clazz), id, null);
         }
     }
 
@@ -240,7 +246,7 @@ public abstract class EntityManager {
         }
         EntityDefinition ed = getEntityDefinitionOrThrow(clazz);
         String sql = ed.sqlQuery + " where e_" + ed.idField.columnName + "=?";
-        try (Cursor c = db().rawQuery(sql, new String[]{id.toString()})) {
+        try (Cursor c = db().query(sql, new String[]{id.toString()})) {
             if (c.moveToFirst()) {
                 try {
                     return loadFromCursor("e", c, ed);
@@ -254,7 +260,7 @@ public abstract class EntityManager {
 
     public <T> List<T> list(Class<T> clazz) {
         EntityDefinition ed = getEntityDefinitionOrThrow(clazz);
-        try (Cursor c = db().rawQuery(ed.sqlQuery, null)) {
+        try (Cursor c = db().query(ed.sqlQuery, null)) {
             List<T> list = new LinkedList<>();
             while (c.moveToNext()) {
                 try {
@@ -329,7 +335,7 @@ public abstract class EntityManager {
             final T sourceItem = load(entityClass, movedId);
             final long srcOrder = sourceItem.getSortOrder();
             final long targetOrder = load(entityClass, targetId).getSortOrder();
-            final SQLiteDatabase db = db();
+            final SupportSQLiteDatabase db = db();
             db.beginTransaction();
             try {
                 if (srcOrder > targetOrder) {
@@ -341,7 +347,7 @@ public abstract class EntityManager {
                 }
                 final ContentValues cv = new ContentValues(1);
                 cv.put(DEF_SORT_COL, targetOrder);
-                db.update(ed.tableName, cv, DEF_ID_COL + "=?", new String[]{movedId + ""});
+                db.update(ed.tableName, CONFLICT_NONE, cv, DEF_ID_COL + "=?", new String[]{movedId + ""});
 
                 db.setTransactionSuccessful();
                 return true;

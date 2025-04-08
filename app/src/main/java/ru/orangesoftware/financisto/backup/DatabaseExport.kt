@@ -1,7 +1,7 @@
 package ru.orangesoftware.financisto.backup
 
 import android.content.Context
-import android.database.sqlite.SQLiteDatabase
+import androidx.sqlite.db.SupportSQLiteDatabase
 import ru.orangesoftware.financisto.backup.Backup.BACKUP_TABLES
 import ru.orangesoftware.financisto.backup.Backup.tableHasOrder
 import ru.orangesoftware.financisto.backup.Backup.tableHasSystemIds
@@ -13,7 +13,7 @@ import java.io.BufferedWriter
 
 class DatabaseExport(
     context: Context,
-    private val db: SQLiteDatabase,
+    private val db: SupportSQLiteDatabase,
     useGZip: Boolean
 ) : Export(context, useGZip) {
 
@@ -49,7 +49,7 @@ class DatabaseExport(
         val sql = "select * from $tableName" +
                 if (tableHasSystemIds(tableName)) " WHERE _id > 0 " else " " +
                 if (orderedTable) " order by $DEF_SORT_COL asc" else ""
-        db.rawQuery(sql, null).use { c ->
+        db.query(sql, emptyArray()).use { c ->
             val columnNames = c.columnNames
             val cols = columnNames.size
             while (c.moveToNext()) {

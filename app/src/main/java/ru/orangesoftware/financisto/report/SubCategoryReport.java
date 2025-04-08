@@ -4,6 +4,9 @@ import static ru.orangesoftware.financisto.db.DatabaseHelper.V_REPORT_SUB_CATEGO
 
 import android.database.Cursor;
 
+import androidx.sqlite.db.SupportSQLiteQuery;
+import androidx.sqlite.db.SupportSQLiteQueryBuilder;
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -46,9 +49,12 @@ public class SubCategoryReport extends Report {
     @Override
 	public ReportData getReport(final DatabaseAdapter db, WhereFilter filter) {
 		filterTransfers(filter);
-        try (Cursor c = db.db().query(V_REPORT_SUB_CATEGORY, DatabaseHelper.SubCategoryReportColumns.NORMAL_PROJECTION,
-                filter.getSelection(), filter.getSelectionArgs(), null, null,
-                DatabaseHelper.SubCategoryReportColumns.LEFT)) {
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(V_REPORT_SUB_CATEGORY)
+                .columns(DatabaseHelper.SubCategoryReportColumns.NORMAL_PROJECTION)
+                .selection(filter.getSelection(), filter.getSelectionArgs())
+                .orderBy(DatabaseHelper.SubCategoryReportColumns.LEFT)
+                .create();
+        try (Cursor c = db.db().query(query)) {
             final ExchangeRateProvider rates = db.getHistoryRates();
             final int leftColumnIndex = c.getColumnIndex(DatabaseHelper.SubCategoryReportColumns.LEFT);
             CategoryTree<CategoryAmount> amounts = CategoryTree.createFromCursor(c, c1 -> {

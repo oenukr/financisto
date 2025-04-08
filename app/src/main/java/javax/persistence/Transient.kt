@@ -1,11 +1,8 @@
-package javax.persistence;
+package javax.persistence
 
-import static java.lang.annotation.ElementType.FIELD;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
+import kotlin.annotation.AnnotationRetention.RUNTIME
+import kotlin.annotation.AnnotationTarget.FIELD
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
-
-@Target(FIELD) 
+@Target(FIELD)
 @Retention(RUNTIME)
-public @interface Transient {}
+annotation class Transient

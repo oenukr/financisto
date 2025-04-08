@@ -1,12 +1,19 @@
 [versions]
 accompanist = "0.36.0"
-android_tools = "8.11.0-alpha02"
-datastore = "1.1.3"
+android_tools = "8.11.0-alpha04"
+datastore = "1.1.4"
 detekt = "1.23.8"
 glide = "4.16.0"
 glide-compose = "1.0.0-beta01"
 kotlin = "2.1.20"
+kotlinx-serialization = "1.8.1"
 workmanager = "2.10.0"
+junit = "4.13.2"
+junit-version = "1.2.1"
+espresso-core = "3.6.1"
+material = "1.12.0"
+test-runner = "1.6.2"
+test-core = "1.6.1"
 
 [libraries]
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanist" }
@@ -29,12 +36,15 @@ google-play-drive = { module = "com.google.android.gms:play-services-drive", ver
 google-play-plus = { module = "com.google.android.gms:play-services-plus", version = "17.0.0" }
 java-collections = { module = "net.sf.trove4j:core", version = "3.1.0" }
 koala-chart = { module = "io.github.koalaplot:koalaplot-core", version = "0.8.0" }
-koin-bom = { module = "io.insert-koin:koin-bom", version = "4.1.0-Beta5" }
+koin-bom = { module = "io.insert-koin:koin-bom", version = "4.1.0-Beta6" }
 koin-android = { module = "io.insert-koin:koin-android" }
 koin-android-compat = { module = "io.insert-koin:koin-android-compat" }
 koin-compose = { module = "io.insert-koin:koin-androidx-compose" }
 koin-core = { module = "io.insert-koin:koin-core" }
 koin-test = { module = "io.insert-koin:koin-test" }
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version = "0.6.2" }
+kotlinx-serialization-core = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core", version.ref = "kotlinx-serialization" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 legacy-support = { module = "androidx.legacy:legacy-support-v4", version = "1.0.0" }
 lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version = "2.8.7" }
 materialdatetimepicker = { module = "com.wdullaer:materialdatetimepicker", version = "4.2.3" }
@@ -47,14 +57,29 @@ rxjava2-rxjava = { module = "io.reactivex.rxjava2:rxjava", version = "2.2.21"}
 rxjava3-bridge = { module = "com.github.akarnokd:rxjava3-bridge", version = "3.0.2" }
 rxjava3-rxandroid = { module = "io.reactivex.rxjava3:rxandroid", version = "3.0.2" }
 rxjava3-rxjava = { module = "io.reactivex.rxjava3:rxjava", version = "3.1.10" }
-sqlite-ktx = { module = "androidx.sqlite:sqlite-ktx", version = "2.4.0" }
+sqlite = { module = "androidx.sqlite:sqlite", version = "2.5.0-rc03" }
+sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version = "2.5.0-rc03" }
+sqlite-framework = { module = "androidx.sqlite:sqlite-framework", version = "2.5.0-rc03" }
+sqlite-ktx = { module = "androidx.sqlite:sqlite-ktx", version = "2.5.0-rc03" }
 timber = { module = "com.jakewharton.timber:timber", version = "5.0.1" }
 workmanager = { module = "androidx.work:work-runtime", version.ref = "workmanager" }
 workmanager-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workmanager" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junit-version" }
+espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso-core" }
+material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib", version.ref = "kotlin" }
+kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin" }
+test-runner = { group = "androidx.test", name = "runner", version.ref = "test-runner" }
+test-core = { group = "androidx.test", name = "core", version.ref = "test-core" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "android_tools" }
+android-library = { id = "com.android.library", version.ref = "android_tools" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt"}
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kover = { id = "org.jetbrains.kotlinx.kover", version = "0.9.1" }
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "android_tools" }
+plugin-serialization = { id = "plugin.serialization", version.ref = "kotlin" }

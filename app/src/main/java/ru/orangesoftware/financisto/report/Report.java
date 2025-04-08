@@ -6,6 +6,8 @@ import android.database.Cursor;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.sqlite.db.SupportSQLiteQuery;
+import androidx.sqlite.db.SupportSQLiteQueryBuilder;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -17,7 +19,6 @@ import ru.orangesoftware.financisto.activity.BlotterActivity;
 import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.blotter.BlotterFilter;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
-import ru.orangesoftware.financisto.db.DatabaseHelper;
 import ru.orangesoftware.financisto.db.DatabaseHelper.ReportColumns;
 import ru.orangesoftware.financisto.db.TransactionsTotalCalculator;
 import ru.orangesoftware.financisto.db.UnableToCalculateRateException;
@@ -68,8 +69,12 @@ public abstract class Report {
 
 	protected ReportData queryReport(DatabaseAdapter db, String table, WhereFilter filter) {
 		filterTransfers(filter);
-		Cursor c = db.db().query(table, DatabaseHelper.ReportColumns.NORMAL_PROJECTION,
-                filter.getSelection(), filter.getSelectionArgs(), null, null, "_id");
+        SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(table)
+                .columns(ReportColumns.NORMAL_PROJECTION)
+                .selection(filter.getSelection(), filter.getSelectionArgs())
+                .orderBy("_id")
+                .create();
+		Cursor c = db.db().query(query);
 		ArrayList<GraphUnit> units = getUnitsFromCursor(db, c);
         Total total = calculateTotal(units);
         return new ReportData(units, total);

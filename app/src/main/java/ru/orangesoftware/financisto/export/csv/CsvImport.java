@@ -1,10 +1,10 @@
 package ru.orangesoftware.financisto.export.csv;
 
 import android.content.Context;
-import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 
 import androidx.documentfile.provider.DocumentFile;
+import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import java.io.FileNotFoundException;
 import java.io.InputStream;
@@ -152,7 +152,7 @@ public class CsvImport {
                                     Map<String, Category> categories,
                                     Map<String, Project> projects,
                                     Map<String, Payee> payees) {
-        SQLiteDatabase database = db.db();
+        SupportSQLiteDatabase database = db.db();
         database.beginTransaction();
         try {
             List<TransactionAttribute> emptyAttributes = Collections.emptyList();

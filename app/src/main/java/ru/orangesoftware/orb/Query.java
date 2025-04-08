@@ -1,7 +1,9 @@
 package ru.orangesoftware.orb;
 
 import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
+
+import androidx.annotation.NonNull;
+import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -16,11 +18,12 @@ public class Query<T> {
 
 	private final Class<T> clazz;
 	private final EntityDefinition ed;
-	private final SQLiteDatabase db;
+	private final SupportSQLiteDatabase db;
 
 	private final LinkedList<String> orderBy = new LinkedList<>();
 	private String where;
-	private String[] whereArgs;
+	@NonNull
+	private String[] whereArgs = new String[0];
 
 	Query(EntityManager em, Class<T> clazz) {
 		this.db = em.db();
@@ -79,7 +82,7 @@ public class Query<T> {
 		logger.d("QUERY %s: %s", clazz, query);
 		logger.d("WHERE: %s", where != null ? where : "");
 		logger.d("ARGS: %s", whereArgs != null ? Arrays.toString(whereArgs) : "");
-		return db.rawQuery(query, whereArgs);
+		return db.query(query, whereArgs);
 	}
 
 	public T uniqueResult() {

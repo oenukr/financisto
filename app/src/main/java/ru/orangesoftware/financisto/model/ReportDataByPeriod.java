@@ -4,7 +4,10 @@ import static ru.orangesoftware.financisto.db.DatabaseHelper.TRANSACTION_TABLE;
 
 import android.content.Context;
 import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
+
+import androidx.sqlite.db.SupportSQLiteDatabase;
+import androidx.sqlite.db.SupportSQLiteQuery;
+import androidx.sqlite.db.SupportSQLiteQueryBuilder;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -172,7 +175,7 @@ public class ReportDataByPeriod {
 		startDate.set(startDate.get(Calendar.YEAR), startDate.get(Calendar.MONTH), 1, 0, 0, 0);
 		this.startDate = startDate;
 		
-		SQLiteDatabase db = em.db();
+		SupportSQLiteDatabase db = em.db();
 		Cursor cursor = null;
 
 		fillEmptyList(startDate, periodLength);
@@ -190,8 +193,12 @@ public class ReportDataByPeriod {
 			String where = getWhereClause(filterColumn, filterId, accounts);
 			String[] pars = getWherePars(startDate, periodLength, filterId, accounts);
 			// query data
-			cursor = db.query(TRANSACTION_TABLE, new String[]{filterColumn, TransactionColumns.from_amount.name(), TransactionColumns.datetime.name(), TransactionColumns.datetime.name()},
-					   where, pars, null, null, TransactionColumns.datetime.name());
+			SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(TRANSACTION_TABLE)
+					.columns(new String[]{filterColumn, TransactionColumns.from_amount.name(), TransactionColumns.datetime.name(), TransactionColumns.datetime.name()})
+					.selection(where, pars)
+					.orderBy(TransactionColumns.datetime.name())
+					.create();
+			cursor = db.query(query);
 			// extract data and fill statistics
 			extractData(cursor); 
 
@@ -407,12 +414,15 @@ public class ReportDataByPeriod {
 	 * 
 	 * @return A list of ids of accounts for which the reference currency is the given report currency.
 	 */
-	public int[] getAccountsByCurrency(Currency currency, SQLiteDatabase db) {
+	public int[] getAccountsByCurrency(Currency currency, SupportSQLiteDatabase db) {
 		int[] accounts = new int[0];
 
 		String where = AccountColumns.CURRENCY_ID + "=?";
-		try (Cursor c = db.query(DatabaseHelper.ACCOUNT_TABLE, new String[]{AccountColumns.ID},
-				where, new String[]{Long.toString(currency.id)}, null, null, null)) {
+		SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(DatabaseHelper.ACCOUNT_TABLE)
+				.columns(new String[]{AccountColumns.ID})
+				.selection(where, new String[]{Long.toString(currency.id)})
+				.create();
+		try (Cursor c = db.query(query)) {
 			accounts = new int[c.getCount()];
 			int index = 0;
 			while (c.moveToNext()) {

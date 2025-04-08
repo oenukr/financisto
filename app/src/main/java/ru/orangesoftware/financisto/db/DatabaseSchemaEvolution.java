@@ -10,13 +10,22 @@
  ******************************************************************************/
 package ru.orangesoftware.financisto.db;
 
+import static android.database.sqlite.SQLiteDatabase.CONFLICT_NONE;
+
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
-import android.database.sqlite.SQLiteOpenHelper;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.sqlite.db.SupportSQLiteDatabase;
+import androidx.sqlite.db.SupportSQLiteOpenHelper;
+import androidx.sqlite.db.SupportSQLiteQuery;
+import androidx.sqlite.db.SupportSQLiteQueryBuilder;
+import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -40,7 +49,7 @@ import ru.orangesoftware.financisto.utils.Logger;
  *  
  * @author Denis Solonenko
  */
-public class DatabaseSchemaEvolution extends SQLiteOpenHelper {
+public class DatabaseSchemaEvolution extends SupportSQLiteOpenHelper.Callback implements SupportSQLiteOpenHelper {
 
 	private final Logger logger = new DependenciesHolder().getLogger();
 
@@ -54,9 +63,17 @@ public class DatabaseSchemaEvolution extends SQLiteOpenHelper {
 	private final AssetManager assetManager;
 
 	private boolean autoDropViews = false;
+
+	private final SupportSQLiteOpenHelper openHelper;
 	
 	public DatabaseSchemaEvolution(Context context, String name, SQLiteDatabase.CursorFactory factory, int version) {
-		super(context, name, factory, version);
+		super(version);
+		SupportSQLiteOpenHelper.Configuration configuration = SupportSQLiteOpenHelper.Configuration.builder(context)
+				.name(name)
+				.callback(this)
+				.build();
+		SupportSQLiteOpenHelper.Factory f = new FrameworkSQLiteOpenHelperFactory();
+		openHelper = f.create(configuration);
 		this.assetManager = context.getAssets();
 	}
 	
@@ -68,8 +85,36 @@ public class DatabaseSchemaEvolution extends SQLiteOpenHelper {
 		this.autoDropViews = autoDropViews;
 	}
 
+	@Nullable
 	@Override
-	public void onCreate(SQLiteDatabase db) {
+	public String getDatabaseName() {
+		return openHelper.getDatabaseName();
+	}
+
+	@NonNull
+	@Override
+	public SupportSQLiteDatabase getWritableDatabase() {
+		return openHelper.getWritableDatabase();
+	}
+
+	@NonNull
+	@Override
+	public SupportSQLiteDatabase getReadableDatabase() {
+		return openHelper.getReadableDatabase();
+	}
+
+	@Override
+	public void close() {
+		openHelper.close();
+	}
+
+	@Override
+	public void setWriteAheadLoggingEnabled(boolean b) {
+		openHelper.setWriteAheadLoggingEnabled(b);
+	}
+
+	@Override
+	public void onCreate(SupportSQLiteDatabase db) {
 		try {
 			logger.i("Creating ALTERLOG table");
 			db.execSQL("create table "+ALTERLOG+" (script text not null, datetime long not null);");
@@ -86,7 +131,7 @@ public class DatabaseSchemaEvolution extends SQLiteOpenHelper {
 	}
 
 	@Override
-	public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+	public void onUpgrade(SupportSQLiteDatabase db, int oldVersion, int newVersion) {
 		try {
 			logger.i("Upgrading database from version "+oldVersion+" to version "+newVersion+"...");
 			logger.i("Running alter scripts...");
@@ -98,18 +143,18 @@ public class DatabaseSchemaEvolution extends SQLiteOpenHelper {
 		}		
 	}
 	
-	public void runAlterScript(SQLiteDatabase db, String name) 
+	public void runAlterScript(SupportSQLiteDatabase db, String name)
 		throws IOException {
 		runAlterScript(db, ALTER_PATH, name);
 	}
 	
-	private void runAlterScript(SQLiteDatabase db, String path, String name) 
+	private void runAlterScript(SupportSQLiteDatabase db, String path, String name)
 		throws IOException {
 		String script = path + "/" + name;
 		runScript(db, script);
 	}
 
-	private void runAllScripts(SQLiteDatabase db, String path, boolean checkAlterlog) 
+	private void runAllScripts(SupportSQLiteDatabase db, String path, boolean checkAlterlog)
 		throws IOException {
 		String[] scripts = sortScripts(assetManager.list(path));
 		for (String scriptFile : scripts) {
@@ -132,7 +177,7 @@ public class DatabaseSchemaEvolution extends SQLiteOpenHelper {
 		}
 	}
 	
-	private void runScript(SQLiteDatabase db, String script) throws IOException {
+	private void runScript(SupportSQLiteDatabase db, String script) throws IOException {
 		String[] content = readFile(script).split(";");
 		for (String s : content) {
 			String sql = s.trim();
@@ -164,17 +209,22 @@ public class DatabaseSchemaEvolution extends SQLiteOpenHelper {
 	
 	private static final String[] projection = {"1"};
 
-	private boolean alreadyRun(SQLiteDatabase db, String script) {
-        try (Cursor c = db.query(ALTERLOG, projection, "script=?", new String[]{script}, null, null, null)) {
+	private boolean alreadyRun(SupportSQLiteDatabase db, String script) {
+		SupportSQLiteQuery query = SupportSQLiteQueryBuilder
+				.builder(ALTERLOG)
+				.columns(projection)
+				.selection("script=?", new String[]{script})
+				.create();
+        try (Cursor c = db.query(query)) {
             return c.moveToFirst();
         }
 	}
 
-	private void saveScriptToAlterlog(SQLiteDatabase db, String script) {
+	private void saveScriptToAlterlog(SupportSQLiteDatabase db, String script) {
 		ContentValues values = new ContentValues();
 		values.put("script", script);
 		values.put("datetime", System.currentTimeMillis());
-		db.insert(ALTERLOG, null, values);
+		db.insert(ALTERLOG, CONFLICT_NONE, values);
 	}
 
 	private String readFile(String scriptFile) throws IOException {
