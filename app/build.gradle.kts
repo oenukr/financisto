@@ -13,7 +13,7 @@ android {
     defaultConfig {
         applicationId = "ru.orangesoftware.financisto"
         minSdk = 28
-        targetSdk = 30
+        targetSdk = 35
         versionCode = 122
         versionName = "1.8.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -172,7 +172,7 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("androidx.test:core:1.6.1")
-    testImplementation("org.robolectric:robolectric:4.11.1") // can't be used because of the current target sdk
+    testImplementation("org.robolectric:robolectric:4.14.1")
     testImplementation("org.hamcrest:hamcrest:2.2")
 }
 
