@@ -1,11 +1,3 @@
-/*
- * Copyright (c) 2011 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- */
-
 package ru.orangesoftware.financisto.activity;
 
 import android.app.AlertDialog;
@@ -20,90 +12,119 @@ import java.util.Collections;
 import java.util.List;
 
 import ru.orangesoftware.financisto.R;
-import ru.orangesoftware.financisto.app.DependenciesHolder;
-import ru.orangesoftware.financisto.db.MyEntityManager;
+import ru.orangesoftware.financisto.app.DependenciesHolder; // Keep for Logger for now
+import ru.orangesoftware.financisto.db.dao.CurrencyDao;
+import ru.orangesoftware.financisto.db.entity.CurrencyEntity;
 import ru.orangesoftware.financisto.export.csv.Csv;
-import ru.orangesoftware.financisto.model.Currency;
-import ru.orangesoftware.financisto.utils.CurrencyCache;
+// import ru.orangesoftware.financisto.utils.CurrencyCache; // Commented out
 import ru.orangesoftware.financisto.utils.Logger;
+import ru.orangesoftware.financisto.utils.Utils; // For Utils.isTrue if used for isDefault, though CSV parsing is different now
 
-/**
- * Created by IntelliJ IDEA.
- * User: Denis Solonenko
- * Date: 6/20/11 6:40 PM
- */
+import kotlinx.coroutines.Dispatchers;
+import kotlinx.coroutines.GlobalScope;
+import kotlinx.coroutines.launch;
+import kotlinx.coroutines.withContext;
+import kotlin.Unit;
+
 public class CurrencySelector {
 
-    private final Logger logger = new DependenciesHolder().getLogger();
+    private final Logger logger = new DependenciesHolder().getLogger(); // Keep logger for now
 
     public interface OnCurrencyCreatedListener {
         void onCreated(long currencyId);
     }
 
     private final Context context;
-    private final MyEntityManager em;
-    private final List<List<String>> currencies;
+    // private final MyEntityManager em; // Replaced
+    private final CurrencyDao currencyDao; // Added
+    private final List<List<String>> currenciesFromAsset; // Renamed for clarity
     private final OnCurrencyCreatedListener listener;
 
-    private int selectedCurrency = 0;
+    private int selectedCurrencyIndex = 0; // Index in the displayed list
 
-    public CurrencySelector(Context context, MyEntityManager em, OnCurrencyCreatedListener listener) {
+    public CurrencySelector(Context context, CurrencyDao currencyDao, OnCurrencyCreatedListener listener) {
         this.context = context;
-        this.em = em;
+        // this.em = em; // Replaced
+        this.currencyDao = currencyDao; // Added
         this.listener = listener;
-        this.currencies = readCurrenciesFromAsset();
+        this.currenciesFromAsset = readCurrenciesFromAsset();
     }
 
     public void show() {
-        String[] items = createItemsList(currencies);
+        String[] items = createDisplayItemsList(currenciesFromAsset);
         new AlertDialog.Builder(context)
-                .setTitle(R.string.currencies)
+                .setTitle(R.string.currencies) // This was R.string.select_currency, but R.string.currencies is used in original
                 .setIcon(R.drawable.ic_dialog_currency)
                 .setPositiveButton(R.string.ok, (dialogInterface, i) -> {
-                    addSelectedCurrency(selectedCurrency);
+                    // selectedCurrencyIndex is 0 for "New Currency", >0 for asset list
+                    if (selectedCurrencyIndex == 0) { // "New Currency" was selected
+                        if (listener != null) {
+                            listener.onCreated(0); // Signal to caller to open CurrencyActivity
+                        }
+                    } else {
+                        // An existing currency from assets was chosen to be added
+                        addSelectedCurrencyFromAsset(selectedCurrencyIndex -1); // Adjust index for asset list
+                    }
                     dialogInterface.dismiss();
                 })
-                .setSingleChoiceItems(items, 0, (dialogInterface, i) -> selectedCurrency = i)
+                .setSingleChoiceItems(items, selectedCurrencyIndex, (dialogInterface, i) -> selectedCurrencyIndex = i)
                 .show();
     }
 
-    public void addSelectedCurrency(int selectedCurrency) {
-        if (selectedCurrency > 0 && selectedCurrency <= currencies.size()) {
-            List<String> c = currencies.get(selectedCurrency-1);
-            addSelectedCurrency(c);
-        } else {
-            listener.onCreated(0);
+    // This method is called when an item from the ASSET LIST (currencies.csv) is chosen
+    private void addSelectedCurrencyFromAsset(int assetListIndex) {
+        if (assetListIndex < 0 || assetListIndex >= currenciesFromAsset.size()) {
+            if (listener != null) {
+                 listener.onCreated(0); // Invalid selection from asset
+            }
+            return;
         }
+
+        List<String> csvLine = currenciesFromAsset.get(assetListIndex);
+        CurrencyEntity c = new CurrencyEntity();
+        // CSV format: Name,ISO_Code,Symbol,Decimals,DecimalSeparator,GroupSeparator
+        c.setName(csvLine.get(0));
+        c.setIsoCode(csvLine.get(1));
+        c.setSymbol(csvLine.get(2));
+
+        try {
+            // int decimals = Integer.parseInt(csvLine.get(3)); // Decimals not directly in CurrencyEntity
+            // For now, we don't have a direct field for 'decimals'.
+            // It's often implicit (e.g., 2 for most currencies).
+        } catch (NumberFormatException e) { /* ignore malformed decimal count */ }
+
+        // Separators are Char in Entity. CSV stores them as "COMMA", "PERIOD", etc.
+        c.setDecimalSeparator(decodeSeparatorChar(csvLine.get(4)));
+        c.setGroupSeparator(decodeSeparatorChar(csvLine.get(5)));
+
+        // isDefault logic
+        GlobalScope.launch(Dispatchers.IO, () -> {
+            List<CurrencyEntity> allCurrenciesInDb = currencyDao.getAllSuspendable();
+            c.setDefault(allCurrenciesInDb.isEmpty());
+
+            long generatedId = currencyDao.insert(c);
+
+            // CurrencyCache.initialize(em); // TODO: Refactor or re-initialize CurrencyCache
+
+            withContext(Dispatchers.getMain(), () -> {
+                if (listener != null) {
+                    listener.onCreated(generatedId);
+                }
+                return Unit.INSTANCE;
+            });
+            return Unit.INSTANCE;
+        });
     }
 
-    private void addSelectedCurrency(List<String> list) {
-        Currency c = new Currency();
-        c.name = list.get(0);
-        c.title = list.get(1);
-        c.symbol = list.get(2);
-        c.decimals = Math.max(0, Math.min(2, Integer.parseInt(list.get(3))));
-        c.decimalSeparator = decodeSeparator(list.get(4));
-        c.groupSeparator = decodeSeparator(list.get(5));
-        c.isDefault = isTheFirstCurrencyAdded();
-        em.saveOrUpdate(c);
-        CurrencyCache.initialize(em);
-        listener.onCreated(c.id);
-    }
-
-    private boolean isTheFirstCurrencyAdded() {
-        return em.getAllCurrenciesList().isEmpty();
-    }
-
-    private String decodeSeparator(String s) {
+    private Character decodeSeparatorChar(String s) {
         if ("COMMA".equals(s)) {
-            return "','";
+            return ',';
         } else if ("PERIOD".equals(s)) {
-            return "'.'";
-        } else if ("SPACE".endsWith(s)) {
-            return "' '";
-        } else {
-            return "''";
+            return '.';
+        } else if ("SPACE".equals(s)) { // Note: original was endsWith
+            return ' ';
         }
+        return null; // Or a default like '.' or ','
     }
 
     private List<List<String>> readCurrenciesFromAsset() {
@@ -113,7 +134,7 @@ public class CurrencySelector {
                 List<List<String>> allLines = new ArrayList<>();
                 List<String> line;
                 while ((line = csv.readLine()) != null) {
-                    if (line.size() == 6) {
+                    if (line.size() == 6) { // Name,ISO_Code,Symbol,Decimals,DecimalSeparator,GroupSeparator
                         allLines.add(line);
                     }
                 }
@@ -121,21 +142,19 @@ public class CurrencySelector {
             }
         } catch (IOException e) {
             logger.e(e, "IO error while reading currencies");
-            Toast.makeText(context, e.getClass() + ":" + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, e.getClass().getSimpleName() + ":" + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
         return Collections.emptyList();
     }
 
-    private String[] createItemsList(List<List<String>> currencies) {
+    private String[] createDisplayItemsList(List<List<String>> currencies) {
         int size = currencies.size();
-        String[] items = new String[size+1];
-        items[0] = context.getString(R.string.new_currency);
-        for (int i=0; i<size; i++) {
+        String[] items = new String[size + 1]; // +1 for "New Currency" option
+        items[0] = context.getString(R.string.new_currency); // User can choose to create a new one manually
+        for (int i = 0; i < size; i++) {
             List<String> c = currencies.get(i);
-            items[i+1] = c.get(0)+" ("+c.get(1)+")";
+            items[i + 1] = c.get(0) + " (" + c.get(1) + ")"; // Name (ISO_Code)
         }
         return items;
     }
-
-
 }

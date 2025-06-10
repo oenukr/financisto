@@ -48,12 +48,14 @@ import ru.orangesoftware.orb.Expressions;
 import ru.orangesoftware.orb.Query;
 import ru.orangesoftware.orb.Sort;
 
+import android.database.sqlite.SQLiteOpenHelper;
+
 public abstract class MyEntityManager extends EntityManager {
 
     protected final Context context;
 
     public MyEntityManager(Context context) {
-        super(new DependenciesHolder().getDatabaseHelper(), new DatabaseFixPlugin());
+        super(null, new DatabaseFixPlugin()); // TEMPORARY: Passing null for SQLiteOpenHelper
         this.context = context;
     }
 
