@@ -50,9 +50,9 @@ public abstract class AbstractListActivity extends ListActivity implements Refre
     private final int contentId;
 
     protected LayoutInflater inflater;
-    protected Cursor cursor;
-    protected ListAdapter adapter;
-    protected DatabaseAdapter db = new DependenciesHolder().getDatabaseAdapter();
+    // protected Cursor cursor; // Removed
+    // protected ListAdapter adapter; // Removed
+    // protected DatabaseAdapter db = new DependenciesHolder().getDatabaseAdapter(); // Removed
     protected ImageButton bAdd;
 
     protected boolean enablePin = true;
@@ -74,17 +74,17 @@ public abstract class AbstractListActivity extends ListActivity implements Refre
 
         setContentView(contentId);
 
-        db.open();
+        // db.open(); // Removed
 
         this.inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         internalOnCreate(savedInstanceState);
 
-        cursor = createCursor();
-        if (cursor != null) {
-            startManagingCursor(cursor);
-        }
+        // cursor = createCursor(); // Commented out
+        // if (cursor != null) { // Commented out
+            // startManagingCursor(cursor); // Commented out
+        // } // Commented out
 
-        recreateAdapter();
+        // New adapter logic will be set in child activities
         getListView().setOnItemLongClickListener((parent, view, position, id) -> {
             PopupMenu popupMenu = new PopupMenu(AbstractListActivity.this, view);
             Menu menu = popupMenu.getMenu();
@@ -101,14 +101,12 @@ public abstract class AbstractListActivity extends ListActivity implements Refre
         });
     }
 
-    protected void recreateAdapter() {
-        adapter = createAdapter(cursor);
-        setListAdapter(adapter);
-    }
+    // protected void recreateAdapter() { // Removed
+    // }
 
-    protected abstract Cursor createCursor();
+    // protected abstract Cursor createCursor(); // Removed
 
-    protected abstract ListAdapter createAdapter(Cursor cursor);
+    // protected abstract ListAdapter createAdapter(Cursor cursor); // Removed
 
     protected void internalOnCreate(@Nullable Bundle savedInstanceState) {
         bAdd = findViewById(R.id.bAdd);
@@ -117,7 +115,7 @@ public abstract class AbstractListActivity extends ListActivity implements Refre
 
     @Override
     protected void onDestroy() {
-        db.close();
+        // db.close(); // Removed
         super.onDestroy();
     }
 
@@ -177,32 +175,20 @@ public abstract class AbstractListActivity extends ListActivity implements Refre
 
     protected abstract void viewItem(View v, int position, long id);
 
-    public void recreateCursor() {
-        logger.i("Recreating cursor");
-        Parcelable state = getListView().onSaveInstanceState();
-        try {
-            if (cursor != null) {
-                stopManagingCursor(cursor);
-                cursor.close();
-            }
-            cursor = createCursor();
-            if (cursor != null) {
-                startManagingCursor(cursor);
-                recreateAdapter();
-            }
-        } finally {
-            getListView().onRestoreInstanceState(state);
-        }
+    protected void onDataMayHaveChanged() { // Renamed from recreateCursor
+        logger.i("Data may have changed, child activity should refresh if needed.");
+        // Body cleared. Child activities will override and call ViewModel methods.
     }
 
     @Override
     public void integrityCheck() {
+        // This method might trigger onDataMayHaveChanged() or be handled by child activities
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (resultCode == RESULT_OK) {
-            recreateCursor();
+            onDataMayHaveChanged(); // Changed from recreateCursor()
         }
     }
 

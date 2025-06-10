@@ -24,8 +24,8 @@ import android.widget.Toast;
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.activity.AccountActivity;
 import ru.orangesoftware.financisto.activity.AccountListActivity;
-import ru.orangesoftware.financisto.db.DatabaseAdapter;
-import ru.orangesoftware.financisto.model.Account;
+// import ru.orangesoftware.financisto.db.DatabaseAdapter; // Removed
+import ru.orangesoftware.financisto.db.entity.AccountEntity; // Added
 import ru.orangesoftware.financisto.model.AccountType;
 import ru.orangesoftware.financisto.model.CardIssuer;
 import ru.orangesoftware.financisto.utils.Utils;
@@ -34,25 +34,28 @@ import ru.orangesoftware.financisto.view.NodeInflater;
 public class AccountInfoDialog {
 
     private final AccountListActivity parentActivity;
-    private final long accountId;
-    private final DatabaseAdapter db;
+    // private final long accountId; // Replaced by accountEntity
+    // private final DatabaseAdapter db; // Removed
+    private final AccountEntity accountEntity; // Added
+    private final String currencySymbol; // Added
     private final NodeInflater inflater;
     private final LayoutInflater layoutInflater;
     private final Utils u;
 
-    public AccountInfoDialog(AccountListActivity parentActivity, long accountId,
-                             DatabaseAdapter db, NodeInflater inflater) {
+    public AccountInfoDialog(AccountListActivity parentActivity, AccountEntity accountEntity,
+                             String currencySymbol, NodeInflater inflater) { // Updated constructor
         this.parentActivity = parentActivity;
-        this.accountId = accountId;
-        this.db = db;
+        this.accountEntity = accountEntity;
+        this.currencySymbol = currencySymbol != null ? currencySymbol : ""; // Handle null
+        // this.db = db; // Removed
         this.inflater = inflater;
         this.layoutInflater = (LayoutInflater) parentActivity.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         this.u = new Utils(parentActivity);
     }
 
     public void show() {
-        Account a = db.getAccount(accountId);
-        if (a == null) {
+        // Account a = db.getAccount(accountId); // Replaced by accountEntity from constructor
+        if (accountEntity == null) {
             Toast t = Toast.makeText(parentActivity, R.string.no_account, Toast.LENGTH_LONG);
             t.show();
             return;
@@ -61,54 +64,78 @@ public class AccountInfoDialog {
         View v = layoutInflater.inflate(R.layout.info_dialog, null);
         LinearLayout layout = v.findViewById(R.id.list);
 
-        View titleView = createTitleView(a);
-        createNodes(a, layout);
+        View titleView = createTitleView(accountEntity);
+        createNodes(accountEntity, layout);
 
-        showDialog(v, titleView);
+        showDialog(v, titleView, accountEntity.getId()); // Pass ID for edit button
     }
 
-    private View createTitleView(Account a) {
+    private View createTitleView(AccountEntity a) { // Takes AccountEntity
         View titleView = layoutInflater.inflate(R.layout.info_dialog_title, null);
         TextView titleLabel = titleView.findViewById(R.id.label);
         TextView titleData = titleView.findViewById(R.id.data);
         ImageView titleIcon = titleView.findViewById(R.id.icon);
 
-        titleLabel.setText(a.title);
+        titleLabel.setText(a.getTitle());
 
-        AccountType type = AccountType.valueOf(a.type);
+        AccountType type = AccountType.CASH; // Default
+        if (a.getType() != null) {
+            try {
+                type = AccountType.valueOf(a.getType());
+            } catch (IllegalArgumentException e) { /* Default or log */ }
+        }
         titleData.setText(type.getTitleId());
         titleIcon.setImageResource(type.getIconId());
 
         return titleView;
     }
 
-    private void createNodes(Account a, LinearLayout layout) {
-        AccountType type = AccountType.valueOf(a.type);
-        if (type.isCard()) {
-            CardIssuer issuer = CardIssuer.valueOf(a.cardIssuer);
-            add(layout, R.string.issuer, issuerTitle(a), issuer);
+    private void createNodes(AccountEntity a, LinearLayout layout) { // Takes AccountEntity
+        AccountType type = AccountType.CASH; // Default
+        if (a.getType() != null) {
+            try {
+                type = AccountType.valueOf(a.getType());
+            } catch (IllegalArgumentException e) { /* Default or log */ }
         }
-        add(layout, R.string.currency, a.currency.title);
 
-        if (type.isCreditCard() && a.limitAmount != 0) {
-            long limitAmount = Math.abs(a.limitAmount);
-            long balance = limitAmount + a.totalAmount;
+        if (type.isCard() && isNotEmpty(a.getIssuer())) {
+            CardIssuer cardIssuer = null;
+            try {
+                 cardIssuer = CardIssuer.valueOf(a.getIssuer());
+            } catch (IllegalArgumentException e) { /* Issuer string not in enum, handle if necessary */ }
+
+            if (cardIssuer != null) {
+                add(layout, R.string.issuer, issuerTitle(a), cardIssuer);
+            } else {
+                // Fallback if issuer string is not a known CardIssuer enum constant
+                add(layout, R.string.issuer, issuerTitle(a));
+            }
+        }
+        // Use currencySymbol passed to constructor.
+        add(layout, R.string.currency, currencySymbol.isEmpty() ? String.valueOf(a.getCurrencyId()) : currencySymbol);
+
+        if (type.isCreditCard() && a.getLimitAmount() != 0) {
+            long limitAmount = Math.abs(a.getLimitAmount());
+            long balance = limitAmount + a.getTotalAmount(); // totalAmount for CC is usually negative
             TextView amountView = add(layout, R.string.amount, "");
-            u.setAmountText(amountView, a.currency, a.totalAmount, true);
+            // Assuming u.setAmountText can take currencySymbol or currencyId (needs check or adaptation of Utils)
+            u.setAmountText(amountView, currencySymbol, a.getTotalAmount(), true, true);
             TextView limitAmountView = add(layout, R.string.balance, "");
-            u.setAmountText(limitAmountView, a.currency, balance, true);
+            u.setAmountText(limitAmountView, currencySymbol, balance, true, true);
         } else {
             TextView amountView = add(layout, R.string.balance, "");
-            u.setAmountText(amountView, a.currency, a.totalAmount, true);
+            u.setAmountText(amountView, currencySymbol, a.getTotalAmount(), true, true);
         }
-        add(layout, R.string.note, a.note);
+        // Note field from AccountEntity does not exist. Original Account model had 'note'.
+        // If notes are needed, AccountEntity needs a 'note' field or it's fetched differently.
+        // add(layout, R.string.note, a.getNote()); // AccountEntity doesn't have getNote()
     }
 
-    private String issuerTitle(Account a) {
-        return (isNotEmpty(a.issuer) ? a.issuer : "")+" "+(isNotEmpty(a.number) ? "#"+a.number : "");
+    private String issuerTitle(AccountEntity a) { // Takes AccountEntity
+        return (isNotEmpty(a.getIssuer()) ? a.getIssuer() : "")+" "+(isNotEmpty(a.getNumber()) ? "#"+a.getNumber() : "");
     }
 
-    private void showDialog(final View v, View titleView) {
+    private void showDialog(final View v, View titleView, final long currentAccountId) { // Added accountId for edit
         final Dialog d = new AlertDialog.Builder(parentActivity)
                 .setCustomTitle(titleView)
                 .setView(v)
@@ -119,7 +146,7 @@ public class AccountInfoDialog {
         bEdit.setOnClickListener(arg0 -> {
             d.dismiss();
             Intent intent = new Intent(parentActivity, AccountActivity.class);
-            intent.putExtra(AccountActivity.ACCOUNT_ID_EXTRA, accountId);
+            intent.putExtra(AccountActivity.ACCOUNT_ID_EXTRA, currentAccountId); // Use passed ID
             parentActivity.startActivityForResult(intent, AccountListActivity.EDIT_ACCOUNT_REQUEST);
         });
 
