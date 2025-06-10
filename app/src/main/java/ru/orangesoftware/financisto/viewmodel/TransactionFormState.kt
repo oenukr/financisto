@@ -24,11 +24,12 @@ data class TransactionFormState(
     val selectedOriginalCurrencySymbol: String? = null, // For display in RateView
 
     val availableAccounts: List<AccountEntity> = emptyList(),
-    val availableCategoriesTree: List<CategoryEntity> = emptyList(), // Full tree for CategorySelector
+    val availableCategoriesTree: List<CategoryEntity> = emptyList(),
+    val categoryDisplayPathMap: Map<Long, String> = emptyMap(), // Added for paths
     val availablePayees: List<PayeeEntity> = emptyList(),
-    val availableCurrencies: List<CurrencyEntity> = emptyList(), // For original currency selection
+    val availableCurrencies: List<CurrencyEntity> = emptyList(),
 
-    val unsplitAmount: Long = 0L, // Calculated if there are splits
+    val unsplitAmount: Long = 0L,
     val rateViewFromAmount: Long = 0L, // Amount in 'from' currency (original or account)
     val rateViewToAmount: Long = 0L,   // Amount in 'to' currency (account currency if original is different)
 

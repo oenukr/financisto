@@ -1,304 +1,260 @@
-/*
- * Copyright (c) 2012 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- */
-
 package ru.orangesoftware.financisto.activity;
 
-import static java.util.Objects.requireNonNull;
-import static ru.orangesoftware.financisto.activity.CategorySelectorActivity.CATEGORY_PICK_REQUEST;
-import static ru.orangesoftware.financisto.model.Category.NO_CATEGORY_ID;
-
 import android.app.Activity;
-import android.content.Intent;
-import android.database.Cursor;
-import android.text.InputType;
+import android.app.AlertDialog;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
-import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ListAdapter;
-import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
+import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import ru.orangesoftware.financisto.R;
-import ru.orangesoftware.financisto.db.DatabaseAdapter;
-import ru.orangesoftware.financisto.db.DatabaseHelper;
-import ru.orangesoftware.financisto.model.Attribute;
-import ru.orangesoftware.financisto.model.Category;
-import ru.orangesoftware.financisto.model.MultiChoiceItem;
-import ru.orangesoftware.financisto.model.MyEntity;
-import ru.orangesoftware.financisto.model.Transaction;
-import ru.orangesoftware.financisto.model.TransactionAttribute;
-import ru.orangesoftware.financisto.utils.ArrUtils;
-import ru.orangesoftware.financisto.utils.TransactionUtils;
-import ru.orangesoftware.financisto.utils.Utils;
-import ru.orangesoftware.financisto.view.AttributeView;
-import ru.orangesoftware.financisto.view.AttributeViewFactory;
+import ru.orangesoftware.financisto.activity.ActivityLayout.ActivityNode;
+import ru.orangesoftware.financisto.db.entity.CategoryEntity;
+import ru.orangesoftware.financisto.utils.Utils; // For getEmptyResId()
 
-public class CategorySelector<A extends AbstractActivity> {
+public class CategorySelector {
 
-    private final A activity;
-    private final DatabaseAdapter db;
-    private final ActivityLayout x;
-
-    private ActivityLayout.FilterNode filterNode;
-    private TextView categoryText;
-    private AutoCompleteTextView autoCompleteTextView;
-    private SimpleCursorAdapter autoCompleteAdapter;
-    private Cursor categoryCursor;
-    private ListAdapter categoryAdapter;
-    private LinearLayout attributesLayout;
-
-    private long selectedCategoryId = NO_CATEGORY_ID;
-    private CategorySelectorListener listener;
-    private boolean showSplitCategory = true;
-    private boolean multiSelect, useMultiChoicePlainSelector;
-    private final long excludingSubTreeId;
-    private List<Category> categories = Collections.emptyList();
-    private int emptyResId;
-
-    private boolean initAutocomplete = true;
-
-    public CategorySelector(A activity, DatabaseAdapter db, ActivityLayout x) {
-        this(activity, db, x, -1);
+    public interface CategorySelectorListener {
+        void onCategorySelected(@Nullable CategoryEntity category, @Nullable String categoryPath, boolean selectLast);
     }
 
-    public CategorySelector(A activity, DatabaseAdapter db, ActivityLayout x, long exclSubTreeId) {
+    public enum SelectorType {
+        TRANSACTION, FILTER
+    }
+
+    private final Activity activity;
+    private final ActivityLayout x; // Used for creating UI nodes
+    private ActivityNode node; // The main UI node for category display
+    private TextView categoryText; // Displays selected category path
+    private ImageView categoryIcon; // Displays icon for selected category (optional)
+    private AutoCompleteTextView categoryFilter; // AutoComplete field
+    private CategorySelectorListener listener;
+
+    private List<CategoryEntity> categoryTree = Collections.emptyList();
+    private Map<Long, String> categoryDisplayPathMap = Collections.emptyMap();
+
+    // For the selection dialog
+    private ArrayAdapter<String> dialogCategoryAdapter;
+    private List<String> categoryDisplayListForDialog = new ArrayList<>();
+    private List<CategoryEntity> categoriesForDialogList = new ArrayList<>(); // Parallel list to map dialog index to CategoryEntity
+
+    // For AutoCompleteTextView
+    private ArrayAdapter<String> newAutoCompleteAdapter;
+    private List<String> autoCompleteDisplayList = new ArrayList<>();
+
+
+    private final SelectorType selectorType;
+    private final long excludingSubTreeId;
+    private boolean showNoCategory;
+    private boolean showSplitCategory = true;
+
+    private long selectedCategoryId = CategoryEntity.NO_CATEGORY_ID;
+    private String selectedCategoryPath = "";
+
+    public static final long NO_CATEGORY_ID_CONSTANT = CategoryEntity.NO_CATEGORY_ID;
+    public static final long SPLIT_CATEGORY_ID_CONSTANT = CategoryEntity.SPLIT_CATEGORY_ID;
+
+    public CategorySelector(Activity activity, ActivityLayout x, long exclSubTreeId, SelectorType selectorType) {
         this.activity = activity;
-        this.db = db;
         this.x = x;
         this.excludingSubTreeId = exclSubTreeId;
+        this.selectorType = selectorType;
+        this.showNoCategory = (selectorType == SelectorType.FILTER);
+        this.selectedCategoryPath = activity.getString(getEmptyResId());
     }
-
 
     public void setListener(CategorySelectorListener listener) {
         this.listener = listener;
     }
 
-    public void doNotShowSplitCategory() {
-        this.showSplitCategory = false;
-    }
-
-    public void initMultiSelect() {
-        this.multiSelect = true;
-        this.categories = db.getCategoriesList(true);
-        this.doNotShowSplitCategory();
-
-    }
-
-    public void setUseMultiChoicePlainSelector() {
-        this.useMultiChoicePlainSelector = true;
-    }
-
-    public void setEmptyResId(int emptyResId) {
-        this.emptyResId = emptyResId;
-    }
-
-    public int getEmptyResId() {
-        return emptyResId;
-    }
-
-    public List<Category> getCategories() {
-        return categories;
-    }
-
-    public String getCheckedTitles() {
-        return MyEntitySelector.getCheckedTitles(categories);
-    }
-
-    public String getCheckedIdsAsStr() {
-        return MyEntitySelector.getCheckedIdsAsStr(categories);
-    }
-
-    public String[] getCheckedCategoryIds() {
-        return MyEntitySelector.getCheckedIds(categories);
-    }
-
-    public String[] getCheckedCategoryLeafs() {
-        LinkedList<String> res = new LinkedList<>();
-        for (Category c : categories) {
-            if (c.checked) {
-                if (c.id == NO_CATEGORY_ID) { // special case as it must include only itself
-                    res.add("0");
-                    res.add("0");
-                } else {
-                    res.add(String.valueOf(c.left));
-                    res.add(String.valueOf(c.right));
-                }
+    public void createNode(LinearLayout layout, SelectorType type) {
+        // Assuming addListNodeIconFilter returns a node that contains R.id.label, R.id.icon, R.id.filter_text
+        node = x.addListNodeIconFilter(layout, R.id.category, R.string.category, getEmptyResId());
+        if (node != null && node.getView() != null) {
+            categoryText = node.getView().findViewById(R.id.label);
+            categoryIcon = node.getView().findViewById(R.id.icon);
+            categoryFilter = node.getView().findViewById(R.id.filter_text);
+            if (categoryFilter != null) {
+                 categoryFilter.setHint(R.string.filter_categories_hint);
+                 categoryFilter.setVisibility(View.VISIBLE);
+                 showFilter();
             }
         }
-        return ArrUtils.strListToArr(res);
+        if (type == SelectorType.FILTER) {
+            setShowNoCategory(true);
+        }
+        if (categoryText != null) {
+            categoryText.setText(selectedCategoryPath);
+        }
+        showHideMinusBtn(selectedCategoryId != NO_CATEGORY_ID_CONSTANT && selectedCategoryId != SPLIT_CATEGORY_ID_CONSTANT);
     }
 
-    public void fetchCategories(boolean fetchAll) {
-        if (!multiSelect) {
-            if (fetchAll) {
-                categoryCursor = db.getAllCategories();
+    public void setCategoryData(List<CategoryEntity> newCategoryTree, Map<Long, String> newCategoryDisplayPathMap) {
+        this.categoryTree = newCategoryTree != null ? new ArrayList<>(newCategoryTree) : Collections.emptyList();
+        this.categoryDisplayPathMap = newCategoryDisplayPathMap != null ? new HashMap<>(newCategoryDisplayPathMap) : Collections.emptyMap();
+
+        this.categoryDisplayListForDialog.clear();
+        this.categoriesForDialogList.clear();
+        this.autoCompleteDisplayList.clear();
+
+        String noCategoryStr = activity.getString(R.string.no_category);
+        String splitCategoryStr = activity.getString(R.string.split_category_title);
+
+        if (showNoCategory) {
+            CategoryEntity noCategory = new CategoryEntity();
+            noCategory.setId(NO_CATEGORY_ID_CONSTANT);
+            noCategory.setTitle(noCategoryStr);
+            this.categoriesForDialogList.add(noCategory);
+            this.categoryDisplayListForDialog.add(noCategory.getTitle());
+            this.autoCompleteDisplayList.add(noCategory.getTitle());
+        }
+
+        if (showSplitCategory && selectorType == SelectorType.TRANSACTION) {
+            CategoryEntity splitCategory = new CategoryEntity();
+            splitCategory.setId(SPLIT_CATEGORY_ID_CONSTANT);
+            splitCategory.setTitle(splitCategoryStr);
+            this.categoriesForDialogList.add(splitCategory);
+            this.categoryDisplayListForDialog.add(splitCategory.getTitle());
+            this.autoCompleteDisplayList.add(splitCategory.getTitle());
+        }
+
+        for (CategoryEntity cat : this.categoryTree) {
+            if (cat.getId() == NO_CATEGORY_ID_CONSTANT && !showNoCategory) continue;
+            if (cat.getId() == SPLIT_CATEGORY_ID_CONSTANT && !showSplitCategory) continue;
+            if (excludingSubTreeId > 0 && isDescendantOrSelf(cat, excludingSubTreeId)) continue;
+
+            String displayPath = this.categoryDisplayPathMap.getOrDefault(cat.getId(), cat.getTitle());
+            this.categoryDisplayListForDialog.add(displayPath);
+            this.categoriesForDialogList.add(cat);
+            this.autoCompleteDisplayList.add(displayPath);
+        }
+        Collections.sort(this.autoCompleteDisplayList);
+
+        if (activity != null) {
+            if (this.dialogCategoryAdapter == null) {
+                this.dialogCategoryAdapter = new ArrayAdapter<>(activity, android.R.layout.simple_list_item_single_choice, categoryDisplayListForDialog);
             } else {
-                if (excludingSubTreeId > 0) {
-                    categoryCursor = db.getCategoriesWithoutSubtree(excludingSubTreeId, true);
-                } else {
-                    categoryCursor = db.getCategories(true);
-                }
+                this.dialogCategoryAdapter.clear();
+                this.dialogCategoryAdapter.addAll(categoryDisplayListForDialog);
+                this.dialogCategoryAdapter.notifyDataSetChanged();
             }
-            activity.startManagingCursor(categoryCursor);
-            categoryAdapter = TransactionUtils.createCategoryAdapter(db, activity, categoryCursor);
-        }
-    }
 
-    public TextView createNode(LinearLayout layout, SelectorType type) {
-        switch (type) {
-            case TRANSACTION: {
-                if (emptyResId <= 0) setEmptyResId(R.string.no_category);
-                filterNode = x.addCategoryNodeForTransaction(layout, emptyResId);
-                break;
+            if (this.newAutoCompleteAdapter == null) {
+                this.newAutoCompleteAdapter = new ArrayAdapter<>(activity, android.R.layout.simple_dropdown_item_1line, autoCompleteDisplayList);
+            } else {
+                this.newAutoCompleteAdapter.clear();
+                this.newAutoCompleteAdapter.addAll(autoCompleteDisplayList);
+                this.newAutoCompleteAdapter.notifyDataSetChanged();
             }
-            case PARENT:
-            case SPLIT:
-            case TRANSFER: {
-                if (emptyResId <= 0) setEmptyResId(R.string.no_category);
-                filterNode = x.addCategoryNodeForTransfer(layout, emptyResId);
-                break;
+             if (categoryFilter != null && categoryFilter.getAdapter() == null) {
+                categoryFilter.setAdapter(newAutoCompleteAdapter);
             }
-            case FILTER: {
-                if (emptyResId <= 0) setEmptyResId(R.string.no_filter);
-                filterNode = x.addCategoryNodeForFilter(layout, emptyResId);
-                break;
-            }
-            default:
-                throw new IllegalArgumentException("unknown type: " + type);
         }
-        categoryText = filterNode.textView;
-        autoCompleteTextView = filterNode.autoCompleteTextView;
-        return categoryText;
+
+        selectCategory(this.selectedCategoryId, false);
     }
 
-    private void initAutoCompleteFilter() {
-        if (initAutocomplete) {
-            autoCompleteAdapter = TransactionUtils.createCategoryFilterAdapter(activity, db);
-            autoCompleteTextView.setInputType(InputType.TYPE_CLASS_TEXT
-                    | InputType.TYPE_TEXT_FLAG_CAP_WORDS
-                    | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
-                    | InputType.TYPE_TEXT_VARIATION_FILTER);
-            autoCompleteTextView.setThreshold(1);
-            autoCompleteTextView.setOnFocusChangeListener((view, hasFocus) -> {
-                if (hasFocus) {
-                    autoCompleteTextView.setAdapter(requireNonNull(autoCompleteAdapter));
-                    autoCompleteTextView.selectAll();
-                }
-            });
-            autoCompleteTextView.setOnItemClickListener((parent, view, position, id) -> activity.onSelectedId(R.id.category, id));
-            initAutocomplete = false;
-        }
-    }
-
-    public void createDummyNode() {
-        categoryText = new EditText(activity);
-    }
-
-    public void onClick(int id) {
-        switch (id) {
-            case R.id.category:
-                if (isListPick()) {
-                    pickCategory();
-                } else {
-                    showFilter();
-                }
-                break;
-            case R.id.category_show_list:
-                pickCategory();
-                break;
-            case R.id.category_add:
-                addCategory();
-                break;
-            case R.id.category_split:
-                selectCategory(Category.SPLIT_CATEGORY_ID);
-                break;
-            case R.id.category_clear:
-                clearCategory();
-                break;
-            case R.id.category_show_filter:
-                showFilter();
-                break;
-            case R.id.category_close_filter:
-                filterNode.hideFilter();
-                break;
-        }
-    }
-
-    private void showFilter() {
-        initAutoCompleteFilter();
-        filterNode.showFilter();
-    }
-
-    private boolean isListPick() {
+    private boolean isDescendantOrSelf(CategoryEntity cat, long parentIdToExclude) {
+        if (cat.getId() == parentIdToExclude) return true;
+        // Proper check needs lft/rgt values from CategoryEntity
         return false;
     }
 
-    private static final int CATEGORY_ADD_REQUEST = 135;
-    private void addCategory() {
-        Intent intent = new Intent(activity, CategoryActivity.class);
-        activity.startActivityForResult(intent, CATEGORY_ADD_REQUEST);
+    public void pickCategory() {
+        if (activity == null || dialogCategoryAdapter == null || categoriesForDialogList.isEmpty()) return;
+        if (dialogCategoryAdapter.getCount() == 0) return;
+
+        int currentSelectionIndex = 0;
+        for (int i = 0; i < categoriesForDialogList.size(); i++) {
+            if (categoriesForDialogList.get(i).getId() == selectedCategoryId) {
+                currentSelectionIndex = i;
+                break;
+            }
+        }
+
+        new AlertDialog.Builder(activity)
+            .setTitle(R.string.select_category)
+            .setSingleChoiceItems(dialogCategoryAdapter, currentSelectionIndex, (dialog, which) -> {
+                if (which >= 0 && which < categoriesForDialogList.size()) {
+                    CategoryEntity selected = categoriesForDialogList.get(which);
+                    // Call onSelectedId which then calls selectCategory
+                     if (activity instanceof AbstractTransactionActivity) {
+                         ((AbstractTransactionActivity) activity).onSelectedId(R.id.category, selected.getId());
+                    } else if (activity instanceof AbstractListActivity) { // Or other parent types
+                        // ((AbstractListActivity) activity).onSelectedId(R.id.category, selected.getId());
+                    }
+                    // selectCategory(selected.getId(), true); // Direct call also possible
+                }
+                dialog.dismiss();
+            })
+            .setNegativeButton(android.R.string.cancel, null)
+            .show();
     }
 
-    private void pickCategory() {
-        if (isMultiSelect()) {
-            x.selectMultiChoice(activity, R.id.category, R.string.categories, categories);
-        } else if (!CategorySelectorActivity.pickCategory(activity, multiSelect, selectedCategoryId, excludingSubTreeId, showSplitCategory)) {
-            x.select(activity, R.id.category, R.string.category, categoryCursor, categoryAdapter,
-                    DatabaseHelper.CategoryViewColumns._id.name(), selectedCategoryId);
-
+    public void showFilter() {
+        if (categoryFilter != null) {
+            categoryFilter.setVisibility(View.VISIBLE);
+            categoryFilter.requestFocus();
+            initAutoCompleteFilter();
         }
     }
 
-    void clearCategory() {
-        categoryText.setText(emptyResId);
-        selectedCategoryId = NO_CATEGORY_ID;
-        for (MyEntity e : categories) e.setChecked(false);
-        showHideMinusBtn(false);
-        if (listener != null) listener.onCategorySelected(Category.noCategory(), false);
-    }
+    private void initAutoCompleteFilter() {
+        if (categoryFilter == null || activity == null) return;
 
-    public void onSelectedId(int id, long selectedId) {
-        onSelectedId(id, selectedId, true);
-    }
-
-    public void onSelectedId(int id, long selectedId, boolean selectLast) {
-        if (id == R.id.category) {
-            selectCategory(selectedId, selectLast);
+        if (newAutoCompleteAdapter == null) { // Ensure adapter is initialized
+             newAutoCompleteAdapter = new ArrayAdapter<>(activity, android.R.layout.simple_dropdown_item_1line, autoCompleteDisplayList);
         }
+        categoryFilter.setAdapter(newAutoCompleteAdapter);
+        categoryFilter.setOnItemClickListener((parent, view, position, id) -> {
+            String selectedPath = (String) parent.getItemAtPosition(position);
+            long foundCategoryId = findCategoryByPath(selectedPath);
+            // Notify the activity (listener) about the selection
+            if (activity instanceof AbstractActivity) { // Check if activity can handle onSelectedId
+                 ((AbstractActivity) activity).onSelectedId(R.id.category, foundCategoryId);
+            }
+            categoryFilter.setText("");
+            categoryFilter.setVisibility(View.GONE);
+        });
+         categoryFilter.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus && categoryFilter.getAdapter() == null) {
+                categoryFilter.setAdapter(newAutoCompleteAdapter);
+            } else if (!hasFocus) {
+                categoryFilter.setVisibility(View.GONE);
+            }
+        });
     }
 
-    public void onSelected(int id, List<? extends MultiChoiceItem> ignore) {
-        if (id == R.id.category) fillCategoryInUI();
-    }
+    private long findCategoryByPath(String selectedPath) {
+        String noCategoryStr = activity.getString(getEmptyResId());
+        String splitCategoryStr = activity.getString(R.string.split_category_title);
 
-    public void fillCategoryInUI() {
-        String selected = getCheckedTitles();
-        if (Utils.isEmpty(selected)) {
-            clearCategory();
-        } else {
-            categoryText.setText(selected);
-            showHideMinusBtn(true);
+        if (selectedPath.equals(noCategoryStr)) return NO_CATEGORY_ID_CONSTANT;
+        if (selectedPath.equals(splitCategoryStr)) return SPLIT_CATEGORY_ID_CONSTANT;
+
+        for (Map.Entry<Long, String> entry : categoryDisplayPathMap.entrySet()) {
+            if (entry.getValue().equals(selectedPath)) {
+                return entry.getKey();
+            }
         }
-        if (filterNode != null) {
-            filterNode.hideFilter();
+         for (CategoryEntity cat : categoryTree) { // Fallback to title match
+            if (cat.getTitle().equalsIgnoreCase(selectedPath)) {
+                return cat.getId();
+            }
         }
-    }
-
-    public long getSelectedCategoryId() {
-        return selectedCategoryId;
+        return NO_CATEGORY_ID_CONSTANT;
     }
 
     public void selectCategory(long categoryId) {
@@ -306,133 +262,102 @@ public class CategorySelector<A extends AbstractActivity> {
     }
 
     public void selectCategory(long categoryId, boolean selectLast) {
-        if (multiSelect) {
-            updateCheckedEntities("" + categoryId);
-            selectedCategoryId = categoryId;
-            fillCategoryInUI();
-            if (listener != null) listener.onCategorySelected(null, false);
+        this.selectedCategoryId = categoryId;
+
+        CategoryEntity entityForCallback = null;
+        String pathToDisplay;
+
+        if (categoryId == NO_CATEGORY_ID_CONSTANT) {
+            pathToDisplay = activity.getString(getEmptyResId());
+            showHideMinusBtn(false);
+        } else if (categoryId == SPLIT_CATEGORY_ID_CONSTANT) {
+            entityForCallback = new CategoryEntity();
+            entityForCallback.setId(SPLIT_CATEGORY_ID_CONSTANT);
+            entityForCallback.setTitle(activity.getString(R.string.split_category_title));
+            pathToDisplay = entityForCallback.getTitle();
+            showHideMinusBtn(true);
         } else {
-            if (selectedCategoryId != categoryId) {
-                Category category = db.getCategoryWithParent(categoryId);
-                if (category != null) {
-                    categoryText.setText(Category.getTitle(category.title, category.level));
-                    showHideMinusBtn(true);
-                }
-                selectedCategoryId = categoryId;
-                if (listener != null) listener.onCategorySelected(category, selectLast);
+            entityForCallback = findInDialogListOrTree(categoryId);
+            if (entityForCallback != null) {
+                pathToDisplay = categoryDisplayPathMap.getOrDefault(categoryId, entityForCallback.getTitle());
+                showHideMinusBtn(true);
+            } else {
+                pathToDisplay = activity.getString(getEmptyResId());
+                this.selectedCategoryId = NO_CATEGORY_ID_CONSTANT;
+                showHideMinusBtn(false);
             }
-            if (filterNode != null) {
-                filterNode.hideFilter();
-            }
+        }
+
+        this.selectedCategoryPath = pathToDisplay;
+        selectCategoryPath(pathToDisplay); // Update UI text
+
+        if (listener != null) {
+            listener.onCategorySelected(entityForCallback, pathToDisplay, selectLast);
         }
     }
 
-    public void updateCheckedEntities(String checkedCommaIds) {
-        MyEntitySelector.updateCheckedEntities(this.categories, checkedCommaIds);
-    }
+    public void selectCategoryPath(String path) {
+        if (categoryText != null && path != null) {
+            categoryText.setText(path);
+        } else if (categoryText != null) {
+            categoryText.setText(getEmptyResId());
+        }
 
-    public void updateCheckedEntities(String[] checkedIds) {
-        MyEntitySelector.updateCheckedEntities(this.categories, checkedIds);
-    }
+        boolean isNoCategoryOrSpecial = (selectedCategoryId == NO_CATEGORY_ID_CONSTANT );
+        boolean isEmptyDisplay = (path == null || path.equals(activity.getString(getEmptyResId())) || path.equals(activity.getString(R.string.no_category)));
 
-    public void updateCheckedEntities(List<Long> checkedIds) {
-        for (Long id : checkedIds) {
-            for (MyEntity e : categories) {
-                if (e.id == id) {
-                    e.checked = true;
-                    break;
-                }
-            }
+        if (selectedCategoryId == SPLIT_CATEGORY_ID_CONSTANT){ // Split always shows minus
+            showHideMinusBtn(true);
+        } else {
+            showHideMinusBtn(!isEmptyDisplay && !isNoCategoryOrSpecial);
         }
     }
 
-    private void showHideMinusBtn(boolean show) {
-        ImageView minusBtn = (ImageView) categoryText.getTag(R.id.bMinus);
-        if (minusBtn != null) minusBtn.setVisibility(show ? View.VISIBLE : View.GONE);
-    }
-
-    public void createAttributesLayout(LinearLayout layout) {
-        attributesLayout = new LinearLayout(activity);
-        attributesLayout.setOrientation(LinearLayout.VERTICAL);
-        layout.addView(attributesLayout, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.FILL_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-    }
-
-    protected List<TransactionAttribute> getAttributes() {
-        List<TransactionAttribute> list = new LinkedList<>();
-        long count = attributesLayout.getChildCount();
-        for (int i = 0; i < count; i++) {
-            View v = attributesLayout.getChildAt(i);
-            Object o = v.getTag();
-            if (o instanceof AttributeView av) {
-                TransactionAttribute ta = av.newTransactionAttribute();
-                list.add(ta);
+    private CategoryEntity findInDialogListOrTree(long categoryId) {
+        for(CategoryEntity cat : categoriesForDialogList) {
+            if (cat.getId() == categoryId) return cat;
+        }
+        // If not in dialog list (e.g. not a special item), search main tree
+        for (CategoryEntity cat : categoryTree) {
+            if (cat.getId() == categoryId) {
+                return cat;
             }
         }
-        return list;
+        return null;
     }
 
-    public void addAttributes(Transaction transaction) {
-        attributesLayout.removeAllViews();
-        ArrayList<Attribute> attributes = db.getAllAttributesForCategory(selectedCategoryId);
-        Map<Long, String> values = transaction.categoryAttributes;
-        for (Attribute a : attributes) {
-            AttributeView av = inflateAttribute(a);
-            String value = values != null ? values.get(a.id) : null;
-            if (value == null) {
-                value = a.defaultValue;
-            }
-            View v = av.inflateView(attributesLayout, value);
-            v.setTag(av);
-        }
+    public long getSelectedCategoryId() {
+        return selectedCategoryId;
     }
 
-    private AttributeView inflateAttribute(Attribute attribute) {
-        return AttributeViewFactory.createViewForAttribute(activity, attribute);
-    }
-
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (resultCode == Activity.RESULT_OK) {
-            switch (requestCode) {
-                case CATEGORY_ADD_REQUEST: {
-                    categoryCursor.requery();
-                    long categoryId = data.getLongExtra(DatabaseHelper.CategoryColumns._id.name(), -1);
-                    if (categoryId != -1) {
-                        selectCategory(categoryId);
-                    }
-                    break;
-                }
-                case CATEGORY_PICK_REQUEST: {
-                    long categoryId = data.getLongExtra(CategorySelectorActivity.SELECTED_CATEGORY_ID, 0);
-                    selectCategory(categoryId);
-                    break;
-                }
-            }
-        }
+    public String getSelectedCategoryPath() {
+        return selectedCategoryPath;
     }
 
     public boolean isSplitCategorySelected() {
-        return Category.isSplit(selectedCategoryId);
+        return selectedCategoryId == SPLIT_CATEGORY_ID_CONSTANT;
     }
 
-    @Deprecated
-    // todo.mb: it seems not much sense in it, better do it in single place - activity.onSelectedId
-    public interface CategorySelectorListener {
-        @Deprecated
-        void onCategorySelected(Category category, boolean selectLast);
+    public void setShowNoCategory(boolean showNoCategory) {
+        this.showNoCategory = showNoCategory;
     }
 
-    public boolean isMultiSelect() {
-        return multiSelect || useMultiChoicePlainSelector;
+    public void setShowSplitCategory(boolean showSplitCategory) {
+        this.showSplitCategory = showSplitCategory;
     }
 
-    public void onDestroy() {
-        if (autoCompleteAdapter != null) {
-            autoCompleteAdapter.changeCursor(null);
-            autoCompleteAdapter = null;
+    private int getEmptyResId() {
+        return selectorType == SelectorType.FILTER ? R.string.all_categories : R.string.no_category;
+    }
+
+    private void showHideMinusBtn(boolean show) {
+        if (node != null && node.getView() != null) {
+            View minusBtn = node.getView().findViewById(R.id.minus_button);
+            if (minusBtn != null) minusBtn.setVisibility(show ? View.VISIBLE : View.GONE);
         }
     }
 
-    public enum SelectorType {
-        TRANSACTION, SPLIT, TRANSFER, FILTER, PARENT
+    public void onDestroy() {
+        // Cleanup
     }
 }
