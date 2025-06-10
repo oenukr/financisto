@@ -81,4 +81,7 @@ interface TransactionDao {
 
     @Query("UPDATE ${DatabaseHelper.TRANSACTION_TABLE} SET category_id = 0 WHERE category_id = :categoryId")
     suspend fun clearCategoryId(categoryId: Long)
+
+    @Query("DELETE FROM ${DatabaseHelper.TRANSACTION_TABLE} WHERE parent_id = :parentId")
+    suspend fun deleteSplitsByParentId(parentId: Long)
 }

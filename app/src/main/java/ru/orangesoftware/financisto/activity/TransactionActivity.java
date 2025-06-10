@@ -1,60 +1,50 @@
-/*******************************************************************************
- * Copyright (c) 2010 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- *
- * Contributors:
- *     Denis Solonenko - initial API and implementation
- ******************************************************************************/
 package ru.orangesoftware.financisto.activity;
 
 import static ru.orangesoftware.financisto.activity.CategorySelector.SelectorType.TRANSACTION;
-import static ru.orangesoftware.financisto.utils.Utils.isNotEmpty;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.View;
 import android.widget.LinearLayout;
-import android.widget.ListAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.lifecycle.lifecycleScope;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
 import greendroid.widget.QuickActionGrid;
 import greendroid.widget.QuickActionWidget;
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.app.DependenciesHolder;
+import ru.orangesoftware.financisto.db.entity.AccountEntity;
+import ru.orangesoftware.financisto.db.entity.CurrencyEntity;
+import ru.orangesoftware.financisto.db.entity.TransactionEntity;
+import ru.orangesoftware.financisto.mapper.CurrencyEntityMapper;
 import ru.orangesoftware.financisto.model.Account;
 import ru.orangesoftware.financisto.model.Category;
 import ru.orangesoftware.financisto.model.Currency;
-import ru.orangesoftware.financisto.model.MyEntity;
-import ru.orangesoftware.financisto.model.Payee;
-import ru.orangesoftware.financisto.model.Transaction;
-import ru.orangesoftware.financisto.utils.CurrencyCache;
 import ru.orangesoftware.financisto.utils.Logger;
 import ru.orangesoftware.financisto.utils.MyPreferences;
-import ru.orangesoftware.financisto.utils.SplitAdjuster;
-import ru.orangesoftware.financisto.utils.TransactionUtils;
 import ru.orangesoftware.financisto.utils.Utils;
+import kotlinx.coroutines.flow.FlowCollector;
+import kotlin.Unit;
+import ru.orangesoftware.financisto.viewmodel.TransactionViewModel;
+import ru.orangesoftware.financisto.viewmodel.TransactionFormState;
+import ru.orangesoftware.financisto.viewmodel.Event;
+import ru.orangesoftware.financisto.widget.AmountInput;
 
 public class TransactionActivity extends AbstractTransactionActivity {
 
     private final Logger logger = new DependenciesHolder().getLogger();
+    private TransactionViewModel transactionViewModel;
 
     public static final String CURRENT_BALANCE_EXTRA = "accountCurrentBalance";
     public static final String AMOUNT_EXTRA = "accountAmount";
@@ -65,23 +55,22 @@ public class TransactionActivity extends AbstractTransactionActivity {
     private final Currency currencyAsAccount = new Currency();
 
     private long idSequence = 0;
-    private final IdentityHashMap<View, Transaction> viewToSplitMap = new IdentityHashMap<>();
+    private final IdentityHashMap<View, TransactionEntity> viewToSplitMap = new IdentityHashMap<>();
 
     private TextView differenceText;
-    private boolean isUpdateBalanceMode = false;
-    private long currentBalance;
+    private boolean isUpdateBalanceModeActivityCopy = false;
     private Utils u;
 
     private LinearLayout splitsLayout;
     private TextView unsplitAmountText;
-    private TextView currencyText;
 
     private QuickActionWidget unsplitActionGrid;
-    private long selectedOriginCurrencyId = -1;
 
     public TransactionActivity() {
+        // Constructor
     }
 
+    @Override
     protected int getLayoutId() {
         return MyPreferences.isUseFixedLayout(this) ? R.layout.transaction_fixed : R.layout.transaction_free;
     }
@@ -89,24 +78,135 @@ public class TransactionActivity extends AbstractTransactionActivity {
     @Override
     protected void internalOnCreate() {
         u = new Utils(this);
+        transactionViewModel = new ViewModelProvider(this).get(TransactionViewModel.class);
+
         Intent intent = getIntent();
-        if (intent != null) {
-            if (intent.hasExtra(CURRENT_BALANCE_EXTRA)) {
-                currentBalance = intent.getLongExtra(CURRENT_BALANCE_EXTRA, 0);
-                isUpdateBalanceMode = true;
-            } else if (intent.hasExtra(AMOUNT_EXTRA)) {
-                currentBalance = intent.getLongExtra(AMOUNT_EXTRA, 0);
-            }
-        }
-        if (transaction.isTemplateLike()) {
-            setTitle(transaction.isTemplate() ? R.string.transaction_template : R.string.transaction_schedule);
-            if (transaction.isTemplate()) {
-                dateText.setEnabled(false);
-                timeText.setEnabled(false);
-            }
-        }
+        long transactionIdToLoad = intent.getLongExtra(TRAN_ID_EXTRA, 0L);
+        long accountIdForNew = intent.getLongExtra(ACCOUNT_ID_EXTRA, 0L);
+        Long currentBalanceExtra = intent.hasExtra(CURRENT_BALANCE_EXTRA) ? intent.getLongExtra(CURRENT_BALANCE_EXTRA, 0L) : null;
+        Long amountExtra = intent.hasExtra(AMOUNT_EXTRA) ? intent.getLongExtra(AMOUNT_EXTRA, 0L) : null;
+
+        transactionViewModel.loadTransaction(transactionIdToLoad, accountIdForNew, currentBalanceExtra, amountExtra);
+
+        observeUiState();
+
         prepareUnsplitActionGrid();
         currencyAsAccount.name = getString(R.string.original_currency_as_account);
+    }
+
+    private void observeUiState() {
+        lifecycleScope.launch(() -> {
+            transactionViewModel.getUiState().collect(new FlowCollector<TransactionFormState>() {
+                @Override
+                public Object emit(TransactionFormState state, kotlin.coroutines.Continuation<? super Unit> continuation) {
+                    TransactionEntity currentTx = state.getMainTransaction();
+                    isUpdateBalanceModeActivityCopy = state.isUpdateBalanceMode();
+
+                    if (accountText != null) {
+                        accountText.setText(state.getSelectedAccountTitle() != null ? state.getSelectedAccountTitle() : getString(R.string.select_account));
+                    }
+
+                    if (categorySelector != null) {
+                        // Pass full tree and path map to CategorySelector
+                        categorySelector.setCategoryData(
+                            state.getAvailableCategoriesTree(),
+                            state.getCategoryDisplayPathMap()
+                        );
+                        // Then update its displayed selection from state
+                        categorySelector.selectCategoryPath(state.getSelectedCategoryPath());
+                    }
+
+                    if (payeeSelector != null && isShowPayee) {
+                         if ((state.getSelectedPayeeId() == null && payeeSelector.getSelectedEntityId() != 0) ||
+                            (state.getSelectedPayeeId() != null && payeeSelector.getSelectedEntityId() != state.getSelectedPayeeId())) {
+                            payeeSelector.selectEntity(state.getSelectedPayeeId() != null ? state.getSelectedPayeeId() : 0L);
+                        }
+                    }
+
+                    if (dateText != null && timeText != null) {
+                        setDateTime(currentTx.getDateTime());
+                    }
+
+                    if (noteText != null && currentTx.getNote() != null && !noteText.getText().toString().equals(currentTx.getNote())) {
+                        noteText.setText(currentTx.getNote());
+                    }
+
+                    if (rateView != null) {
+                        CurrencyEntity accountCurrencyEntity = state.getAvailableCurrencies().stream()
+                            .filter(c -> c.getId() == state.getSelectedAccountCurrencyId()).findFirst().orElse(null);
+
+                        rateView.setCurrencyFromDetails(accountCurrencyEntity, accountCurrencyEntity != null ? (accountCurrencyEntity.getSymbol() != null ? accountCurrencyEntity.getSymbol() : accountCurrencyEntity.getName()) : "");
+
+                        if (state.getSelectedOriginalCurrencyId() != null && state.getSelectedOriginalCurrencyId() != 0L &&
+                            state.getSelectedOriginalCurrencyId() != state.getSelectedAccountCurrencyId()) {
+                            CurrencyEntity origCurrEntity = state.getAvailableCurrencies().stream()
+                                .filter(c -> c.getId() == state.getSelectedOriginalCurrencyId()).findFirst().orElse(null);
+                            rateView.setCurrencyToDetails(origCurrEntity, origCurrEntity != null ? (origCurrEntity.getSymbol() != null ? origCurrEntity.getSymbol() : origCurrEntity.getName()) : "");
+                            if (currencyText != null) currencyText.setText(origCurrEntity != null ? origCurrEntity.getName() : getString(R.string.select_currency));
+                        } else {
+                            rateView.setCurrencyToDetails(accountCurrencyEntity, accountCurrencyEntity != null ? (accountCurrencyEntity.getSymbol()!= null ? accountCurrencyEntity.getSymbol() : accountCurrencyEntity.getName()) : ""); // Same as from currency
+                            if (currencyText != null) currencyText.setText(R.string.original_currency_as_account);
+                        }
+
+                        if (rateView.getFromAmount() != state.getRateViewFromAmount()) {
+                             rateView.setFromAmount(state.getRateViewFromAmount());
+                        }
+                        if (rateView.isDifferentCurrenciesConfigured()) {
+                            if (rateView.getToAmount() != state.getRateViewToAmount()) {
+                                 rateView.setToAmount(state.getRateViewToAmount());
+                            }
+                        }
+                    }
+
+                     if (currentTx.isTemplateLike()) {
+                        setTitle(currentTx.isTemplate() ? R.string.transaction_template : R.string.transaction_schedule);
+                        if (currentTx.isTemplate() && dateText != null && timeText != null) {
+                            dateText.setEnabled(false);
+                            timeText.setEnabled(false);
+                        }
+                    } else {
+                        setTitle(R.string.transaction);
+                         if (dateText != null && timeText != null) {
+                             dateText.setEnabled(true);
+                             timeText.setEnabled(true);
+                        }
+                    }
+
+                    if (state.isUpdateBalanceMode()) {
+                        if (differenceText != null) {
+                            differenceText.setVisibility(View.VISIBLE);
+                            if (rateView != null && rateView.getCurrencyFrom() != null)
+                                u.setAmountText(differenceText, rateView.getCurrencyFrom(), state.getDifferenceForUpdateMode(), true);
+                        }
+                    } else {
+                        if (differenceText != null) differenceText.setVisibility(View.GONE);
+                    }
+
+                    if (splitsLayout != null) {
+                        splitsLayout.setVisibility(state.isSplitCategorySelected() ? View.VISIBLE : View.GONE);
+                        if (state.isSplitCategorySelected()) {
+                             updateSplitsLayout(state.getSplits());
+                             updateUnsplitAmountText(state.getUnsplitAmount(), rateView != null ? rateView.getCurrencyFrom() : null);
+                        }
+                    }
+
+                    if (!state.getErrorMessages().isEmpty()) {
+                        Toast.makeText(TransactionActivity.this, String.join("\n", state.getErrorMessages()), Toast.LENGTH_LONG).show();
+                        transactionViewModel.consumeErrorMessages();
+                    }
+
+                    Event<Boolean> saveEvent = state.getSaveEvent();
+                    if (saveEvent != null) {
+                        Boolean success = saveEvent.getContentIfNotHandled();
+                        if (success != null && success) {
+                            setResult(RESULT_OK);
+                            finish();
+                        }
+                    }
+                    return Unit.INSTANCE;
+                }
+            });
+        });
     }
 
     private void prepareUnsplitActionGrid() {
@@ -122,273 +222,168 @@ public class TransactionActivity extends AbstractTransactionActivity {
     private final QuickActionWidget.OnQuickActionClickListener unsplitActionListener = (widget, position) -> {
         switch (position) {
             case 0:
-                createSplit(false);
+                transactionViewModel.addSplit(false);
                 break;
             case 1:
-                createSplit(true);
-                break;
-            case 2:
-                unsplitAdjustAmount();
-                break;
-            case 3:
-                unsplitAdjustEvenly();
-                break;
-            case 4:
-                unsplitAdjustLast();
+                transactionViewModel.addSplit(true);
                 break;
         }
     };
 
-    private void unsplitAdjustAmount() {
-        long splitAmount = calculateSplitAmount();
-        rateView.setFromAmount(splitAmount);
-        updateUnsplitAmount();
-    }
-
-    private void unsplitAdjustEvenly() {
-        long unsplitAmount = calculateUnsplitAmount();
-        if (unsplitAmount != 0) {
-            List<Transaction> splits = new ArrayList<>(viewToSplitMap.values());
-            SplitAdjuster.adjustEvenly(splits, unsplitAmount);
-            updateSplits();
-        }
-    }
-
-    private void unsplitAdjustLast() {
-        long unsplitAmount = calculateUnsplitAmount();
-        if (unsplitAmount != 0) {
-            Transaction latestTransaction = null;
-            for (Transaction t : viewToSplitMap.values()) {
-                if (latestTransaction == null || latestTransaction.id > t.id) {
-                    latestTransaction = t;
-                }
-            }
-            if (latestTransaction != null) {
-                SplitAdjuster.adjustSplit(latestTransaction, unsplitAmount);
-                updateSplits();
-            }
-        }
-    }
-
-    private void updateSplits() {
-        for (Map.Entry<View, Transaction> entry : viewToSplitMap.entrySet()) {
-            View v = entry.getKey();
-            Transaction split = entry.getValue();
-            setSplitData(v, split);
-        }
-        updateUnsplitAmount();
-    }
-
     @Override
     protected void fetchCategories() {
-        categorySelector.fetchCategories(!isUpdateBalanceMode);
+        // ViewModel loads categories.
     }
 
     @Override
     protected void createListNodes(LinearLayout layout) {
-        //account
-        accountText = activityLayout.addListNode(layout, R.id.account, R.string.account, R.string.select_account);
-        //payee
-        isShowPayee = MyPreferences.isShowPayee(this);
-        if (isShowPayee) {
-            createPayeeNode(layout);
-        }
-        //category
-        categorySelector.createNode(layout, TRANSACTION);
-        //amount
-        if (!isUpdateBalanceMode && MyPreferences.isShowCurrency(this)) {
-            currencyText = activityLayout.addListNode(layout, R.id.original_currency, R.string.currency, R.string.original_currency_as_account);
-        } else {
-            currencyText = new TextView(this);
-        }
-        rateView.createTransactionUI();
-        // difference
-        if (isUpdateBalanceMode) {
-            differenceText = activityLayout.addInfoNode(layout, -1, R.string.difference, "0");
-            rateView.setFromAmount(currentBalance);
-            rateView.setAmountFromChangeListener((oldAmount, newAmount) -> {
-                long balanceDifference = newAmount - currentBalance;
-                u.setAmountText(differenceText, rateView.getCurrencyFrom(), balanceDifference, true);
+        // AbstractTransactionActivity's createListNodes will call categorySelector.createNode()
+        // We need to set the listener on categorySelector, which is initialized in Abstract's onCreate
+        if (categorySelector != null) {
+            categorySelector.setListener(new CategorySelector.CategorySelectorListener() {
+                @Override
+                public void onCategorySelected(@Nullable CategoryEntity category, @Nullable String categoryPath, boolean selectLast) {
+                    TransactionActivity.this.onCategorySelected(category, categoryPath, selectLast);
+                }
             });
-            if (currentBalance > 0) {
-                rateView.setIncome();
-            } else {
-                rateView.setExpense();
-            }
-        } else {
-            if (currentBalance > 0) {
-                rateView.setIncome();
-            } else {
-                rateView.setExpense();
-            }
-            createSplitsLayout(layout);
-            rateView.setAmountFromChangeListener((oldAmount, newAmount) -> updateUnsplitAmount());
         }
-    }
 
-    private void selectLastCategoryForPayee(long id) {
-        Payee p = db.get(Payee.class, id);
-        if (p != null) {
-            categorySelector.selectCategory(p.lastCategoryId);
+        super.createListNodes(layout); // Let Abstract add its common nodes including category node
+
+        if (transactionViewModel.getUiState().getValue().isUpdateBalanceMode()) {
+             if (differenceText == null) {
+                differenceText = activityLayout.addInfoNode(layout, -1, R.string.difference, "0");
+             }
+        } else {
+            createSplitsLayout(layout);
+        }
+
+        if (rateView != null) {
+            rateView.setAmountFromChangeListener((oldAmount, newAmount) -> {
+                if (transactionViewModel.getUiState().getValue().getRateViewFromAmount() != newAmount ||
+                    (rateView.isDifferentCurrenciesConfigured() && transactionViewModel.getUiState().getValue().getRateViewToAmount() != rateView.getToAmount())) {
+                    transactionViewModel.updateRateViewAmounts(
+                        rateView.getFromAmount(),
+                        rateView.isDifferentCurrenciesConfigured() ? rateView.getToAmount() : null
+                    );
+                }
+            });
+            rateView.setAmountToChangeListener((oldAmount, newAmount) -> {
+                 if (transactionViewModel.getUiState().getValue().getRateViewToAmount() != newAmount ||
+                     transactionViewModel.getUiState().getValue().getRateViewFromAmount() != rateView.getFromAmount()) {
+                    transactionViewModel.updateRateViewAmounts(
+                        rateView.getFromAmount(),
+                        rateView.isDifferentCurrenciesConfigured() ? rateView.getToAmount() : null
+                    );
+                }
+            });
+        }
+        if (noteText != null) {
+            noteText.addTextChangedListener(new TextWatcherAdapter(s ->
+                transactionViewModel.updateMainTransaction(tx -> tx.copy(note = s))
+            ));
         }
     }
 
     private void createSplitsLayout(LinearLayout layout) {
-        splitsLayout = new LinearLayout(this);
-        splitsLayout.setOrientation(LinearLayout.VERTICAL);
-        layout.addView(splitsLayout, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        if (splitsLayout == null) {
+            splitsLayout = new LinearLayout(this);
+            splitsLayout.setOrientation(LinearLayout.VERTICAL);
+            layout.addView(splitsLayout, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        }
+        if (splitsLayout.findViewWithTag("unsplit_node") == null) {
+            View v = activityLayout.addNodeUnsplit(splitsLayout);
+            v.setTag("unsplit_node");
+            unsplitAmountText = v.findViewById(R.id.data);
+        }
+        splitsLayout.setVisibility(View.GONE);
     }
 
     @Override
     protected void addOrRemoveSplits() {
-        if (splitsLayout == null) {
+        // UI update handled by observeUiState
+    }
+
+    private void updateSplitsLayout(List<TransactionEntity> splits) {
+        if (splitsLayout == null || !transactionViewModel.getUiState().getValue().isSplitCategorySelected()) {
+            if (splitsLayout != null) splitsLayout.removeAllViews();
+            viewToSplitMap.clear();
             return;
         }
-        if (categorySelector.isSplitCategorySelected()) {
-            View v = activityLayout.addNodeUnsplit(splitsLayout);
-            unsplitAmountText = v.findViewById(R.id.data);
-            updateUnsplitAmount();
+        View unsplitNode = splitsLayout.findViewWithTag("unsplit_node");
+        splitsLayout.removeAllViews();
+        viewToSplitMap.clear();
+
+        if (unsplitNode != null) {
+            splitsLayout.addView(unsplitNode);
         } else {
-            splitsLayout.removeAllViews();
+            View v = activityLayout.addNodeUnsplit(splitsLayout);
+            v.setTag("unsplit_node");
+            unsplitAmountText = v.findViewById(R.id.data);
+            splitsLayout.addView(v);
+        }
+
+        for (TransactionEntity split : splits) {
+            View v = activityLayout.addSplitNodeMinus(splitsLayout, R.id.edit_aplit, R.id.delete_split, R.string.split, "");
+            setSplitDataUi(v, split);
+            viewToSplitMap.put(v, split);
         }
     }
 
-    private void updateUnsplitAmount() {
+    private void updateUnsplitAmountText(long amount, Currency currency) {
         if (unsplitAmountText != null) {
-            long amountDifference = calculateUnsplitAmount();
-            u.setAmountText(unsplitAmountText, rateView.getCurrencyFrom(), amountDifference, false);
-        }
-    }
-
-    private long calculateUnsplitAmount() {
-        long splitAmount = calculateSplitAmount();
-        return rateView.getFromAmount() - splitAmount;
-    }
-
-    private long calculateSplitAmount() {
-        long amount = 0;
-        for (Transaction split : viewToSplitMap.values()) {
-            amount += split.fromAmount;
-        }
-        return amount;
-    }
-
-    protected void switchIncomeExpenseButton(Category category) {
-        if (!isUpdateBalanceMode) {
-            if (category.isIncome()) {
-                rateView.setIncome();
+            if (currency != null) {
+                u.setAmountText(unsplitAmountText, currency, amount, false);
             } else {
-                rateView.setExpense();
+                unsplitAmountText.setText(Utils.formatAmount(amount / 100.0, 2));
             }
         }
+    }
+
+    @Override
+    protected void switchIncomeExpenseButton(Category category) {
+        super.switchIncomeExpenseButton(category);
     }
 
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
-        if (hasFocus) {
-            accountText.requestFocusFromTouch();
-        }
+        super.onWindowFocusChanged(hasFocus);
     }
 
     @Override
     protected boolean onOKClicked() {
-        if (checkSelectedAccount() && checkUnsplitAmount() && checkSelectedEntities()) {
-            updateTransactionFromUI();
-            return true;
-        }
+        transactionViewModel.saveTransaction();
         return false;
     }
 
-    private boolean checkSelectedAccount() {
-        return checkSelectedId(getSelectedAccountId(), R.string.select_account);
-    }
-
-    private boolean checkUnsplitAmount() {
-        if (categorySelector.isSplitCategorySelected()) {
-            long unsplitAmount = calculateUnsplitAmount();
-            if (unsplitAmount != 0) {
-                Toast.makeText(this, R.string.unsplit_amount_greater_than_zero, Toast.LENGTH_LONG).show();
-                return false;
-            }
-        }
-        return true;
-    }
-
     @Override
-    protected void editTransaction(Transaction transaction) {
-        selectAccount(transaction.fromAccountId, false);
-        commonEditTransaction(transaction);
-        selectCurrency(transaction);
-        fetchSplits();
-        selectPayee(transaction.payeeId);
+    protected void editTransaction(ru.orangesoftware.financisto.model.Transaction transaction_old_model) {
+        super.editTransaction(transaction_old_model);
     }
 
-    private void selectCurrency(Transaction transaction) {
-        if (transaction.originalCurrencyId > 0) {
-            selectOriginalCurrency(transaction.originalCurrencyId);
-            rateView.setFromAmount(transaction.originalFromAmount);
-            rateView.setToAmount(transaction.fromAmount);
-        } else {
-            if (transaction.fromAmount != 0) {
-                rateView.setFromAmount(transaction.fromAmount);
-            }
+    protected void commonEditTransaction(TransactionEntity transactionEntity) {
+        if (transactionEntity == null) return;
+        selectStatus(TransactionStatus.valueOf(transactionEntity.getStatus() == null ? TransactionStatus.EMPTY.name() : transactionEntity.getStatus()));
+        if (categorySelector != null) categorySelector.selectCategory(transactionEntity.getCategoryId());
+        if (projectSelector != null) projectSelector.selectEntity(transactionEntity.getProjectId());
+        if (locationSelector != null) locationSelector.selectEntity(transactionEntity.getLocationId());
+        setDateTime(transactionEntity.getDateTime());
+        if (noteText != null) noteText.setText(transactionEntity.getNote());
+        if (templateName != null && transactionEntity.isTemplate()) {
+            templateName.setText(transactionEntity.getTemplateName());
         }
-    }
-
-    private void fetchSplits() {
-        List<Transaction> splits = db.getSplitsForTransaction(transaction.id);
-        for (Transaction split : splits) {
-            split.categoryAttributes = db.getAllAttributesForTransaction(split.id);
-            if (split.originalCurrencyId > 0) {
-                split.fromAmount = split.originalFromAmount;
-            }
-            addOrEditSplit(split);
-        }
-    }
-
-    private void updateTransactionFromUI() {
-        updateTransactionFromUI(transaction);
-        transaction.fromAccountId = selectedAccount.id;
-        long amount = rateView.getFromAmount();
-        if (isUpdateBalanceMode) {
-            amount -= currentBalance;
-        }
-        transaction.fromAmount = amount;
-        updateTransactionOriginalAmount();
-        if (categorySelector.isSplitCategorySelected()) {
-            transaction.splits = new LinkedList<>(viewToSplitMap.values());
-        } else {
-            transaction.splits = null;
-        }
-    }
-
-    private void updateTransactionOriginalAmount() {
-        if (isDifferentCurrency()) {
-            transaction.originalCurrencyId = selectedOriginCurrencyId;
-            transaction.originalFromAmount = rateView.getFromAmount();
-            transaction.fromAmount = rateView.getToAmount();
-        } else {
-            transaction.originalCurrencyId = 0;
-            transaction.originalFromAmount = 0;
-        }
-    }
-
-    private boolean isDifferentCurrency() {
-        return selectedOriginCurrencyId > 0 && selectedOriginCurrencyId != selectedAccount.currency.id;
     }
 
     @Override
     protected Account selectAccount(long accountId, boolean selectLast) {
-        Account a = super.selectAccount(accountId, selectLast);
-        if (a != null) {
-            if (selectLast && !isShowPayee && isRememberLastCategory) {
-                categorySelector.selectCategory(a.lastCategoryId);
-            }
+        transactionViewModel.selectAccount(accountId);
+        TransactionFormState currentState = transactionViewModel.getUiState().getValue();
+        AccountEntity entity = currentState.getAvailableAccounts().stream().filter(e -> e.getId() == accountId).findFirst().orElse(null);
+        Account oldModelAccount = mapToOldAccount(entity);
+        if (oldModelAccount != null) {
+            selectedAccount = oldModelAccount;
         }
-        if (selectedOriginCurrencyId > 0) {
-            selectOriginalCurrency(selectedOriginCurrencyId);
-        }
-        return a;
+        return oldModelAccount;
     }
 
     @Override
@@ -396,257 +391,138 @@ public class TransactionActivity extends AbstractTransactionActivity {
         super.onClick(v, id);
         switch (id) {
             case R.id.unsplit_action:
-                unsplitActionGrid.show(v);
-                break;
-            case R.id.add_split:
-                createSplit(false);
-                break;
-            case R.id.add_split_transfer:
-                if (selectedOriginCurrencyId > 0) {
-                    Toast.makeText(this, R.string.split_transfer_not_supported_yet, Toast.LENGTH_LONG).show();
-                    break;
-                }
-                createSplit(true);
+                if (unsplitActionGrid != null) unsplitActionGrid.show(v);
                 break;
             case R.id.delete_split:
                 View parentView = (View) v.getParent();
-                deleteSplit(parentView);
+                TransactionEntity splitToDelete = viewToSplitMap.get(parentView);
+                if (splitToDelete != null) {
+                    transactionViewModel.deleteSplit(splitToDelete.getId());
+                }
                 break;
-            case R.id.original_currency:
-                List<Currency> currencies = db.getAllCurrenciesList();
-                currencies.add(0, currencyAsAccount);
-                ListAdapter adapter = TransactionUtils.createCurrencyAdapter(this, currencies);
-                int selectedPos = MyEntity.indexOf(currencies, selectedOriginCurrencyId);
-                activityLayout.selectItemId(this, R.id.currency, R.string.currency, adapter, selectedPos);
+            default:
+                TransactionEntity splitToEdit = viewToSplitMap.get(v);
+                if (splitToEdit != null) {
+                    // TODO: Launch SplitEditActivity using splitToEdit.getId()
+                }
                 break;
-        }
-        Transaction split = viewToSplitMap.get(v);
-        if (split != null) {
-            split.unsplitAmount = split.fromAmount + calculateUnsplitAmount();
-            editSplit(split, split.toAccountId > 0 ? SplitTransferActivity.class : SplitTransactionActivity.class);
         }
     }
 
     @Override
+    public void onCategorySelected(@Nullable CategoryEntity category, @Nullable String categoryPath, boolean selectLast) {
+        // This method is now the direct listener for CategorySelector if set up correctly.
+        // Or it's called by AbstractTransactionActivity if that class implements the listener
+        // and calls this override.
+
+        // Update ViewModel
+        transactionViewModel.selectCategory(
+            category != null ? category.getId() : CategorySelector.NO_CATEGORY_ID_CONSTANT,
+            categoryPath != null ? categoryPath : getString(R.string.no_category)
+        );
+
+        // Logic from AbstractTransactionActivity.onCategorySelected that might still be relevant here
+        // or should be fully managed by observing ViewModel state changes.
+        if (category != null) {
+            if (selectLast && isShowProject && projectSelector != null && category.getLastProjectId() > 0) {
+                projectSelector.selectEntity(category.getLastProjectId());
+            }
+            if (selectLast && isShowLocation && locationSelector != null && category.getLastLocationId() > 0) {
+                locationSelector.selectEntity(category.getLastLocationId());
+            }
+        }
+        // switchIncomeExpenseButton and addOrRemoveSplits are called from observeUiState based on ViewModel
+    }
+
+
+    @Override
     public void onSelectedPos(int id, int selectedPos) {
         super.onSelectedPos(id, selectedPos);
-        if (id == R.id.payee) {
-            if (isRememberLastCategory) {
-                selectLastCategoryForPayee(payeeSelector.getSelectedEntityId());
-            }
+        if (id == R.id.payee && payeeSelector != null) {
+             transactionViewModel.selectPayee(payeeSelector.getSelectedEntityId());
         }
     }
 
     @Override
     public void onSelectedId(int id, long selectedId) {
         super.onSelectedId(id, selectedId);
-        switch (id) {
-            case R.id.currency:
-                selectOriginalCurrency(selectedId);
-                break;
-            case R.id.payee:
-                if (isRememberLastCategory) {
-                    selectLastCategoryForPayee(selectedId);
-                }
-                break;
+        if (id == R.id.original_currency) {
+            transactionViewModel.selectOriginalCurrency(selectedId == -1L ? null : selectedId);
         }
     }
 
-    private void selectOriginalCurrency(long selectedId) {
-        selectedOriginCurrencyId = selectedId;
-        if (selectedId == -1) {
-            if (selectedAccount != null) {
-                if (selectedAccount.currency.id == rateView.getCurrencyToId()) {
-                    rateView.setFromAmount(rateView.getToAmount());
-                }
-            }
-            selectAccountCurrency();
-        } else {
-            long toAmount = rateView.getToAmount();
-            Currency currency = CurrencyCache.getCurrency(db, selectedId);
-            rateView.selectCurrencyFrom(currency);
-            if (selectedAccount != null) {
-                if (selectedId == selectedAccount.currency.id) {
-                    if (selectedId == rateView.getCurrencyToId()) {
-                        rateView.setFromAmount(toAmount);
-                    }
-                    selectAccountCurrency();
-                    return;
-                }
-                rateView.selectCurrencyTo(selectedAccount.currency);
-            }
-            currencyText.setText(currency.name);
-        }
-    }
-
-    private void selectAccountCurrency() {
-        rateView.selectSameCurrency(selectedAccount != null ? selectedAccount.currency : Currency.EMPTY);
-        currencyText.setText(R.string.original_currency_as_account);
-    }
-
-    private void createSplit(boolean asTransfer) {
-        Transaction split = new Transaction();
-        split.id = --idSequence;
-        split.fromAccountId = getSelectedAccountId();
-        split.fromAmount = split.unsplitAmount = calculateUnsplitAmount();
-        split.originalCurrencyId = selectedOriginCurrencyId;
-        editSplit(split, asTransfer ? SplitTransferActivity.class : SplitTransactionActivity.class);
-    }
-
-    private void editSplit(Transaction split, Class splitActivityClass) {
-        Intent intent = new Intent(this, splitActivityClass);
-        split.toIntentAsSplit(intent);
-        startActivityForResult(intent, SPLIT_REQUEST);
+    @Override
+    protected void selectPayee(long payeeId) {
+        super.selectPayee(payeeId);
+        transactionViewModel.selectPayee(payeeId);
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == SPLIT_REQUEST) {
-            if (resultCode == RESULT_OK) {
-                Transaction split = Transaction.fromIntentAsSplit(data);
-                addOrEditSplit(split);
+            if (resultCode == RESULT_OK && data != null) {
+                // TODO: Handle result from SplitEditActivity.
             }
         }
     }
 
-    @Override
-    protected void onSaveInstanceState(@NonNull Bundle outState) {
-        super.onSaveInstanceState(outState);
-        logger.d("onSaveInstanceState");
-        try {
-            if (categorySelector.isSplitCategorySelected()) {
-                logger.d("Saving splits...");
-                ActivityState state = new ActivityState();
-                state.categoryId = categorySelector.getSelectedCategoryId();
-                state.idSequence = idSequence;
-                state.splits = new ArrayList<>(viewToSplitMap.values());
-                try (ByteArrayOutputStream s = new ByteArrayOutputStream()) {
-                    ObjectOutputStream out = new ObjectOutputStream(s);
-                    out.writeObject(state);
-                    outState.putByteArray(ACTIVITY_STATE, s.toByteArray());
-                }
-            }
-        } catch (IOException e) {
-            logger.e(e, "Unable to save state");
-        }
-    }
-
-    @Override
-    protected void onRestoreInstanceState(@NonNull Bundle savedInstanceState) {
-        super.onRestoreInstanceState(savedInstanceState);
-        logger.d("onRestoreInstanceState");
-        byte[] bytes = savedInstanceState.getByteArray(ACTIVITY_STATE);
-        if (bytes != null) {
-            try {
-                try (ByteArrayInputStream s = new ByteArrayInputStream(bytes)) {
-                    ObjectInputStream in = new ObjectInputStream(s);
-                    ActivityState state = (ActivityState) in.readObject();
-                    if (state.categoryId == Category.SPLIT_CATEGORY_ID) {
-                        logger.d("Restoring splits...");
-                        viewToSplitMap.clear();
-                        splitsLayout.removeAllViews();
-                        idSequence = state.idSequence;
-                        categorySelector.selectCategory(state.categoryId);
-                        for (Transaction split : state.splits) {
-                            addOrEditSplit(split);
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                logger.e(e, "Unable to restore state");
-            }
-        }
-    }
-
-    private void addOrEditSplit(Transaction split) {
-        View v = findView(split);
-        if (v == null) {
-            v = activityLayout.addSplitNodeMinus(splitsLayout, R.id.edit_aplit, R.id.delete_split, R.string.split, "");
-        }
-        setSplitData(v, split);
-        viewToSplitMap.put(v, split);
-        updateUnsplitAmount();
-    }
-
-    private View findView(Transaction split) {
-        for (Map.Entry<View, Transaction> entry : viewToSplitMap.entrySet()) {
-            Transaction s = entry.getValue();
-            if (s.id == split.id) {
-                return entry.getKey();
-            }
-        }
-        return null;
-    }
-
-    private void setSplitData(View v, Transaction split) {
+    private void setSplitDataUi(View v, TransactionEntity split) {
         TextView label = v.findViewById(R.id.label);
         TextView data = v.findViewById(R.id.data);
-        setSplitData(split, label, data);
-    }
+        TransactionFormState formState = transactionViewModel.getUiState().getValue();
 
-    private void setSplitData(Transaction split, TextView label, TextView data) {
-        if (split.isTransfer()) {
-            setSplitDataTransfer(split, label, data);
+        String catName = String.valueOf(split.getCategoryId());
+        if (formState != null && formState.getAvailableCategoriesTree() != null) {
+            CategoryEntity category = formState.getAvailableCategoriesTree()
+                                    .stream().filter(c -> c.getId() == split.getCategoryId()).findFirst().orElse(null);
+            if (category != null) catName = category.getTitle();
+        }
+
+        if (split.getToAccountId() > 0) {
+            String toAccName = String.valueOf(split.getToAccountId());
+             if (formState != null && formState.getAvailableAccounts() != null) {
+                AccountEntity toAccount = formState.getAvailableAccounts()
+                                        .stream().filter(a -> a.getId() == split.getToAccountId()).findFirst().orElse(null);
+                if (toAccount != null) toAccName = toAccount.getTitle();
+            }
+            label.setText(String.format("%s -> %s", catName, toAccName));
         } else {
-            setSplitDataTransaction(split, label, data);
+            label.setText(catName);
+        }
+
+        Currency displayCurrency = null;
+        if (rateView != null) displayCurrency = rateView.getCurrencyFrom();
+
+        if (displayCurrency != null) {
+             u.setAmountText(data, displayCurrency, split.getFromAmount(), false);
+        } else {
+            data.setText(Utils.formatAmount(split.getFromAmount() / 100.0, 2));
         }
     }
 
-    private void setSplitDataTransaction(Transaction split, TextView label, TextView data) {
-        label.setText(createSplitTransactionTitle(split));
-        Currency currency = getCurrency();
-        u.setAmountText(data, currency, split.fromAmount, false);
-    }
-
-    private String createSplitTransactionTitle(Transaction split) {
-        StringBuilder sb = new StringBuilder();
-        Category category = db.getCategoryWithParent(split.categoryId);
-        sb.append(category.title);
-        if (isNotEmpty(split.note)) {
-            sb.append(" (").append(split.note).append(")");
+    private Account mapToOldAccount(AccountEntity entity) {
+        if (entity == null) return null;
+        Account acc = new Account();
+        acc.id = entity.getId();
+        acc.title = entity.getTitle();
+        acc.currencyId = entity.getCurrencyId();
+        TransactionFormState currentState = transactionViewModel.getUiState().getValue();
+        if (currentState != null) {
+            CurrencyEntity currEntity = currentState.getAvailableCurrencies().stream()
+                                        .filter(c -> c.getId() == entity.getCurrencyId()).findFirst().orElse(null);
+            acc.currency = CurrencyEntityMapper.toModel(currEntity);
         }
-        return sb.toString();
+        return acc;
     }
 
-    private void setSplitDataTransfer(Transaction split, TextView label, TextView data) {
-        Account fromAccount = db.getAccount(split.fromAccountId);
-        Account toAccount = db.getAccount(split.toAccountId);
-        u.setTransferTitleText(label, fromAccount, toAccount);
-        u.setTransferAmountText(data, fromAccount.currency, split.fromAmount, toAccount.currency, split.toAmount);
+    // TextWatcher adapter for cleaner listeners
+    private static class TextWatcherAdapter implements TextWatcher {
+        private final java.util.function.Consumer<String> onTextChanged;
+        TextWatcherAdapter(java.util.function.Consumer<String> onTextChanged) { this.onTextChanged = onTextChanged; }
+        @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+        @Override public void onTextChanged(CharSequence s, int start, int before, int count) { onTextChanged.accept(s.toString()); }
+        @Override public void afterTextChanged(Editable s) {}
     }
-
-    private void deleteSplit(View v) {
-        Transaction split = viewToSplitMap.remove(v);
-        if (split != null) {
-            removeSplitView(v);
-            updateUnsplitAmount();
-        }
-    }
-
-    private void removeSplitView(View v) {
-        splitsLayout.removeView(v);
-        View dividerView = (View) v.getTag();
-        if (dividerView != null) {
-            splitsLayout.removeView(dividerView);
-        }
-    }
-
-    private Currency getCurrency() {
-        if (selectedOriginCurrencyId > 0) {
-            return CurrencyCache.getCurrency(db, selectedOriginCurrencyId);
-        }
-        if (selectedAccount != null) {
-            return selectedAccount.currency;
-        }
-        return Currency.EMPTY;
-    }
-
-    private static class ActivityState implements Serializable {
-        public long categoryId;
-        public long idSequence;
-        public List<Transaction> splits;
-    }
-
-
 }
+```

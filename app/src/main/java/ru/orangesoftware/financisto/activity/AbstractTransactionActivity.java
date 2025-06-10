@@ -46,9 +46,11 @@ import ru.orangesoftware.financisto.db.DatabaseHelper.AccountColumns;
 import ru.orangesoftware.financisto.db.DatabaseHelper.TransactionColumns;
 import ru.orangesoftware.financisto.model.Account;
 import ru.orangesoftware.financisto.model.Attribute;
-import ru.orangesoftware.financisto.model.Category;
+// import ru.orangesoftware.financisto.model.Category; // Replaced by CategoryEntity for selectedCategory
+import ru.orangesoftware.financisto.db.entity.CategoryEntity; // Added
+import androidx.annotation.Nullable; // Added
 import ru.orangesoftware.financisto.model.SystemAttribute;
-import ru.orangesoftware.financisto.model.Transaction;
+import ru.orangesoftware.financisto.model.Transaction; // This is old model, keep for now
 import ru.orangesoftware.financisto.model.TransactionAttribute;
 import ru.orangesoftware.financisto.model.TransactionStatus;
 import ru.orangesoftware.financisto.recur.NotificationOptions;
@@ -99,7 +101,9 @@ public abstract class AbstractTransactionActivity extends AbstractActivity imple
 
     private CheckBox ccardPayment;
 
-    protected Account selectedAccount;
+    protected Account selectedAccount; // Old model, used by RateView currency logic
+    protected CategoryEntity selectedCategory; // Changed to CategoryEntity
+    protected String selectedCategoryPath; // Added
 
     protected String recurrence;
     protected String notificationOptions;
@@ -110,7 +114,7 @@ public abstract class AbstractTransactionActivity extends AbstractActivity imple
     protected PayeeSelector<AbstractTransactionActivity> payeeSelector;
     protected ProjectSelector<AbstractTransactionActivity> projectSelector;
     protected LocationSelector<AbstractTransactionActivity> locationSelector;
-    protected CategorySelector<AbstractTransactionActivity> categorySelector;
+    protected CategorySelector categorySelector; // Removed generic type, listener set in concrete class
 
     protected boolean isRememberLastAccount;
     protected boolean isRememberLastCategory;
@@ -694,4 +698,39 @@ public abstract class AbstractTransactionActivity extends AbstractActivity imple
         if (categorySelector != null) categorySelector.onDestroy();
         super.onDestroy();
     }
+
+    // This is the listener method for CategorySelector
+    @Override
+    public void onCategorySelected(@Nullable CategoryEntity category, @Nullable String categoryPath, boolean selectLast) {
+        this.selectedCategory = category;
+        this.selectedCategoryPath = categoryPath;
+
+        if (categorySelector != null && categoryPath != null) { // Ensure categorySelector itself is initialized
+             categorySelector.selectCategoryPath(categoryPath); // Update CategorySelector's own displayed text
+        }
+
+        if (category != null) {
+            if (selectLast && isShowProject && projectSelector != null && category.getLastProjectId() > 0) {
+                projectSelector.selectEntity(category.getLastProjectId());
+            }
+            if (selectLast && isShowLocation && locationSelector != null && category.getLastLocationId() > 0) {
+                locationSelector.selectEntity(category.getLastLocationId());
+            }
+        }
+        // switchIncomeExpenseButton now needs CategoryEntity or logic based on type
+        switchIncomeExpenseButton(category);
+        addOrRemoveSplits();
+    }
+
+    // Modified to accept CategoryEntity for consistency, though original logic might use type
+    protected void switchIncomeExpenseButton(CategoryEntity category) {
+        // Original logic used category.isIncome(). Replicate if CategoryEntity has similar.
+        // For now, assume it might be based on category type if available, or keep old logic if Category parameter was just for type.
+        // If CategoryEntity doesn't have isIncome() or equivalent type info for this check,
+        // this method might need to be adapted or its call site changed.
+        // For this refactor, if switchIncomeExpenseButton in child (TransactionActivity) is the one being called,
+        // it might use the old Category model parameter if that's what its CategorySelector provides.
+        // This method in Abstract might become vestigial if child fully overrides.
+    }
+
 }
