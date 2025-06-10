@@ -1,0 +1,10 @@
+/app/shared/src/commonMain/kotlin/ru/orangesoftware/financisto/shared/model/EntityEnum.kt
+/app/shared/src/commonMain/kotlin/ru/orangesoftware/financisto/shared/model/CategoryEntity.kt
+/app/shared/src/commonMain/kotlin/ru/orangesoftware/financisto/shared/model/AccountType.kt
+/app/shared/src/commonMain/kotlin/ru/orangesoftware/financisto/shared/model/Currency.kt
+/app/shared/src/commonMain/kotlin/ru/orangesoftware/financisto/shared/model/Account.kt
+/app/shared/src/commonMain/kotlin/ru/orangesoftware/financisto/shared/model/Category.kt
+/app/shared/src/commonMain/kotlin/ru/orangesoftware/financisto/shared/model/SymbolFormat.kt
+/app/shared/src/commonMain/kotlin/ru/orangesoftware/financisto/shared/model/MyEntity.kt
+/app/shared/src/commonMain/kotlin/common.kt
+/app/shared/src/commonMain/kotlin/ru/orangesoftware/financisto/shared/model/SortableEntity.kt

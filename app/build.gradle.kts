@@ -1,7 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.compose.compiler)
+    // alias(libs.plugins.compose.compiler) // Removed Compose compiler plugin
     alias(libs.plugins.kover)
 }
 
@@ -33,7 +33,7 @@ android {
 
     buildFeatures {
         buildConfig = true
-        compose = true
+        // compose = true // Removed Compose feature
     }
 
     testOptions {
@@ -77,29 +77,29 @@ android {
 
 dependencies {
     // Compose
-    val composeBom = platform(compose.bom)
-    implementation(composeBom)
-    androidTestImplementation(composeBom)
+    // val composeBom = platform(compose.bom) // Removed Compose BOM
+    // implementation(composeBom)
+    // androidTestImplementation(composeBom)
 
     // Material Design 3
-    implementation(compose.material3)
+    // implementation(compose.material3) // Removed Material Design 3
 
     // Android Studio Preview support
-    implementation(compose.ui.tooling.preview)
-    debugImplementation(compose.ui.tooling)
+    // implementation(compose.ui.tooling.preview) // Removed Tooling Preview
+    // debugImplementation(compose.ui.tooling) // Removed Tooling
 
     // UI Tests
-    androidTestImplementation(compose.ui.test.junit4)
-    debugImplementation(compose.ui.test.manifest)
+    // androidTestImplementation(compose.ui.test.junit4) // Removed UI Tests
+    // debugImplementation(compose.ui.test.manifest) // Removed UI Test Manifest
 
     // Compose integration with activities
-    implementation(libs.activity.compose)
+    // implementation(libs.activity.compose) // Removed Activity Compose
 
     // Permissions
-    implementation(libs.accompanist.permissions)
+    // implementation(libs.accompanist.permissions) // Removed Accompanist Permissions
 
     // Webview
-    implementation(libs.accompanist.webview)
+    // implementation(libs.accompanist.webview) // Removed Accompanist Webview
 
     // Preferences DataStore (SharedPreferences like APIs)
     implementation(libs.datastore.preferences)
@@ -115,7 +115,7 @@ dependencies {
     implementation(libs.koin.android)
     // Koin - Java Compatibility
     implementation(libs.koin.android.compat)
-    implementation(libs.koin.compose)
+    // implementation(libs.koin.compose) // Removed Koin Compose
     // Koin - tests
     testImplementation(libs.koin.test)
 
@@ -138,7 +138,7 @@ dependencies {
     // Timber logging
     implementation(libs.timber)
 
-
+    // implementation(project(":shared")) // Removed shared module dependency
     implementation(libs.legacy.support)
     implementation(libs.appcompat)
 
@@ -157,7 +157,7 @@ dependencies {
     implementation(libs.materialdatetimepicker)
     implementation(libs.commons.io)
     implementation(libs.glide)
-    implementation(libs.glide.compose)
+    // implementation(libs.glide.compose) // Removed Glide Compose
 
     // Rx libs
     implementation(libs.rxjava3.bridge)
@@ -168,7 +168,7 @@ dependencies {
     implementation(libs.reactive.streams)
     implementation(libs.rximagepicker)
 
-    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
+    // implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar")))) // Removed as rfc2445-no-joda.jar was the only file
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("androidx.test:core:1.6.1")
@@ -180,7 +180,7 @@ kover {
     reports {
         filters {
             excludes {
-                annotatedBy("androidx.compose.ui.tooling.preview.Preview")
+        // annotatedBy("androidx.compose.ui.tooling.preview.Preview") // Removed Preview annotation
             }
         }
 
@@ -201,9 +201,9 @@ kover {
     }
 }
 
-composeCompiler {
-    enableStrongSkippingMode = true
-}
+// composeCompiler { // Removed Compose compiler options
+//     enableStrongSkippingMode = true
+// }
 
 java {
     toolchain {
