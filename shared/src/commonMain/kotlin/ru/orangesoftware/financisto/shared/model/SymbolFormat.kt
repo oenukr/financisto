@@ -1,0 +1,39 @@
+package ru.orangesoftware.financisto.shared.model
+
+enum class SymbolFormat {
+
+    RS {
+        override fun appendSymbol(sb: StringBuilder, symbol: String) {
+            sb.append(" ").append(symbol)
+        }
+    },
+    R {
+        override fun appendSymbol(sb: StringBuilder, symbol: String) {
+            sb.append(symbol)
+        }
+    },
+    LS {
+        override fun appendSymbol(sb: StringBuilder, symbol: String) {
+            val offset = getInsertIndex(sb)
+            sb.insert(offset, " ").insert(offset, symbol)
+        }
+    },
+    L {
+        override fun appendSymbol(sb: StringBuilder, symbol: String) {
+            sb.insert(getInsertIndex(sb), symbol)
+        }
+    };
+
+    companion object {
+        // @JvmStatic // Not strictly necessary for KMP, can be removed for cleaner code
+        private fun getInsertIndex(sb: StringBuilder): Int {
+            if (sb.isNotEmpty()) {
+                val c: Char = sb[0]
+                return if (c == '+' || c == '-') 1 else 0
+            }
+            return 0
+        }
+    }
+
+    abstract fun appendSymbol(sb: StringBuilder, symbol: String)
+}

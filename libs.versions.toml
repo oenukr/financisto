@@ -1,11 +1,15 @@
 [versions]
+compileSdk = "34"
+minSdk = "24"
 accompanist = "0.36.0"
 android_tools = "8.11.0-alpha02"
 datastore = "1.1.3"
 detekt = "1.23.8"
 glide = "4.16.0"
 glide-compose = "1.0.0-beta01"
-kotlin = "2.1.20"
+kotlin = "2.0.0" # Downgraded to 2.0.0 for KSP diagnosis
+kotlinMultiplatform = "2.0.0" # Downgraded to 2.0.0 for KSP diagnosis
+androidLibrary = "8.11.0-alpha02" # Use the same version as android_tools
 workmanager = "2.10.0"
 
 [libraries]
@@ -57,4 +61,6 @@ android-application = { id = "com.android.application", version.ref = "android_t
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt"}
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlinMultiplatform" }
+androidLibrary = { id = "com.android.library", version.ref = "androidLibrary" }
 kover = { id = "org.jetbrains.kotlinx.kover", version = "0.9.1" }
