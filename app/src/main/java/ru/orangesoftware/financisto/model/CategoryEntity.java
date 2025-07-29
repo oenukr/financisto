@@ -34,7 +34,7 @@ public class CategoryEntity<T extends CategoryEntity<T>> extends MyEntity {
 	public CategoryTree<T> children;
 
 	public long getParentId() {
-		return parent != null ? parent.id : 0;
+		return parent != null ? parent.getId() : 0;
 	}
 	
 	@SuppressWarnings("unchecked")

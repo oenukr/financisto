@@ -275,7 +275,10 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
                 .fillMaxWidth()
                 .background(color = MaterialTheme.colorScheme.background)
         ) {
-            Text(modifier = Modifier.align(Alignment.CenterHorizontally), text = stringResource(id = incomeExpenseTitleId))
+            Text(
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+                text = stringResource(id = incomeExpenseTitleId)
+            )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,

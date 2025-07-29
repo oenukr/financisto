@@ -124,8 +124,8 @@ public class RateNode {
         Currency currencyFrom = owner.getCurrencyFrom();
         Currency currencyTo = owner.getCurrencyTo();
         if (currencyFrom != null && currencyTo != null) {
-            sb.append("1").append(currencyFrom.name).append("=").append(nf.format(r)).append(currencyTo.name).append(", ");
-            sb.append("1").append(currencyTo.name).append("=").append(nf.format(1.0 / r)).append(currencyFrom.name);
+            sb.append("1").append(currencyFrom.getName()).append("=").append(nf.format(r)).append(currencyTo.getName()).append(", ");
+            sb.append("1").append(currencyTo.getName()).append("=").append(nf.format(1.0 / r)).append(currencyFrom.getName());
         }
         rateInfo.setText(sb.toString());
     }

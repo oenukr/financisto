@@ -56,19 +56,19 @@ public class AccountListAdapter2 extends ResourceCursorAdapter {
         Account a = EntityManager.loadFromCursor(cursor, Account.class);
         AccountListItemHolder v = (AccountListItemHolder) view.getTag();
 
-        v.centerView.setText(a.title);
+        v.centerView.setText(a.getTitle());
 
-        AccountType type = AccountType.valueOf(a.type);
-        if (type.isCard() && a.cardIssuer != null) {
-            CardIssuer cardIssuer = CardIssuer.valueOf(a.cardIssuer);
+        AccountType type = AccountType.valueOf(a.getType());
+        if (type.isCard() && a.getCardIssuer() != null) {
+            CardIssuer cardIssuer = CardIssuer.valueOf(a.getCardIssuer());
             v.iconView.setImageResource(cardIssuer.getIconId());
-        } else if (type.isElectronic() && a.cardIssuer != null) {
-            ElectronicPaymentType paymentType = ElectronicPaymentType.valueOf(a.cardIssuer);
+        } else if (type.isElectronic() && a.getCardIssuer() != null) {
+            ElectronicPaymentType paymentType = ElectronicPaymentType.valueOf(a.getCardIssuer());
             v.iconView.setImageResource(paymentType.getIconId());
         } else {
             v.iconView.setImageResource(type.getIconId());
         }
-        if (a.isActive) {
+        if (a.isActive()) {
             v.iconView.getDrawable().mutate().setAlpha(0xFF);
             v.iconOverView.setVisibility(View.INVISIBLE);
         } else {
@@ -77,36 +77,36 @@ public class AccountListAdapter2 extends ResourceCursorAdapter {
         }
 
         StringBuilder sb = new StringBuilder();
-        if (!Utils.isEmpty(a.issuer)) {
-            sb.append(a.issuer);
+        if (!Utils.isEmpty(a.getIssuer())) {
+            sb.append(a.getIssuer());
         }
-        if (!Utils.isEmpty(a.number)) {
-            sb.append(" #").append(a.number);
+        if (!Utils.isEmpty(a.getNumber())) {
+            sb.append(" #").append(a.getNumber());
         }
         if (sb.length() == 0) {
             sb.append(context.getString(type.getTitleId()));
         }
         v.topView.setText(sb.toString());
 
-        long date = a.creationDate;
-        if (isShowAccountLastTransactionDate && a.lastTransactionDate > 0) {
-            date = a.lastTransactionDate;
+        long date = a.getCreationDate();
+        if (isShowAccountLastTransactionDate && a.getLastTransactionDate() > 0) {
+            date = a.getLastTransactionDate();
         }
         v.bottomView.setText(df.format(new Date(date)));
 
-        long amount = a.totalAmount;
-        if (type == AccountType.CREDIT_CARD && a.limitAmount != 0) {
-            long limitAmount = Math.abs(a.limitAmount);
+        long amount = a.getTotalAmount();
+        if (type == AccountType.CREDIT_CARD && a.getLimitAmount() != 0) {
+            long limitAmount = Math.abs(a.getLimitAmount());
             long balance = limitAmount + amount;
             long balancePercentage = 10000 * balance / limitAmount;
-            u.setAmountText(v.rightView, a.currency, amount, false);
-            u.setAmountText(v.rightCenterView, a.currency, balance, false);
+            u.setAmountText(v.rightView, a.getCurrency(), amount, false);
+            u.setAmountText(v.rightCenterView, a.getCurrency(), balance, false);
             v.rightView.setVisibility(View.VISIBLE);
             v.progressBar.setMax(10000);
             v.progressBar.setProgress((int) balancePercentage);
             v.progressBar.setVisibility(View.VISIBLE);
         } else {
-            u.setAmountText(v.rightCenterView, a.currency, amount, false);
+            u.setAmountText(v.rightCenterView, a.getCurrency(), amount, false);
             v.rightView.setVisibility(View.GONE);
             v.progressBar.setVisibility(View.GONE);
         }

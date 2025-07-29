@@ -77,17 +77,17 @@ public class CurrencySelector {
     }
 
     private void addSelectedCurrency(List<String> list) {
-        Currency c = new Currency();
-        c.name = list.get(0);
-        c.title = list.get(1);
-        c.symbol = list.get(2);
-        c.decimals = Math.max(0, Math.min(2, Integer.parseInt(list.get(3))));
-        c.decimalSeparator = decodeSeparator(list.get(4));
-        c.groupSeparator = decodeSeparator(list.get(5));
-        c.isDefault = isTheFirstCurrencyAdded();
-        em.saveOrUpdate(c);
+        Currency currency = new Currency();
+        currency.setName(list.get(0));
+        currency.setTitle(list.get(1));
+        currency.setSymbol(list.get(2));
+        currency.setDecimals(Math.max(0, Math.min(2, Integer.parseInt(list.get(3)))));
+        currency.setDecimalSeparator(decodeSeparator(list.get(4)));
+        currency.setGroupSeparator(decodeSeparator(list.get(5)));
+        currency.setDefault(isTheFirstCurrencyAdded());
+        em.saveOrUpdate(currency);
         CurrencyCache.initialize(em);
-        listener.onCreated(c.id);
+        listener.onCreated(currency.getId());
     }
 
     private boolean isTheFirstCurrencyAdded() {

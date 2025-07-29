@@ -235,7 +235,7 @@ public class BlotterActivity extends AbstractListActivity {
                 if (accountId != -1) {
                     // get account type
                     Account account = db.getAccount(accountId);
-                    AccountType type = AccountType.valueOf(account.type);
+                    AccountType type = AccountType.valueOf(account.getType());
                     if (type.isCreditCard()) {
                         // Show menu for Credit Cards - bill
                         MenuInflater inflater = getMenuInflater();
@@ -277,7 +277,7 @@ public class BlotterActivity extends AbstractListActivity {
                     Account account = db.getAccount(accountId);
 
                     // call credit card bill activity sending account id
-                    if (account.paymentDay > 0 && account.closingDay > 0) {
+                    if (account.getPaymentDay() > 0 && account.getClosingDay() > 0) {
                         intent.putExtra(MonthlyViewActivity.BILL_PREVIEW_EXTRA, true);
                         startActivityForResult(intent, BILL_PREVIEW_REQUEST);
                     } else {
@@ -532,9 +532,9 @@ public class BlotterActivity extends AbstractListActivity {
         long accountId = blotterFilter.getAccountId();
         if (accountId != -1) {
             Account a = db.getAccount(accountId);
-            bAdd.setVisibility(a != null && a.isActive ? View.VISIBLE : View.GONE);
+            bAdd.setVisibility(a != null && a.isActive() ? View.VISIBLE : View.GONE);
             if (showAllBlotterButtons) {
-                bTransfer.setVisibility(a != null && a.isActive ? View.VISIBLE : View.GONE);
+                bTransfer.setVisibility(a != null && a.isActive() ? View.VISIBLE : View.GONE);
             }
         }
         String title = blotterFilter.getTitle();

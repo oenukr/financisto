@@ -174,10 +174,10 @@ public class CsvImportTest extends AbstractImportExportTest {
 
         TransactionInfo t = transactions.get(0);
         assertEquals(DateTime.date(2011, 7, 10).at(7, 13, 17, 0).asLong(), t.dateTime);
-        assertEquals(defaultAccountId, t.fromAccount.id);
+        assertEquals(defaultAccountId, t.fromAccount.getId());
         assertEquals(-1050, t.fromAmount);
-        assertEquals(categories.get("AA1").id, t.category.id);
-        assertEquals("P1", t.payee.title);
+        assertEquals(categories.get("AA1").getId(), t.category.getId());
+        assertEquals("P1", t.payee.getTitle());
     }
 
     @Ignore("Need to tell robolectric to make the needed folder writable")
@@ -194,20 +194,20 @@ public class CsvImportTest extends AbstractImportExportTest {
 
         TransactionInfo t = transactions.get(0);
         assertEquals(DateTime.date(2011, 7, 11).at(7, 13, 17, 0).asLong(), t.dateTime);
-        assertEquals(defaultAccountId, t.fromAccount.id);
+        assertEquals(defaultAccountId, t.fromAccount.getId());
         assertEquals(210056, t.fromAmount);
         assertEquals(168010, t.originalFromAmount);
-        assertEquals("USD", t.originalCurrency.name);
-        assertEquals(categories.get("B").id, t.category.id);
-        assertEquals("P1", t.payee.title);
+        assertEquals("USD", t.originalCurrency.getName());
+        assertEquals(categories.get("B").getId(), t.category.getId());
+        assertEquals("P1", t.payee.getTitle());
 
         t = transactions.get(1);
         //each transaction adds 1 ms to keep the original order
         assertEquals(DateTime.date(2011, 7, 10).at(7, 13, 17, 1).asLong(), t.dateTime);
-        assertEquals(defaultAccountId, t.fromAccount.id);
+        assertEquals(defaultAccountId, t.fromAccount.getId());
         assertEquals(210056, t.fromAmount);
-        assertEquals(categories.get("B").id, t.category.id);
-        assertEquals("P1", t.payee.title);
+        assertEquals(categories.get("B").getId(), t.category.getId());
+        assertEquals("P1", t.payee.getTitle());
     }
 
     private void doImport(String csv, CsvImportOptions options) throws Exception {
@@ -242,9 +242,9 @@ public class CsvImportTest extends AbstractImportExportTest {
     }
 
     private CsvImportOptions createDefaultOptions() {
-        Account a = createFirstAccount();
-        Currency c = a.currency;
-        return new CsvImportOptions(c, new SimpleDateFormat(CsvImportOptions.DEFAULT_DATE_FORMAT), a.id, WhereFilter.empty(), null, ',', true);
+        Account account = createFirstAccount();
+        Currency currency = account.getCurrency();
+        return new CsvImportOptions(currency, new SimpleDateFormat(CsvImportOptions.DEFAULT_DATE_FORMAT), account.getId(), WhereFilter.empty(), null, ',', true);
     }
 
     private Set<CategoryInfo> asCategoryInfoSet(String...categories) {

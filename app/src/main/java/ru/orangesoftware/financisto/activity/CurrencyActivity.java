@@ -94,14 +94,14 @@ public class CurrencyActivity extends Activity {
             if (checkEditText(title, "title", true, 100)
                     && checkEditText(name, "code", true, 3)
                     && checkEditText(symbol, "symbol", true, 3)) {
-                currency.title = text(title);
-                currency.name = text(name);
-                currency.symbol = text(symbol);
-                currency.isDefault = isDefault.isChecked();
-                currency.decimals = maxDecimals - decimals.getSelectedItemPosition();
-                currency.decimalSeparator = decimalSeparators.getSelectedItem().toString();
-                currency.groupSeparator = groupSeparators.getSelectedItem().toString();
-                currency.symbolFormat = symbolFormats[symbolFormat.getSelectedItemPosition()];
+                currency.setTitle(text(title));
+                currency.setName(text(name));
+                currency.setSymbol(text(symbol));
+                currency.setDefault(isDefault.isChecked());
+                currency.setDecimals(maxDecimals - decimals.getSelectedItemPosition());
+                currency.setDecimalSeparator(decimalSeparators.getSelectedItem().toString());
+                currency.setGroupSeparator(groupSeparators.getSelectedItem().toString());
+                currency.setSymbolFormat(symbolFormats[symbolFormat.getSelectedItemPosition()]);
                 long id = db.saveOrUpdate(currency);
                 CurrencyCache.initialize(db);
                 Intent data = new Intent();
@@ -136,17 +136,17 @@ public class CurrencyActivity extends Activity {
     private void editCurrency() {
         Currency currency = this.currency;
         EditText name = findViewById(R.id.name);
-        name.setText(currency.name);
+        name.setText(currency.getName());
         EditText title = findViewById(R.id.title);
-        title.setText(currency.title);
+        title.setText(currency.getTitle());
         EditText symbol = findViewById(R.id.symbol);
-        symbol.setText(currency.symbol);
+        symbol.setText(currency.getSymbol());
         CheckBox isDefault = findViewById(R.id.is_default);
-        isDefault.setChecked(currency.isDefault);
-        decimals.setSelection(maxDecimals - currency.decimals);
-        decimalSeparators.setSelection(indexOf(decimalSeparatorsItems, currency.decimalSeparator, s.getDecimalSeparator()));
-        groupSeparators.setSelection(indexOf(groupSeparatorsItems, currency.groupSeparator, s.getGroupingSeparator()));
-        symbolFormat.setSelection(currency.symbolFormat.ordinal());
+        isDefault.setChecked(currency.isDefault());
+        decimals.setSelection(maxDecimals - currency.getDecimals());
+        decimalSeparators.setSelection(indexOf(decimalSeparatorsItems, currency.getDecimalSeparator(), s.getDecimalSeparator()));
+        groupSeparators.setSelection(indexOf(groupSeparatorsItems, currency.getGroupSeparator(), s.getGroupingSeparator()));
+        symbolFormat.setSelection(currency.getSymbolFormat().ordinal());
     }
 
     private int indexOf(String[] a, String v, char c) {

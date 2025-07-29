@@ -53,11 +53,11 @@ public class QifExportTest extends AbstractExportTest<QifExport, QifExportOption
     @Test
     public void should_export_transaction_amount_according_to_the_config() throws Exception {
         Account a = createFirstAccount();
-        Currency c = new Currency();
-        c.decimals = 1;
-        c.decimalSeparator = "','";
-        c.groupSeparator = "''";
-        c.symbol = "";
+        Currency currency = new Currency();
+        currency.setDecimals(1);
+        currency.setDecimalSeparator("','");
+        currency.setGroupSeparator("''");
+        currency.setSymbol("");
         TransactionBuilder.withDb(db).account(a).amount(-210056).payee("Payee 1").dateTime(date(2011, 2, 7)).create();
         assertEquals(
                 "!Account\n"+
@@ -69,7 +69,7 @@ public class QifExportTest extends AbstractExportTest<QifExport, QifExportOption
                 "T-2100,6\n"+
                 "PPayee 1\n"+
                 "^\n",
-                exportAsString(c));
+                exportAsString(currency));
     }
 
     @Test
@@ -191,7 +191,7 @@ public class QifExportTest extends AbstractExportTest<QifExport, QifExportOption
                 "D02/01/2011\n" +
                 "T54.00\n" +
                 "^\n",
-                exportAsString(new long[]{a2.id}));
+                exportAsString(new long[]{a2.getId()}));
     }
 
     @Test
@@ -417,23 +417,23 @@ public class QifExportTest extends AbstractExportTest<QifExport, QifExportOption
     }
 
     private Category createCategory(String name, int type) {
-        Category c = new Category();
-        c.title = name;
-        c.type = type;
-        c.id = db.insertOrUpdate(c, new ArrayList<>());
-        return c;
+        Category category = new Category();
+        category.setTitle(name);
+        category.type = type;
+        category.setId(db.insertOrUpdate(category, new ArrayList<>()));
+        return category;
     }
 
     private Category createCategory(Category parent, String name) {
-        Category c = new Category();
-        c.title = name;
-        c.parent = parent;
-        c.id = db.insertOrUpdate(c, new ArrayList<>());
-        return c;
+        Category category = new Category();
+        category.setTitle(name);
+        category.parent = parent;
+        category.setId(db.insertOrUpdate(category, new ArrayList<>()));
+        return category;
     }
 
     private String exportAsString() throws Exception {
-        QifExportOptions options = new QifExportOptions(Currency.EMPTY, new SimpleDateFormat(QifExportOptions.DEFAULT_DATE_FORMAT), null, WhereFilter.empty(), false);
+        QifExportOptions options = new QifExportOptions(Currency.Companion.getEMPTY(), new SimpleDateFormat(QifExportOptions.DEFAULT_DATE_FORMAT), null, WhereFilter.empty(), false);
         return exportAsString(options);
     }
 
@@ -443,17 +443,17 @@ public class QifExportTest extends AbstractExportTest<QifExport, QifExportOption
     }
 
     private String exportAsString(String dateFormat) throws Exception {
-        QifExportOptions options = new QifExportOptions(Currency.EMPTY, new SimpleDateFormat(dateFormat), null, WhereFilter.empty(), false);
+        QifExportOptions options = new QifExportOptions(Currency.Companion.getEMPTY(), new SimpleDateFormat(dateFormat), null, WhereFilter.empty(), false);
         return exportAsString(options);
     }
 
     private String exportAsString(WhereFilter filter) throws Exception {
-        QifExportOptions options = new QifExportOptions(Currency.EMPTY, new SimpleDateFormat(QifExportOptions.DEFAULT_DATE_FORMAT), null, filter, false);
+        QifExportOptions options = new QifExportOptions(Currency.Companion.getEMPTY(), new SimpleDateFormat(QifExportOptions.DEFAULT_DATE_FORMAT), null, filter, false);
         return exportAsString(options);
     }
 
     private String exportAsString(long[] accounts) throws Exception {
-        QifExportOptions options = new QifExportOptions(Currency.EMPTY, new SimpleDateFormat(QifExportOptions.DEFAULT_DATE_FORMAT), accounts, WhereFilter.empty(), false);
+        QifExportOptions options = new QifExportOptions(Currency.Companion.getEMPTY(), new SimpleDateFormat(QifExportOptions.DEFAULT_DATE_FORMAT), accounts, WhereFilter.empty(), false);
         return exportAsString(options);
     }
 

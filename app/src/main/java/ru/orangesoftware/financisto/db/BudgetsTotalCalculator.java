@@ -51,17 +51,17 @@ public class BudgetsTotalCalculator {
         try {
             Map<Long, Category> categories = MyEntity.asMap(db.getCategoriesList(true));
             Map<Long, Project> projects = MyEntity.asMap(db.getAllProjectsList(true));
-            for (final Budget b : budgets) {
-                final long spent = db.fetchBudgetBalance(categories, projects, b);
-                final String categoriesText = getChecked(categories, b.categories);
-                final String projectsText = getChecked(projects, b.projects);
-                b.spent = spent;
+            for (final Budget budget : budgets) {
+                final long spent = db.fetchBudgetBalance(categories, projects, budget);
+                final String categoriesText = getChecked(categories, budget.getCategories());
+                final String projectsText = getChecked(projects, budget.getProjects());
+                budget.setSpent(spent);
                 if (handler != null) {
                     handler.post(() -> {
-                        b.updated = true;
-                        b.spent = spent;
-                        b.categoriesText = categoriesText;
-                        b.projectsText = projectsText;
+                        budget.setUpdated(true);
+                        budget.setSpent(spent);
+                        budget.setCategoriesText(categoriesText);
+                        budget.setProjectsText(projectsText);
                     });
                 }
             }
@@ -80,8 +80,8 @@ public class BudgetsTotalCalculator {
                 total = new Total(c, true);
                 totals.put(c, total);
             }
-            total.amount += b.spent;
-            total.balance += b.amount+b.spent;
+            total.amount += b.getSpent();
+            total.balance += b.getAmount() + b.getSpent();
         }
         Collection<Total> values = totals.values();
         return values.toArray(new Total[0]);
@@ -100,8 +100,8 @@ public class BudgetsTotalCalculator {
                 if (r == ExchangeRate.NA) {
                     return new Total(homeCurrency, TotalError.lastRateError(currency));
                 } else {
-                    amount = amount.add(convert(r, b.spent));
-                    balance = balance.add(convert(r, b.amount+b.spent));
+                    amount = amount.add(convert(r, b.getSpent()));
+                    balance = balance.add(convert(r, b.getAmount() + b.getSpent()));
                 }
             }
             Total total = new Total(homeCurrency, true);
@@ -115,11 +115,11 @@ public class BudgetsTotalCalculator {
     }
 
     private BigDecimal convert(ExchangeRate r, long spent) {
-        return BigDecimal.valueOf(r.rate*spent);
+        return BigDecimal.valueOf(r.rate * spent);
     }
 
     private <T extends MyEntity> String getChecked(Map<Long, T> entities, String s) {
-        long[] ids = MyEntity.splitIds(s);
+        Long[] ids = MyEntity.splitIds(s);
         if (ids == null) {
             return null;
         }
@@ -128,7 +128,7 @@ public class BudgetsTotalCalculator {
             if (e == null) {
                 return null;
             } else {
-                return e.title;
+                return e.getTitle();
             }
         } else {
             StringBuilder sb = new StringBuilder();
@@ -138,7 +138,7 @@ public class BudgetsTotalCalculator {
                     if (sb.length() > 0) {
                         sb.append(",");
                     }
-                    sb.append(e.title);
+                    sb.append(e.getTitle());
                 }
             }
             if (sb.length() == 0) {

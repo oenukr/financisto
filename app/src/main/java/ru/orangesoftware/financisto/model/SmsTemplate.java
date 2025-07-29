@@ -50,8 +50,8 @@ public class SmsTemplate extends MyEntity implements SortableEntity {
 
     public static SmsTemplate fromCursor(Cursor c) {
         SmsTemplate t = new SmsTemplate();
-        t.id = c.getLong(SmsTemplateColumns._id.ordinal());
-        t.title = c.getString(SmsTemplateColumns.title.ordinal());
+        t.setId(c.getLong(SmsTemplateColumns._id.ordinal()));
+        t.setTitle(c.getString(SmsTemplateColumns.title.ordinal()));
         t.template = c.getString(SmsTemplateColumns.template.ordinal());
         t.categoryId = c.getLong(SmsTemplateColumns.category_id.ordinal());
         t.accountId = c.getLong(SmsTemplateColumns.account_id.ordinal());

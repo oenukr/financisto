@@ -70,7 +70,7 @@ public class CategoryListAdapter2 extends BaseAdapter {
 		}
 		for (Category c : categories) {
 			list.add(c);
-			if (state.contains(c.id)) {
+			if (state.contains(c.getId())) {
 				addCategories(c.children);
 			}
 		}
@@ -88,7 +88,7 @@ public class CategoryListAdapter2 extends BaseAdapter {
 
 	@Override
 	public long getItemId(int position) {
-		return getItem(position).id;
+		return getItem(position).getId();
 	}
 
 	@Override
@@ -105,12 +105,12 @@ public class CategoryListAdapter2 extends BaseAdapter {
 		TextView title = h.title;
 		TextView label = h.label;
 		final Category c = getItem(position);
-		title.setText(c.title);
+		title.setText(c.getTitle());
 		int padding = levelPadding * (c.level - 1);
 		if (c.hasChildren()) {
-			span.setImageDrawable(state.contains(c.id) ? expandedDrawable : collapsedDrawable);
+			span.setImageDrawable(state.contains(c.getId()) ? expandedDrawable : collapsedDrawable);
 			span.setClickable(true);
-			span.setOnClickListener(v -> onListItemClick(c.id));
+			span.setOnClickListener(v -> onListItemClick(c.getId()));
 			span.setPadding(padding, 0, 0, 0);
 			span.setVisibility(View.VISIBLE);
 			padding += collapsedDrawable.getMinimumWidth();
@@ -120,7 +120,7 @@ public class CategoryListAdapter2 extends BaseAdapter {
 		}
 		title.setPadding(padding, 0, 0, 0);
 		label.setPadding(padding, 0, 0, 0);
-		long id = c.id;
+		long id = c.getId();
 		if (attributes != null && attributes.containsKey(id)) {
 			label.setText(attributes.get(id));
 			label.setVisibility(View.VISIBLE);
@@ -161,7 +161,7 @@ public class CategoryListAdapter2 extends BaseAdapter {
 			return;
 		}
 		for (Category c : categories) {
-			state.add(c.id);
+			state.add(c.getId());
 			expandAllCategories(c.children);
 		}		
 	}

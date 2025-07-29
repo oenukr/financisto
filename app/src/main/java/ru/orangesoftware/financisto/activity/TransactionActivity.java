@@ -106,7 +106,7 @@ public class TransactionActivity extends AbstractTransactionActivity {
             }
         }
         prepareUnsplitActionGrid();
-        currencyAsAccount.name = getString(R.string.original_currency_as_account);
+        currencyAsAccount.setName(getString(R.string.original_currency_as_account));
     }
 
     private void prepareUnsplitActionGrid() {
@@ -348,7 +348,7 @@ public class TransactionActivity extends AbstractTransactionActivity {
 
     private void updateTransactionFromUI() {
         updateTransactionFromUI(transaction);
-        transaction.fromAccountId = selectedAccount.id;
+        transaction.fromAccountId = selectedAccount.getId();
         long amount = rateView.getFromAmount();
         if (isUpdateBalanceMode) {
             amount -= currentBalance;
@@ -374,7 +374,7 @@ public class TransactionActivity extends AbstractTransactionActivity {
     }
 
     private boolean isDifferentCurrency() {
-        return selectedOriginCurrencyId > 0 && selectedOriginCurrencyId != selectedAccount.currency.id;
+        return selectedOriginCurrencyId > 0 && selectedOriginCurrencyId != selectedAccount.getCurrency().getId();
     }
 
     @Override
@@ -382,7 +382,7 @@ public class TransactionActivity extends AbstractTransactionActivity {
         Account a = super.selectAccount(accountId, selectLast);
         if (a != null) {
             if (selectLast && !isShowPayee && isRememberLastCategory) {
-                categorySelector.selectCategory(a.lastCategoryId);
+                categorySelector.selectCategory(a.getLastCategoryId());
             }
         }
         if (selectedOriginCurrencyId > 0) {
@@ -456,7 +456,7 @@ public class TransactionActivity extends AbstractTransactionActivity {
         selectedOriginCurrencyId = selectedId;
         if (selectedId == -1) {
             if (selectedAccount != null) {
-                if (selectedAccount.currency.id == rateView.getCurrencyToId()) {
+                if (selectedAccount.getCurrency().getId() == rateView.getCurrencyToId()) {
                     rateView.setFromAmount(rateView.getToAmount());
                 }
             }
@@ -466,21 +466,21 @@ public class TransactionActivity extends AbstractTransactionActivity {
             Currency currency = CurrencyCache.getCurrency(db, selectedId);
             rateView.selectCurrencyFrom(currency);
             if (selectedAccount != null) {
-                if (selectedId == selectedAccount.currency.id) {
+                if (selectedId == selectedAccount.getCurrency().getId()) {
                     if (selectedId == rateView.getCurrencyToId()) {
                         rateView.setFromAmount(toAmount);
                     }
                     selectAccountCurrency();
                     return;
                 }
-                rateView.selectCurrencyTo(selectedAccount.currency);
+                rateView.selectCurrencyTo(selectedAccount.getCurrency());
             }
-            currencyText.setText(currency.name);
+            currencyText.setText(currency.getName());
         }
     }
 
     private void selectAccountCurrency() {
-        rateView.selectSameCurrency(selectedAccount != null ? selectedAccount.currency : Currency.EMPTY);
+        rateView.selectSameCurrency(selectedAccount != null ? selectedAccount.getCurrency() : Currency.Companion.getEMPTY());
         currencyText.setText(R.string.original_currency_as_account);
     }
 
@@ -602,7 +602,7 @@ public class TransactionActivity extends AbstractTransactionActivity {
     private String createSplitTransactionTitle(Transaction split) {
         StringBuilder sb = new StringBuilder();
         Category category = db.getCategoryWithParent(split.categoryId);
-        sb.append(category.title);
+        sb.append(category.getTitle());
         if (isNotEmpty(split.note)) {
             sb.append(" (").append(split.note).append(")");
         }
@@ -613,7 +613,7 @@ public class TransactionActivity extends AbstractTransactionActivity {
         Account fromAccount = db.getAccount(split.fromAccountId);
         Account toAccount = db.getAccount(split.toAccountId);
         u.setTransferTitleText(label, fromAccount, toAccount);
-        u.setTransferAmountText(data, fromAccount.currency, split.fromAmount, toAccount.currency, split.toAmount);
+        u.setTransferAmountText(data, fromAccount.getCurrency(), split.fromAmount, toAccount.getCurrency(), split.toAmount);
     }
 
     private void deleteSplit(View v) {
@@ -637,9 +637,9 @@ public class TransactionActivity extends AbstractTransactionActivity {
             return CurrencyCache.getCurrency(db, selectedOriginCurrencyId);
         }
         if (selectedAccount != null) {
-            return selectedAccount.currency;
+            return selectedAccount.getCurrency();
         }
-        return Currency.EMPTY;
+        return Currency.Companion.getEMPTY();
     }
 
     private static class ActivityState implements Serializable {

@@ -58,8 +58,8 @@ public class OpenExchangeRatesDownloader extends AbstractMultipleRatesDownloader
 
     private ExchangeRate createRate(Currency fromCurrency, Currency toCurrency) {
         ExchangeRate r = new ExchangeRate();
-        r.fromCurrencyId = fromCurrency.id;
-        r.toCurrencyId = toCurrency.id;
+        r.fromCurrencyId = fromCurrency.getId();
+        r.toCurrencyId = toCurrency.getId();
         return r;
     }
 
@@ -99,8 +99,8 @@ public class OpenExchangeRatesDownloader extends AbstractMultipleRatesDownloader
 
     private void updateRate(JSONObject json, ExchangeRate exchangeRate, Currency fromCurrency, Currency toCurrency) throws JSONException {
         JSONObject rates = json.getJSONObject("rates");
-        double usdFrom = rates.getDouble(fromCurrency.name);
-        double usdTo = rates.getDouble(toCurrency.name);
+        double usdFrom = rates.getDouble(fromCurrency.getName());
+        double usdTo = rates.getDouble(toCurrency.getName());
         exchangeRate.rate = usdTo * (1 / usdFrom);
         exchangeRate.date = 1000*json.optLong("timestamp", System.currentTimeMillis());
     }

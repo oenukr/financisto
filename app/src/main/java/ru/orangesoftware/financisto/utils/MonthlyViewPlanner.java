@@ -58,7 +58,7 @@ public class MonthlyViewPlanner extends AbstractPlanner {
     private static WhereFilter createMonthlyViewFilter(Date startDate, Date endDate, Account account) {
         WhereFilter filter = WhereFilter.empty();
         filter.put(new DateTimeCriteria(startDate.getTime(), endDate.getTime()));
-        filter.eq(DatabaseHelper.BlotterColumns.from_account_id.name(), String.valueOf(account.id));
+        filter.eq(DatabaseHelper.BlotterColumns.from_account_id.name(), String.valueOf(account.getId()));
         filter.eq(Criteria.raw("(" + DatabaseHelper.TransactionColumns.parent_id + "=0 OR " + DatabaseHelper.BlotterColumns.is_transfer + "=-1)"));
         filter.asc(DatabaseHelper.BlotterColumns.datetime.name());
         return filter;
@@ -71,16 +71,16 @@ public class MonthlyViewPlanner extends AbstractPlanner {
 
     @Override
     protected boolean includeScheduledTransaction(TransactionInfo transaction) {
-        return transaction.fromAccount.id == account.id;
+        return transaction.fromAccount.getId() == account.getId();
     }
 
     @Override
     protected boolean includeScheduledSplitTransaction(TransactionInfo split) {
-        return split.isTransfer() && split.toAccount.id == account.id;
+        return split.isTransfer() && split.toAccount.getId() == account.getId();
     }
 
     private TransactionInfo inverseTransaction(TransactionInfo transaction) {
-        if (transaction.isTransfer() && transaction.toAccount.id == account.id) {
+        if (transaction.isTransfer() && transaction.toAccount.getId() == account.getId()) {
             TransactionInfo inverse = transaction.clone();
             inverse.fromAccount = transaction.toAccount;
             inverse.fromAmount = transaction.toAmount;
@@ -123,7 +123,7 @@ public class MonthlyViewPlanner extends AbstractPlanner {
     @Override
     protected Total[] calculateTotals(List<TransactionInfo> transactions) {
         Total[] totals = new Total[1];
-        totals[0] = new Total(account.currency);
+        totals[0] = new Total(account.getCurrency());
         totals[0].balance = calculateTotal(transactions);
         return totals;
     }
@@ -147,9 +147,9 @@ public class MonthlyViewPlanner extends AbstractPlanner {
     }
 
     private long getAmount(TransactionInfo t) {
-        if (t.fromAccount.id == account.id) {
+        if (t.fromAccount.getId() == account.getId()) {
             return t.fromAmount;
-        } else if (t.isTransfer() && t.toAccount.id == account.id) {
+        } else if (t.isTransfer() && t.toAccount.getId() == account.getId()) {
             return t.toAmount;
         }
         return 0;

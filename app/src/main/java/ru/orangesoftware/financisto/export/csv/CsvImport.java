@@ -54,8 +54,8 @@ public class CsvImport {
         this.db = db;
         this.options = options;
         this.account = db.getAccount(options.getSelectedAccountId());
-        this.decimalSeparator = options.getCurrency().decimalSeparator.charAt(1);
-        this.groupSeparator = options.getCurrency().groupSeparator.charAt(1);
+        this.decimalSeparator = options.getCurrency().getDecimalSeparator().charAt(1);
+        this.groupSeparator = options.getCurrency().getGroupSeparator().charAt(1);
         this.context = context;
     }
 
@@ -89,8 +89,8 @@ public class CsvImport {
             String project = transaction.getProject();
             if (isNewProject(map, project)) {
                 Project p = new Project();
-                p.title = project;
-                p.isActive = true;
+                p.setTitle(project);
+                p.setActive(true);
                 db.saveOrUpdate(p);
                 map.put(project, p);
             }
@@ -108,7 +108,7 @@ public class CsvImport {
             String payee = transaction.getPayee();
             if (isNewEntity(map, payee)) {
                 Payee p = new Payee();
-                p.title = payee;
+                p.setTitle(payee);
                 db.saveOrUpdate(p);
                 map.put(payee, p);
             }
@@ -134,12 +134,12 @@ public class CsvImport {
             String currency = transaction.getOriginalCurrency();
             if (isNewEntity(map, currency)) {
                 Currency c = new Currency();
-                c.name = currency;
-                c.symbol = currency;
-                c.title = currency;
-                c.decimalSeparator = Currency.EMPTY.decimalSeparator;
-                c.groupSeparator = Currency.EMPTY.groupSeparator;
-                c.isDefault = false;
+                c.setName(currency);
+                c.setSymbol(currency);
+                c.setTitle(currency);
+                c.setDecimalSeparator(Currency.Companion.getEMPTY().getDecimalSeparator());
+                c.setGroupSeparator(Currency.Companion.getEMPTY().getGroupSeparator());
+                c.setDefault(false);
                 db.saveOrUpdate(c);
                 map.put(currency, c);
             }
@@ -195,7 +195,7 @@ public class CsvImport {
             while ((line = reader.readLine()) != null) {
                 if (parseLine) {
                     CsvTransaction transaction = new CsvTransaction();
-                    transaction.setFromAccountId(this.account.id);
+                    transaction.setFromAccountId(this.account.getId());
                     int countOfColumns = line.size();
                     for (int i = 0; i < countOfColumns; i++) {
                         String transactionField = myTrim(header.get(i));
@@ -237,7 +237,7 @@ public class CsvImport {
                                             transaction.setProject(fieldValue);
                                             break;
                                         case "currency":
-                                            if (!account.currency.name.equals(fieldValue)) {
+                                            if (!account.getCurrency().getName().equals(fieldValue)) {
                                                 throw new ImportExportException(R.string.import_wrong_currency_2, null, fieldValue);
                                             }
                                             transaction.setCurrency(fieldValue);

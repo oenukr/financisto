@@ -73,7 +73,7 @@ public class DatabaseAdapterTest extends AbstractDbTest {
         TransactionBuilder.withDb(db).account(a1).amount(1000).payee("Payee1").category(categoriesMap.get("A1")).create();
         //then
         Payee p = db.findEntityByTitle(Payee.class, "Payee1");
-        assertEquals(categoriesMap.get("A1").id, p.lastCategoryId);
+        assertEquals(categoriesMap.get("A1").getId(), p.lastCategoryId);
     }
 
     @Test
@@ -99,7 +99,7 @@ public class DatabaseAdapterTest extends AbstractDbTest {
         assertTrue(db.singleCurrencyOnly());
 
         // two accounts with the same currency
-        AccountBuilder.withDb(db).currency(a1.currency).title("Account2").create();
+        AccountBuilder.withDb(db).currency(a1.getCurrency()).title("Account2").create();
         assertTrue(db.singleCurrencyOnly());
 
         //another account with a different currency, but not included into totals
@@ -118,7 +118,7 @@ public class DatabaseAdapterTest extends AbstractDbTest {
 
     @Test
     public void should_not_return_split_category_as_parent_when_editing_a_category() {
-        List<Category> list = db.getCategoriesWithoutSubtreeAsList(categoriesMap.get("A").id);
+        List<Category> list = db.getCategoriesWithoutSubtreeAsList(categoriesMap.get("A").getId());
         for (Category category : list) {
             assertFalse("Should not be split", category.isSplit());
         }
@@ -126,10 +126,10 @@ public class DatabaseAdapterTest extends AbstractDbTest {
 
     @Test
     public void should_return_only_valid_parent_categories_when_editing_a_category() {
-        List<Category> list = db.getCategoriesWithoutSubtreeAsList(categoriesMap.get("A").id);
+        List<Category> list = db.getCategoriesWithoutSubtreeAsList(categoriesMap.get("A").getId());
         assertEquals(2, list.size());
-        assertEquals(Category.NO_CATEGORY_ID, list.get(0).id);
-        assertEquals(categoriesMap.get("B").id, list.get(1).id);
+        assertEquals(Category.NO_CATEGORY_ID, list.get(0).getId());
+        assertEquals(categoriesMap.get("B").getId(), list.get(1).getId());
     }
 
     @Test
@@ -215,16 +215,16 @@ public class DatabaseAdapterTest extends AbstractDbTest {
         TransactionBuilder.withDb(db).dateTime(DateTime.date(2012, 5, 21).at(12, 0, 12, 345)).account(a2).amount(10).makeTemplate().create();
         TransactionBuilder.withDb(db).dateTime(DateTime.date(2012, 5, 20).at(0, 0, 0, 0)).account(a2).amount(-20).create();
         //then
-        assertEquals(DateTime.date(2012, 5, 23).at(23, 59, 59, 999).asLong(), db.findLatestTransactionDate(a1.id));
-        assertEquals(DateTime.date(2012, 5, 25).at(17, 30, 45, 0).asLong(), db.findLatestTransactionDate(a2.id));
-        assertEquals(DateTime.date(2012, 5, 22).at(12, 30, 0, 0).asLong(), db.findLatestTransactionDate(a3.id));
-        assertEquals(0, db.findLatestTransactionDate(a4.id));
+        assertEquals(DateTime.date(2012, 5, 23).at(23, 59, 59, 999).asLong(), db.findLatestTransactionDate(a1.getId()));
+        assertEquals(DateTime.date(2012, 5, 25).at(17, 30, 45, 0).asLong(), db.findLatestTransactionDate(a2.getId()));
+        assertEquals(DateTime.date(2012, 5, 22).at(12, 30, 0, 0).asLong(), db.findLatestTransactionDate(a3.getId()));
+        assertEquals(0, db.findLatestTransactionDate(a4.getId()));
     }
 
     MyEntity[] systemEntities = new MyEntity[]{
             Category.noCategory(),
             Category.splitCategory(),
-            Attribute.deleteAfterExpired(),
+            Attribute.Companion.deleteAfterExpired(),
             Project.noProject(),
             MyLocation.currentLocation()
     };
@@ -237,18 +237,18 @@ public class DatabaseAdapterTest extends AbstractDbTest {
         db.restoreSystemEntities();
         //then
         for (MyEntity e : systemEntities) {
-            MyEntity myEntity = db.get(e.getClass(), e.id);
+            MyEntity myEntity = db.get(e.getClass(), e.getId());
             assertNotNull(e.getClass() + ":" + e.getTitle(), myEntity);
         }
         Category c = db.get(Category.class, Category.NO_CATEGORY_ID);
         assertNotNull(c);
-        assertEquals("<NO_CATEGORY>", c.title);
+        assertEquals("<NO_CATEGORY>", c.getTitle());
     }
 
     private void givenSystemEntitiesHaveBeenDeleted() {
         for (MyEntity e : systemEntities) {
-            db.delete(e.getClass(), e.id);
-            assertNull(db.get(e.getClass(), e.id));
+            db.delete(e.getClass(), e.getId());
+            assertNull(db.get(e.getClass(), e.getId()));
         }
     }
 
@@ -260,14 +260,14 @@ public class DatabaseAdapterTest extends AbstractDbTest {
 
         final List<Long> res = db.findAccountsByNumber("5431");
         assertEquals(1, res.size());
-        assertEquals((Long) account.id, res.get(0));
+        assertEquals((Long) account.getId(), res.get(0));
     }
 
     private String fetchFirstPayee(String s) {
         try (Cursor c = db.getAllPayeesLike(s)) {
             if (c.moveToFirst()) {
-                Payee p = EntityManager.loadFromCursor(c, Payee.class);
-                return p.title;
+                Payee payee = EntityManager.loadFromCursor(c, Payee.class);
+                return payee.getTitle();
             }
             return null;
         }

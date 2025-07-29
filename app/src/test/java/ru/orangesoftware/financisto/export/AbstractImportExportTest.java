@@ -1,40 +1,40 @@
 package ru.orangesoftware.financisto.export;
 
+import static org.junit.Assert.assertNotNull;
+
 import ru.orangesoftware.financisto.db.AbstractDbTest;
 import ru.orangesoftware.financisto.model.Account;
 import ru.orangesoftware.financisto.model.AccountType;
 import ru.orangesoftware.financisto.model.Currency;
 import ru.orangesoftware.financisto.test.CurrencyBuilder;
 
-import static org.junit.Assert.assertNotNull;
-
 public abstract class AbstractImportExportTest extends AbstractDbTest {
 
     protected Account createFirstAccount() {
         Currency c = createCurrency("SGD");
-        Account a = new Account();
-        a.title = "My Cash Account";
-        a.type = AccountType.CASH.name();
-        a.currency = c;
-        a.totalAmount = 0;
-        a.sortOrder = 100;
-        a.note = "AAA\nBBB:CCC";
-        db.saveAccount(a);
-        assertNotNull(db.load(Account.class, a.id));
-        return a;
+        Account account = new Account();
+        account.setTitle("My Cash Account");
+        account.setType(AccountType.CASH.name());
+        account.setCurrency(c);
+        account.setTotalAmount(0);
+        account.setSortOrder(100);
+        account.setNote("AAA\nBBB:CCC");
+        db.saveAccount(account);
+        assertNotNull(db.load(Account.class, account.getId()));
+        return account;
     }
 
     protected Account createSecondAccount() {
-        Currency c = createCurrency("CZK");
-        Account a = new Account();
-        a.title = "My Bank Account";
-        a.type = AccountType.BANK.name();
-        a.currency = c;
-        a.totalAmount = 0;
-        a.sortOrder = 50;
-        db.saveAccount(a);
-        assertNotNull(db.load(Account.class, a.id));
-        return a;
+        Currency currency = createCurrency("CZK");
+        Account account = new Account();
+        account.setTitle("My Bank Account");
+        account.setType(AccountType.BANK.name());
+        account.setCurrency(currency);
+        account.setTotalAmount(0);
+        account.setSortOrder(50);
+        db.saveAccount(account);
+        assertNotNull(db.load(Account.class, account.getId()));
+        return account;
     }
 
     private Currency createCurrency(String currency) {
@@ -44,7 +44,7 @@ public abstract class AbstractImportExportTest extends AbstractDbTest {
                 .separators("''", "'.'")
                 .symbol("S$")
                 .create();
-        assertNotNull(db.load(Currency.class, c.id));
+        assertNotNull(db.load(Currency.class, c.getId()));
         return c;
     }
 

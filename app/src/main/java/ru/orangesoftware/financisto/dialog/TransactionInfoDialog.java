@@ -92,18 +92,18 @@ public class TransactionInfoDialog {
 
     private void createLayoutForTransaction(TransactionInfo ti, LinearLayout layout) {
         Account fromAccount = ti.fromAccount;
-        AccountType formAccountType = AccountType.valueOf(ti.fromAccount.type);
-        add(layout, R.string.account, ti.fromAccount.title, formAccountType);
+        AccountType formAccountType = AccountType.valueOf(ti.fromAccount.getType());
+        add(layout, R.string.account, ti.fromAccount.getTitle(), formAccountType);
         if (ti.payee != null) {
-            add(layout, R.string.payee, ti.payee.title);
+            add(layout, R.string.payee, ti.payee.getTitle());
         }
-        add(layout, R.string.category, ti.category.title);
+        add(layout, R.string.category, ti.category.getTitle());
         if (ti.originalCurrency != null) {
             TextView amount = add(layout, R.string.original_amount, "");
             u.setAmountText(amount, ti.originalCurrency, ti.originalFromAmount, true);
         }
         TextView amount = add(layout, R.string.amount, "");
-        u.setAmountText(amount, ti.fromAccount.currency, ti.fromAmount, true);
+        u.setAmountText(amount, ti.fromAccount.getCurrency(), ti.fromAmount, true);
         if (ti.category.isSplit()) {
             List<Transaction> splits = db.getSplitsForTransaction(ti.id);
             for (Transaction split : splits) {
@@ -118,38 +118,38 @@ public class TransactionInfoDialog {
             String title = u.getTransferTitleText(fromAccount, toAccount);
             LinearLayout topLayout = add(layout, title, "");
             TextView amountView = topLayout.findViewById(R.id.data);
-            u.setTransferAmountText(amountView, fromAccount.currency, split.fromAmount, toAccount.currency, split.toAmount);
+            u.setTransferAmountText(amountView, fromAccount.getCurrency(), split.fromAmount, toAccount.getCurrency(), split.toAmount);
             topLayout.setPadding(splitPadding, 0, 0, 0);
         } else {
             Category c = db.getCategoryWithParent(split.categoryId);
             StringBuilder sb = new StringBuilder();
-            if (c != null && c.id > 0) {
-                sb.append(c.title);
+            if (c != null && c.getId() > 0) {
+                sb.append(c.getTitle());
             }
             if (isNotEmpty(split.note)) {
                 sb.append(" (").append(split.note).append(")");
             }
             LinearLayout topLayout = add(layout, sb.toString(), "");
             TextView amountView = topLayout.findViewById(R.id.data);
-            u.setAmountText(amountView, fromAccount.currency, split.fromAmount, true);
+            u.setAmountText(amountView, fromAccount.getCurrency(), split.fromAmount, true);
             topLayout.setPadding(splitPadding, 0, 0, 0);
         }
     }
 
     private void createLayoutForTransfer(TransactionInfo ti, LinearLayout layout) {
-        AccountType fromAccountType = AccountType.valueOf(ti.fromAccount.type);
-        add(layout, R.string.account_from, ti.fromAccount.title, fromAccountType);
+        AccountType fromAccountType = AccountType.valueOf(ti.fromAccount.getType());
+        add(layout, R.string.account_from, ti.fromAccount.getTitle(), fromAccountType);
         TextView amountView = add(layout, R.string.amount_from, "");
-        u.setAmountText(amountView, ti.fromAccount.currency, ti.fromAmount, true);
-        AccountType toAccountType = AccountType.valueOf(ti.toAccount.type);
-        add(layout, R.string.account_to, ti.toAccount.title, toAccountType);
+        u.setAmountText(amountView, ti.fromAccount.getCurrency(), ti.fromAmount, true);
+        AccountType toAccountType = AccountType.valueOf(ti.toAccount.getType());
+        add(layout, R.string.account_to, ti.toAccount.getTitle(), toAccountType);
         amountView = add(layout, R.string.amount_to, "");
-        u.setAmountText(amountView, ti.toAccount.currency, ti.toAmount, true);
+        u.setAmountText(amountView, ti.toAccount.getCurrency(), ti.toAmount, true);
         if (MyPreferences.isShowPayeeInTransfers(context)) {
-            add(layout, R.string.payee, ti.payee != null ? ti.payee.title : "");
+            add(layout, R.string.payee, ti.payee != null ? ti.payee.getTitle() : "");
         }
         if (MyPreferences.isShowCategoryInTransferScreen(context)) {
-            add(layout, R.string.category, ti.category != null ? ti.category.title : "");
+            add(layout, R.string.category, ti.category != null ? ti.category.getTitle() : "");
         }
     }
 
@@ -163,8 +163,8 @@ public class TransactionInfoDialog {
         }
 
         Project project = ti.project;
-        if (project != null && project.id > 0) {
-            add(layout, R.string.project, project.title);
+        if (project != null && project.getId() > 0) {
+            add(layout, R.string.project, project.getTitle());
         }
 
         if (!Utils.isEmpty(ti.note)) {
@@ -173,8 +173,8 @@ public class TransactionInfoDialog {
 
         MyLocation location = ti.location;
         String locationName;
-        if (location != null && location.id > 0) {
-            locationName = location.title + (location.resolvedAddress != null ? " (" + location.resolvedAddress + ")" : "");
+        if (location != null && location.getId() > 0) {
+            locationName = location.getTitle() + (location.resolvedAddress != null ? " (" + location.resolvedAddress + ")" : "");
             add(layout, R.string.location, locationName);
         }
     }

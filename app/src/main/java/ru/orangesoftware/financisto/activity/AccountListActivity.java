@@ -121,7 +121,7 @@ public class AccountListActivity extends AbstractListActivity {
         accountActionGrid.addQuickAction(new MyQuickAction(this, R.drawable.ic_action_transfer, R.string.transfer));
         accountActionGrid.addQuickAction(new MyQuickAction(this, R.drawable.ic_action_tick, R.string.balance));
         accountActionGrid.addQuickAction(new MyQuickAction(this, R.drawable.ic_action_flash, R.string.delete_old_transactions));
-        if (a.isActive) {
+        if (a.isActive()) {
             accountActionGrid.addQuickAction(new MyQuickAction(this, R.drawable.ic_action_lock_closed, R.string.close_account));
         } else {
             accountActionGrid.addQuickAction(new MyQuickAction(this, R.drawable.ic_action_lock_open, R.string.reopen_account));
@@ -244,8 +244,8 @@ public class AccountListActivity extends AbstractListActivity {
         Account a = db.getAccount(id);
         if (a != null) {
             Intent intent = new Intent(this, TransactionActivity.class);
-            intent.putExtra(TransactionActivity.ACCOUNT_ID_EXTRA, a.id);
-            intent.putExtra(TransactionActivity.CURRENT_BALANCE_EXTRA, a.totalAmount);
+            intent.putExtra(TransactionActivity.ACCOUNT_ID_EXTRA, a.getId());
+            intent.putExtra(TransactionActivity.CURRENT_BALANCE_EXTRA, a.getTotalAmount());
             startActivityForResult(intent, 0);
             return true;
         }
@@ -312,7 +312,7 @@ public class AccountListActivity extends AbstractListActivity {
         if (account != null) {
             Intent intent = new Intent(AccountListActivity.this, BlotterActivity.class);
             Criteria.eq(BlotterFilter.FROM_ACCOUNT_ID, String.valueOf(id))
-                    .toIntent(account.title, intent);
+                    .toIntent(account.getTitle(), intent);
             intent.putExtra(BlotterFilterActivity.IS_ACCOUNT_FILTER, true);
             startActivityForResult(intent, VIEW_ACCOUNT_REQUEST);
         }
@@ -334,7 +334,7 @@ public class AccountListActivity extends AbstractListActivity {
 
     private void closeOrOpenAccount() {
         Account a = db.getAccount(selectedId);
-        if (a.isActive) {
+        if (a.isActive()) {
             new AlertDialog.Builder(this)
                     .setMessage(R.string.close_account_confirm)
                     .setPositiveButton(R.string.yes, (arg0, arg1) -> flipAccountActive(a))
@@ -346,7 +346,7 @@ public class AccountListActivity extends AbstractListActivity {
     }
 
     private void flipAccountActive(Account a) {
-        a.isActive = !a.isActive;
+        a.setActive(!a.isActive());
         db.saveAccount(a);
         recreateCursor();
     }

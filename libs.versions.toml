@@ -1,66 +1,76 @@
 [versions]
 accompanist = "0.36.0"
-android_tools = "8.11.0-alpha04"
-datastore = "1.1.4"
+android_tools = "8.13.0-alpha02"
+datastore = "1.1.7"
 detekt = "1.23.8"
+espresso-core = "3.6.1"
 glide = "4.16.0"
 glide-compose = "1.0.0-beta01"
-kotlin = "2.1.20"
-kotlinx-serialization = "1.8.1"
-workmanager = "2.10.0"
 junit = "4.13.2"
 junit-version = "1.2.1"
-espresso-core = "3.6.1"
+kotlin = "2.2.0"
+kotlinx-serialization = "1.9.0"
 material = "1.12.0"
+room = "2.7.2"
+sqlite = "2.5.2"
 test-runner = "1.6.2"
 test-core = "1.6.1"
+workmanager = "2.10.2"
 
 [libraries]
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanist" }
 accompanist-webview = { module = "com.google.accompanist:accompanist-webview", version.ref = "accompanist" }
 activity-compose = { module = "androidx.activity:activity-compose", version = "1.10.1" }
 androidannotations-api = { module = "org.androidannotations:androidannotations-api", version = "4.8.0" }
-appcompat = { module = "androidx.appcompat:appcompat", version = "1.7.0" }
+appcompat = { module = "androidx.appcompat:appcompat", version = "1.7.1" }
 biometric = { module = "androidx.biometric:biometric", version = "1.1.0" }
 collection-ktx = { module = "androidx.collection:collection-ktx", version = "1.5.0" }
-commons-io = { module = "commons-io:commons-io", version = "2.18.0" }
-core-ktx = { module = "androidx.core:core-ktx", version = "1.15.0" }
+commons-io = { module = "commons-io:commons-io", version = "2.20.0" }
+core-ktx = { module = "androidx.core:core-ktx", version = "1.16.0" }
 datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
 datastore-preferences-rx = { module = "androidx.datastore:datastore-preferences-rxjava3", version.ref = "datastore" }
+desugar-jdk-libs = { module = "com.android.tools:desugar_jdk_libs", version = "2.1.5" }
 detekt-formatting = { module = "io.gitlab.arturbosch.detekt:detekt-formatting", version.ref = "detekt" }
 eventbus = { module = "org.greenrobot:eventbus", version = "3.3.1" }
 glide = { module = "com.github.bumptech.glide:glide", version.ref = "glide" }
 glide-compose = { module = "com.github.bumptech.glide:compose", version.ref = "glide-compose" }
-google-play-base = { module = "com.google.android.gms:play-services-base", version = "18.6.0" }
+google-play-base = { module = "com.google.android.gms:play-services-base", version = "18.7.2" }
 google-play-drive = { module = "com.google.android.gms:play-services-drive", version = "17.0.0" }
 google-play-plus = { module = "com.google.android.gms:play-services-plus", version = "17.0.0" }
 java-collections = { module = "net.sf.trove4j:core", version = "3.1.0" }
-koala-chart = { module = "io.github.koalaplot:koalaplot-core", version = "0.8.0" }
-koin-bom = { module = "io.insert-koin:koin-bom", version = "4.1.0-Beta6" }
+koala-chart = { module = "io.github.koalaplot:koalaplot-core", version = "0.9.0" }
+koin-bom = { module = "io.insert-koin:koin-bom", version = "4.1.0" }
 koin-android = { module = "io.insert-koin:koin-android" }
 koin-android-compat = { module = "io.insert-koin:koin-android-compat" }
 koin-compose = { module = "io.insert-koin:koin-androidx-compose" }
 koin-core = { module = "io.insert-koin:koin-core" }
 koin-test = { module = "io.insert-koin:koin-test" }
-kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version = "0.6.2" }
+kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version = "0.7.1" }
 kotlinx-serialization-core = { module = "org.jetbrains.kotlinx:kotlinx-serialization-core", version.ref = "kotlinx-serialization" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 legacy-support = { module = "androidx.legacy:legacy-support-v4", version = "1.0.0" }
-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version = "2.8.7" }
+lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version = "2.9.2" }
 materialdatetimepicker = { module = "com.wdullaer:materialdatetimepicker", version = "4.2.3" }
-okio = { module = "com.squareup.okio:okio", version = "3.10.2" }
-okhttp = { module = "com.squareup.okhttp3:okhttp", version = "4.12.0" }
+okio = { module = "com.squareup.okio:okio", version = "3.15.0" }
+okhttp = { module = "com.squareup.okhttp3:okhttp", version = "5.1.0" }
 reactive-streams = { module = "org.reactivestreams:reactive-streams", version = "1.0.4" }
+room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
+room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
+room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+room-rxjava2 = { module = "androidx.room:room-rxjava2", version.ref = "room" }
+room-rxjava3 = { module = "androidx.room:room-rxjava3", version.ref = "room" }
+room-testing = { module = "androidx.room:room-testing", version.ref = "room" }
 rximagepicker = { module = "com.github.MLSDev:RxImagePicker", version = "master" }
 rxjava2-rxandroid = { module = "io.reactivex.rxjava2:rxandroid", version = "2.1.1"}
 rxjava2-rxjava = { module = "io.reactivex.rxjava2:rxjava", version = "2.2.21"}
 rxjava3-bridge = { module = "com.github.akarnokd:rxjava3-bridge", version = "3.0.2" }
 rxjava3-rxandroid = { module = "io.reactivex.rxjava3:rxandroid", version = "3.0.2" }
-rxjava3-rxjava = { module = "io.reactivex.rxjava3:rxjava", version = "3.1.10" }
-sqlite = { module = "androidx.sqlite:sqlite", version = "2.5.0-rc03" }
-sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version = "2.5.0-rc03" }
-sqlite-framework = { module = "androidx.sqlite:sqlite-framework", version = "2.5.0-rc03" }
-sqlite-ktx = { module = "androidx.sqlite:sqlite-ktx", version = "2.5.0-rc03" }
+rxjava3-rxjava = { module = "io.reactivex.rxjava3:rxjava", version = "3.1.11" }
+sqlite = { module = "androidx.sqlite:sqlite", version.ref = "sqlite" }
+sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
+sqlite-framework = { module = "androidx.sqlite:sqlite-framework", version.ref = "sqlite" }
+sqlite-ktx = { module = "androidx.sqlite:sqlite-ktx", version.ref = "sqlite" }
 timber = { module = "com.jakewharton.timber:timber", version = "5.0.1" }
 workmanager = { module = "androidx.work:work-runtime", version.ref = "workmanager" }
 workmanager-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workmanager" }
@@ -75,11 +85,13 @@ test-core = { group = "androidx.test", name = "core", version.ref = "test-core" 
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "android_tools" }
+android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "android_tools" }
 android-library = { id = "com.android.library", version.ref = "android_tools" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt"}
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kover = { id = "org.jetbrains.kotlinx.kover", version = "0.9.1" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
-android-kotlin-multiplatform-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "android_tools" }
+ksp = { id = "com.google.devtools.ksp", version = "2.2.0-2.0.2" }
 plugin-serialization = { id = "plugin.serialization", version.ref = "kotlin" }
+room-gradle-plugin = { id = "androidx.room", version.ref = "room" }

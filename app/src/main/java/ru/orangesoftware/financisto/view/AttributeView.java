@@ -52,7 +52,7 @@ public abstract class AttributeView implements OnClickListener {
 
     public TransactionAttribute newTransactionAttribute() {
         TransactionAttribute ta = new TransactionAttribute(
-                attribute.id,
+                attribute.getId(),
                 null,
                 value()
         );
@@ -76,7 +76,7 @@ class TextAttributeView extends AttributeView {
         if (value != null) {
             editText.setText(value);
         }
-        return inflater.new EditBuilder(layout, editText).withLabel(attribute.title).create();
+        return inflater.new EditBuilder(layout, editText).withLabel(attribute.getTitle()).create();
     }
 
     @Override
@@ -102,7 +102,7 @@ class NumberAttributeView extends AttributeView {
         if (value != null) {
             editText.setText(value);
         }
-        return inflater.new EditBuilder(layout, editText).withLabel(attribute.title).create();
+        return inflater.new EditBuilder(layout, editText).withLabel(attribute.getTitle()).create();
     }
 
     @Override
@@ -119,7 +119,7 @@ class ListAttributeView extends AttributeView {
 
     public ListAttributeView(Context context, Attribute attribute) {
         super(context, attribute);
-        items = attribute.listValues != null ? attribute.listValues.split(";") : new String[0];
+        items = attribute.getListValues() != null ? attribute.getListValues().split(";") : new String[0];
     }
 
     @Override
@@ -135,7 +135,7 @@ class ListAttributeView extends AttributeView {
                 }
             }
         }
-        return b.withLabel(attribute.title).create();
+        return b.withLabel(attribute.getTitle()).create();
     }
 
     @Override
@@ -148,7 +148,7 @@ class ListAttributeView extends AttributeView {
                     TextView text = view.findViewById(R.id.data);
                     text.setText(items[which]);
                 })
-                .setTitle(attribute.title)
+                .setTitle(attribute.getTitle())
                 .show();
 
     }
@@ -174,13 +174,13 @@ class CheckBoxAttributeView extends AttributeView {
         checked = Boolean.parseBoolean(value);
         b.withCheckbox(checked);
         b.withId(R.id.click_attribute, this);
-        b.withLabel(attribute.title);
-        if (attribute.listValues != null) {
-            b.withData(attribute.listValues.replace(';', '/'));
+        b.withLabel(attribute.getTitle());
+        if (attribute.getListValues() != null) {
+            b.withData(attribute.getListValues().replace(';', '/'));
         } else {
             b.withData(R.string.checkbox_values);
         }
-        return b.withLabel(attribute.title).create();
+        return b.withLabel(attribute.getTitle()).create();
     }
 
     @Override

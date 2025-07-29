@@ -260,7 +260,7 @@ public abstract class AbstractTransactionActivity extends AbstractActivity imple
             Attribute sa = db.getSystemAttribute(SystemAttribute.DELETE_AFTER_EXPIRED);
             deleteAfterExpired = AttributeViewFactory.createViewForAttribute(this, sa);
             String value = transaction.getSystemAttribute(SystemAttribute.DELETE_AFTER_EXPIRED);
-            deleteAfterExpired.inflateView(layout, value != null ? value : sa.defaultValue);
+            deleteAfterExpired.inflateView(layout, value != null ? value : sa.getDefaultValue());
         }
 
         Button bSave = findViewById(R.id.bSave);
@@ -501,15 +501,15 @@ public abstract class AbstractTransactionActivity extends AbstractActivity imple
     protected Account selectAccount(long accountId, boolean selectLast) {
         Account a = db.getAccount(accountId);
         if (a != null) {
-            accountText.setText(a.title);
-            rateView.selectCurrencyFrom(a.currency);
+            accountText.setText(a.getTitle());
+            rateView.selectCurrencyFrom(a.getCurrency());
             selectedAccount = a;
         }
         return a;
     }
 
     protected long getSelectedAccountId() {
-        return selectedAccount != null ? selectedAccount.id : -1;
+        return selectedAccount != null ? selectedAccount.getId() : -1;
     }
 
     @Override

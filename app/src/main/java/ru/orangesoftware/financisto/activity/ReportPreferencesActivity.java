@@ -71,10 +71,10 @@ public class ReportPreferencesActivity extends PreferenceActivity {
 		currencies = new String[count];
         int i=0;
         for (Currency c : currenciesList) {
-            if (c.title.equals(selectedCurrenceTitle)) {
+            if (c.getTitle().equals(selectedCurrenceTitle)) {
                 selectedCurrenceIndex = i;
             }
-            currencies[i] = c.title;
+            currencies[i] = c.getTitle();
             i++;
         }
 	}

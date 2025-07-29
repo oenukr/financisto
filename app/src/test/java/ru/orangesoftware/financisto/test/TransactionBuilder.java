@@ -37,8 +37,8 @@ public class TransactionBuilder {
         this.t.splits = new LinkedList<>();
     }
 
-    public TransactionBuilder account(Account a) {
-        t.fromAccountId = a.id;
+    public TransactionBuilder account(Account account) {
+        t.fromAccountId = account.getId();
         return this;
     }
 
@@ -48,7 +48,7 @@ public class TransactionBuilder {
     }
 
     public TransactionBuilder originalAmount(Currency originalCurrency, long originalAmount) {
-        t.originalCurrencyId = originalCurrency.id;
+        t.originalCurrencyId = originalCurrency.getId();
         t.originalFromAmount = originalAmount;
         return this;
     }
@@ -78,8 +78,8 @@ public class TransactionBuilder {
         return this;
     }
 
-    public TransactionBuilder category(Category c) {
-        t.categoryId = c.id;
+    public TransactionBuilder category(Category category) {
+        t.categoryId = category.getId();
         return this;
     }
 
@@ -124,11 +124,11 @@ public class TransactionBuilder {
 
     public TransactionBuilder withSplit(Category category, long amount, String note, Project p, TransactionAttribute a) {
         Transaction split = new Transaction();
-        split.categoryId = category.id;
+        split.categoryId = category.getId();
         split.fromAmount = amount;
         split.note = note;
         if (p != null) {
-            split.projectId = p.id;
+            split.projectId = p.getId();
         }
         if (a != null) {
             Map<Long, String> map = new HashMap<>();
@@ -146,7 +146,7 @@ public class TransactionBuilder {
 
     public TransactionBuilder withTransferSplit(Account toAccount, long fromAmount, long toAmount, String note) {
         Transaction split = new Transaction();
-        split.toAccountId = toAccount.id;
+        split.toAccountId = toAccount.getId();
         split.fromAmount = fromAmount;
         split.toAmount = toAmount;
         split.note = note;

@@ -54,18 +54,18 @@ public abstract class AbstractDbTest {
     }
 
     public void assertAccountTotal(Account account, long total) {
-        Account a = db.getAccount(account.id);
-        assertEquals("Account " + account.id + " total", total, a.totalAmount);
+        Account a = db.getAccount(account.getId());
+        assertEquals("Account " + account.getId() + " total", total, a.getTotalAmount());
     }
 
     public void assertLastTransactionDate(Account account, DateTime dateTime) {
-        Account a = db.getAccount(account.id);
-        assertEquals("Account " + account.id + " last transaction date", dateTime.asLong(), a.lastTransactionDate);
+        Account a = db.getAccount(account.getId());
+        assertEquals("Account " + account.getId() + " last transaction date", dateTime.asLong(), a.getLastTransactionDate());
     }
 
     public void assertFinalBalanceForAccount(Account account, long expectedBalance) {
         long balance = db.getLastRunningBalanceForAccount(account);
-        assertEquals("Account " + account.id + " final balance", expectedBalance, balance);
+        assertEquals("Account " + account.getId() + " final balance", expectedBalance, balance);
     }
 
     public void assertAccountBalanceForTransaction(Transaction t, Account a, long expectedBalance) {
@@ -76,13 +76,13 @@ public abstract class AbstractDbTest {
     public void assertTransactionsCount(Account account, long expectedCount) {
         long count = DatabaseUtils.rawFetchLongValue(db,
                 "select count(*) from transactions where from_account_id=?",
-                new String[]{String.valueOf(account.id)});
-        assertEquals("Transaction for account " + account.id, expectedCount, count);
+                new String[]{String.valueOf(account.getId())});
+        assertEquals("Transaction for account " + account.getId(), expectedCount, count);
     }
 
-    public void assertCategory(String name, boolean isIncome, Category c) {
-        assertEquals(name, c.title);
-        assertEquals(isIncome, c.isIncome());
+    public void assertCategory(String name, boolean isIncome, Category category) {
+        assertEquals(name, category.getTitle());
+        assertEquals(isIncome, category.isIncome());
     }
 
     @SafeVarargs

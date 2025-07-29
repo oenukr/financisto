@@ -1,5 +1,5 @@
 [libraries]
-bom = { module = "androidx.compose:compose-bom", version = "2025.03.00" }
+bom = { module = "androidx.compose:compose-bom", version = "2025.06.01" }
 material3 = { module = "androidx.compose.material3:material3" }
 ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
 ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }

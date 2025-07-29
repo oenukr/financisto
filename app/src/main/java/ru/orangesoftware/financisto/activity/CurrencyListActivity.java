@@ -70,7 +70,7 @@ public class CurrencyListActivity extends AbstractListActivity {
 
     private void makeCurrencyDefault(long id) {
         Currency c = db.get(Currency.class, id);
-        c.isDefault = true;
+        c.setDefault(true);
         db.saveOrUpdate(c);
         recreateCursor();
     }

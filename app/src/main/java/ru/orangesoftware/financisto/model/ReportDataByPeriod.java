@@ -420,7 +420,7 @@ public class ReportDataByPeriod {
 		String where = AccountColumns.CURRENCY_ID + "=?";
 		SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(DatabaseHelper.ACCOUNT_TABLE)
 				.columns(new String[]{AccountColumns.ID})
-				.selection(where, new String[]{Long.toString(currency.id)})
+				.selection(where, new String[]{Long.toString(currency.getId())})
 				.create();
 		try (Cursor c = db.query(query)) {
 			accounts = new int[c.getCount()];

@@ -32,7 +32,6 @@ import com.google.accompanist.permissions.rememberPermissionState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import org.koin.androidx.compose.KoinAndroidContext
 import org.koin.core.annotation.KoinExperimentalAPI
 import ru.orangesoftware.financisto.R
 import ru.orangesoftware.financisto.app.DependenciesHolder
@@ -48,9 +47,7 @@ fun PermissionsPreferenceContent() {
     MaterialTheme {
         // A surface container using the 'background' color from the theme
         Surface(color = MaterialTheme.colorScheme.background) {
-            KoinAndroidContext {
-                Content()
-            }
+            Content()
         }
     }
 }

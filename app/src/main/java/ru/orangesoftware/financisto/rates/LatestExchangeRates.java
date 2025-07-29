@@ -27,14 +27,14 @@ public class LatestExchangeRates implements ExchangeRateProvider, ExchangeRatesC
 
     @Override
     public ExchangeRate getRate(Currency fromCurrency, Currency toCurrency) {
-        if (fromCurrency.id == toCurrency.id) {
+        if (fromCurrency.getId() == toCurrency.getId()) {
             return ExchangeRate.ONE;
         }
-        TLongObjectMap<ExchangeRate> rateMap = getMapFor(fromCurrency.id);
-        ExchangeRate rate = rateMap.get(toCurrency.id);
+        TLongObjectMap<ExchangeRate> rateMap = getMapFor(fromCurrency.getId());
+        ExchangeRate rate = rateMap.get(toCurrency.getId());
         if (rate == null) {
             rate = ExchangeRate.NA;
-            rateMap.put(toCurrency.id, rate);
+            rateMap.put(toCurrency.getId(), rate);
         }
         return rate;
     }
@@ -46,7 +46,7 @@ public class LatestExchangeRates implements ExchangeRateProvider, ExchangeRatesC
 
     @NonNull
     @Override
-    public List<ExchangeRate> getRates(@NonNull List<? extends Currency> currencies) {
+    public List<ExchangeRate> getRates(@NonNull List<Currency> currencies) {
         throw new UnsupportedOperationException();
     }
 

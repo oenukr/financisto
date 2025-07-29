@@ -1,13 +1,124 @@
+// At the top of your app/build.gradle.kts
+import com.android.build.api.artifact.MultipleArtifact
+
+// Define a custom task to handle the complex 'CLASSES' artifact.
+abstract class CopyClassesTask @Inject constructor() : DefaultTask() {
+
+    // THIS IS THE KEY: ScopedArtifact.CLASSES produces both jars and directories.
+    // We must declare two separate inputs to receive them.
+    @get:InputFiles
+    @get:Optional
+    abstract val allJars: RegularFileProperty
+
+    @get:InputFiles
+    @get:Optional
+    abstract val allDirectories: RegularFileProperty
+
+    // This is the single output directory where everything will be copied.
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun taskAction() {
+        // Use standard Gradle file operations to copy the contents.
+        project.copy {
+            // First, copy the contents of all the loose-class directories.
+            if (allDirectories.isPresent) {
+                from(allDirectories)
+            }
+            // Then, copy the contents of all the JAR files.
+            // project.zipTree() opens a JAR/ZIP without extracting it to disk first.
+            if (allJars.isPresent) {
+                from(allJars.map { project.zipTree(it) })
+            }
+            // Set the destination.
+            into(outputDir)
+            // Exclude files that are not .class files (like module-info.class or metadata)
+            exclude("META-INF/**")
+        }
+    }
+}
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.kover)
+    alias(libs.plugins.room.gradle.plugin)
+    alias(libs.plugins.ksp)
+}
+
+// The androidComponents block that uses our custom task.
+//androidComponents {
+//    onVariants { variant ->
+//        // Register an instance of our custom task for each variant.
+//        val copyTaskProvider = tasks.register(
+//            "copy${variant.name.capitalize()}ClassesToAssets",
+//            CopyClassesTask::class.java
+//        )
+//
+//        // THIS IS THE CORRECT WIRING:
+//        // Use our task to transform the CLASSES artifact.
+//        variant.artifacts.use(copyTaskProvider)
+//            // Wire the two different kinds of outputs from the artifact
+//            // to the two different input properties on our task.
+//            .wiredWithFiles(
+//                CopyClassesTask::allJars,
+//                CopyClassesTask::allDirectories
+//            )
+//            // Specify that we want to transform the ScopedArtifact.CLASSES.
+//            .toTransform(ScopedArtifact.CLASSES)
+//
+//        // Finally, add the output of our task to the assets directory
+//        // so it gets packaged into the APK.
+//        variant.sources.assets?.addGeneratedSourceDirectory(
+//            copyTaskProvider,
+//            CopyClassesTask::outputDir
+//        )
+//    }
+//}
+androidComponents { onVariants { variant -> // This is a simple diagnostic task.
+    tasks.register("print${variant.name.capitalize()}Classes") {
+        doLast {
+            println("======================================================")
+            println("DIAGNOSTIC REPORT FOR VARIANT: ${variant.name}")
+            println("======================================================")
+        }            // Get the Provider for the artifact directly.
+    val classesProvider = variant.artifacts.getAll(MultipleArtifact.NATIVE_DEBUG_METADATA)//ScopedArtifact.CLASSES)
+
+    // At execution time (inside doLast), it's safe to check the provider.
+    if (classesProvider.isPresent) {
+        try {
+            val files = classesProvider.get()
+            if (files.isEmpty()) {
+                println("--> Artifact ScopedArtifact.CLASSES exists, but is an EMPTY list.")
+            } else {
+                println("--> Found ${files.size} items in ScopedArtifact.CLASSES:")
+                files.forEach { file ->
+                    println("    - $file")
+                }
+            }
+        } catch (e: Exception) {
+            println("--> FAILED to get() value from provider: $e")
+        }
+    } else {
+        println("--> Provider for ScopedArtifact.CLASSES has NO VALUE.")
+    }
+    println("======================================================\n")
+}
+}}
+
+
+// Your existing android { ... } block follows
+android {
+    namespace = "ru.orangesoftware.financisto"
+    compileSdk = 36
+    // ... all your other android settings
 }
 
 android {
     namespace = "ru.orangesoftware.financisto"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "ru.orangesoftware.financisto"
@@ -46,6 +157,10 @@ android {
     sourceSets["test"].resources.srcDirs("src/test/resources")
 
     packaging {
+//        resources.pickFirsts.add("ru/orangesoftware/financisto/model/**/*.class")
+        resources.pickFirsts.add("/**")
+//        resources.pickFirsts.add("ru/orangesoftware/orb/**/*.class")
+
         resources.excludes.add("META-INF/DEPENDENCIES.txt")
         resources.excludes.add("META-INF/LICENSE")
         resources.excludes.add("META-INF/LICENSE.txt")
@@ -72,9 +187,19 @@ android {
 
         checkReleaseBuilds = false
     }
+
+    compileOptions {
+        isCoreLibraryDesugaringEnabled = true
+    }
+}
+
+room {
+    schemaDirectory("$projectDir/schemas")
 }
 
 dependencies {
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
+
     // Compose
     val composeBom = platform(compose.bom)
     implementation(composeBom)
@@ -149,6 +274,18 @@ dependencies {
     // Kotlin Serialization
     implementation(libs.kotlinx.serialization.core)
 
+    // ASM to inspect bytecode - needed for reading annotations
+    implementation("org.ow2.asm:asm:9.8")
+    implementation("org.ow2.asm:asm-commons:9.8")
+
+    // Room
+    add("ksp", libs.room.compiler)
+    implementation(libs.room.ktx)
+    implementation(libs.room.runtime)
+    implementation(libs.room.rxjava2)
+    implementation(libs.room.rxjava3)
+
+
     implementation(libs.legacy.support)
     implementation(libs.appcompat)
 
@@ -212,7 +349,8 @@ kover {
 }
 
 composeCompiler {
-    enableStrongSkippingMode = true
+    // StrongSkipping is enabled by default
+//    featureFlags = setOf(ComposeFeatureFlag.StrongSkipping.disabled())
 }
 
 java {

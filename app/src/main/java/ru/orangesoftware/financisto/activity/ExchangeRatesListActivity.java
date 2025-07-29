@@ -110,7 +110,7 @@ public class ExchangeRatesListActivity extends AbstractListActivity {
         ArrayAdapter<Currency> a = new ArrayAdapter<Currency>(this, android.R.layout.simple_spinner_item, currencies) {
             @Override
             public long getItemId(int position) {
-                return getItem(position).id;
+                return getItem(position).getId();
             }
         };
         a.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -120,7 +120,7 @@ public class ExchangeRatesListActivity extends AbstractListActivity {
     private List<Currency> getCurrenciesButSelected(long id) {
         List<Currency> list = new ArrayList<>();
         for (Currency currency : currencies) {
-            if (currency.id != id) {
+            if (currency.getId() != id) {
                 list.add(currency);
             }
         }
@@ -130,7 +130,7 @@ public class ExchangeRatesListActivity extends AbstractListActivity {
     private int findSelectedCurrency(List<Currency> currencies, long id) {
         int i = 0;
         for (Currency currency : currencies) {
-            if (currency.id == id) {
+            if (currency.getId() == id) {
                 return i;
             }
             ++i;
@@ -141,7 +141,7 @@ public class ExchangeRatesListActivity extends AbstractListActivity {
     private int findDefaultCurrency() {
         int i = 0;
         for (Currency currency : currencies) {
-            if (currency.isDefault) {
+            if (currency.isDefault()) {
                 return i;
             }
             ++i;
@@ -152,7 +152,7 @@ public class ExchangeRatesListActivity extends AbstractListActivity {
     private void flipCurrencies() {
         Currency toCurrency = (Currency) toCurrencySpinner.getSelectedItem();
         if (toCurrency != null) {
-            fromCurrencySpinner.setSelection(findSelectedCurrency(currencies, toCurrency.id));
+            fromCurrencySpinner.setSelection(findSelectedCurrency(currencies, toCurrency.getId()));
         }
     }
 
@@ -260,7 +260,7 @@ public class ExchangeRatesListActivity extends AbstractListActivity {
             StringBuilder sb = new StringBuilder();
             for (Currency currency : currencies) {
                 if (sb.length() > 0) sb.append(", ");
-                sb.append(currency.name);
+                sb.append(currency.getName());
             }
             return sb.toString();
         }
@@ -284,7 +284,7 @@ public class ExchangeRatesListActivity extends AbstractListActivity {
             for (ExchangeRate rate : result) {
                 Currency fromCurrency = CurrencyCache.getCurrency(db, rate.fromCurrencyId);
                 Currency toCurrency = CurrencyCache.getCurrency(db, rate.toCurrencyId);
-                sb.append(fromCurrency.name).append(" -> ").append(toCurrency.name);
+                sb.append(fromCurrency.getName()).append(" -> ").append(toCurrency.getName());
                 if (rate.isOk()) {
                     sb.append(" = ").append(nf.format(rate.rate));
                 } else {

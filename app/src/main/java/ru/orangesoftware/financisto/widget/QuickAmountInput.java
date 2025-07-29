@@ -59,7 +59,7 @@ public class QuickAmountInput extends DialogFragment {
 
         // picker
         Currency currency = CurrencyCache.getCurrencyOrEmpty(currencyId);
-        picker = new AmountPicker(activity, currency.decimals);
+        picker = new AmountPicker(activity, currency.getDecimals());
         layout.addView(picker, lpWrapWrap);
         picker.setCurrent(new BigDecimal(amount));
         picker.setOnChangeListener((picker, oldVal, newVal) -> setTitle());

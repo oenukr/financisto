@@ -1,17 +1,16 @@
 package ru.orangesoftware.financisto.report;
 
+import static org.junit.Assert.assertEquals;
+
 import org.junit.Test;
 
 import java.util.List;
 
 import ru.orangesoftware.financisto.filter.WhereFilter;
-import ru.orangesoftware.financisto.graph.GraphStyle;
 import ru.orangesoftware.financisto.graph.GraphUnit;
 import ru.orangesoftware.financisto.test.DateTime;
 import ru.orangesoftware.financisto.test.RateBuilder;
 import ru.orangesoftware.financisto.test.TransactionBuilder;
-
-import static org.junit.Assert.*;
 
 public class SubCategoryReportTest extends AbstractReportTest {
 
@@ -20,7 +19,7 @@ public class SubCategoryReportTest extends AbstractReportTest {
         super.setUp();
         float screenDensity = getContext().getResources().getDisplayMetrics().density;
         CategoryReport r = new CategoryReport(c1, false, screenDensity);
-        filter = r.createFilterForSubCategory(db, WhereFilter.empty(), categories.get("A").id);
+        filter = r.createFilterForSubCategory(db, WhereFilter.empty(), categories.get("A").getId());
     }
 
     @Test

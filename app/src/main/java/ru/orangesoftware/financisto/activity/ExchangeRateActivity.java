@@ -80,16 +80,16 @@ public class ExchangeRateActivity extends AbstractActivity implements RateNodeOw
 
     private ExchangeRate createRateFromUI() {
         ExchangeRate rate = new ExchangeRate();
-        rate.fromCurrencyId = fromCurrency.id;
-        rate.toCurrencyId = toCurrency.id;
+        rate.fromCurrencyId = fromCurrency.getId();
+        rate.toCurrencyId = toCurrency.getId();
         rate.date = date;
         rate.rate = rateNode.getRate();
         return rate;
     }
 
     private void updateUI(LinearLayout layout) {
-        activityLayout.addInfoNode(layout, 0, R.string.rate_from_currency, fromCurrency.name);
-        activityLayout.addInfoNode(layout, 0, R.string.rate_to_currency, toCurrency.name);
+        activityLayout.addInfoNode(layout, 0, R.string.rate_from_currency, fromCurrency.getName());
+        activityLayout.addInfoNode(layout, 0, R.string.rate_to_currency, toCurrency.getName());
         dateNode = activityLayout.addInfoNode(layout, R.id.date, R.string.date, formatRateDate(this, date));
         rateNode = new RateNode(this, activityLayout, layout);
         rateNode.setRate(rate);

@@ -1,126 +1,48 @@
-/*******************************************************************************
- * Copyright (c) 2010 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
- * Contributors:
- *     Denis Solonenko - initial API and implementation
- ******************************************************************************/
-package ru.orangesoftware.financisto.model;
+package ru.orangesoftware.financisto.model
 
-import static ru.orangesoftware.orb.EntityManager.DEF_ID_COL;
-import static ru.orangesoftware.orb.EntityManager.DEF_TITLE_COL;
+import androidx.room.ColumnInfo
+import androidx.room.Ignore
+import androidx.room.PrimaryKey
+import ru.orangesoftware.orb.EntityManager.DEF_ID_COL
+import ru.orangesoftware.orb.EntityManager.DEF_TITLE_COL
 
-import androidx.annotation.NonNull;
+open class MyEntity(
+	@PrimaryKey(autoGenerate = true)
+	@ColumnInfo(name = DEF_ID_COL) override var id: Long = -1,
+	@ColumnInfo(name = DEF_TITLE_COL) override var title: String? = null,
+	@ColumnInfo(name = "is_active") var isActive: Boolean = true,
+	@Ignore @Transient override var checked: Boolean = false,
+) : MultiChoiceItem {
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+	companion object {
+		@JvmStatic
+		fun splitIds(string: String): Array<Long>? {
+			if (string.isEmpty()) return null
 
-import javax.persistence.Column;
-import javax.persistence.Id;
-import javax.persistence.Transient;
-
-import ru.orangesoftware.financisto.utils.Utils;
-
-public class MyEntity implements MultiChoiceItem {
-
-	@Id
-	@Column(name = DEF_ID_COL)
-	public long id = -1;
-
-	@Column(name = DEF_TITLE_COL)
-	public String title;
-
-	@Column(name = "is_active")
-	public boolean isActive = true;
-
-	@Transient
-	public boolean checked;
-
-	public static long[] splitIds(String s) {
-		if (Utils.isEmpty(s)) {
-			return null;
+			return string.split(",")
+				.map { it.toLong() }
+				.toTypedArray()
 		}
-		String[] a = s.split(",");
-		int count = a.length;
-		long[] ids = new long[count];
-		for (int i=0; i<count; i++) {
-			ids[i] = Long.parseLong(a[i]);
-		}
-		return ids;
+
+		@JvmStatic
+		fun <T : MyEntity> asMap(list: List<T>): Map<Long, T> = list.associateBy { it.id }
+
+		@JvmStatic
+		fun indexOf(entities: List<MyEntity>?, id: Long): Int = entities?.indexOfFirst { it.id == id } ?: -1
+
+		@JvmStatic
+		fun <T : MyEntity> find(entities: List<T>, id: Long): T? = entities.find { it.id == id }
 	}
 
-	public static <T extends MyEntity> Map<Long, T> asMap(List<T> list) {
-		HashMap<Long, T> map = new HashMap<>();
-		for (T e : list) {
-			map.put(e.id, e);
-		}
-		return map;
+	override fun toString(): String = title.orEmpty()
+
+	override fun equals(other: Any?): Boolean = other is MyEntity && id == other.id
+
+	override fun hashCode(): Int {
+		return hashCodeOf(id)
 	}
 
-	public static int indexOf(List<? extends MyEntity> entities, long id) {
-		if (entities != null) {
-			int count = entities.size();
-			for (int i=0; i<count; i++) {
-				if (entities.get(i).id == id) {
-					return i;
-				}
-			}
-		}
-		return -1;
+	inline fun hashCodeOf(vararg values: Any?) = values.fold(0) { acc, value ->
+		(acc * 31) + value.hashCode()
 	}
-
-	public static <T extends MyEntity> T find(List<T> entities, long id) {
-		for (T e : entities) {
-			if (e.id == id) {
-				return e;
-			}
-		}
-		return null;
-	}
-	
-	@Override
-	public long getId() {
-		return id;
-	}
-
-	@Override
-	public String getTitle() {
-		return title;
-	}
-	
-	@Override
-	public boolean isChecked() {
-		return checked;
-	}
-
-	@Override
-	public void setChecked(boolean checked) {
-		this.checked = checked;
-	}
-
-	@NonNull
-	@Override
-	public String toString() {
-		return title;
-	}
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        MyEntity myEntity = (MyEntity) o;
-
-        return id == myEntity.id;
-    }
-
-    @Override
-    public int hashCode() {
-        return (int) (id ^ (id >>> 32));
-    }
-
 }

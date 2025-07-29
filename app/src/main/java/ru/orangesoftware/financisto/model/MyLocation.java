@@ -1,11 +1,11 @@
 package ru.orangesoftware.financisto.model;
 
+import static ru.orangesoftware.financisto.db.DatabaseHelper.LOCATIONS_TABLE;
+import static ru.orangesoftware.orb.EntityManager.DEF_SORT_COL;
+
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Table;
-
-import static ru.orangesoftware.financisto.db.DatabaseHelper.LOCATIONS_TABLE;
-import static ru.orangesoftware.orb.EntityManager.DEF_SORT_COL;
 
 @Entity
 @Table(name = LOCATIONS_TABLE)
@@ -15,8 +15,8 @@ public class MyLocation extends MyEntity implements SortableEntity {
 
     public static MyLocation currentLocation() {
         MyLocation location = new MyLocation();
-        location.id = CURRENT_LOCATION_ID;
-        location.title = "<CURRENT_LOCATION>";
+        location.setId(CURRENT_LOCATION_ID);
+        location.setTitle("<CURRENT_LOCATION>");
         location.provider = location.resolvedAddress = "?";
         return location;
     }

@@ -73,9 +73,9 @@ public class AccountInfoDialog {
         TextView titleData = titleView.findViewById(R.id.data);
         ImageView titleIcon = titleView.findViewById(R.id.icon);
 
-        titleLabel.setText(a.title);
+        titleLabel.setText(a.getTitle());
 
-        AccountType type = AccountType.valueOf(a.type);
+        AccountType type = AccountType.valueOf(a.getType());
         titleData.setText(type.getTitleId());
         titleIcon.setImageResource(type.getIconId());
 
@@ -83,29 +83,29 @@ public class AccountInfoDialog {
     }
 
     private void createNodes(Account a, LinearLayout layout) {
-        AccountType type = AccountType.valueOf(a.type);
+        AccountType type = AccountType.valueOf(a.getType());
         if (type.isCard()) {
-            CardIssuer issuer = CardIssuer.valueOf(a.cardIssuer);
+            CardIssuer issuer = CardIssuer.valueOf(a.getCardIssuer());
             add(layout, R.string.issuer, issuerTitle(a), issuer);
         }
-        add(layout, R.string.currency, a.currency.title);
+        add(layout, R.string.currency, a.getCurrency().getTitle());
 
-        if (type.isCreditCard() && a.limitAmount != 0) {
-            long limitAmount = Math.abs(a.limitAmount);
-            long balance = limitAmount + a.totalAmount;
+        if (type.isCreditCard() && a.getLimitAmount() != 0) {
+            long limitAmount = Math.abs(a.getLimitAmount());
+            long balance = limitAmount + a.getTotalAmount();
             TextView amountView = add(layout, R.string.amount, "");
-            u.setAmountText(amountView, a.currency, a.totalAmount, true);
+            u.setAmountText(amountView, a.getCurrency(), a.getTotalAmount(), true);
             TextView limitAmountView = add(layout, R.string.balance, "");
-            u.setAmountText(limitAmountView, a.currency, balance, true);
+            u.setAmountText(limitAmountView, a.getCurrency(), balance, true);
         } else {
             TextView amountView = add(layout, R.string.balance, "");
-            u.setAmountText(amountView, a.currency, a.totalAmount, true);
+            u.setAmountText(amountView, a.getCurrency(), a.getTotalAmount(), true);
         }
-        add(layout, R.string.note, a.note);
+        add(layout, R.string.note, a.getNote());
     }
 
     private String issuerTitle(Account a) {
-        return (isNotEmpty(a.issuer) ? a.issuer : "")+" "+(isNotEmpty(a.number) ? "#"+a.number : "");
+        return (isNotEmpty(a.getIssuer()) ? a.getIssuer() : "")+" "+(isNotEmpty(a.getNumber()) ? "#"+a.getNumber() : "");
     }
 
     private void showDialog(final View v, View titleView) {

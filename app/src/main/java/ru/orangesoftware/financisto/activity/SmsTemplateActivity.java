@@ -155,8 +155,8 @@ public class SmsTemplateActivity extends AbstractActivity {
     private void initAccounts() {
         accounts = new ArrayList<>();
         Account emptyItem = new Account();
-        emptyItem.id = -1;
-        emptyItem.title = getString(R.string.no_account);
+        emptyItem.setId(-1);
+        emptyItem.setTitle(getString(R.string.no_account));
         accounts.add(emptyItem);
         accounts.addAll(db.getAllAccountsList());
 
@@ -167,7 +167,7 @@ public class SmsTemplateActivity extends AbstractActivity {
     }
 
     private void updateSmsTemplateFromUI() {
-        smsTemplate.title = smsNumber.getText().toString();
+        smsTemplate.setTitle(smsNumber.getText().toString());
         smsTemplate.template = templateTxt.getText().toString();
         smsTemplate.categoryId = categorySelector == null ? categoryId : categorySelector.getSelectedCategoryId();
         smsTemplate.isIncome = toggleIncome.isChecked();
@@ -188,7 +188,7 @@ public class SmsTemplateActivity extends AbstractActivity {
     }
 
     private void editSmsTemplate() {
-        smsNumber.setText(smsTemplate.title);
+        smsNumber.setText(smsTemplate.getTitle());
         templateTxt.setText(smsTemplate.template);
         selectedAccount(smsTemplate.accountId);
         toggleIncome.setChecked(smsTemplate.isIncome);
@@ -197,7 +197,7 @@ public class SmsTemplateActivity extends AbstractActivity {
     private void selectedAccount(long selectedAccountId) {
         for (int i=0; i<accounts.size(); i++) {
             Account a = accounts.get(i);
-            if (a.id == selectedAccountId) {
+            if (a.getId() == selectedAccountId) {
                 accountSpinner.setSelection(i);
                 break;
             }

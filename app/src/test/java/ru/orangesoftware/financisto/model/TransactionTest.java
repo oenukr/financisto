@@ -47,18 +47,18 @@ public class TransactionTest extends AbstractDbTest {
         assertEquals(3, splits.size());
         Transaction split1 = splits.get(0);
         assertEquals(t.payeeId, split1.payeeId);
-        assertEquals(a1.id, split1.fromAccountId);
+        assertEquals(a1.getId(), split1.fromAccountId);
         assertEquals(60, split1.fromAmount);
-        assertEquals(categories.get("A1").id, split1.categoryId);
+        assertEquals(categories.get("A1").getId(), split1.categoryId);
         Transaction split2 = splits.get(1);
         assertEquals(t.payeeId, split2.payeeId);
-        assertEquals(a1.id, split2.fromAccountId);
+        assertEquals(a1.getId(), split2.fromAccountId);
         assertEquals(40, split2.fromAmount);
-        assertEquals(categories.get("A2").id, split2.categoryId);
+        assertEquals(categories.get("A2").getId(), split2.categoryId);
         Transaction split3 = splits.get(2);
         assertEquals(t.payeeId, split3.payeeId);
-        assertEquals(a1.id, split3.fromAccountId);
-        assertEquals(a2.id, split3.toAccountId);
+        assertEquals(a1.getId(), split3.fromAccountId);
+        assertEquals(a2.getId(), split3.toAccountId);
         assertEquals(100, split3.fromAmount);
         assertEquals(50, split3.toAmount);
     }
@@ -135,7 +135,7 @@ public class TransactionTest extends AbstractDbTest {
                 .create();
         List<Transaction> splits = db.getSplitsForTransaction(t.id);
         assertEquals(2, splits.size());
-        t.categoryId = categories.get("A").id;
+        t.categoryId = categories.get("A").getId();
         t.splits = null;
         db.insertOrUpdate(t);
         splits = db.getSplitsForTransaction(t.id);
@@ -227,7 +227,7 @@ public class TransactionTest extends AbstractDbTest {
     @Test
     public void should_update_original_amount_for_splits() {
         Transaction t = TransactionBuilder.withDb(db).account(a1).category(CategoryBuilder.split(db))
-                .amount(120).originalAmount(a2.currency, 100)
+                .amount(120).originalAmount(a2.getCurrency(), 100)
                 .withSplit(categories.get("A1"), 60)
                 .withSplit(categories.get("A2"), 40)
                 .create();

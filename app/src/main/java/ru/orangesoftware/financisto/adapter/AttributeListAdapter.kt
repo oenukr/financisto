@@ -17,16 +17,17 @@ class AttributeListAdapter(
     private val attributeTypes: Array<String> =
         context.resources.getStringArray(R.array.attribute_types)
 
-    override fun bindView(v: GenericViewHolder?, context: Context?, cursor: Cursor?) {
-        val a = Attribute.fromCursor(cursor)
-        v?.lineView?.text = a.title
-        v?.numberView?.text = attributeTypes[a.type - 1]
-        val defaultValue: String? = a.getDefaultValue()
+    override fun bindView(viewHolder: GenericViewHolder?, context: Context?, cursor: Cursor?) {
+        val attribute = cursor?.let(Attribute::fromCursor) ?: return
+
+        viewHolder?.lineView?.text = attribute.title
+        viewHolder?.numberView?.text = attributeTypes[attribute.type - 1]
+        val defaultValue: String? = attribute.getTheDefaultValue()
         if (defaultValue != null) {
-            v?.amountView?.visibility = View.VISIBLE
-            v?.amountView?.text = defaultValue
+            viewHolder?.amountView?.visibility = View.VISIBLE
+            viewHolder?.amountView?.text = defaultValue
         } else {
-            v?.amountView?.visibility = View.GONE
+            viewHolder?.amountView?.visibility = View.GONE
         }
     }
 }

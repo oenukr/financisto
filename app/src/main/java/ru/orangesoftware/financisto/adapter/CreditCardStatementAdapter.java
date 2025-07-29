@@ -121,7 +121,7 @@ public class CreditCardStatementAdapter extends BaseAdapter implements Filterabl
         // get amount of expense
         long value = t.fromAmount;
         // to consider correct value from transfers
-        if (t.isTransfer() && t.toAccount.id == account) {
+        if (t.isTransfer() && t.toAccount.getId() == account) {
             value = t.toAmount;
         }
 
@@ -141,11 +141,11 @@ public class CreditCardStatementAdapter extends BaseAdapter implements Filterabl
                * b) otherwise, show description as note
                *    - "Note"
                */
-        if (t.location != null && t.location.id > 0) {
+        if (t.location != null && t.location.getId() > 0) {
             if (note != null && !note.isEmpty()) {
-                desc = t.location.title + " (" + note + ")";
+                desc = t.location.getTitle() + " (" + note + ")";
             } else {
-                desc = t.location.title;
+                desc = t.location.getTitle();
             }
         } else {
             desc = note;

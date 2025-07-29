@@ -328,7 +328,7 @@ public class MyPreferences {
             String refCurrency = sharedPreferences.getString("report_reference_currency", null);
             if (currencies != null && !currencies.isEmpty()) {
                 for (Currency currency : currencies) {
-                    if (currency.title.equals(refCurrency)) cur = currency;
+                    if (currency.getTitle().equals(refCurrency)) cur = currency;
                 }
             }
         } catch (Exception e) {

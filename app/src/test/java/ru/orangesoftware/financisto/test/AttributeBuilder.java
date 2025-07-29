@@ -33,16 +33,21 @@ public class AttributeBuilder {
     }
 
     private Attribute createAttribute(String name, int type) {
-        Attribute a = new Attribute();
-        a.title = name;
-        a.type = type;
-        a.id = db.insertOrUpdate(a);
-        return a;
+        Attribute attribute = new Attribute(
+                -1,
+                null,
+                null,
+                0
+        );
+        attribute.setTitle(name);
+        attribute.setType(type);
+        attribute.setId(db.insertOrUpdate(attribute));
+        return attribute;
     }
 
-    public static TransactionAttribute attributeValue(Attribute a, String value) {
+    public static TransactionAttribute attributeValue(Attribute attribute, String value) {
         return new TransactionAttribute(
-                a.id,
+                attribute.getId(),
                 null,
                 value
         );

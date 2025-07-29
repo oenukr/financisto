@@ -87,18 +87,18 @@ public class Utils {
             }
         }
         if (c == null) {
-            c = Currency.EMPTY;
+            c = Currency.Companion.getEMPTY();
         }
         String s = c.getFormat().format(amount.divide(HUNDRED));
         if (s.endsWith(".")) {
             s = s.substring(0, s.length() - 1);
         }
         sb.append(s);
-        if (isNotEmpty(c.symbol)) {
-            if (c.symbolFormat != null) {
-                c.symbolFormat.appendSymbol(sb, c.symbol);
+        if (isNotEmpty(c.getSymbol())) {
+            if (c.getSymbolFormat() != null) {
+                c.getSymbolFormat().appendSymbol(sb, c.getSymbol());
             } else {
-                sb.append(" ").append(c.symbol);
+                sb.append(" ").append(c.getSymbol());
             }
         }
         return sb;
@@ -210,7 +210,7 @@ public class Utils {
     }
 
     public void setTransferTitleText(TextView textView, Account fromAccount, Account toAccount) {
-        setTransferTitleText(textView, fromAccount.title, toAccount.title);
+        setTransferTitleText(textView, fromAccount.getTitle(), toAccount.getTitle());
     }
 
     public void setTransferTitleText(TextView textView, String fromAccountTitle, String toAccountTitle) {
@@ -218,7 +218,7 @@ public class Utils {
     }
 
     public String getTransferTitleText(Account fromAccount, Account toAccount) {
-        return getTransferTitleText(fromAccount.title, toAccount.title);
+        return getTransferTitleText(fromAccount.getTitle(), toAccount.getTitle());
     }
 
     public String getTransferTitleText(String fromAccountTitle, String toAccountTitle) {
@@ -248,7 +248,7 @@ public class Utils {
     }
 
     public static boolean sameCurrency(Currency fromCurrency, Currency toCurrency) {
-        return fromCurrency.id == toCurrency.id;
+        return fromCurrency.getId() == toCurrency.getId();
     }
 
     public void setTransferBalanceText(TextView textView, Currency fromCurrency, long fromBalance, Currency toCurrency, long toBalance) {

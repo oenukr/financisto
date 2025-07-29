@@ -144,7 +144,7 @@ public abstract class AbstractSplitActivity extends AbstractActivity {
     }
 
     protected Currency getCurrency() {
-        return originalCurrency != null ? originalCurrency : (fromAccount != null ? fromAccount.currency : Currency.defaultCurrency());
+        return originalCurrency != null ? originalCurrency : (fromAccount != null ? fromAccount.getCurrency() : Currency.defaultCurrency());
     }
 
     @Override

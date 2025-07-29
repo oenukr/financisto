@@ -46,8 +46,8 @@ public class CsvExport extends Export {
     private static final MyLocation TRANSFER_OUT = new MyLocation();
 
     static {
-        TRANSFER_IN.title = "Transfer In";
-        TRANSFER_OUT.title = "Transfer Out";
+        TRANSFER_IN.setTitle("Transfer In");
+        TRANSFER_OUT.setTitle("Transfer Out");
     }
 
     private final DatabaseAdapter db;
@@ -115,12 +115,12 @@ public class CsvExport extends Export {
         Account fromAccount = getAccount(t.fromAccountId);
         if (t.isTransfer()) {
             Account toAccount = getAccount(t.toAccountId);
-            writeLine(w, dt, fromAccount.title, t.fromAmount, fromAccount.currency.id, 0, 0, category, null, TRANSFER_OUT, project, t.note);
-            writeLine(w, dt, toAccount.title, t.toAmount, toAccount.currency.id, 0, 0, category, null, TRANSFER_IN, project, t.note);
+            writeLine(w, dt, fromAccount.getTitle(), t.fromAmount, fromAccount.getCurrency().getId(), 0, 0, category, null, TRANSFER_OUT, project, t.note);
+            writeLine(w, dt, toAccount.getTitle(), t.toAmount, toAccount.getCurrency().getId(), 0, 0, category, null, TRANSFER_IN, project, t.note);
         } else {
             MyLocation location = getLocationById(t.locationId);
             Payee payee = getPayee(t.payeeId);
-            writeLine(w, dt, fromAccount.title, t.fromAmount, fromAccount.currency.id, t.originalFromAmount, t.originalCurrencyId,
+            writeLine(w, dt, fromAccount.getTitle(), t.fromAmount, fromAccount.getCurrency().getId(), t.originalFromAmount, t.originalCurrencyId,
                     category, payee, location, project, t.note);
             if (category != null && category.isSplit() && options.getExportSplits()) {
                 List<Transaction> splits = db.getSplitsForTransaction(t.id);
@@ -147,21 +147,21 @@ public class CsvExport extends Export {
         String amountFormatted = options.getAmountFormat().format(new BigDecimal(amount).divide(Utils.HUNDRED));
         w.value(amountFormatted);
         Currency c = CurrencyCache.getCurrency(db, currencyId);
-        w.value(c.name);
+        w.value(c.getName());
         if (originalCurrencyId > 0) {
             w.value(options.getAmountFormat().format(new BigDecimal(originalAmount).divide(Utils.HUNDRED)));
             Currency originalCurrency = CurrencyCache.getCurrency(db, originalCurrencyId);
-            w.value(originalCurrency.name);
+            w.value(originalCurrency.getName());
         } else {
             w.value("");
             w.value("");
         }
-        w.value(category != null ? category.title : "");
+        w.value(category != null ? category.getTitle() : "");
         String sParent = buildPath(category);
         w.value(sParent);
-        w.value(payee != null ? payee.title : "");
-        w.value(location != null ? location.title : "");
-        w.value(project != null ? project.title : "");
+        w.value(payee != null ? payee.getTitle() : "");
+        w.value(location != null ? location.getTitle() : "");
+        w.value(project != null ? project.getTitle() : "");
         w.value(note);
         w.newLine();
     }
@@ -170,9 +170,9 @@ public class CsvExport extends Export {
         if (category == null || category.parent == null) {
             return "";
         } else {
-            StringBuilder sb = new StringBuilder(category.parent.title);
+            StringBuilder sb = new StringBuilder(category.parent.getTitle());
             for (Category cat = category.parent.parent; cat != null; cat = cat.parent) {
-                sb.insert(0, ":").insert(0, cat.title);
+                sb.insert(0, ":").insert(0, cat.getTitle());
             }
             return sb.toString();
         }
@@ -188,9 +188,9 @@ public class CsvExport extends Export {
 
     public Category getCategoryById(long id) {
         Category category = categoriesMap.get(id);
-        if (category.id == 0) return null;
+        if (category.getId() == 0) return null;
         if (category.isSplit()) {
-            category.title = "SPLIT";
+            category.setTitle("SPLIT");
         }
         return category;
     }

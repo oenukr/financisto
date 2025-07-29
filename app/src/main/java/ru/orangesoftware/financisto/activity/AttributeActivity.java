@@ -22,6 +22,8 @@ import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.Spinner;
 
+import androidx.annotation.NonNull;
+
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
 import ru.orangesoftware.financisto.db.DatabaseHelper.AttributeColumns;
@@ -41,8 +43,9 @@ public class AttributeActivity extends Activity implements OnItemSelectedListene
 	private EditText valuesTextView;
 	private EditText defaultValueTextView;
 	private CheckBox defaultValueCheckBox;
-	
-	private Attribute attribute = new Attribute();
+
+	@NonNull
+	private Attribute attribute = new Attribute(Attribute.TYPE_TEXT, null, null, 0);
 
 	@Override
 	protected void attachBaseContext(Context base) {
@@ -95,27 +98,27 @@ public class AttributeActivity extends Activity implements OnItemSelectedListene
 	}
 
 	private void updateAttributeFromUI() {
-		attribute.title = nameTextView.getText().toString();
-		attribute.listValues = Utils.text(valuesTextView);
-		attribute.type = typeSpinner.getSelectedItemPosition()+1;
-		if (attribute.type == Attribute.TYPE_CHECKBOX) {
-			attribute.defaultValue = String.valueOf(defaultValueCheckBox.isChecked());
+		attribute.setTitle(nameTextView.getText().toString());
+		attribute.setListValues(Utils.text(valuesTextView));
+		attribute.setType(typeSpinner.getSelectedItemPosition() + 1);
+		if (attribute.getType() == Attribute.TYPE_CHECKBOX) {
+			attribute.setDefaultValue(String.valueOf(defaultValueCheckBox.isChecked()));
 		} else {
-			attribute.defaultValue = Utils.text(defaultValueTextView);
+			attribute.setDefaultValue(Utils.text(defaultValueTextView));
 		}
 	}
 
 	private void editAttribute() {
-		nameTextView.setText(attribute.title);
-		typeSpinner.setSelection(attribute.type-1);
-		if (attribute.listValues != null) {
-			valuesTextView.setText(attribute.listValues);
+		nameTextView.setText(attribute.getTitle());
+		typeSpinner.setSelection(attribute.getType() - 1);
+		if (attribute.getListValues() != null) {
+			valuesTextView.setText(attribute.getListValues());
 		}
-		if (attribute.defaultValue != null) {
-			if (attribute.type == Attribute.TYPE_CHECKBOX) {
-				defaultValueCheckBox.setChecked(Boolean.parseBoolean(attribute.defaultValue));
+		if (attribute.getDefaultValue() != null) {
+			if (attribute.getType() == Attribute.TYPE_CHECKBOX) {
+				defaultValueCheckBox.setChecked(Boolean.parseBoolean(attribute.getDefaultValue()));
 			} else {
-				defaultValueTextView.setText(attribute.defaultValue);				
+				defaultValueTextView.setText(attribute.getDefaultValue());
 			}			
 		}
 	}

@@ -2,7 +2,6 @@ package ru.orangesoftware.financisto.db;
 
 import static org.junit.Assert.assertEquals;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.List;
@@ -174,7 +173,6 @@ public class RunningBalanceTest extends AbstractDbTest {
         assertFinalBalanceForAccount(a3, 4000);
     }
 
-    @Ignore("Check why 'assertAccountBalanceForTransaction(t3, a1, 800);' fails sometimes with 600 instead of 800")
     @Test
     public void should_update_running_balance_for_two_accounts_when_updating_transfer_split() {
         Transaction t1 = TransactionBuilder.withDb(db).account(a1).amount(1000).create();
@@ -398,7 +396,7 @@ public class RunningBalanceTest extends AbstractDbTest {
         // t22 | 12:00 | -100   | +400
         // A2  | time  | amount | balance
         // t21 | 11:00 | +900   | +900
-        t22.fromAccountId = a1.id;
+        t22.fromAccountId = a1.getId();
         db.insertOrUpdate(t22);
         assertAccountBalanceForTransaction(t11, a1, 1000);
         assertAccountBalanceForTransaction(t12, a1, 500);
@@ -651,7 +649,7 @@ public class RunningBalanceTest extends AbstractDbTest {
         // A3  | time  | amount | balance
         // t12 | 12:30 | +100   | +100 <- A1
         // t31 | 13:00 | +100   | +200
-        t12.toAccountId = a3.id;
+        t12.toAccountId = a3.getId();
         db.insertOrUpdate(t12);
         assertAccountBalanceForTransaction(t11, a1, 1000);
         assertAccountBalanceForTransaction(t12, a1, 900);
@@ -679,7 +677,7 @@ public class RunningBalanceTest extends AbstractDbTest {
     }
 
     private void resetLastTransaction(Account a) {
-        db.db().execSQL("update account set last_transaction_date=0 where _id=?", new String[]{String.valueOf(a.id)});
+        db.db().execSQL("update account set last_transaction_date=0 where _id=?", new String[]{String.valueOf(a.getId())});
     }
 
 }

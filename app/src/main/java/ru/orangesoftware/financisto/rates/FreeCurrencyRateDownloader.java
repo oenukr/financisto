@@ -45,19 +45,19 @@ public class FreeCurrencyRateDownloader extends AbstractMultipleRatesDownloader 
         String url = buildUrl(fromCurrency, toCurrency);
         logger.i(url);
         JSONObject jsonObject = client.getAsJson(url);
-        logger.i(jsonObject.getString(toCurrency.name));
-        return jsonObject.getString(toCurrency.name);
+        logger.i(jsonObject.getString(toCurrency.getName()));
+        return jsonObject.getString(toCurrency.getName());
     }
 
     private ExchangeRate createRate(Currency fromCurrency, Currency toCurrency) {
         ExchangeRate rate = new ExchangeRate();
-        rate.fromCurrencyId = fromCurrency.id;
-        rate.toCurrencyId = toCurrency.id;
+        rate.fromCurrencyId = fromCurrency.getId();
+        rate.toCurrencyId = toCurrency.getId();
         rate.date = dateTime;
         return rate;
     }
 
     private String buildUrl (Currency fromCurrency, Currency toCurrency) {
-        return "https://freecurrencyrates.com/api/action.php?s=fcr&iso="+toCurrency.name+"&f="+fromCurrency.name+"&v=1&do=cvals";
+        return "https://freecurrencyrates.com/api/action.php?s=fcr&iso="+toCurrency.getName()+"&f="+fromCurrency.getName()+"&v=1&do=cvals";
     }
 }

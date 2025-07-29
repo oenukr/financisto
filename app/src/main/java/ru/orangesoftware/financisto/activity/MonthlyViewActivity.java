@@ -133,28 +133,28 @@ public class MonthlyViewActivity extends ListActivity {
         if (account != null) {
 
             // get account type
-            isCreditCard = AccountType.valueOf(account.type).isCreditCard();
+            isCreditCard = AccountType.valueOf(account.getType()).isCreditCard();
 
-            currency = account.currency;
+            currency = account.getCurrency();
 
             if (isCreditCard) {
                 if (isStatementPreview) {
                     // assuming that expensesOnly is true only if payment and closing days > 0 [BlotterActivity]
                     title = getString(R.string.ccard_statement_title);
-                    String accountTitle = account.title;
-                    if (account.title == null || account.title.isEmpty()) {
-                        accountTitle = account.cardIssuer;
+                    String accountTitle = account.getTitle();
+                    if (account.getTitle() == null || account.getTitle().isEmpty()) {
+                        accountTitle = account.getCardIssuer();
                     }
                     String toReplace = getString(R.string.ccard_par);
                     title = title.replaceAll(toReplace, accountTitle);
-                    paymentDay = account.paymentDay;
-                    closingDay = account.closingDay;
+                    paymentDay = account.getPaymentDay();
+                    closingDay = account.getClosingDay();
                     // set activity window title
                     this.setTitle(R.string.ccard_statement);
                     setCCardTitle();
                     setCCardInterval();
                 } else {
-                    title = (account.title == null || account.title.isEmpty() ? account.cardIssuer : account.title);
+                    title = (account.getTitle() == null || account.getTitle().isEmpty() ? account.getCardIssuer() : account.getTitle());
                     paymentDay = 1;
                     closingDay = 31;
                     setTitle();
@@ -165,18 +165,18 @@ public class MonthlyViewActivity extends ListActivity {
                     totalLabel.setText(getResources().getString(R.string.monthly_result));
                 }
             } else {
-                if (account.title == null || account.title.isEmpty()) {
+                if (account.getTitle() == null || account.getTitle().isEmpty()) {
                     if (isCreditCard) {
                         // title = <CARD_ISSUER>
-                        title = account.cardIssuer;
+                        title = account.getCardIssuer();
                     } else {
                         // title = <ACCOUNT_TYPE_TITLE>
-                        AccountType type = AccountType.valueOf(account.type);
+                        AccountType type = AccountType.valueOf(account.getType());
                         title = getString(type.getTitleId());
                     }
                 } else {
                     // title = <TITLE>
-                    title = account.title;
+                    title = account.getTitle();
                 }
 
                 paymentDay = 1;

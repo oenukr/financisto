@@ -58,14 +58,14 @@ public class DatabaseBackupTest extends AbstractImportExportTest {
         // given
         String backupFile = backupDatabase(false);
         String backupContent = fileAsString(backupFile);
-        long expectedTotalAmount = db.getAccount(a1.id).totalAmount;
+        long expectedTotalAmount = db.getAccount(a1.getId()).getTotalAmount();
         assertThat(backupContent, containsString("total_amount:" + expectedTotalAmount));
         // when
         restoreDatabase(backupFile);
         // then
         List<Account> accounts = db.getAllAccountsList();
         assertEquals(1, accounts.size());
-        assertEquals(expectedTotalAmount, accounts.get(0).totalAmount);
+        assertEquals(expectedTotalAmount, accounts.get(0).getTotalAmount());
     }
 
     @Ignore("Need to tell robolectric to make the needed folder writable")
@@ -124,8 +124,8 @@ public class DatabaseBackupTest extends AbstractImportExportTest {
     private void assertAccounts() {
         List<Account> accounts = db.getAllAccountsList();
         assertEquals(1, accounts.size());
-        assertEquals("My Cash Account", accounts.get(0).title);
-        assertEquals("AAA BBB:CCC", accounts.get(0).note);
+        assertEquals("My Cash Account", accounts.get(0).getTitle());
+        assertEquals("AAA BBB:CCC", accounts.get(0).getNote());
     }
 
     private String fileAsString(String backupFile) throws IOException {

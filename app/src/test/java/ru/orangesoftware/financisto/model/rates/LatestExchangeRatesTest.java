@@ -107,7 +107,7 @@ public class LatestExchangeRatesTest extends AbstractDbTest {
 
     private void assertTotal(Total[] totals, Currency currency, long amount) {
         for (Total total : totals) {
-            if (total.currency.id == currency.id) {
+            if (total.currency.getId() == currency.getId()) {
                 assertEquals(amount, total.balance);
                 return;
             }

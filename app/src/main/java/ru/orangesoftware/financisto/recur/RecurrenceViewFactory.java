@@ -309,7 +309,7 @@ public class RecurrenceViewFactory {
         }
 
         @Override
-        public boolean isChecked() {
+        public boolean getChecked() {
             return checked;
         }
 
@@ -379,7 +379,7 @@ public class RecurrenceViewFactory {
                 days.clear();
                 for (MultiChoiceItem i : items) {
                     DayOfWeekItem di = (DayOfWeekItem) i;
-                    if (di.isChecked()) {
+                    if (di.getChecked()) {
                         days.add(di.d);
                     }
                 }

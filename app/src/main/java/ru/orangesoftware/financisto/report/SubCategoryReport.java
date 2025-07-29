@@ -90,10 +90,10 @@ public class SubCategoryReport extends Report {
         GraphUnitTree u = null;
         long lastId = -1;
         for (CategoryAmount a : amounts) {
-            if (u == null || lastId != a.id) {
-                u = new GraphUnitTree(a.id, a.title, currency, getStyle(level));
+            if (u == null || lastId != a.getId()) {
+                u = new GraphUnitTree(a.getId(), a.getTitle(), currency, getStyle(level));
                 roots.add(u);
-                lastId = a.id;
+                lastId = a.getId();
             }
             u.addAmount(a.amount, skipTransfers && a.isTransfer != 0);
             if (a.hasChildren()) {
@@ -144,8 +144,8 @@ public class SubCategoryReport extends Report {
         private final int isTransfer;
 
         public CategoryAmount(Cursor c, int leftColumnIndex, BigDecimal amount) {
-            this.id = c.getLong(0);
-            this.title = c.getString(1);
+            this.setId(c.getLong(0));
+            this.setTitle(c.getString(1));
             this.amount = amount;
             this.left = c.getInt(leftColumnIndex);
             this.right = c.getInt(leftColumnIndex + 1);

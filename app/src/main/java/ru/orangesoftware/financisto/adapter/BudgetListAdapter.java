@@ -60,7 +60,7 @@ public class BudgetListAdapter extends BaseAdapter {
 
 	@Override
 	public long getItemId(int i) {
-		return getItem(i).id;
+		return getItem(i).getId();
 	}
 
 	private final StringBuilder sb = new StringBuilder();
@@ -76,48 +76,48 @@ public class BudgetListAdapter extends BaseAdapter {
 		}
 		Budget b = getItem(position);
 		v.bottomView.setText("*/*");
-		v.centerView.setText(b.title);
+		v.centerView.setText(b.getTitle());
 		
 		Currency c = b.getBudgetCurrency();
-		long amount = b.amount;
+		long amount = b.getAmount();
 		v.rightCenterView.setText(Utils.amountToString(c, Math.abs(amount)));
 		
 		StringBuilder sb = this.sb;
 
 		sb.setLength(0);
-		Recur r = b.getRecur();
+		Recur r = b.getTheRecur();
 		if (r.interval != RecurInterval.NO_RECUR) {
-			sb.append("#").append(b.recurNum+1).append(" ");
+			sb.append("#").append(b.getRecurNum() + 1).append(" ");
 		}
-		sb.append(DateUtils.formatDateRange(context, b.startDate, b.endDate, 
+		sb.append(DateUtils.formatDateRange(context, b.getStartDate(), b.getEndDate(),
 				DateUtils.FORMAT_SHOW_TIME|DateUtils.FORMAT_SHOW_DATE|DateUtils.FORMAT_ABBREV_MONTH));
 		v.topView.setText(sb.toString());
 		
-		if (b.updated) {			
-			long spent = b.spent;
+		if (b.getUpdated()) {
+			long spent = b.getSpent();
 			long balance = amount+spent;
 			u.setAmountText(v.rightView1, c, balance, false);
 			u.setAmountText(v.rightView2, c, spent, false);
 
 			sb.setLength(0);
-			String categoriesText = b.categoriesText;
+			String categoriesText = b.getCategoriesText();
 			if (Utils.isEmpty(categoriesText)) {
 				sb.append("*");
 			} else {
 				sb.append( categoriesText);
 			}
-			if (b.includeSubcategories) {
+			if (b.getIncludeSubcategories()) {
 				sb.append("/*");
 			}
-			if (!Utils.isEmpty(b.projectsText)) {
-				sb.append(" [").append(b.projectsText).append("]");
+			if (!Utils.isEmpty(b.getProjectsText())) {
+				sb.append(" [").append(b.getProjectsText()).append("]");
 			}
 			v.bottomView.setText(sb.toString());
-            if (b.amount > 0) {
-			    v.progressBar.setMax((int)Math.abs(b.amount));
+            if (b.getAmount() > 0) {
+			    v.progressBar.setMax((int)Math.abs(b.getAmount()));
 			    v.progressBar.setProgress((int)(balance-1));
             } else {
-                v.progressBar.setMax((int)Math.abs(b.amount));
+                v.progressBar.setMax((int)Math.abs(b.getAmount()));
                 v.progressBar.setProgress((int)(spent-1));
             }
 		} else {

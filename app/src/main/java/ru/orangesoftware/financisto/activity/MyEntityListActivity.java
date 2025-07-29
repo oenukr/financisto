@@ -144,7 +144,7 @@ public abstract class MyEntityListActivity<T extends MyEntity> extends AbstractL
         T e = db.load(clazz, id);
         Intent intent = new Intent(this, BlotterActivity.class);
         Criteria blotterFilter = createBlotterCriteria(e);
-        blotterFilter.toIntent(e.title, intent);
+        blotterFilter.toIntent(e.getTitle(), intent);
         startActivity(intent);
     }
 

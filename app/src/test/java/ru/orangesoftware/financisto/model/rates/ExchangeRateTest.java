@@ -1,5 +1,7 @@
 package ru.orangesoftware.financisto.model.rates;
 
+import static org.junit.Assert.assertEquals;
+
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -12,8 +14,6 @@ import ru.orangesoftware.financisto.rates.ExchangeRateProvider;
 import ru.orangesoftware.financisto.test.CurrencyBuilder;
 import ru.orangesoftware.financisto.test.DateTime;
 import ru.orangesoftware.financisto.test.RateBuilder;
-
-import static org.junit.Assert.*;
 
 public class ExchangeRateTest extends AbstractDbTest {
 
@@ -33,8 +33,8 @@ public class ExchangeRateTest extends AbstractDbTest {
     public void should_calculate_opposite_rate() {
         ExchangeRate rate = RateBuilder.withDb(db).from(c1).to(c2).at(DateTime.date(2012, 1, 17)).rate(0.78592f).create();
         ExchangeRate flip = rate.flip();
-        assertEquals(c2.id, flip.fromCurrencyId);
-        assertEquals(c1.id, flip.toCurrencyId);
+        assertEquals(c2.getId(), flip.fromCurrencyId);
+        assertEquals(c1.getId(), flip.toCurrencyId);
         assertEquals(rate.date, flip.date);
         assertEquals(1.27239f, flip.rate, 0.00001f);
         ExchangeRate rate1 = flip.flip();

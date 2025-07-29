@@ -20,7 +20,6 @@ import android.widget.TextView;
 import androidx.core.content.ContextCompat;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import ru.orangesoftware.financisto.R;
@@ -92,9 +91,9 @@ public abstract class AbstractTotalsDetailsActivity extends AbstractActivity {
                 TotalInfo info = new TotalInfo(total, rate);
                 result.add(info);
             }
-            Collections.sort(result, (thisTotalInfo, thatTotalInfo) -> {
-                String thisName = thisTotalInfo.total.currency.name;
-                String thatName = thatTotalInfo.total.currency.name;
+            result.sort((thisTotalInfo, thatTotalInfo) -> {
+                String thisName = thisTotalInfo.total.currency.getName();
+                String thatName = thatTotalInfo.total.currency.getName();
                 return thisName.compareTo(thatName);
             });
             return new TotalsInfo(result, totalInHomeCurrency);
@@ -104,7 +103,7 @@ public abstract class AbstractTotalsDetailsActivity extends AbstractActivity {
         protected void onPostExecute(TotalsInfo totals) {
             calculatingNode.setVisibility(View.GONE);
             for (TotalInfo total : totals.totals) {
-                String title = getString(titleNodeResId, total.total.currency.name);
+                String title = getString(titleNodeResId, total.total.currency.getName());
                 addAmountNode(total.total, title);
             }
             if (shouldShowHomeCurrencyTotal) {
@@ -125,7 +124,7 @@ public abstract class AbstractTotalsDetailsActivity extends AbstractActivity {
             TextView data = activityLayout.addInfoNode(layout, -1, R.string.not_available, "");
             Drawable dr = ContextCompat.getDrawable(getBaseContext(), R.drawable.total_error);
             dr.setBounds(0, 0, dr.getIntrinsicWidth(), dr.getIntrinsicHeight());
-            if (total.currency == Currency.EMPTY) {
+            if (total.currency == Currency.Companion.getEMPTY()) {
                 data.setText(R.string.currency_make_default_warning);
             } else {
                 data.setText(total.getError(AbstractTotalsDetailsActivity.this));

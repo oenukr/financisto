@@ -1,5 +1,7 @@
 package ru.orangesoftware.financisto.model;
 
+import static org.junit.Assert.assertEquals;
+
 import org.junit.Test;
 
 import java.util.Map;
@@ -9,8 +11,6 @@ import ru.orangesoftware.financisto.test.AccountBuilder;
 import ru.orangesoftware.financisto.test.CategoryBuilder;
 import ru.orangesoftware.financisto.test.DateTime;
 import ru.orangesoftware.financisto.test.TransactionBuilder;
-
-import static org.junit.Assert.*;
 
 public class BudgetTest extends AbstractDbTest {
 
@@ -28,22 +28,39 @@ public class BudgetTest extends AbstractDbTest {
         categoriesMap = CategoryBuilder.createDefaultHierarchy(db);
         categories = MyEntity.asMap(db.getCategoriesList(true));
         project = new Project();
-        project.title = "P1";
+        project.setTitle("P1");
         db.saveOrUpdate(project);
         projects = MyEntity.asMap(db.getAllProjectsList(true));
         createBudget();
     }
 
     private void createBudget() {
-        budgetOne = new Budget();
-        budgetOne.currency = account.currency;
-        budgetOne.amount = 1000;
-        budgetOne.categories = String.valueOf(categoriesMap.get("A").id);
-        budgetOne.projects = String.valueOf(project.id);
-        budgetOne.expanded = true;
-        budgetOne.includeSubcategories = true;
-        budgetOne.startDate = DateTime.date(2011, 4, 1).atMidnight().asLong();
-        budgetOne.endDate = DateTime.date(2011, 4, 30).at(23, 59, 59, 999).asLong();
+        budgetOne = new Budget(
+                -1,
+                "",
+                String.valueOf(categoriesMap.get("A").getId()),
+                String.valueOf(project.getId()),
+                -1,
+                account.getCurrency(),
+                null,
+                1000,
+                true,
+                true,
+                false,
+                DateTime.date(2011, 4, 1).atMidnight().asLong(),
+                DateTime.date(2011, 4, 30).at(23, 59, 59, 999).asLong(),
+                "",
+                -1,
+                false,
+                -1,
+                -1,
+                null,
+                0,
+                "",
+                "",
+                -1,
+                false
+        );
         db.saveOrUpdate(budgetOne);
     }
 

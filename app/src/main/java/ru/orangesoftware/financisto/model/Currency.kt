@@ -1,102 +1,48 @@
-/*******************************************************************************
- * Copyright (c) 2010 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
- * Contributors:
- *     Denis Solonenko - initial API and implementation
- *     Abdsandryk Souza - adding default currency and fromCursor
- ******************************************************************************/
-package ru.orangesoftware.financisto.model;
+package ru.orangesoftware.financisto.model
 
-import static ru.orangesoftware.financisto.db.DatabaseHelper.CURRENCY_TABLE;
-import static ru.orangesoftware.orb.EntityManager.DEF_SORT_COL;
+import androidx.room.ColumnInfo
+import androidx.room.Entity
+import androidx.room.Ignore
+import ru.orangesoftware.financisto.db.DatabaseHelper.CURRENCY_TABLE
+import ru.orangesoftware.financisto.utils.CurrencyCache
+import ru.orangesoftware.orb.EntityManager.DEF_SORT_COL
+import java.text.DecimalFormat
+import java.text.NumberFormat
 
-import androidx.annotation.NonNull;
+@Entity(tableName = CURRENCY_TABLE)
+data class Currency(
+	@ColumnInfo(name = "name") var name: String = "",
+	override var title: String? = "Default",
+	@ColumnInfo(name = "symbol") var symbol: String = "",
+	@ColumnInfo(name = "symbol_format") var symbolFormat: SymbolFormat = SymbolFormat.RS,
+	@ColumnInfo(name = "is_default") var isDefault: Boolean = false,
+	@ColumnInfo(name = "decimals") var decimals: Int = 2,
+	@ColumnInfo(name = "decimal_separator") var decimalSeparator: String = "'.'",
+	@ColumnInfo(name = "group_separator") var groupSeparator: String = "','",
+	@ColumnInfo(name = DEF_SORT_COL) override val sortOrder: Long = 0,
+	@Transient
+	@Ignore private var format: DecimalFormat? = null,
+) : MyEntity(), SortableEntity {
 
-import java.text.DecimalFormat;
-import java.text.NumberFormat;
+    override fun toString(): String = name
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Table;
-import javax.persistence.Transient;
-
-import ru.orangesoftware.financisto.utils.CurrencyCache;
-
-@Entity
-@Table(name = CURRENCY_TABLE)
-public class Currency extends MyEntity implements SortableEntity {
-
-	public static final Currency EMPTY = new Currency();
-
-	static {
-		EMPTY.id = 0;
-		EMPTY.name = "";
-		EMPTY.title = "Default";
-		EMPTY.symbol = "";
-		EMPTY.symbolFormat = SymbolFormat.RS;
-		EMPTY.decimals = 2;
-		EMPTY.decimalSeparator = "'.'";
-		EMPTY.groupSeparator = "','";
+    fun getFormat(): NumberFormat {
+		format = format ?: CurrencyCache.createCurrencyFormat(this)
+		return format as NumberFormat
 	}
 
-	@Column(name = "name")
-	public String name;
+	companion object {
+		val EMPTY: Currency = Currency()
 
-	@Column(name = "symbol")
-	public String symbol;
-
-    @Column(name = "symbol_format")
-    public SymbolFormat symbolFormat = SymbolFormat.RS;
-
-	@Column(name = "is_default")
-	public boolean isDefault;
-
-	@Column(name = "decimals")
-	public int decimals = 2;
-
-	@Column(name = "decimal_separator")
-	public String decimalSeparator;
-
-	@Column(name = "group_separator")
-	public String groupSeparator;
-
-	@Column(name = DEF_SORT_COL)
-	public long sortOrder;
-
-    @Transient
-	private volatile DecimalFormat format;
-
-    @NonNull
-	@Override
-    public String toString() {
-        return name;
-    }
-
-    public NumberFormat getFormat() {
-		DecimalFormat f = format;
-		if (f == null) {
-			f = CurrencyCache.createCurrencyFormat(this);
-			format = f;
+		@JvmStatic
+		fun defaultCurrency(): Currency {
+			val currency: Currency = Currency()
+			currency.id = 2
+			currency.name = "USD"
+			currency.title = "American Dollar"
+			currency.symbol = "$"
+			currency.decimals = 2
+			return currency
 		}
-		return f;
-	}
-	
-	public static Currency defaultCurrency() {
-		Currency c = new Currency();
-		c.id = 2;
-		c.name = "USD";
-		c.title = "American Dollar";
-		c.symbol = "$";
-		c.decimals = 2;
-		return c;
-	}
-
-	@Override
-	public long getSortOrder() {
-		return sortOrder;
 	}
 }
