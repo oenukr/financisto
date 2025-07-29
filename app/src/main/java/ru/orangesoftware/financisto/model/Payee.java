@@ -24,8 +24,8 @@ public class Payee extends MyEntity implements SortableEntity {
     public static final Payee EMPTY = new Payee();
 
     static {
-        EMPTY.id = 0;
-        EMPTY.title = "No payee";
+        EMPTY.setId(0);
+        EMPTY.setTitle("No payee");
     }
 
     @Column(name = "last_category_id")

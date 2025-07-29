@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?><!-- @formatter:off -->
+<journey name="Check folder permission Journey">
+    <description>A Journey that tests if the permission to access folder is set</description>
+    <actions>
+        <action></action>
+    </actions>
+</journey>

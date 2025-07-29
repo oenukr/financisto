@@ -45,7 +45,32 @@ public class BudgetActivity extends AbstractActivity {
     private CheckBox cbIncludeCredit;
     private CheckBox cbSavingBudget;
 
-    private Budget budget = new Budget();
+    private Budget budget = new Budget(
+            -1,
+            "",
+            "",
+            "",
+            -1,
+            null,
+            null,
+            -1,
+            false,
+            false,
+            false,
+            -1,
+            -1,
+            "",
+            -1,
+            false,
+            -1,
+            -1,
+            null,
+            0,
+            "",
+            "",
+            -1,
+            false
+    );
 
     private List<AccountOption> accountOptions;
     private ProjectSelector<BudgetActivity> projectSelector;
@@ -104,7 +129,7 @@ public class BudgetActivity extends AbstractActivity {
 
         Button bOK = findViewById(R.id.bOK);
         bOK.setOnClickListener(arg0 -> {
-            if (checkSelected(budget.currency != null ? budget.currency : budget.account, R.string.select_account)) {
+            if (checkSelected(budget.getCurrency() != null ? budget.getCurrency() : budget.getAccount(), R.string.select_account)) {
                 updateBudgetFromUI();
                 long id = db.insertBudget(budget);
                 Intent intent = new Intent();
@@ -137,43 +162,43 @@ public class BudgetActivity extends AbstractActivity {
         List<AccountOption> accounts = new ArrayList<>();
         List<Currency> currenciesList = db.getAllCurrenciesList("name");
         for (Currency currency : currenciesList) {
-            String title = getString(R.string.account_by_currency, currency.name);
+            String title = getString(R.string.account_by_currency, currency.getName());
             accounts.add(new AccountOption(title, currency, null));
         }
         List<Account> accountsList = db.getAllAccountsList();
         for (Account account : accountsList) {
-            accounts.add(new AccountOption(account.title, null, account));
+            accounts.add(new AccountOption(account.getTitle(), null, account));
         }
         return accounts;
     }
 
     private void editBudget() {
-        titleText.setText(budget.title);
-        amountInput.setAmount(budget.amount);
-        categorySelector.updateCheckedEntities(budget.categories);
+        titleText.setText(budget.getTitle());
+        amountInput.setAmount(budget.getAmount());
+        categorySelector.updateCheckedEntities(budget.getCategories());
         categorySelector.fillCategoryInUI();
 
-        projectSelector.updateCheckedEntities(budget.projects);
+        projectSelector.updateCheckedEntities(budget.getProjects());
         projectSelector.fillCheckedEntitiesInUI();
         selectAccount(budget);
-        selectRecur(budget.recur);
-        cbIncludeSubCategories.setChecked(budget.includeSubcategories);
-        cbIncludeCredit.setChecked(budget.includeCredit);
-        cbMode.setChecked(budget.expanded);
-        cbSavingBudget.setChecked(budget.amount < 0);
+        selectRecur(budget.getRecur());
+        cbIncludeSubCategories.setChecked(budget.getIncludeSubcategories());
+        cbIncludeCredit.setChecked(budget.getIncludeCredit());
+        cbMode.setChecked(budget.getExpanded());
+        cbSavingBudget.setChecked(budget.getAmount() < 0);
     }
 
     protected void updateBudgetFromUI() {
-        budget.title = titleText.getText().toString();
-        budget.amount = amountInput.getAmount();
+        budget.setTitle(titleText.getText().toString());
+        budget.setAmount(amountInput.getAmount());
         if (cbSavingBudget.isChecked()) {
-            budget.amount = -budget.amount;
+            budget.setAmount(-budget.getAmount());
         }
-        budget.includeSubcategories = cbIncludeSubCategories.isChecked();
-        budget.includeCredit = cbIncludeCredit.isChecked();
-        budget.expanded = cbMode.isChecked();
-        budget.categories = categorySelector.getCheckedIdsAsStr();
-        budget.projects = projectSelector.getCheckedIdsAsStr();
+        budget.setIncludeSubcategories(cbIncludeSubCategories.isChecked());
+        budget.setIncludeCredit(cbIncludeCredit.isChecked());
+        budget.setExpanded(cbMode.isChecked());
+        budget.setCategories(categorySelector.getCheckedIdsAsStr());
+        budget.setProjects(projectSelector.getCheckedIdsAsStr());
     }
 
     @Override
@@ -209,8 +234,8 @@ public class BudgetActivity extends AbstractActivity {
                 break;
             case R.id.period_recur: {
                 Intent intent = new Intent(this, RecurActivity.class);
-                if (budget.recur != null) {
-                    intent.putExtra(RecurActivity.EXTRA_RECUR, budget.recur);
+                if (budget.getRecur() != null) {
+                    intent.putExtra(RecurActivity.EXTRA_RECUR, budget.getRecur());
                 }
                 startActivityForResult(intent, RECUR_REQUEST);
             }
@@ -268,13 +293,13 @@ public class BudgetActivity extends AbstractActivity {
         if (option.currency != null) {
             amountInput.setCurrency(option.currency);
         } else {
-            amountInput.setCurrency(option.account.currency);
+            amountInput.setCurrency(option.account.getCurrency());
         }
     }
 
     private void selectRecur(String recur) {
         if (recur != null) {
-            budget.recur = recur;
+            budget.setRecur(recur);
             Recur r = RecurUtils.createFromExtraString(recur);
             periodRecurText.setText(r.toString(this));
         }
@@ -318,13 +343,13 @@ public class BudgetActivity extends AbstractActivity {
 
 
         public boolean matches(Budget budget) {
-            return (currency != null && budget.currency != null && currency.id == budget.currency.id) ||
-                    (account != null && budget.account != null && account.id == budget.account.id);
+            return (currency != null && budget.getCurrency() != null && currency.getId() == budget.getCurrency().getId()) ||
+                    (account != null && budget.getAccount() != null && account.getId() == budget.getAccount().getId());
         }
 
         public void updateBudget(Budget budget) {
-            budget.currency = currency;
-            budget.account = account;
+            budget.setCurrency(currency);
+            budget.setAccount(account);
         }
 
     }

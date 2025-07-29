@@ -55,8 +55,8 @@ public class WebserviceXConversionRateDownloader extends AbstractMultipleRatesDo
 
     private ExchangeRate createRate(Currency fromCurrency, Currency toCurrency) {
         ExchangeRate rate = new ExchangeRate();
-        rate.fromCurrencyId = fromCurrency.id;
-        rate.toCurrencyId = toCurrency.id;
+        rate.fromCurrencyId = fromCurrency.getId();
+        rate.toCurrencyId = toCurrency.getId();
         rate.date = dateTime;
         return rate;
     }
@@ -83,7 +83,7 @@ public class WebserviceXConversionRateDownloader extends AbstractMultipleRatesDo
     }
 
     private String buildUrl(Currency fromCurrency, Currency toCurrency) {
-        return "https://www.webservicex.net/CurrencyConvertor.asmx/ConversionRate?FromCurrency="+fromCurrency.name+"&ToCurrency="+toCurrency.name;
+        return "https://www.webservicex.net/CurrencyConvertor.asmx/ConversionRate?FromCurrency="+fromCurrency.getName()+"&ToCurrency="+toCurrency.getName();
     }
 
     @Override

@@ -271,7 +271,7 @@ public abstract class FilterAbstractActivity extends AbstractActivity implements
             String filterText = noFilterValue;
             long entityId = c.getLongValue1();
             T e = db.get(entityClass, entityId);
-            if (e != null) filterText = e.title;
+            if (e != null) filterText = e.getTitle();
             if (!TextUtils.isEmpty(filterText)) {
                 filterView.setText(filterText);
                 showMinusButton(filterView);
@@ -301,7 +301,7 @@ public abstract class FilterAbstractActivity extends AbstractActivity implements
             if (checkedCatLeafs.length > 1)
                 filter.put(Criteria.btw(CATEGORY_LEFT, checkedCatLeafs));
         } else {
-            if (cat.id > 0) {
+            if (cat.getId() > 0) {
                 filter.put(Criteria.btw(CATEGORY_LEFT, String.valueOf(cat.left), String.valueOf(cat.right)));
             }
         }

@@ -34,13 +34,13 @@ public class RateBuilder {
         this.db = db;
     }
 
-    public RateBuilder from(Currency c) {
-        r.fromCurrencyId = c.id;
+    public RateBuilder from(Currency currency) {
+        r.fromCurrencyId = currency.getId();
         return this;
     }
 
-    public RateBuilder to(Currency c) {
-        r.toCurrencyId = c.id;
+    public RateBuilder to(Currency currency) {
+        r.toCurrencyId = currency.getId();
         return this;
     }
 

@@ -34,14 +34,14 @@ public class CurrencySelectorTest extends AbstractDbTest {
         selector.addSelectedCurrency(1);
         //then
         Currency currency1 = db.load(Currency.class, currencyId);
-        assertTrue(currency1.isDefault);
+        assertTrue(currency1.isDefault());
 
         //when
         selector.addSelectedCurrency(2);
         //then
         Currency currency2 = db.load(Currency.class, currencyId);
-        assertTrue(currency1.isDefault);
-        assertFalse(currency2.isDefault);
+        assertTrue(currency1.isDefault());
+        assertFalse(currency2.isDefault());
     }
 
     private void givenNoCurrenciesYetExist() {

@@ -5,7 +5,7 @@ import ru.orangesoftware.financisto.model.Project;
 
 public class ProjectBuilder {
     private final DatabaseAdapter db;
-    private final Project p = new Project();
+    private final Project project = new Project();
 
     public static ProjectBuilder withDb(DatabaseAdapter db) {
         return new ProjectBuilder(db);
@@ -13,27 +13,27 @@ public class ProjectBuilder {
 
     private ProjectBuilder(DatabaseAdapter db) {
         this.db = db;
-        this.p.isActive = false;
+        this.project.setActive(false);
     }
 
     public ProjectBuilder id(long v) {
-        p.id = v;
+        project.setId(v);
         return this;
     }
 
     public ProjectBuilder title(String v) {
-        p.title = v;
+        project.setTitle(v);
         return this;
     }
 
     public ProjectBuilder setActive() {
-        p.isActive = true;
+        project.setActive(true);
         return this;
     }
 
     public Project create() {
-        db.saveOrUpdate(p);
-        return p;
+        db.saveOrUpdate(project);
+        return project;
     }
 
 

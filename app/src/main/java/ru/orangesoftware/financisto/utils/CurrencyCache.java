@@ -31,7 +31,7 @@ public class CurrencyCache {
         if (cachedCurrency == null) {
             cachedCurrency = em.get(Currency.class, currencyId);
             if (cachedCurrency == null) {
-                cachedCurrency = Currency.EMPTY;
+                cachedCurrency = Currency.Companion.getEMPTY();
             }
             CURRENCIES.put(currencyId, cachedCurrency);
         }
@@ -40,7 +40,7 @@ public class CurrencyCache {
 	
 	public static synchronized Currency getCurrencyOrEmpty(long currencyId) {
 		Currency c = CURRENCIES.get(currencyId);
-		return c != null ? c : Currency.EMPTY;
+		return c != null ? c : Currency.Companion.getEMPTY();
 	}
 
 	public static synchronized void initialize(EntityManager em) {
@@ -49,7 +49,7 @@ public class CurrencyCache {
 		try (Cursor c = q.execute()) {
 			while (c.moveToNext()) {
 				Currency currency = EntityManager.loadFromCursor(c, Currency.class);
-				currencies.put(currency.id, currency);
+				currencies.put(currency.getId(), currency);
 			}
 		}
 		CURRENCIES.putAll(currencies);
@@ -57,15 +57,15 @@ public class CurrencyCache {
 	
 	public static DecimalFormat createCurrencyFormat(Currency c) {
 		DecimalFormatSymbols dfs = new DecimalFormatSymbols();
-		dfs.setDecimalSeparator(charOrEmpty(c.decimalSeparator, dfs.getDecimalSeparator()));
-		dfs.setGroupingSeparator(charOrEmpty(c.groupSeparator, dfs.getGroupingSeparator()));
+		dfs.setDecimalSeparator(charOrEmpty(c.getDecimalSeparator(), dfs.getDecimalSeparator()));
+		dfs.setGroupingSeparator(charOrEmpty(c.getGroupSeparator(), dfs.getGroupingSeparator()));
 		dfs.setMonetaryDecimalSeparator(dfs.getDecimalSeparator());
-		dfs.setCurrencySymbol(c.symbol);
+		dfs.setCurrencySymbol(c.getSymbol());
 
 		DecimalFormat df = new DecimalFormat("#,##0.00", dfs);
 		df.setGroupingUsed(dfs.getGroupingSeparator() > 0);
-		df.setMinimumFractionDigits(c.decimals);
-		df.setMaximumFractionDigits(c.decimals);
+		df.setMinimumFractionDigits(c.getDecimals());
+		df.setMaximumFractionDigits(c.getDecimals());
 		df.setDecimalSeparatorAlwaysShown(false);
 		return df;
 	}

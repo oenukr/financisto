@@ -29,18 +29,18 @@ public class Category extends CategoryEntity<Category> {
 
     public static Category noCategory() {
         Category category = new Category();
-        category.id = NO_CATEGORY_ID;
+        category.setId(NO_CATEGORY_ID);
         category.left = 1;
         category.right = 2;
-        category.title = "<NO_CATEGORY>";
+        category.setTitle("<NO_CATEGORY>");
         return category;
     }
 
     public static Category splitCategory() {
         Category category = new Category();
-        category.id = SPLIT_CATEGORY_ID;
+        category.setId(SPLIT_CATEGORY_ID);
         category.left = category.right = 0;
-        category.title = "<SPLIT_CATEGORY>";
+        category.setTitle("<SPLIT_CATEGORY>");
         return category;
     }
 
@@ -70,16 +70,16 @@ public class Category extends CategoryEntity<Category> {
     }
 
     public Category(long id) {
-        this.id = id;
+        this.setId(id);
     }
 
     @NonNull
     @Override
     public String toString() {
         return "[" +
-                "id=" + id +
+                "id=" + getId() +
                 ",parentId=" + getParentId() +
-                ",title=" + title +
+                ",title=" + getTitle() +
                 ",level=" + level +
                 ",left=" + left +
                 ",right=" + right +
@@ -89,7 +89,7 @@ public class Category extends CategoryEntity<Category> {
 
     @Override
     public String getTitle() {
-        return getTitle(title, level);
+        return getTitle(getTitle(), level);
     }
 
     public static String getTitle(String title, int level) {
@@ -119,8 +119,8 @@ public class Category extends CategoryEntity<Category> {
     public static Category formCursor(Cursor c) {
         long id = c.getLong(CategoryViewColumns._id.ordinal());
         Category cat = new Category();
-        cat.id = id;
-        cat.title = c.getString(CategoryViewColumns.title.ordinal());
+        cat.setId(id);
+        cat.setTitle(c.getString(CategoryViewColumns.title.ordinal()));
         cat.level = c.getInt(CategoryViewColumns.level.ordinal());
         cat.left = c.getInt(CategoryViewColumns.left.ordinal());
         cat.right = c.getInt(CategoryViewColumns.right.ordinal());
@@ -137,7 +137,7 @@ public class Category extends CategoryEntity<Category> {
     }
 
     public boolean isSplit() {
-        return id == SPLIT_CATEGORY_ID;
+        return getId() == SPLIT_CATEGORY_ID;
     }
 
 }

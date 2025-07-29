@@ -40,7 +40,7 @@ public class EntityListAdapter<T extends MyEntity> extends BaseAdapter {
 
     @Override
     public long getItemId(int i) {
-        return getItem(i).id;
+        return getItem(i).getId();
     }
 
     @Override
@@ -48,8 +48,8 @@ public class EntityListAdapter<T extends MyEntity> extends BaseAdapter {
         View view = EntityEnumViewHolder.create(context, convertView, parent);
         EntityEnumViewHolder holder = (EntityEnumViewHolder) view.getTag();
         MyEntity e = getItem(position);
-        holder.title.setText(e.title);
-        holder.icon.setImageResource(e.isActive ? R.drawable.entity_active_icon : R.drawable.entity_inactive_icon);
+        holder.title.setText(e.getTitle());
+        holder.icon.setImageResource(e.isActive() ? R.drawable.entity_active_icon : R.drawable.entity_inactive_icon);
         return view;
     }
 

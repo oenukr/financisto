@@ -68,7 +68,7 @@ public class TransferActivity extends AbstractTransactionActivity {
         if (transaction.fromAccountId > 0) {
             Account fromAccount = db.getAccount(transaction.fromAccountId);
             selectAccount(fromAccount, accountFromText, false);
-            rateView.selectCurrencyFrom(fromAccount.currency);
+            rateView.selectCurrencyFrom(fromAccount.getCurrency());
             rateView.setFromAmount(transaction.fromAmount);
             selectedAccountFromId = transaction.fromAccountId;
         }
@@ -76,7 +76,7 @@ public class TransferActivity extends AbstractTransactionActivity {
         if (transaction.toAccountId > 0) {
             Account toAccount = db.getAccount(transaction.toAccountId);
             selectAccount(toAccount, accountToText, false);
-            rateView.selectCurrencyTo(toAccount.currency);
+            rateView.selectCurrencyTo(toAccount.getCurrency());
             rateView.setToAmount(transaction.toAmount);
             selectedAccountToId = transaction.toAccountId;
         }
@@ -149,7 +149,7 @@ public class TransferActivity extends AbstractTransactionActivity {
         if (account != null) {
             selectAccount(account, accountToText, false);
             selectedAccountToId = selectedId;
-            rateView.selectCurrencyTo(account.currency);
+            rateView.selectCurrencyTo(account.getCurrency());
         }
     }
 
@@ -159,15 +159,15 @@ public class TransferActivity extends AbstractTransactionActivity {
         if (account != null) {
             selectAccount(account, accountFromText, selectLast);
             selectedAccountFromId = accountId;
-            rateView.selectCurrencyFrom(account.currency);
+            rateView.selectCurrencyFrom(account.getCurrency());
         }
         return account;
     }
 
     protected void selectAccount(Account account, TextView accountText, boolean selectLast) {
-        accountText.setText(account.title);
+        accountText.setText(account.getTitle());
         if (selectLast && isRememberLastAccount) {
-            selectToAccount(account.lastAccountId);
+            selectToAccount(account.getLastAccountId());
         }
     }
 

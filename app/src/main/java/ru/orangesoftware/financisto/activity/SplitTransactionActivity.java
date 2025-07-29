@@ -80,7 +80,7 @@ public class SplitTransactionActivity extends AbstractSplitActivity implements C
         } else {
             amountInput.setExpense();
         }
-        split.categoryId = category.id;
+        split.categoryId = category.getId();
         categorySelector.addAttributes(split);
     }
 
@@ -88,7 +88,7 @@ public class SplitTransactionActivity extends AbstractSplitActivity implements C
         amountInput.setAmount(amount);
         Currency c = getCurrency();
         amountInput.setCurrency(c);
-        amountTitle.setText(getString(R.string.amount)+" ("+c.name+")");
+        amountTitle.setText(getString(R.string.amount) + " (" + c.getName() + ")");
     }
 
     @Override

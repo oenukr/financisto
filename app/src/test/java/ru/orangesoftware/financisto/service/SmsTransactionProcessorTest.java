@@ -1,5 +1,9 @@
 package ru.orangesoftware.financisto.service;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static ru.orangesoftware.financisto.service.SmsTransactionProcessor.toBigDecimal;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -13,9 +17,6 @@ import ru.orangesoftware.financisto.service.SmsTransactionProcessor.Placeholder;
 import ru.orangesoftware.financisto.test.AccountBuilder;
 import ru.orangesoftware.financisto.test.CurrencyBuilder;
 import ru.orangesoftware.financisto.test.SmsTemplateBuilder;
-
-import static ru.orangesoftware.financisto.service.SmsTransactionProcessor.toBigDecimal;
-import static org.junit.Assert.*;
 
 public class SmsTransactionProcessorTest extends AbstractDbTest {
 
@@ -164,7 +165,7 @@ public class SmsTransactionProcessorTest extends AbstractDbTest {
                 .create();
         Transaction transaction = smsProcessor.createTransactionBySms("900", sms, status, false);
 
-        assertEquals(account.id, transaction.fromAccountId);
+        assertEquals(account.getId(), transaction.fromAccountId);
         assertEquals(18, transaction.categoryId);
         assertEquals(-55000, transaction.fromAmount);
         assertEquals("", transaction.note);

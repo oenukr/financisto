@@ -2,6 +2,7 @@ package ru.orangesoftware.financisto.persistance
 
 import android.content.Context
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.rxjava3.rxPreferencesDataStore
@@ -40,7 +41,7 @@ class PreferencesStore(private val context: Context) {
     val backupPreferencesRx: Flowable<BackupPreferences> = context.dataStoreRx.data()
         .map {  preferences ->
         val folder = preferences[BACKUP_FOLDER_URI] ?: defaultPath
-            BackupPreferences(Uri.parse(folder))
+            BackupPreferences(folder.toUri())
     }/*Observable.create { emitter ->
         runBlocking {
             backupPreferencesFlow.collect { value ->

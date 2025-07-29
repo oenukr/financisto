@@ -137,26 +137,26 @@ public class AccountWidget extends AppWidgetProvider {
 
     private static RemoteViews updateWidgetFromAccount(Context context, int widgetId, int layoutId, Class providerClass, Account a) {
         RemoteViews updateViews = new RemoteViews(context.getPackageName(), layoutId);
-        updateViews.setTextViewText(R.id.line1, a.title);
-        AccountType type = AccountType.valueOf(a.type);
-        if (type.isCard() && a.cardIssuer != null) {
-            CardIssuer cardIssuer = CardIssuer.valueOf(a.cardIssuer);
+        updateViews.setTextViewText(R.id.line1, a.getTitle());
+        AccountType type = AccountType.valueOf(a.getType());
+        if (type.isCard() && a.getCardIssuer() != null) {
+            CardIssuer cardIssuer = CardIssuer.valueOf(a.getCardIssuer());
             updateViews.setImageViewResource(R.id.account_icon, cardIssuer.getIconId());
-        } else if (type.isElectronic() && a.cardIssuer != null) {
-            ElectronicPaymentType paymentType = selectEnum(ElectronicPaymentType.class, a.cardIssuer, ElectronicPaymentType.PAYPAL);
+        } else if (type.isElectronic() && a.getCardIssuer() != null) {
+            ElectronicPaymentType paymentType = selectEnum(ElectronicPaymentType.class, a.getCardIssuer(), ElectronicPaymentType.PAYPAL);
             updateViews.setImageViewResource(R.id.account_icon, paymentType.getIconId());
         } else {
             updateViews.setImageViewResource(R.id.account_icon, type.getIconId());
         }
-        long amount = a.totalAmount;
-        updateViews.setTextViewText(R.id.note, Utils.amountToString(a.currency, amount));
+        long amount = a.getTotalAmount();
+        updateViews.setTextViewText(R.id.note, Utils.amountToString(a.getCurrency(), amount));
         Utils u = new Utils(context);
         int amountColor = u.getAmountColor(amount);
         updateViews.setTextColor(R.id.note, amountColor);
         addScrollOnClick(context, updateViews, widgetId, providerClass);
         addTapOnClick(context, updateViews);
         addButtonsClick(context, updateViews);
-        saveAccountForWidget(context, widgetId, a.id);
+        saveAccountForWidget(context, widgetId, a.getId());
         return updateViews;
     }
 
@@ -235,19 +235,19 @@ public class AccountWidget extends AppWidgetProvider {
                         boolean found = false;
                         while (c.moveToNext()) {
                             Account a = EntityManager.loadFromCursor(c, Account.class);
-                            if (a.id == accountId) {
+                            if (a.getId() == accountId) {
                                 found = true;
                                 logger.d("buildUpdateForNextAccount found -> " + accountId);
                             } else {
                                 if (found) {
-                                    logger.d("buildUpdateForNextAccount building update for -> " + a.id);
+                                    logger.d("buildUpdateForNextAccount building update for -> " + a.getId());
                                     return updateWidgetFromAccount(context, widgetId, layoutId, providerClass, a);
                                 }
                             }
                         }
                         c.moveToFirst();
                         Account a = EntityManager.loadFromCursor(c, Account.class);
-                        logger.d("buildUpdateForNextAccount not found, taking the first one -> " + a.id);
+                        logger.d("buildUpdateForNextAccount not found, taking the first one -> " + a.getId());
                         return updateWidgetFromAccount(context, widgetId, layoutId, providerClass, a);
                     }
                 }

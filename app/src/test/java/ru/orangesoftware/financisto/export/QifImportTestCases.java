@@ -89,42 +89,42 @@ public class QifImportTestCases extends AbstractDbTest {
 
         // as default sortOrder for Account is desc so accounts are retrived in the opposite order
         Account a = accounts.get(1); 
-        assertEquals("My Bank Account", a.title);
-        assertEquals(AccountType.BANK.name(), a.type);
+        assertEquals("My Bank Account", a.getTitle());
+        assertEquals(AccountType.BANK.name(), a.getType());
         assertAccountTotal(a, -2140);
         assertFinalBalanceForAccount(a, -2140);
 
-        List<TransactionInfo> transactions = db.getTransactionsForAccount(a.id);
+        List<TransactionInfo> transactions = db.getTransactionsForAccount(a.getId());
         assertEquals(2, transactions.size());
 
         TransactionInfo t = transactions.get(0);
         assertEquals(DateTime.date(2011, 11, 2).atMidnight().asLong(), t.dateTime);
         assertEquals(1400, t.fromAmount);
-        assertEquals("P2", t.payee.title);
-        assertEquals("C2", t.category.title);
+        assertEquals("P2", t.payee.getTitle());
+        assertEquals("C2", t.category.getTitle());
 
         t = transactions.get(1);
         assertTrue("Should be a transfer from bank to cash", t.isTransfer());
         assertEquals(DateTime.date(2011, 11, 1).atMidnight().asLong(), t.dateTime);
-        assertEquals("My Bank Account", t.fromAccount.title);
+        assertEquals("My Bank Account", t.fromAccount.getTitle());
         assertEquals(-3540, t.fromAmount);
-        assertEquals("My Cash Account", t.toAccount.title);
+        assertEquals("My Cash Account", t.toAccount.getTitle());
         assertEquals(3540, t.toAmount);
 
         a = accounts.get(0);
-        assertEquals("My Cash Account", a.title);
-        assertEquals(AccountType.CASH.name(), a.type);
+        assertEquals("My Cash Account", a.getTitle());
+        assertEquals(AccountType.CASH.name(), a.getType());
         assertAccountTotal(a, 5490);
         assertFinalBalanceForAccount(a, 5490);
 
-        transactions = db.getTransactionsForAccount(a.id);
+        transactions = db.getTransactionsForAccount(a.getId());
         assertEquals(1, transactions.size());
 
         t = transactions.get(0);
         assertEquals(DateTime.date(2011, 11, 3).atMidnight().asLong(), t.dateTime);
         assertEquals(1950, t.fromAmount);
-        assertEquals("P1", t.payee.title);
-        assertEquals("c1", t.category.title);
+        assertEquals("P1", t.payee.getTitle());
+        assertEquals("c1", t.category.getTitle());
     }
 
     @Ignore("Need to tell robolectric to make the needed folder writable")
@@ -200,11 +200,11 @@ public class QifImportTestCases extends AbstractDbTest {
         assertEquals(2, accounts.size());
 
         Account a = accounts.get(0);
-        assertEquals("BBB", a.title); // as default sortOrder for Account is desc
+        assertEquals("BBB", a.getTitle()); // as default sortOrder for Account is desc
         assertAccountTotal(a, -550);
 
         a = accounts.get(1);
-        assertEquals("AAA", a.title);
+        assertEquals("AAA", a.getTitle());
         assertAccountTotal(a, 10500);
     }
 
@@ -214,7 +214,7 @@ public class QifImportTestCases extends AbstractDbTest {
         w.write(qif);
         w.close();
         Timber.d("Created a temporary backup file: %s", tmp.getAbsolutePath());
-        QifImportOptions options = new QifImportOptions(tmp.getAbsolutePath(), EU_FORMAT, Currency.EMPTY);
+        QifImportOptions options = new QifImportOptions(tmp.getAbsolutePath(), EU_FORMAT, Currency.Companion.getEMPTY());
         qifImport = new QifImport(getContext(), db, options);
         qifImport.importDatabase();
     }

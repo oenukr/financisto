@@ -154,7 +154,7 @@ public class SmsTemplateListAsyncAdapter extends AsyncAdapter<SmsTemplate, SmsTe
     public void onItemDismiss(int position, int dir) {
         logger.d("swipped %s pos to %s (%s)", position, dir == START ? "left" : dir == END ? "right" : "??", dir);
 
-        final long itemId = listUtil.getItem(position).id;
+        final long itemId = listUtil.getItem(position).getId();
         switch (dir) {
             case START: // left swipe
                 editItem(itemId);
@@ -187,7 +187,7 @@ public class SmsTemplateListAsyncAdapter extends AsyncAdapter<SmsTemplate, SmsTe
         public void bindView(SmsTemplate item, Integer ignore) {
             if (item != null) {
                 itemView.setTag(R.id.sms_tpl_id, item.getId());
-                lineView.setText(item.title);
+                lineView.setText(item.getTitle());
                 numberView.setText(item.template);
                 amountView.setVisibility(View.VISIBLE);
                 amountView.setText(Category.getTitle(item.categoryName, item.categoryLevel));

@@ -50,7 +50,7 @@ public class CategoryTree<T extends CategoryEntity<T>> implements Iterable<T> {
 			if (parent == null) {
 				roots.add(category);
 			}
-			if (category.id > 0 && (category.right - category.left > 1)) {
+			if (category.getId() > 0 && (category.right - category.left > 1)) {
 				parent = category;
 			}
 		}	
@@ -73,7 +73,7 @@ public class CategoryTree<T extends CategoryEntity<T>> implements Iterable<T> {
 
 	private void initializeMap(Map<Long, T> map, CategoryTree<T> tree) {
 		for (T c : tree) {
-			map.put(c.id, c);
+			map.put(c.getId(), c);
 			if (c.hasChildren()) {
 				initializeMap(map, c.children);
 			}
@@ -157,8 +157,8 @@ public class CategoryTree<T extends CategoryEntity<T>> implements Iterable<T> {
 	}
 	
 	private final Comparator<T> byTitleComparator = (c1, c2) -> {
-        String t1 = c1.title;
-        String t2 = c2.title;
+        String t1 = c1.getTitle();
+        String t2 = c2.getTitle();
         if (t1 == null) {
             t1 = "";
         }

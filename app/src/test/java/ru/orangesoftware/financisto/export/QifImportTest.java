@@ -47,8 +47,8 @@ public class QifImportTest extends AbstractDbTest {
 
         List<Account> accounts = db.getAllAccountsList();
         assertEquals(1, accounts.size());
-        assertEquals("My Cash Account", accounts.get(0).title);
-        assertEquals(AccountType.CASH.name(), accounts.get(0).type);
+        assertEquals("My Cash Account", accounts.get(0).getTitle());
+        assertEquals(AccountType.CASH.name(), accounts.get(0).getType());
     }
 
     @Test
@@ -60,10 +60,10 @@ public class QifImportTest extends AbstractDbTest {
         sortAccountsById(accounts);
 
         assertEquals(2, accounts.size());
-        assertEquals("My Cash Account", accounts.get(0).title);
-        assertEquals(AccountType.CASH.name(), accounts.get(0).type);
-        assertEquals("My Bank Account", accounts.get(1).title);
-        assertEquals(AccountType.BANK.name(), accounts.get(1).type);
+        assertEquals("My Cash Account", accounts.get(0).getTitle());
+        assertEquals(AccountType.CASH.name(), accounts.get(0).getType());
+        assertEquals("My Bank Account", accounts.get(1).getTitle());
+        assertEquals(AccountType.BANK.name(), accounts.get(1).getType());
     }
 
     @Test
@@ -120,31 +120,31 @@ public class QifImportTest extends AbstractDbTest {
         List<Account> accounts = db.getAllAccountsList();
         assertEquals(1, accounts.size());
 
-        List<TransactionInfo> transactions = db.getTransactionsForAccount(accounts.get(0).id);
+        List<TransactionInfo> transactions = db.getTransactionsForAccount(accounts.get(0).getId());
         assertEquals(4, transactions.size());
 
         TransactionInfo t = transactions.get(0);
         assertEquals(DateTime.date(2011, 2, 8).atMidnight().asLong(), t.dateTime);
         assertEquals(1000, t.fromAmount);
-        assertEquals("P1", t.category.title);
-        assertEquals("Class1", t.project.title);
+        assertEquals("P1", t.category.getTitle());
+        assertEquals("Class1", t.project.getTitle());
 
         t = transactions.get(1);
         assertEquals(DateTime.date(2011, 2, 7).atMidnight().asLong(), t.dateTime);
         assertEquals(-2345, t.fromAmount);
-        assertEquals("c1", t.category.title);
-        assertEquals("Class1", t.project.title);
+        assertEquals("c1", t.category.getTitle());
+        assertEquals("Class1", t.project.getTitle());
 
         t = transactions.get(2);
         assertEquals(DateTime.date(2011, 1, 1).atMidnight().asLong(), t.dateTime);
         assertEquals(-6780, t.fromAmount);
-        assertEquals("c1", t.category.title);
-        assertEquals("Class1:Subclass1", t.project.title);
+        assertEquals("c1", t.category.getTitle());
+        assertEquals("Class1:Subclass1", t.project.getTitle());
 
         t = transactions.get(3);
         assertEquals(DateTime.date(2010, 1, 1).atMidnight().asLong(), t.dateTime);
         assertEquals(-120, t.fromAmount);
-        assertEquals("Class2", t.project.title);
+        assertEquals("Class2", t.project.getTitle());
     }
 
     @Test
@@ -155,20 +155,20 @@ public class QifImportTest extends AbstractDbTest {
         List<Account> accounts = db.getAllAccountsList();
         assertEquals(1, accounts.size());
 
-        List<TransactionInfo> transactions = db.getTransactionsForAccount(accounts.get(0).id);
+        List<TransactionInfo> transactions = db.getTransactionsForAccount(accounts.get(0).getId());
         assertEquals(2, transactions.size());
 
         TransactionInfo t = transactions.get(0);
         assertEquals(DateTime.date(2011, 2, 8).atMidnight().asLong(), t.dateTime);
         assertEquals(1000, t.fromAmount);
-        assertEquals("P1", t.category.title);
+        assertEquals("P1", t.category.getTitle());
         assertNull(t.payee);
 
         t = transactions.get(1);
         assertEquals(DateTime.date(2011, 2, 7).atMidnight().asLong(), t.dateTime);
         assertEquals(-2056, t.fromAmount);
-        assertEquals("Payee 1", t.payee.title);
-        assertEquals("c1", t.category.title);
+        assertEquals("Payee 1", t.payee.getTitle());
+        assertEquals("c1", t.category.getTitle());
         assertEquals("Some note here...", t.note);
     }
 
@@ -181,10 +181,10 @@ public class QifImportTest extends AbstractDbTest {
         assertEquals(2, accounts.size());
 
         Account a = accounts.get(0);
-        assertEquals("My Bank Account", a.title);
-        assertEquals(AccountType.BANK.name(), a.type);
+        assertEquals("My Bank Account", a.getTitle());
+        assertEquals(AccountType.BANK.name(), a.getType());
 
-        List<TransactionInfo> transactions = db.getTransactionsForAccount(a.id);
+        List<TransactionInfo> transactions = db.getTransactionsForAccount(a.getId());
         assertEquals(2, transactions.size());
 
         TransactionInfo t = transactions.get(0);
@@ -196,10 +196,10 @@ public class QifImportTest extends AbstractDbTest {
         assertEquals(5400, t.fromAmount);
 
         a = accounts.get(1);
-        assertEquals("My Cash Account", a.title);
-        assertEquals(AccountType.CASH.name(), a.type);
+        assertEquals("My Cash Account", a.getTitle());
+        assertEquals(AccountType.CASH.name(), a.getType());
 
-        transactions = db.getTransactionsForAccount(a.id);
+        transactions = db.getTransactionsForAccount(a.getId());
         assertEquals(3, transactions.size());
 
         t = transactions.get(0);
@@ -224,26 +224,26 @@ public class QifImportTest extends AbstractDbTest {
         assertEquals(2, accounts.size());
 
         Account a = accounts.get(0);
-        assertEquals("My Bank Account", a.title);
-        assertEquals(AccountType.BANK.name(), a.type);
+        assertEquals("My Bank Account", a.getTitle());
+        assertEquals(AccountType.BANK.name(), a.getType());
 
-        List<TransactionInfo> transactions = db.getTransactionsForAccount(a.id);
+        List<TransactionInfo> transactions = db.getTransactionsForAccount(a.getId());
         assertEquals(1, transactions.size());
 
         TransactionInfo t = transactions.get(0);
         assertTrue("Should be a transfer from bank to cash", t.isTransfer());
         assertEquals(DateTime.date(2011, 2, 8).atMidnight().asLong(), t.dateTime);
-        assertEquals("My Bank Account", t.fromAccount.title);
+        assertEquals("My Bank Account", t.fromAccount.getTitle());
         assertEquals(-2000, t.fromAmount);
-        assertEquals("My Cash Account", t.toAccount.title);
+        assertEquals("My Cash Account", t.toAccount.getTitle());
         assertEquals(2000, t.toAmount);
-        assertEquals("Vacation", t.project.title);
+        assertEquals("Vacation", t.project.getTitle());
 
         a = accounts.get(1);
-        assertEquals("My Cash Account", a.title);
-        assertEquals(AccountType.CASH.name(), a.type);
+        assertEquals("My Cash Account", a.getTitle());
+        assertEquals(AccountType.CASH.name(), a.getType());
 
-        transactions = db.getTransactionsForAccount(a.id);
+        transactions = db.getTransactionsForAccount(a.getId());
         assertEquals(0, transactions.size());
     }
 
@@ -283,44 +283,44 @@ public class QifImportTest extends AbstractDbTest {
         assertEquals(2, accounts.size());
 
         Account a = accounts.get(0);
-        assertEquals("My Bank Account", a.title);
-        assertEquals(AccountType.BANK.name(), a.type);
+        assertEquals("My Bank Account", a.getTitle());
+        assertEquals(AccountType.BANK.name(), a.getType());
 
-        List<TransactionInfo> transactions = db.getTransactionsForAccount(a.id);
+        List<TransactionInfo> transactions = db.getTransactionsForAccount(a.getId());
         assertEquals(2, transactions.size());
 
         TransactionInfo t = transactions.get(0);
         assertFalse("Should not be a transfer", t.isTransfer());
         assertEquals(DateTime.date(2011, 2, 8).atMidnight().asLong(), t.dateTime);
-        assertEquals("My Bank Account", t.fromAccount.title);
+        assertEquals("My Bank Account", t.fromAccount.getTitle());
         assertEquals(-2000, t.fromAmount);
         assertEquals("Transfer: Some Account 2 | Note on transfer", t.note);
 
         t = transactions.get(1);
         assertFalse("Should not be a transfer", t.isTransfer());
         assertEquals(DateTime.date(2011, 2, 7).atMidnight().asLong(), t.dateTime);
-        assertEquals("My Bank Account", t.fromAccount.title);
+        assertEquals("My Bank Account", t.fromAccount.getTitle());
         assertEquals(-3000, t.fromAmount);
         assertEquals("Transfer: My Cash Account", t.note);
 
         a = accounts.get(1);
-        assertEquals("My Cash Account", a.title);
-        assertEquals(AccountType.CASH.name(), a.type);
+        assertEquals("My Cash Account", a.getTitle());
+        assertEquals(AccountType.CASH.name(), a.getType());
 
-        transactions = db.getTransactionsForAccount(a.id);
+        transactions = db.getTransactionsForAccount(a.getId());
         assertEquals(2, transactions.size());
 
         t = transactions.get(0);
         assertFalse("Should not be a transfer", t.isTransfer());
         assertEquals(DateTime.date(2011, 2, 8).atMidnight().asLong(), t.dateTime);
-        assertEquals("My Cash Account", t.fromAccount.title);
+        assertEquals("My Cash Account", t.fromAccount.getTitle());
         assertEquals(2500, t.fromAmount);
         assertEquals("Transfer: My Bank Account", t.note);
 
         t = transactions.get(1);
         assertFalse("Should not be a transfer", t.isTransfer());
         assertEquals(DateTime.date(2011, 2, 7).atMidnight().asLong(), t.dateTime);
-        assertEquals("My Cash Account", t.fromAccount.title);
+        assertEquals("My Cash Account", t.fromAccount.getTitle());
         assertEquals(5500, t.fromAmount);
         assertEquals("Transfer: Some Account 1", t.note);
     }
@@ -334,10 +334,10 @@ public class QifImportTest extends AbstractDbTest {
         assertEquals(1, accounts.size());
 
         Account a = accounts.get(0);
-        assertEquals("My Cash Account", a.title);
-        assertEquals(AccountType.CASH.name(), a.type);
+        assertEquals("My Cash Account", a.getTitle());
+        assertEquals(AccountType.CASH.name(), a.getType());
 
-        List<TransactionInfo> transactions = db.getTransactionsForAccount(a.id);
+        List<TransactionInfo> transactions = db.getTransactionsForAccount(a.getId());
         assertEquals(1, transactions.size());
 
         TransactionInfo t = transactions.get(0);
@@ -347,16 +347,16 @@ public class QifImportTest extends AbstractDbTest {
         assertEquals(3, splits.size());
 
         TransactionInfo s = splits.get(0);
-        assertEquals("A1", s.category.title);
+        assertEquals("A1", s.category.getTitle());
         assertEquals(-110056, s.fromAmount);
         assertEquals("Note on first split", s.note);
 
         s = splits.get(1);
-        assertEquals("A2", s.category.title);
+        assertEquals("A2", s.category.getTitle());
         assertEquals(-100000, s.fromAmount);
 
         s = splits.get(2);
-        assertEquals("<NO_CATEGORY>", s.category.title);
+        assertEquals("<NO_CATEGORY>", s.category.getTitle());
         assertEquals(50010, s.fromAmount);
         assertEquals("Note on third split", s.note);
     }
@@ -370,17 +370,17 @@ public class QifImportTest extends AbstractDbTest {
         assertEquals(2, accounts.size());
 
         Account a = accounts.get(0);
-        assertEquals("My Bank Account", a.title);
-        assertEquals(AccountType.BANK.name(), a.type);
+        assertEquals("My Bank Account", a.getTitle());
+        assertEquals(AccountType.BANK.name(), a.getType());
 
-        List<TransactionInfo> transactions = db.getTransactionsForAccount(a.id);
+        List<TransactionInfo> transactions = db.getTransactionsForAccount(a.getId());
         assertEquals(0, transactions.size());
 
         a = accounts.get(1);
-        assertEquals("My Cash Account", a.title);
-        assertEquals(AccountType.CASH.name(), a.type);
+        assertEquals("My Cash Account", a.getTitle());
+        assertEquals(AccountType.CASH.name(), a.getType());
 
-        transactions = db.getTransactionsForAccount(a.id);
+        transactions = db.getTransactionsForAccount(a.getId());
         assertEquals(1, transactions.size());
 
         TransactionInfo t = transactions.get(0);
@@ -390,13 +390,13 @@ public class QifImportTest extends AbstractDbTest {
         assertEquals(2, splits.size());
 
         TransactionInfo s = splits.get(0);
-        assertEquals("A1", s.category.title);
+        assertEquals("A1", s.category.getTitle());
         assertEquals(-110000, s.fromAmount);
         assertEquals("Note on first split", s.note);
 
         s = splits.get(1);
         assertTrue(s.isTransfer());
-        assertEquals("My Bank Account", s.toAccount.title);
+        assertEquals("My Bank Account", s.toAccount.getTitle());
         assertEquals(-100000, s.fromAmount);
         assertEquals(100000, s.toAmount);
     }
@@ -408,7 +408,7 @@ public class QifImportTest extends AbstractDbTest {
     }
 
     private void sortAccountsById(List<Account> accounts) {
-        Collections.sort(accounts, (a1, a2) -> Long.compare(a1.id, a2.id));
+        Collections.sort(accounts, (a1, a2) -> Long.compare(a1.getId(), a2.getId()));
     }
 
     private void doImport() {
@@ -416,7 +416,7 @@ public class QifImportTest extends AbstractDbTest {
     }
 
     private void doImport(QifParser p) {
-        QifImportOptions options = new QifImportOptions("", EU_FORMAT, Currency.EMPTY);
+        QifImportOptions options = new QifImportOptions("", EU_FORMAT, Currency.Companion.getEMPTY());
         qifImport = new QifImport(getContext(), db, options);
         qifImport.doImport(p);
     }

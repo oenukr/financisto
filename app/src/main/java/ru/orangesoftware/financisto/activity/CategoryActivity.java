@@ -109,7 +109,7 @@ public class CategoryActivity extends AbstractActivity implements CategorySelect
         Button bOk = findViewById(R.id.bOK);
         bOk.setOnClickListener(view -> {
             if (checkEditText(categoryTitle, "title", true, 100)) {
-                category.title = text(categoryTitle);
+                category.setTitle(text(categoryTitle));
                 setCategoryType(category);
                 int count = attributesLayout.getChildCount();
                 ArrayList<Attribute> attributes = new ArrayList<>(count);
@@ -138,7 +138,7 @@ public class CategoryActivity extends AbstractActivity implements CategorySelect
     }
 
     private CategorySelector initParentCategorySelector() {
-        final CategorySelector res = new CategorySelector<>(this, db, activityLayout, category.id);
+        final CategorySelector res = new CategorySelector<>(this, db, activityLayout, category.getId());
         LinearLayout layout = findViewById(R.id.layout);
         res.createNode(layout, PARENT);
         res.setListener(this);
@@ -160,7 +160,7 @@ public class CategoryActivity extends AbstractActivity implements CategorySelect
     }
 
     private void editCategory() {
-        categoryTitle.setText(category.title);
+        categoryTitle.setText(category.getTitle());
         parentCatSelector.selectCategory(category.getParentId(), false);
     }
 
@@ -175,7 +175,7 @@ public class CategoryActivity extends AbstractActivity implements CategorySelect
     }
 
     private void addSmsTemplates() {
-        long categoryId = category.id;
+        long categoryId = category.getId();
         List<SmsTemplate> templates = db.getSmsTemplatesForCategory(categoryId);
         for (SmsTemplate t : templates) {
             addSmsTemplate(t);
@@ -191,20 +191,20 @@ public class CategoryActivity extends AbstractActivity implements CategorySelect
         ImageView minusImageView = v.findViewById(R.id.plus_minus);
         minusImageView.setId(R.id.remove_sms_template);
         minusImageView.setOnClickListener(this);
-        minusImageView.setTag(t.id);
+        minusImageView.setTag(t.getId());
         v.setTag(t);
         scrollView.fullScroll(ScrollView.FOCUS_DOWN);
     }
 
     private void setSmsTemplateData(View v, SmsTemplate t) {
         TextView labelView = v.findViewById(R.id.label);
-        labelView.setText(t.title);
+        labelView.setText(t.getTitle());
         TextView dataView = v.findViewById(R.id.data);
         dataView.setText(t.template);
     }
 
     private void addAttributes() {
-        long categoryId = category.id;
+        long categoryId = category.getId();
         if (categoryId == -1) {
             categoryId = 0;
         }
@@ -241,9 +241,9 @@ public class CategoryActivity extends AbstractActivity implements CategorySelect
 
     private void setAttributeData(View v, Attribute a) {
         TextView labelView = v.findViewById(R.id.label);
-        labelView.setText(a.title);
+        labelView.setText(a.getTitle());
         TextView dataView = v.findViewById(R.id.data);
-        dataView.setText(types[a.type - 1]);
+        dataView.setText(types[a.getType() - 1]);
     }
 
     @Override
@@ -270,7 +270,7 @@ public class CategoryActivity extends AbstractActivity implements CategorySelect
                 Object o = v.getTag();
                 if (o instanceof Attribute) {
                     Intent intent = new Intent(this, AttributeActivity.class);
-                    intent.putExtra(AttributeColumns.ID, ((Attribute) o).id);
+                    intent.putExtra(AttributeColumns.ID, ((Attribute) o).getId());
                     startActivityForResult(intent, EDIT_ATTRIBUTE_REQUEST);
                 }
             }
@@ -285,7 +285,7 @@ public class CategoryActivity extends AbstractActivity implements CategorySelect
             case R.id.new_sms_template: {
                 if (!isRequestingPermission(this, RECEIVE_SMS)) {
                     Intent intent = new Intent(this, SmsTemplateActivity.class);
-                    intent.putExtra(SmsTemplateColumns.category_id.name(), category.id);
+                    intent.putExtra(SmsTemplateColumns.category_id.name(), category.getId());
                     startActivityForResult(intent, NEW_SMS_TEMPLATE_REQUEST);
                 }
             }
@@ -295,7 +295,7 @@ public class CategoryActivity extends AbstractActivity implements CategorySelect
                     Object o = v.getTag();
                     if (o instanceof SmsTemplate clickedItem) {
                         Intent intent = new Intent(this, SmsTemplateActivity.class);
-                        intent.putExtra(SmsTemplateColumns._id.name(), clickedItem.id);
+                        intent.putExtra(SmsTemplateColumns._id.name(), clickedItem.getId());
                         intent.putExtra(SmsTemplateColumns.category_id.name(), clickedItem.categoryId);
                         startActivityForResult(intent, EDIT_SMS_TEMPLATE_REQUEST);
                     }
@@ -400,7 +400,7 @@ public class CategoryActivity extends AbstractActivity implements CategorySelect
             View v = layout.getChildAt(i);
             Object o = v.getTag();
             if (o instanceof Attribute a2) {
-                if (a2.id == a.id) {
+                if (a2.getId() == a.getId()) {
                     setAttributeData(v, a);
                 }
             }
@@ -417,7 +417,7 @@ public class CategoryActivity extends AbstractActivity implements CategorySelect
             View v = layout.getChildAt(i);
             Object o = v.getTag();
             if (o instanceof SmsTemplate a2) {
-                if (a2.id == t.id) {
+                if (a2.getId() == t.getId()) {
                     setSmsTemplateData(v, t);
                 }
             }
@@ -426,7 +426,7 @@ public class CategoryActivity extends AbstractActivity implements CategorySelect
 
     @Override
     public void onCategorySelected(Category parent, boolean selectLast) {
-        if (parent.id != category.id) {
+        if (parent.getId() != category.getId()) {
             selectParentCategory(parent);
         }
     }

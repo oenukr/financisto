@@ -86,25 +86,25 @@ public class TransactionInfo extends TransactionBase {
     @NonNull
 	public String getNotificationContentText(Context context) {
 		if (toAccount != null) {
-			if (fromAccount.currency.id == toAccount.currency.id) {
+			if (fromAccount.getCurrency().getId() == toAccount.getCurrency().getId()) {
 				return context.getString(R.string.new_scheduled_transfer_notification_same_currency, 
-						Utils.amountToString(fromAccount.currency, Math.abs(fromAmount)),
-						fromAccount.title, toAccount.title);				
+						Utils.amountToString(fromAccount.getCurrency(), Math.abs(fromAmount)),
+						fromAccount.getTitle(), toAccount.getTitle());
 			} else {
 				return context.getString(
                         R.string.new_scheduled_transfer_notification_differ_currency,
-						Utils.amountToString(fromAccount.currency, Math.abs(fromAmount)),
-						Utils.amountToString(toAccount.currency, Math.abs(toAmount)),
-						fromAccount.title,
-                        toAccount.title
+						Utils.amountToString(fromAccount.getCurrency(), Math.abs(fromAmount)),
+						Utils.amountToString(toAccount.getCurrency(), Math.abs(toAmount)),
+						fromAccount.getTitle(),
+                        toAccount.getTitle()
                 );
 			}
 		} else {
 			return context.getString(
                     R.string.new_scheduled_transaction_notification,
-                    Utils.amountToString(fromAccount.currency, Math.abs(fromAmount)),
+                    Utils.amountToString(fromAccount.getCurrency(), Math.abs(fromAmount)),
                     context.getString(fromAmount > 0 ? R.string.new_scheduled_transaction_debit : R.string.new_scheduled_transaction_credit),
-                    fromAccount.title
+                    fromAccount.getTitle()
             );
 		}		
 	}
@@ -138,38 +138,38 @@ public class TransactionInfo extends TransactionBase {
         t.originalFromAmount = c.getLong(DatabaseHelper.BlotterColumns.original_from_amount.ordinal());
 
         Account fromAccount = new Account();
-        fromAccount.id = c.getLong(DatabaseHelper.BlotterColumns.from_account_id.ordinal());
-        fromAccount.title = c.getString(DatabaseHelper.BlotterColumns.from_account_title.ordinal());
-        fromAccount.currency = CurrencyCache.getCurrencyOrEmpty(c.getLong(DatabaseHelper.BlotterColumns.from_account_currency_id.ordinal()));
+        fromAccount.setId(c.getLong(DatabaseHelper.BlotterColumns.from_account_id.ordinal()));
+        fromAccount.setTitle(c.getString(DatabaseHelper.BlotterColumns.from_account_title.ordinal()));
+        fromAccount.setCurrency(CurrencyCache.getCurrencyOrEmpty(c.getLong(DatabaseHelper.BlotterColumns.from_account_currency_id.ordinal())));
         t.fromAccount = fromAccount;
 
         long toAccountId = c.getLong(DatabaseHelper.BlotterColumns.to_account_id.ordinal());
         if (toAccountId > 0) {
             Account toAccount = new Account();
-            toAccount.id = toAccountId;
-            toAccount.title = c.getString(DatabaseHelper.BlotterColumns.to_account_title.ordinal());
-            toAccount.currency = CurrencyCache.getCurrencyOrEmpty(c.getLong(DatabaseHelper.BlotterColumns.to_account_currency_id.ordinal()));
+            toAccount.setId(toAccountId);
+            toAccount.setTitle(c.getString(DatabaseHelper.BlotterColumns.to_account_title.ordinal()));
+            toAccount.setCurrency(CurrencyCache.getCurrencyOrEmpty(c.getLong(DatabaseHelper.BlotterColumns.to_account_currency_id.ordinal())));
             t.toAccount = toAccount;
         }
 
         Category category = new Category();
-        category.id = c.getLong(DatabaseHelper.BlotterColumns.category_id.ordinal());
-        category.title = c.getString(DatabaseHelper.BlotterColumns.category_title.ordinal());
+        category.setId(c.getLong(DatabaseHelper.BlotterColumns.category_id.ordinal()));
+        category.setTitle(c.getString(DatabaseHelper.BlotterColumns.category_title.ordinal()));
         t.category = category;
 
         Project project = new Project();
-        project.id = c.getLong(DatabaseHelper.BlotterColumns.project_id.ordinal());
-        project.title = c.getString(DatabaseHelper.BlotterColumns.project.ordinal());
+        project.setId(c.getLong(DatabaseHelper.BlotterColumns.project_id.ordinal()));
+        project.setTitle(c.getString(DatabaseHelper.BlotterColumns.project.ordinal()));
         t.project = project;
 
         Payee payee = new Payee();
-        payee.id = c.getLong(DatabaseHelper.BlotterColumns.payee_id.ordinal());
-        payee.title = c.getString(DatabaseHelper.BlotterColumns.payee.ordinal());
+        payee.setId(c.getLong(DatabaseHelper.BlotterColumns.payee_id.ordinal()));
+        payee.setTitle(c.getString(DatabaseHelper.BlotterColumns.payee.ordinal()));
         t.payee = payee;
 
         MyLocation location = new MyLocation();
-        location.id = c.getLong(DatabaseHelper.BlotterColumns.location_id.ordinal());
-        location.title = c.getString(DatabaseHelper.BlotterColumns.location.ordinal());
+        location.setId(c.getLong(DatabaseHelper.BlotterColumns.location_id.ordinal()));
+        location.setTitle(c.getString(DatabaseHelper.BlotterColumns.location.ordinal()));
         t.location = location;
 
         t.isTemplate = c.getInt(DatabaseHelper.BlotterColumns.is_template.ordinal());

@@ -78,7 +78,7 @@ public class QifExportActivity extends AbstractExportActivity implements Activit
         } else {
             StringBuilder sb = new StringBuilder();
             for (Account a : selectedAccounts) {
-                appendItemTo(sb, a.title);
+                appendItemTo(sb, a.getTitle());
             }
             bAccounts.setText(sb.toString());
         }
@@ -87,7 +87,7 @@ public class QifExportActivity extends AbstractExportActivity implements Activit
     private ArrayList<Account> getSelectedAccounts() {
         ArrayList<Account> selected = new ArrayList<>();
         for (MultiChoiceItem i : accounts) {
-            if (i.isChecked()) {
+            if (i.getChecked()) {
                 selected.add((Account)i);
             }
         }
@@ -129,8 +129,8 @@ public class QifExportActivity extends AbstractExportActivity implements Activit
     private long[] getSelectedAccountsIds() {
         List<Long> selectedAccounts = new ArrayList<>(accounts.size());
         for (Account account : accounts) {
-            if (account.isChecked()) {
-                selectedAccounts.add(account.id);
+            if (account.getChecked()) {
+                selectedAccounts.add(account.getId());
             }
         }
         int count = selectedAccounts.size();
@@ -191,7 +191,7 @@ public class QifExportActivity extends AbstractExportActivity implements Activit
             for (String s : splitter) {
                 long id = Long.parseLong(s);
                 for (Account account : accounts) {
-                    if (account.id == id) {
+                    if (account.getId() == id) {
                         account.setChecked(true);
                         break;
                     }

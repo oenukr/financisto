@@ -170,7 +170,7 @@ public class BudgetListActivity extends AbstractListActivity {
     @Override
     protected void deleteItem(View v, int position, final long id) {
         final Budget b = db.load(Budget.class, id);
-        if (b.parentBudgetId > 0) {
+        if (b.getParentBudgetId() > 0) {
             new AlertDialog.Builder(this)
                     .setMessage(R.string.delete_budget_recurring_select)
                     .setPositiveButton(R.string.delete_budget_one_entry, (arg0, arg1) -> {
@@ -178,13 +178,13 @@ public class BudgetListActivity extends AbstractListActivity {
                         recreateCursor();
                     })
                     .setNeutralButton(R.string.delete_budget_all_entries, (arg0, arg1) -> {
-                        db.deleteBudget(b.parentBudgetId);
+                        db.deleteBudget(b.getParentBudgetId());
                         recreateCursor();
                     })
                     .setNegativeButton(R.string.cancel, null)
                     .show();
         } else {
-            Recur recur = RecurUtils.createFromExtraString(b.recur);
+            Recur recur = RecurUtils.createFromExtraString(b.getRecur());
             new AlertDialog.Builder(this)
                     .setMessage(recur.interval == RecurInterval.NO_RECUR ? R.string.delete_budget_confirm : R.string.delete_budget_recurring_confirm)
                     .setPositiveButton(R.string.yes, (arg0, arg1) -> {
@@ -199,13 +199,13 @@ public class BudgetListActivity extends AbstractListActivity {
     @Override
     public void editItem(View v, int position, long id) {
         Budget b = db.load(Budget.class, id);
-        Recur recur = b.getRecur();
+        Recur recur = b.getTheRecur();
         if (recur.interval != RecurInterval.NO_RECUR) {
             Toast t = Toast.makeText(this, R.string.edit_recurring_budget, Toast.LENGTH_LONG);
             t.show();
         }
         Intent intent = new Intent(this, BudgetActivity.class);
-        intent.putExtra(BudgetActivity.BUDGET_ID_EXTRA, b.parentBudgetId > 0 ? b.parentBudgetId : id);
+        intent.putExtra(BudgetActivity.BUDGET_ID_EXTRA, b.getParentBudgetId() > 0 ? b.getParentBudgetId() : id);
         startActivityForResult(intent, EDIT_BUDGET_REQUEST);
     }
 
@@ -214,7 +214,7 @@ public class BudgetListActivity extends AbstractListActivity {
         Budget b = db.load(Budget.class, id);
         Intent intent = new Intent(this, BudgetBlotterActivity.class);
         Criteria.eq(BlotterFilter.BUDGET_ID, String.valueOf(id))
-                .toIntent(b.title, intent);
+                .toIntent(b.getTitle(), intent);
         startActivityForResult(intent, VIEW_BUDGET_REQUEST);
     }
 

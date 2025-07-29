@@ -17,7 +17,7 @@ import ru.orangesoftware.financisto.utils.Utils;
 
 public class Total {
 	
-	public static final Total ZERO = new Total(Currency.EMPTY);
+	public static final Total ZERO = new Total(Currency.Companion.getEMPTY());
 
     public static Total asIncomeExpense(Currency currency, long income, long expense) {
         Total total = new Total(currency);

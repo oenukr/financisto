@@ -39,13 +39,13 @@ public class HistoryExchangeRates implements ExchangeRateProvider, ExchangeRates
 
     @Override
     public ExchangeRate getRate(Currency fromCurrency, Currency toCurrency) {
-        SortedSet<ExchangeRate> s = getRates(fromCurrency.id, toCurrency.id);
+        SortedSet<ExchangeRate> s = getRates(fromCurrency.getId(), toCurrency.getId());
         return s.first();
     }
 
     @Override
     public ExchangeRate getRate(Currency fromCurrency, Currency toCurrency, long atTime) {
-        SortedSet<ExchangeRate> s = getRates(fromCurrency.id, toCurrency.id);
+        SortedSet<ExchangeRate> s = getRates(fromCurrency.getId(), toCurrency.getId());
         r.date = atTime;
         // s.tailSet(r) still creates a new TreeSet object
         SortedSet<ExchangeRate> rates = s.tailSet(r);
@@ -59,7 +59,7 @@ public class HistoryExchangeRates implements ExchangeRateProvider, ExchangeRates
 
     @NonNull
     @Override
-    public List<ExchangeRate> getRates(@NonNull List<? extends Currency> currencies) {
+    public List<ExchangeRate> getRates(@NonNull List<Currency> currencies) {
         throw new UnsupportedOperationException();
     }
 

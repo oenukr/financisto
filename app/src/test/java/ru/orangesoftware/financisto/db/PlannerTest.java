@@ -103,7 +103,7 @@ public class PlannerTest extends AbstractDbTest {
                 date(2011, 8, 16), -50,
                 date(2011, 8, 16), 40
         );
-        assertAmount(447, a1.currency, list.getTotals()[0]);
+        assertAmount(447, a1.getCurrency(), list.getTotals()[0]);
     }
 
     @Test
@@ -139,7 +139,7 @@ public class PlannerTest extends AbstractDbTest {
                 date(2011, 8, 16), -50
         );
         // 400 gets excluded as payment
-        assertAmount(47, a1.currency, statement.getTotals()[0]);
+        assertAmount(47, a1.getCurrency(), statement.getTotals()[0]);
     }
 
     @Test
@@ -376,7 +376,7 @@ public class PlannerTest extends AbstractDbTest {
         Timber.d("===== Planned transactions: " + transactions.size() + " =====");
         SimpleDateFormat df = new SimpleDateFormat("dd-MM-yyyy");
         for (TransactionInfo transaction : transactions) {
-            Timber.d(df.format(new Date(transaction.dateTime)) + " " + Utils.amountToString(Currency.EMPTY, transaction.fromAmount) + " " + transaction.note);
+            Timber.d(df.format(new Date(transaction.dateTime)) + " " + Utils.amountToString(Currency.Companion.getEMPTY(), transaction.fromAmount) + " " + transaction.note);
         }
         Timber.d("==========");
     }

@@ -288,9 +288,9 @@ public class Report2DChartView extends View {
     private void drawLabels(Canvas canvas) {
 
         Rect currencyBounds = new Rect();
-        currencyPaint.getTextBounds(currency.symbol, 0, currency.symbol.length(), currencyBounds);
+        currencyPaint.getTextBounds(currency.getSymbol(), 0, currency.getSymbol().length(), currencyBounds);
 
-        canvas.drawText(currency.symbol, padding + xSpace - currencyBounds.width() - 5, padding + currencyBounds.height(), currencyPaint);
+        canvas.drawText(currency.getSymbol(), padding + xSpace - currencyBounds.width() - 5, padding + currencyBounds.height(), currencyPaint);
 
         // Draw point coordinates
         currencyPaint.setTextAlign(Align.LEFT);

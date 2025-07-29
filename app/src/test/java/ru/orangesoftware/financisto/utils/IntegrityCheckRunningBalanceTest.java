@@ -44,7 +44,7 @@ public class IntegrityCheckRunningBalanceTest extends AbstractDbTest {
     }
 
     private void breakRunningBalanceForAccount(Account a) {
-        db.db().execSQL("delete from running_balance where account_id=?", new String[]{String.valueOf(a.id)});
+        db.db().execSQL("delete from running_balance where account_id=?", new String[]{String.valueOf(a.getId())});
     }
 
     private void breakRunningBalance() {

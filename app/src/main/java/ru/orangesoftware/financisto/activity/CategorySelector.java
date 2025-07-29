@@ -128,8 +128,8 @@ public class CategorySelector<A extends AbstractActivity> {
     public String[] getCheckedCategoryLeafs() {
         LinkedList<String> res = new LinkedList<>();
         for (Category c : categories) {
-            if (c.checked) {
-                if (c.id == NO_CATEGORY_ID) { // special case as it must include only itself
+            if (c.getChecked()) {
+                if (c.getId() == NO_CATEGORY_ID) { // special case as it must include only itself
                     res.add("0");
                     res.add("0");
                 } else {
@@ -315,7 +315,7 @@ public class CategorySelector<A extends AbstractActivity> {
             if (selectedCategoryId != categoryId) {
                 Category category = db.getCategoryWithParent(categoryId);
                 if (category != null) {
-                    categoryText.setText(Category.getTitle(category.title, category.level));
+                    categoryText.setText(Category.getTitle(category.getTitle(), category.level));
                     showHideMinusBtn(true);
                 }
                 selectedCategoryId = categoryId;
@@ -338,8 +338,8 @@ public class CategorySelector<A extends AbstractActivity> {
     public void updateCheckedEntities(List<Long> checkedIds) {
         for (Long id : checkedIds) {
             for (MyEntity e : categories) {
-                if (e.id == id) {
-                    e.checked = true;
+                if (e.getId() == id) {
+                    e.setChecked(true);
                     break;
                 }
             }
@@ -377,9 +377,9 @@ public class CategorySelector<A extends AbstractActivity> {
         Map<Long, String> values = transaction.categoryAttributes;
         for (Attribute a : attributes) {
             AttributeView av = inflateAttribute(a);
-            String value = values != null ? values.get(a.id) : null;
+            String value = values != null ? values.get(a.getId()) : null;
             if (value == null) {
-                value = a.defaultValue;
+                value = a.getDefaultValue();
             }
             View v = av.inflateView(attributesLayout, value);
             v.setTag(av);

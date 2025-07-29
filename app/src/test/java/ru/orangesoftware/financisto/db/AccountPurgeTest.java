@@ -72,7 +72,7 @@ public class AccountPurgeTest extends AbstractDbTest {
 
     @Test
     public void should_delete_first_account_correctly() {
-        db.deleteAccount(a1.id);
+        db.deleteAccount(a1.getId());
         assertAccount(a2, -40);
         assertAccountBlotter(a2, 20, -50, -20, 10);
         assertAccountRunningBalance(a2, -40, -60, -10, 10);
@@ -80,7 +80,7 @@ public class AccountPurgeTest extends AbstractDbTest {
 
     @Test
     public void should_delete_second_account_correctly() {
-        db.deleteAccount(a2.id);
+        db.deleteAccount(a2.getId());
         assertAccount(a1, 40);
         assertAccountBlotter(a1, 10, -20, -100, 100, 10, 200, -150, -20, 10);
         assertAccountRunningBalance(a1, 40, 30, 50, 150, 50, 40, -160, -10, 10);
@@ -158,7 +158,7 @@ public class AccountPurgeTest extends AbstractDbTest {
 
     private void assertAccountBlotter(Account account, long... expectedAmounts) {
         WhereFilter filter = WhereFilter.empty();
-        filter.eq(BlotterFilter.FROM_ACCOUNT_ID, String.valueOf(account.id));
+        filter.eq(BlotterFilter.FROM_ACCOUNT_ID, String.valueOf(account.getId()));
         Cursor c = db.getBlotterForAccount(filter);
         long[] actualAmounts = new long[c.getCount()];
         try {
@@ -174,7 +174,7 @@ public class AccountPurgeTest extends AbstractDbTest {
     }
 
     private void assertAccountRunningBalance(Account account, long... expectedBalance) {
-        Cursor c = db.db().query("select balance from running_balance where account_id=? order by datetime desc, transaction_id desc", new String[]{String.valueOf(account.id)});
+        Cursor c = db.db().query("select balance from running_balance where account_id=? order by datetime desc, transaction_id desc", new String[]{String.valueOf(account.getId())});
         long[] actualBalance = new long[c.getCount()];
         try {
             int i = 0;
@@ -188,7 +188,7 @@ public class AccountPurgeTest extends AbstractDbTest {
     }
 
     private void assertAmountsForAccount(Account account, long[] expectedAmounts, long[] amounts) {
-        String expectedVsActual = "Account " + account.id + " -> Expected:" + Arrays.toString(expectedAmounts) + ", Actual:" + Arrays.toString(amounts);
+        String expectedVsActual = "Account " + account.getId() + " -> Expected:" + Arrays.toString(expectedAmounts) + ", Actual:" + Arrays.toString(amounts);
         assertEquals("Too few or too many transactions. " + expectedVsActual, expectedAmounts.length, amounts.length);
         assertArrayEquals(expectedVsActual, expectedAmounts, amounts);
     }
@@ -205,14 +205,14 @@ public class AccountPurgeTest extends AbstractDbTest {
     private void assertArchiveTransaction(Account account, DateTime date, long expectedAmount) {
         Transaction t = assertOldestTransaction(account, date, expectedAmount);
         Payee payee = db.get(Payee.class, t.payeeId);
-        assertEquals(getContext().getString(R.string.purge_account_payee), payee.title);
+        assertEquals(getContext().getString(R.string.purge_account_payee), payee.getTitle());
         assertEquals(TransactionStatus.CLEARED, t.status);
     }
 
     private Transaction getOldestTransaction(Account account) {
         long id = DatabaseUtils.rawFetchId(db,
                 "select _id from transactions where from_account_id=? and is_template=0 order by datetime limit 1",
-                new String[]{String.valueOf(account.id)});
+                new String[]{String.valueOf(account.getId())});
         return db.get(Transaction.class, id);
     }
 

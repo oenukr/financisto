@@ -194,7 +194,7 @@ public class QifTransaction {
         qifTransaction.memo = transaction.note;
         if (transaction.toAccountId > 0) {
             Account toAccount = accountsMap.get(transaction.toAccountId);
-            qifTransaction.toAccount = toAccount.title;
+            qifTransaction.toAccount = toAccount.getTitle();
             //TODO: test if from and to accounts have different currencies
         }
         Category category = categoriesMap.get(transaction.categoryId);

@@ -48,8 +48,8 @@ public class CategoryBuilder {
         HashMap<String, Category> map = new HashMap<>();
         List<Category> categories = db.getAllCategoriesList();
         for (Category category : categories) {
-            category.attributes = db.getAttributesForCategory(category.id);
-            map.put(category.title, category);
+            category.attributes = db.getAttributesForCategory(category.getId());
+            map.put(category.getTitle(), category);
         }
         return map;
     }
@@ -67,7 +67,7 @@ public class CategoryBuilder {
     }
 
     public CategoryBuilder withTitle(String title) {
-        category.title = title;
+        category.setTitle(title);
         return this;
     }
 
@@ -82,7 +82,7 @@ public class CategoryBuilder {
     }
 
     public Category create() {
-        category.id = db.insertOrUpdate(category, category.attributes);
+        category.setId(db.insertOrUpdate(category, category.attributes));
         return category;
     }
 

@@ -329,7 +329,7 @@ public class ActivityLayout {
         boolean[] checked = new boolean[count];
         for (int i = 0; i < count; i++) {
             titles[i] = items.get(i).getTitle();
-            checked[i] = items.get(i).isChecked();
+            checked[i] = items.get(i).getChecked();
         }
         new AlertDialog.Builder(context)
                 .setMultiChoiceItems(titles, checked, (dialog, which, isChecked) -> items.get(which).setChecked(isChecked))

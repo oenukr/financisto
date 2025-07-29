@@ -37,9 +37,9 @@ public class CategoriesTest extends AbstractDbTest {
          */
         CategoryTree<Category> tree = db.getCategoriesTree(false);
         assertEquals(3, tree.size());
-        assertEquals("A", tree.getAt(0).title);
-        assertEquals("B", tree.getAt(1).title);
-        assertEquals("C", tree.getAt(2).title);
+        assertEquals("A", tree.getAt(0).getTitle());
+        assertEquals("B", tree.getAt(1).getTitle());
+        assertEquals("C", tree.getAt(2).getTitle());
         //when
         Category categoryC1 = createChildCategory(categoryC, "C1");
         db.insertOrUpdate(categoryC1, Collections.emptyList());
@@ -52,11 +52,11 @@ public class CategoriesTest extends AbstractDbTest {
          */
         tree = db.getCategoriesTree(false);
         assertEquals(3, tree.size());
-        assertEquals("A", tree.getAt(0).title);
-        assertEquals("B", tree.getAt(1).title);
-        assertEquals("C", tree.getAt(2).title);
+        assertEquals("A", tree.getAt(0).getTitle());
+        assertEquals("B", tree.getAt(1).getTitle());
+        assertEquals("C", tree.getAt(2).getTitle());
         assertEquals(1, tree.getAt(2).children.size());
-        assertEquals("C1", tree.getAt(2).children.getAt(0).title);
+        assertEquals("C1", tree.getAt(2).children.getAt(0).getTitle());
         //when
         Category categoryD = createParentCategory("D");
         db.insertOrUpdate(categoryD, Collections.emptyList());
@@ -69,10 +69,10 @@ public class CategoriesTest extends AbstractDbTest {
          */
         tree = db.getCategoriesTree(false);
         assertEquals(4, tree.size());
-        assertEquals("A", tree.getAt(0).title);
-        assertEquals("B", tree.getAt(1).title);
-        assertEquals("C", tree.getAt(2).title);
-        assertEquals("D", tree.getAt(3).title);
+        assertEquals("A", tree.getAt(0).getTitle());
+        assertEquals("B", tree.getAt(1).getTitle());
+        assertEquals("C", tree.getAt(2).getTitle());
+        assertEquals("D", tree.getAt(3).getTitle());
         //when
         Category categoryC2 = createChildCategory(categoryC, "C2");
         db.insertOrUpdate(categoryC2, Collections.emptyList());
@@ -87,13 +87,13 @@ public class CategoriesTest extends AbstractDbTest {
          */
         tree = db.getCategoriesTree(false);
         assertEquals(4, tree.size());
-        assertEquals("A", tree.getAt(0).title);
-        assertEquals("B", tree.getAt(1).title);
-        assertEquals("C", tree.getAt(2).title);
+        assertEquals("A", tree.getAt(0).getTitle());
+        assertEquals("B", tree.getAt(1).getTitle());
+        assertEquals("C", tree.getAt(2).getTitle());
         assertEquals(2, tree.getAt(2).children.size());
-        assertEquals("C1", tree.getAt(2).children.getAt(0).title);
-        assertEquals("C2", tree.getAt(2).children.getAt(1).title);
-        assertEquals("D", tree.getAt(3).title);
+        assertEquals("C1", tree.getAt(2).children.getAt(0).getTitle());
+        assertEquals("C2", tree.getAt(2).children.getAt(1).getTitle());
+        assertEquals("D", tree.getAt(3).getTitle());
     }
 
     @Test
@@ -122,28 +122,28 @@ public class CategoriesTest extends AbstractDbTest {
         CategoryTree<Category> tree = db.getCategoriesTree(false);
         assertEquals(2, tree.size());
         Category a = tree.getAt(0);
-        assertEquals("A", a.title);
+        assertEquals("A", a.getTitle());
         assertEquals(1, a.children.size());
 
         Category a2 = a.children.getAt(0);
-        assertEquals("A2", a2.title);
+        assertEquals("A2", a2.getTitle());
         assertEquals(Category.TYPE_EXPENSE, a2.type);
 
         Category b = tree.getAt(1);
-        assertEquals("B", b.title);
+        assertEquals("B", b.getTitle());
         assertEquals(1, b.children.size());
 
         Category a1 = b.children.getAt(0);
-        assertEquals("A1", a1.title);
+        assertEquals("A1", a1.getTitle());
         assertEquals(Category.TYPE_INCOME, a1.type);
         assertEquals(1, a1.children.size());
 
         Category aa1 = a1.children.getAt(0);
-        assertEquals("AA1", aa1.title);
+        assertEquals("AA1", aa1.getTitle());
         assertEquals(Category.TYPE_INCOME, aa1.type);
 
         //when
-        a1 = db.getCategoryWithParent(categoryA1.id);
+        a1 = db.getCategoryWithParent(categoryA1.getId());
         a1.parent = db.getCategoryWithParent(Category.NO_CATEGORY_ID);
         db.insertOrUpdate(a1, Collections.emptyList());
         //then the category should be moved under a new parent
@@ -157,38 +157,38 @@ public class CategoriesTest extends AbstractDbTest {
         tree = db.getCategoriesTree(false);
         assertEquals(3, tree.size());
         a = tree.getAt(0);
-        assertEquals("A", a.title);
+        assertEquals("A", a.getTitle());
         assertEquals(1, a.children.size());
 
         a2 = a.children.getAt(0);
-        assertEquals("A2", a2.title);
+        assertEquals("A2", a2.getTitle());
         assertEquals(Category.TYPE_EXPENSE, a2.type);
 
         b = tree.getAt(1);
-        assertEquals("B", b.title);
+        assertEquals("B", b.getTitle());
         assertFalse(b.hasChildren());
 
         a1 = tree.getAt(2);
-        assertEquals("A1", a1.title);
+        assertEquals("A1", a1.getTitle());
         assertEquals(Category.TYPE_INCOME, a1.type);
         assertEquals(1, a1.children.size());
 
         aa1 = a1.children.getAt(0);
-        assertEquals("AA1", aa1.title);
+        assertEquals("AA1", aa1.getTitle());
         assertEquals(Category.TYPE_INCOME, aa1.type);
     }
 
     private Category createParentCategory(String title) {
-        Category c = new Category();
-        c.title = title;
-        return c;
+        Category category = new Category();
+        category.setTitle(title);
+        return category;
     }
 
     private Category createChildCategory(Category parent, String title) {
-        Category c = new Category();
-        c.title = title;
-        c.parent = parent;
-        return c;
+        Category category = new Category();
+        category.setTitle(title);
+        category.parent = parent;
+        return category;
     }
 
 }

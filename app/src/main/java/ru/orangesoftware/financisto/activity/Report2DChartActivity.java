@@ -323,7 +323,7 @@ public class Report2DChartActivity extends Activity {
             Collection<Currency> currencies = CurrencyCache.getAllCurrencies();
             if (currencies != null && !currencies.isEmpty()) {
                 for (Currency currency : currencies) {
-                    if (currency.isDefault) {
+                    if (currency.isDefault()) {
                         c = currency;
                         break;
                     }

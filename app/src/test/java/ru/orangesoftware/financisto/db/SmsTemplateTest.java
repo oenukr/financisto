@@ -28,17 +28,17 @@ public class SmsTemplateTest extends AbstractDbTest {
 
     @Test
     public void duplication() throws Exception {
-        long dupId = db.duplicate(SmsTemplate.class, template777.id);
+        long dupId = db.duplicate(SmsTemplate.class, template777.getId());
         assertEquals(1, template777.getSortOrder());
 
         SmsTemplate dup = db.load(SmsTemplate.class, dupId);
 
         assertEquals(template777.template, dup.template);
-        assertEquals(template777.title, dup.title);
+        assertEquals(template777.getTitle(), dup.getTitle());
         assertEquals(template777.accountId, dup.accountId);
         assertEquals(template777.categoryId, dup.categoryId);
         assertEquals(2, dup.getSortOrder());
-        assertNotEquals(template777.id, dup.id);
+        assertNotEquals(template777.getId(), dup.getId());
 
         SmsTemplate t2 = SmsTemplateBuilder.withDb(db).title("2").accountId(2).categoryId(8).template("second").create();
         SmsTemplate t3 = SmsTemplateBuilder.withDb(db).title("3").accountId(3).categoryId(8).template("third").create();
@@ -46,19 +46,19 @@ public class SmsTemplateTest extends AbstractDbTest {
         SmsTemplate t5 = SmsTemplateBuilder.withDb(db).title("5").accountId(5).categoryId(8).template("5th").create();
         SmsTemplate t6 = SmsTemplateBuilder.withDb(db).title("6").accountId(6).categoryId(8).template("6th").create();
 
-        long dupAfterThirdId = db.duplicateSmsTemplateBelowOriginal(t3.id);
-        long dupAfter5thId = db.duplicateSmsTemplateBelowOriginal(t5.id);
-        long dupAfterLastId = db.duplicateSmsTemplateBelowOriginal(t6.id);
+        long dupAfterThirdId = db.duplicateSmsTemplateBelowOriginal(t3.getId());
+        long dupAfter5thId = db.duplicateSmsTemplateBelowOriginal(t5.getId());
+        long dupAfterLastId = db.duplicateSmsTemplateBelowOriginal(t6.getId());
 
-        assertEquals(1, db.load(SmsTemplate.class, template777.id).getSortOrder());
+        assertEquals(1, db.load(SmsTemplate.class, template777.getId()).getSortOrder());
         assertEquals(2, db.load(SmsTemplate.class, dupId).getSortOrder());
-        assertEquals(3, db.load(SmsTemplate.class, t2.id).getSortOrder());
-        assertEquals(4, db.load(SmsTemplate.class, t3.id).getSortOrder());
+        assertEquals(3, db.load(SmsTemplate.class, t2.getId()).getSortOrder());
+        assertEquals(4, db.load(SmsTemplate.class, t3.getId()).getSortOrder());
         assertEquals(5, db.load(SmsTemplate.class, dupAfterThirdId).getSortOrder());
-        assertEquals(6, db.load(SmsTemplate.class, t4.id).getSortOrder());
-        assertEquals(7, db.load(SmsTemplate.class, t5.id).getSortOrder());
+        assertEquals(6, db.load(SmsTemplate.class, t4.getId()).getSortOrder());
+        assertEquals(7, db.load(SmsTemplate.class, t5.getId()).getSortOrder());
         assertEquals(8, db.load(SmsTemplate.class, dupAfter5thId).getSortOrder());
-        assertEquals(9, db.load(SmsTemplate.class, t6.id).getSortOrder());
+        assertEquals(9, db.load(SmsTemplate.class, t6.getId()).getSortOrder());
         assertEquals(10, db.load(SmsTemplate.class, dupAfterLastId).getSortOrder());
 
     }
@@ -104,9 +104,9 @@ public class SmsTemplateTest extends AbstractDbTest {
         SmsTemplate t2 = SmsTemplateBuilder.withDb(db).title("2").accountId(2).categoryId(8).template("first").create();
         SmsTemplate t3 = SmsTemplateBuilder.withDb(db).title("3").accountId(3).categoryId(8).template("second").create();
         SmsTemplate t4 = SmsTemplateBuilder.withDb(db).title("4").accountId(4).categoryId(8).template("third").create();
-        long t5Id = db.duplicate(SmsTemplate.class, t4.id);
+        long t5Id = db.duplicate(SmsTemplate.class, t4.getId());
         SmsTemplate t5 = db.load(SmsTemplate.class, t5Id);
-        t5.title = "5";
+        t5.setTitle("5");
         t5.template = "4th";
         //SmsTemplateBuilder.withDb(db).title("5").accountId(5).categoryId(8).template("4th").create();
         SmsTemplate t6 = SmsTemplateBuilder.withDb(db).title("6").accountId(6).categoryId(8).template("5th").create();
@@ -123,11 +123,11 @@ public class SmsTemplateTest extends AbstractDbTest {
 
 
         assertEquals(-1, db.getNextByOrder(SmsTemplate.class, 0));
-        assertEquals(t2.id, db.getNextByOrder(SmsTemplate.class, template777.id));
-        assertEquals(t4.id, db.getNextByOrder(SmsTemplate.class, t3.id));
-        assertEquals(t5.id, db.getNextByOrder(SmsTemplate.class, t4.id));
-        assertEquals(t8.id, db.getNextByOrder(SmsTemplate.class, t7.id));
-        assertEquals(-1, db.getNextByOrder(SmsTemplate.class, t8.id));
+        assertEquals(t2.getId(), db.getNextByOrder(SmsTemplate.class, template777.getId()));
+        assertEquals(t4.getId(), db.getNextByOrder(SmsTemplate.class, t3.getId()));
+        assertEquals(t5.getId(), db.getNextByOrder(SmsTemplate.class, t4.getId()));
+        assertEquals(t8.getId(), db.getNextByOrder(SmsTemplate.class, t7.getId()));
+        assertEquals(-1, db.getNextByOrder(SmsTemplate.class, t8.getId()));
     }
 
     @Test
@@ -141,67 +141,67 @@ public class SmsTemplateTest extends AbstractDbTest {
         SmsTemplate t8 = SmsTemplateBuilder.withDb(db).title("8").accountId(8).categoryId(8).template("7th").create();
 
         // move middle item down 
-        Assert.assertTrue(db.moveItemByChangingOrder(SmsTemplate.class, t3.id, t6.id));
+        Assert.assertTrue(db.moveItemByChangingOrder(SmsTemplate.class, t3.getId(), t6.getId()));
 
-        assertEquals(1, db.load(SmsTemplate.class, template777.id).getSortOrder());
-        assertEquals(2, db.load(SmsTemplate.class, t2.id).getSortOrder());
-        assertEquals(3, db.load(SmsTemplate.class, t4.id).getSortOrder());
-        assertEquals(4, db.load(SmsTemplate.class, t5.id).getSortOrder());
-        assertEquals(5, db.load(SmsTemplate.class, t6.id).getSortOrder());
-        assertEquals(t3.id, db.getNextByOrder(SmsTemplate.class, t6.id));
-        assertEquals(6, db.load(SmsTemplate.class, t3.id).getSortOrder());
+        assertEquals(1, db.load(SmsTemplate.class, template777.getId()).getSortOrder());
+        assertEquals(2, db.load(SmsTemplate.class, t2.getId()).getSortOrder());
+        assertEquals(3, db.load(SmsTemplate.class, t4.getId()).getSortOrder());
+        assertEquals(4, db.load(SmsTemplate.class, t5.getId()).getSortOrder());
+        assertEquals(5, db.load(SmsTemplate.class, t6.getId()).getSortOrder());
+        assertEquals(t3.getId(), db.getNextByOrder(SmsTemplate.class, t6.getId()));
+        assertEquals(6, db.load(SmsTemplate.class, t3.getId()).getSortOrder());
 
         // back
-        Assert.assertTrue(db.moveItemByChangingOrder(SmsTemplate.class, t3.id, t4.id));
+        Assert.assertTrue(db.moveItemByChangingOrder(SmsTemplate.class, t3.getId(), t4.getId()));
 
-        assertEquals(2, db.load(SmsTemplate.class, t2.id).getSortOrder());
-        assertEquals(3, db.load(SmsTemplate.class, t3.id).getSortOrder());
-        assertEquals(4, db.load(SmsTemplate.class, t4.id).getSortOrder());
-        assertEquals(5, db.load(SmsTemplate.class, t5.id).getSortOrder());
-        assertEquals(6, db.load(SmsTemplate.class, t6.id).getSortOrder());
+        assertEquals(2, db.load(SmsTemplate.class, t2.getId()).getSortOrder());
+        assertEquals(3, db.load(SmsTemplate.class, t3.getId()).getSortOrder());
+        assertEquals(4, db.load(SmsTemplate.class, t4.getId()).getSortOrder());
+        assertEquals(5, db.load(SmsTemplate.class, t5.getId()).getSortOrder());
+        assertEquals(6, db.load(SmsTemplate.class, t6.getId()).getSortOrder());
 
         // move middle item up to the top
-        Assert.assertTrue(db.moveItemByChangingOrder(SmsTemplate.class, t5.id, template777.id));
+        Assert.assertTrue(db.moveItemByChangingOrder(SmsTemplate.class, t5.getId(), template777.getId()));
 
-        assertEquals(1, db.load(SmsTemplate.class, t5.id).getSortOrder());
-        assertEquals(2, db.load(SmsTemplate.class, template777.id).getSortOrder());
-        assertEquals(3, db.load(SmsTemplate.class, t2.id).getSortOrder());
-        assertEquals(4, db.load(SmsTemplate.class, t3.id).getSortOrder());
-        assertEquals(5, db.load(SmsTemplate.class, t4.id).getSortOrder());
-        assertEquals(6, db.load(SmsTemplate.class, t6.id).getSortOrder());
+        assertEquals(1, db.load(SmsTemplate.class, t5.getId()).getSortOrder());
+        assertEquals(2, db.load(SmsTemplate.class, template777.getId()).getSortOrder());
+        assertEquals(3, db.load(SmsTemplate.class, t2.getId()).getSortOrder());
+        assertEquals(4, db.load(SmsTemplate.class, t3.getId()).getSortOrder());
+        assertEquals(5, db.load(SmsTemplate.class, t4.getId()).getSortOrder());
+        assertEquals(6, db.load(SmsTemplate.class, t6.getId()).getSortOrder());
 
         // move middle item down to the bottom
-        Assert.assertTrue(db.moveItemByChangingOrder(SmsTemplate.class, t4.id, t6.id));
+        Assert.assertTrue(db.moveItemByChangingOrder(SmsTemplate.class, t4.getId(), t6.getId()));
 
-        assertEquals(1, db.load(SmsTemplate.class, t5.id).getSortOrder());
-        assertEquals(2, db.load(SmsTemplate.class, template777.id).getSortOrder());
-        assertEquals(3, db.load(SmsTemplate.class, t2.id).getSortOrder());
-        assertEquals(4, db.load(SmsTemplate.class, t3.id).getSortOrder());
-        assertEquals(5, db.load(SmsTemplate.class, t6.id).getSortOrder());
-        assertEquals(6, db.load(SmsTemplate.class, t4.id).getSortOrder());
+        assertEquals(1, db.load(SmsTemplate.class, t5.getId()).getSortOrder());
+        assertEquals(2, db.load(SmsTemplate.class, template777.getId()).getSortOrder());
+        assertEquals(3, db.load(SmsTemplate.class, t2.getId()).getSortOrder());
+        assertEquals(4, db.load(SmsTemplate.class, t3.getId()).getSortOrder());
+        assertEquals(5, db.load(SmsTemplate.class, t6.getId()).getSortOrder());
+        assertEquals(6, db.load(SmsTemplate.class, t4.getId()).getSortOrder());
 
         // move item down to the next one
-        Assert.assertTrue(db.moveItemByChangingOrder(SmsTemplate.class, t2.id, t3.id));
+        Assert.assertTrue(db.moveItemByChangingOrder(SmsTemplate.class, t2.getId(), t3.getId()));
 
-        assertEquals(1, db.load(SmsTemplate.class, t5.id).getSortOrder());
-        assertEquals(2, db.load(SmsTemplate.class, template777.id).getSortOrder());
-        assertEquals(3, db.load(SmsTemplate.class, t3.id).getSortOrder());
-        assertEquals(4, db.load(SmsTemplate.class, t2.id).getSortOrder());
-        assertEquals(5, db.load(SmsTemplate.class, t6.id).getSortOrder());
-        assertEquals(6, db.load(SmsTemplate.class, t4.id).getSortOrder());
+        assertEquals(1, db.load(SmsTemplate.class, t5.getId()).getSortOrder());
+        assertEquals(2, db.load(SmsTemplate.class, template777.getId()).getSortOrder());
+        assertEquals(3, db.load(SmsTemplate.class, t3.getId()).getSortOrder());
+        assertEquals(4, db.load(SmsTemplate.class, t2.getId()).getSortOrder());
+        assertEquals(5, db.load(SmsTemplate.class, t6.getId()).getSortOrder());
+        assertEquals(6, db.load(SmsTemplate.class, t4.getId()).getSortOrder());
 
         // move item up to the next one
-        Assert.assertTrue(db.moveItemByChangingOrder(SmsTemplate.class, t4.id, t6.id));
+        Assert.assertTrue(db.moveItemByChangingOrder(SmsTemplate.class, t4.getId(), t6.getId()));
 
-        assertEquals(1, db.load(SmsTemplate.class, t5.id).getSortOrder());
-        assertEquals(2, db.load(SmsTemplate.class, template777.id).getSortOrder());
-        assertEquals(3, db.load(SmsTemplate.class, t3.id).getSortOrder());
-        assertEquals(4, db.load(SmsTemplate.class, t2.id).getSortOrder());
-        assertEquals(5, db.load(SmsTemplate.class, t4.id).getSortOrder());
-        assertEquals(6, db.load(SmsTemplate.class, t6.id).getSortOrder());
+        assertEquals(1, db.load(SmsTemplate.class, t5.getId()).getSortOrder());
+        assertEquals(2, db.load(SmsTemplate.class, template777.getId()).getSortOrder());
+        assertEquals(3, db.load(SmsTemplate.class, t3.getId()).getSortOrder());
+        assertEquals(4, db.load(SmsTemplate.class, t2.getId()).getSortOrder());
+        assertEquals(5, db.load(SmsTemplate.class, t4.getId()).getSortOrder());
+        assertEquals(6, db.load(SmsTemplate.class, t6.getId()).getSortOrder());
 
-        Assert.assertFalse(db.moveItemByChangingOrder(SmsTemplate.class, t2.id, t2.id));
-        Assert.assertFalse(db.moveItemByChangingOrder(SmsTemplate.class, t6.id, 0));
+        Assert.assertFalse(db.moveItemByChangingOrder(SmsTemplate.class, t2.getId(), t2.getId()));
+        Assert.assertFalse(db.moveItemByChangingOrder(SmsTemplate.class, t6.getId(), 0));
     }
 
 

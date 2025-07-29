@@ -53,8 +53,8 @@ public class CategoryCache {
         for (Category category : categoryTree) {
             String name = CategoryInfo.buildName(category);
             categoryNameToCategory.put(name, category);
-            if (category.id > maxId) {
-                maxId = category.id;
+            if (category.getId() > maxId) {
+                maxId = category.getId();
             }
             if (category.hasChildren()) {
                 long childMaxId = updateNameToCategoryMapping(category.children, maxId);
@@ -109,8 +109,8 @@ public class CategoryCache {
 
     private Category createCategoryInCache(String fullName, String name, boolean income) {
         Category c = new Category();
-        c.id = seq.getAndIncrement();
-        c.title = name;
+        c.setId(seq.getAndIncrement());
+        c.setTitle(name);
         if (income) {
             c.makeThisCategoryIncome();
         }

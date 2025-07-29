@@ -114,8 +114,8 @@ public class LegacyDatabaseRestoreTest extends AbstractDbTest {
         restoreDatabase(backupFileContent);
         //then
         Account account = getAccount();
-        assertEquals(AccountType.ELECTRONIC.name(), account.type);
-        assertEquals(ElectronicPaymentType.PAYPAL.name(), account.cardIssuer);
+        assertEquals(AccountType.ELECTRONIC.name(), account.getType());
+        assertEquals(ElectronicPaymentType.PAYPAL.name(), account.getCardIssuer());
         //and
         TransactionInfo transaction = getTransaction(account);
         assertTrue(transaction.isSplitParent());
@@ -217,8 +217,8 @@ public class LegacyDatabaseRestoreTest extends AbstractDbTest {
         restoreDatabase(backupFileContent);
         //then
         Account account = getAccount();
-        assertEquals(AccountType.ELECTRONIC.name(), account.type);
-        assertEquals(ElectronicPaymentType.PAYPAL.name(), account.cardIssuer);
+        assertEquals(AccountType.ELECTRONIC.name(), account.getType());
+        assertEquals(ElectronicPaymentType.PAYPAL.name(), account.getCardIssuer());
         //and
         TransactionInfo transaction = getTransaction(account);
         assertTrue(transaction.isSplitParent());
@@ -233,7 +233,7 @@ public class LegacyDatabaseRestoreTest extends AbstractDbTest {
         restoreDatabase(backupFileContent);
         // then
         Account account = getAccount();
-        assertThat(account.totalAmount, is(375L));
+        assertThat(account.getTotalAmount(), is(375L));
     }
 
     @Ignore("Need to tell robolectric to make the needed folder writable")
@@ -246,11 +246,11 @@ public class LegacyDatabaseRestoreTest extends AbstractDbTest {
         // then
         Attribute attribute = db.getAttribute(1);
         assertNotNull(attribute);
-        assertThat(attribute.title, is("Кол-во поездок"));
+        assertThat(attribute.getTitle(), is("Кол-во поездок"));
         // and
         List<MyLocation> locations = db.getAllLocationsList(false);
         assertThat(locations.size(), is(1));
-        assertThat(locations.get(0).title, is("Starbucks"));
+        assertThat(locations.get(0).getTitle(), is("Starbucks"));
     }
 
     protected Account getAccount() {
@@ -260,7 +260,7 @@ public class LegacyDatabaseRestoreTest extends AbstractDbTest {
     }
 
     private TransactionInfo getTransaction(Account account) {
-        List<TransactionInfo> transactions = db.getTransactionsForAccount(account.id);
+        List<TransactionInfo> transactions = db.getTransactionsForAccount(account.getId());
         assertEquals(1, transactions.size());
         return transactions.get(0);
     }

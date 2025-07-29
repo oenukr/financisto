@@ -69,15 +69,15 @@ public class SplitTransferActivity extends AbstractSplitActivity {
     private void selectFromAccount(long accountId) {
         if (accountId > 0) {
             Account account = db.getAccount(accountId);
-            rateView.selectCurrencyFrom(account.currency);
+            rateView.selectCurrencyFrom(account.getCurrency());
         }
     }
 
     private void selectToAccount(long accountId) {
         if (accountId > 0) {
             Account account = db.getAccount(accountId);
-            rateView.selectCurrencyTo(account.currency);
-            accountText.setText(account.title);
+            rateView.selectCurrencyTo(account.getCurrency());
+            accountText.setText(account.getTitle());
             split.toAccountId = accountId;
         }
     }

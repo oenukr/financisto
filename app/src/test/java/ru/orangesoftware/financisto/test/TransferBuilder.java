@@ -22,8 +22,8 @@ public class TransferBuilder {
         this.db = db;
     }
 
-    public TransferBuilder fromAccount(Account a) {
-        t.fromAccountId = a.id;
+    public TransferBuilder fromAccount(Account account) {
+        t.fromAccountId = account.getId();
         return this;
     }
 
@@ -32,8 +32,8 @@ public class TransferBuilder {
         return this;
     }
 
-    public TransferBuilder toAccount(Account a) {
-        t.toAccountId = a.id;
+    public TransferBuilder toAccount(Account account) {
+        t.toAccountId = account.getId();
         return this;
     }
 

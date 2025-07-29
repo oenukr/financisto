@@ -50,29 +50,29 @@ public class MyDatabaseTest extends AbstractDbTest {
 
         res = Query.readEntityList(db.queryEntities(Project.class, null, true, true), Project.class);
         Assert.assertEquals(4, res.size());
-        Assert.assertEquals("1 first", res.get(0).title);
-        Assert.assertEquals("3proj3", res.get(1).title);
-        Assert.assertEquals("4forth", res.get(2).title);
-        Assert.assertEquals(Project.noProject().title, res.get(3).title);
+        Assert.assertEquals("1 first", res.get(0).getTitle());
+        Assert.assertEquals("3proj3", res.get(1).getTitle());
+        Assert.assertEquals("4forth", res.get(2).getTitle());
+        Assert.assertEquals(Project.noProject().getTitle(), res.get(3).getTitle());
 
         res = Query.readEntityList(db.queryEntities(Project.class, "proj", true, false), Project.class);
         Assert.assertEquals(3, res.size());
-        Assert.assertEquals("2proj2", res.get(0).title);
-        Assert.assertEquals("3proj3", res.get(1).title);
-        Assert.assertEquals(Project.noProject().title, res.get(2).title);
+        Assert.assertEquals("2proj2", res.get(0).getTitle());
+        Assert.assertEquals("3proj3", res.get(1).getTitle());
+        Assert.assertEquals(Project.noProject().getTitle(), res.get(2).getTitle());
 
         res = Query.readEntityList(db.queryEntities(Project.class, "proj", false, false), Project.class);
         Assert.assertEquals(2, res.size());
-        Assert.assertEquals("2proj2", res.get(0).title);
-        Assert.assertEquals("3proj3", res.get(1).title);
+        Assert.assertEquals("2proj2", res.get(0).getTitle());
+        Assert.assertEquals("3proj3", res.get(1).getTitle());
 
         res = Query.readEntityList(db.queryEntities(Project.class, "Proj", false, true), Project.class);
         Assert.assertEquals(1, res.size());
-        Assert.assertEquals("3proj3", res.get(0).title);
+        Assert.assertEquals("3proj3", res.get(0).getTitle());
 
         res = Query.readEntityList(db.queryEntities(Project.class, "o h", false, true), Project.class);
         Assert.assertEquals(1, res.size());
-        Assert.assertEquals("4forth", res.get(0).title);
+        Assert.assertEquals("4forth", res.get(0).getTitle());
     }
 
     @Test
@@ -95,8 +95,8 @@ public class MyDatabaseTest extends AbstractDbTest {
 
         payees = db.getAllPayeeList();
 
-        assertEquals("sort order mismatch:", "Payee4", payees.get(3).title);
-        assertEquals("sort order mismatch:", "Payee3", payees.get(2).title);
+        assertEquals("sort order mismatch:", "Payee4", payees.get(3).getTitle());
+        assertEquals("sort order mismatch:", "Payee3", payees.get(2).getTitle());
     }
 
     @Test
@@ -108,9 +108,9 @@ public class MyDatabaseTest extends AbstractDbTest {
         Payee p2 = findOrInsertPayee(payee);
         List<Payee> payees = db.getAllPayeeList();
         // then
-        assertEquals("Ids should be the same!", p1.id, p2.id);
+        assertEquals("Ids should be the same!", p1.getId(), p2.getId());
         assertEquals("List should be of size 1!", 1, payees.size());
-        assertEquals("The first payee should be the one!", payees.get(0).title, payee);
+        assertEquals("The first payee should be the one!", payees.get(0).getTitle(), payee);
     }
 
     @Test
@@ -139,7 +139,7 @@ public class MyDatabaseTest extends AbstractDbTest {
         Category a11 = db.getCategoryWithParent(a11Id);
         assertTrue(a11.isIncome());
         a11.parent = a2;
-        a11.title = "a21";
+        a11.setTitle("a21");
         long a21id = db.insertOrUpdate(a11, new ArrayList<>());
         Category a21 = db.getCategoryWithParent(a21id);
         Category a211 = db.getCategoryWithParent(a111Id);
@@ -189,33 +189,33 @@ public class MyDatabaseTest extends AbstractDbTest {
         // when
         db.clearSelectedTransactions(ids);
         // then
-        for (TransactionInfo info : db.getTransactionsForAccount(a1.id)) {
+        for (TransactionInfo info : db.getTransactionsForAccount(a1.getId())) {
             assertEquals(info.status, TransactionStatus.CLEARED);
         }
 
         // when
         db.reconcileSelectedTransactions(ids);
         // then
-        for (TransactionInfo info : db.getTransactionsForAccount(a1.id)) {
+        for (TransactionInfo info : db.getTransactionsForAccount(a1.getId())) {
             assertEquals(info.status, TransactionStatus.RECONCILED);
         }
 
         // when
         db.deleteSelectedTransactions(ids);
         // then
-        assertEquals(0, db.getTransactionsForAccount(a1.id).size());
+        assertEquals(0, db.getTransactionsForAccount(a1.getId()).size());
     }
 
     private Category createIncomeCategory(String title) {
         Category c = new Category();
-        c.title = title;
+        c.setTitle(title);
         c.makeThisCategoryIncome();
         return c;
     }
 
     private Category createExpenseCategory(String title) {
         Category c = new Category();
-        c.title = title;
+        c.setTitle(title);
         c.makeThisCategoryExpense();
         return c;
     }

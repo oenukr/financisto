@@ -166,11 +166,11 @@ public class AccountActivity extends AbstractActivity {
                     this.account = new Account();
                 }
             } else {
-                selectAccountType(AccountType.valueOf(account.type));
+                selectAccountType(AccountType.valueOf(account.getType()));
             }
         }
 
-        if (account.id == -1) {
+        if (account.getId() == -1) {
             activityLayout.addEditNode(layout, R.string.opening_amount, amountInput);
             amountInput.setIncome();
         }
@@ -185,13 +185,13 @@ public class AccountActivity extends AbstractActivity {
                 R.id.is_included_into_totals, R.string.is_included_into_totals,
                 R.string.is_included_into_totals_summary, true);
 
-        if (account.id > 0) {
+        if (account.getId() > 0) {
             editAccount();
         }
 
         Button bOK = findViewById(R.id.bOK);
         bOK.setOnClickListener(arg0 -> {
-            if (account.currency == null) {
+            if (account.getCurrency() == null) {
                 Toast.makeText(AccountActivity.this, R.string.select_currency, Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -199,42 +199,42 @@ public class AccountActivity extends AbstractActivity {
                 accountTitle.setError(getString(R.string.title));
                 return;
             }
-            AccountType type = AccountType.valueOf(account.type);
+            AccountType type = AccountType.valueOf(account.getType());
             if (type.getHasIssuer()) {
-                account.issuer = Utils.text(issuerName);
+                account.setIssuer(Utils.text(issuerName));
             }
             if (type.getHasNumber()) {
-                account.number = Utils.text(numberText);
+                account.setNumber(Utils.text(numberText));
             }
 
             /********** validate closing and payment days **********/
             if (type.isCreditCard()) {
                 String closingDay = Utils.text(closingDayText);
-                account.closingDay = closingDay == null ? 0 : Integer.parseInt(closingDay);
-                if (account.closingDay != 0) {
-                    if (account.closingDay > 31) {
+                account.setClosingDay(closingDay == null ? 0 : Integer.parseInt(closingDay));
+                if (account.getClosingDay() != 0) {
+                    if (account.getClosingDay() > 31) {
                         Toast.makeText(AccountActivity.this, R.string.closing_day_error, Toast.LENGTH_SHORT).show();
                         return;
                     }
                 }
 
                 String paymentDay = Utils.text(paymentDayText);
-                account.paymentDay = paymentDay == null ? 0 : Integer.parseInt(paymentDay);
-                if (account.paymentDay != 0) {
-                    if (account.paymentDay > 31) {
+                account.setPaymentDay(paymentDay == null ? 0 : Integer.parseInt(paymentDay));
+                if (account.getPaymentDay() != 0) {
+                    if (account.getPaymentDay() > 31) {
                         Toast.makeText(AccountActivity.this, R.string.payment_day_error, Toast.LENGTH_SHORT).show();
                         return;
                     }
                 }
             }
 
-            account.title = text(accountTitle);
-            account.creationDate = System.currentTimeMillis();
+            account.setTitle(text(accountTitle));
+            account.setCreationDate(System.currentTimeMillis());
             String sortOrder = text(sortOrderText);
-            account.sortOrder = sortOrder == null ? 0 : Integer.parseInt(sortOrder);
-            account.isIncludeIntoTotals = isIncludedIntoTotals.isChecked();
-            account.limitAmount = -Math.abs(limitInput.getAmount());
-            account.note = text(noteText);
+            account.setSortOrder(sortOrder == null ? 0 : Integer.parseInt(sortOrder));
+            account.setIncludeIntoTotals(isIncludedIntoTotals.isChecked());
+            account.setLimitAmount(-Math.abs(limitInput.getAmount()));
+            account.setNote(text(noteText));
 
             long accountId = db.saveAccount(account);
             long amount = amountInput.getAmount();
@@ -242,7 +242,7 @@ public class AccountActivity extends AbstractActivity {
                 Transaction t = new Transaction();
                 t.fromAccountId = accountId;
                 t.categoryId = 0;
-                t.note = getResources().getText(R.string.opening_amount) + " (" + account.title + ")";
+                t.note = getResources().getText(R.string.opening_amount) + " (" + account.getTitle() + ")";
                 t.fromAmount = amount;
                 db.insertOrUpdate(t, null);
             }
@@ -268,19 +268,19 @@ public class AccountActivity extends AbstractActivity {
                 isIncludedIntoTotals.performClick();
                 break;
             case R.id.account_type:
-                activityLayout.selectPosition(this, R.id.account_type, R.string.account_type, accountTypeAdapter, AccountType.valueOf(account.type).ordinal());
+                activityLayout.selectPosition(this, R.id.account_type, R.string.account_type, accountTypeAdapter, AccountType.valueOf(account.getType()).ordinal());
                 break;
             case R.id.card_issuer:
                 activityLayout.selectPosition(this, R.id.card_issuer, R.string.card_issuer, cardIssuerAdapter,
-                        account.cardIssuer != null ? CardIssuer.valueOf(account.cardIssuer).ordinal() : 0);
+                        account.getCardIssuer() != null ? CardIssuer.valueOf(account.getCardIssuer()).ordinal() : 0);
                 break;
             case R.id.electronic_payment_type:
                 activityLayout.selectPosition(this, R.id.electronic_payment_type, R.string.electronic_payment_type, electronicPaymentAdapter,
-                        selectEnum(ElectronicPaymentType.class, account.cardIssuer, ElectronicPaymentType.PAYPAL).ordinal());
+                        selectEnum(ElectronicPaymentType.class, account.getCardIssuer(), ElectronicPaymentType.PAYPAL).ordinal());
                 break;
             case R.id.currency:
                 activityLayout.select(this, R.id.currency, R.string.currency, currencyCursor, currencyAdapter,
-                        "_id", account.currency != null ? account.currency.id : -1);
+                        "_id", account.getCurrency() != null ? account.getCurrency().getId() : -1);
                 break;
             case R.id.currency_add:
                 addNewCurrency();
@@ -339,24 +339,24 @@ public class AccountActivity extends AbstractActivity {
         setVisibility(paymentDayNode, type.isCreditCard() ? View.VISIBLE : View.GONE);
 
         setVisibility(limitAmountView, type == AccountType.CREDIT_CARD ? View.VISIBLE : View.GONE);
-        account.type = type.name();
+        account.setType(type.name());
         if (type.isCard()) {
-            selectCardIssuer(selectEnum(CardIssuer.class, account.cardIssuer, CardIssuer.DEFAULT));
+            selectCardIssuer(selectEnum(CardIssuer.class, account.getCardIssuer(), CardIssuer.DEFAULT));
         } else if (type.isElectronic()) {
-            selectElectronicType(selectEnum(ElectronicPaymentType.class, account.cardIssuer, ElectronicPaymentType.PAYPAL));
+            selectElectronicType(selectEnum(ElectronicPaymentType.class, account.getCardIssuer(), ElectronicPaymentType.PAYPAL));
         } else {
-            account.cardIssuer = null;
+            account.setCardIssuer(null);
         }
     }
 
     private void selectCardIssuer(CardIssuer issuer) {
         updateNode(cardIssuerNode, issuer);
-        account.cardIssuer = issuer.name();
+        account.setCardIssuer(issuer.name());
     }
 
     private void selectElectronicType(ElectronicPaymentType paymentType) {
         updateNode(electronicPaymentNode, paymentType);
-        account.cardIssuer = paymentType.name();
+        account.setCardIssuer(paymentType.name());
     }
 
     private void updateNode(View note, EntityEnum enumItem) {
@@ -374,34 +374,34 @@ public class AccountActivity extends AbstractActivity {
     }
 
     private void selectCurrency(Currency c) {
-        currencyText.setText(c.name);
+        currencyText.setText(c.getName());
         amountInput.setCurrency(c);
         limitInput.setCurrency(c);
-        account.currency = c;
+        account.setCurrency(c);
     }
 
     private void editAccount() {
-        selectAccountType(AccountType.valueOf(account.type));
-        selectCurrency(account.currency);
-        accountTitle.setText(account.title);
-        issuerName.setText(account.issuer);
-        numberText.setText(account.number);
-        sortOrderText.setText(String.valueOf(account.sortOrder));
+        selectAccountType(AccountType.valueOf(account.getType()));
+        selectCurrency(account.getCurrency());
+        accountTitle.setText(account.getTitle());
+        issuerName.setText(account.getIssuer());
+        numberText.setText(account.getNumber());
+        sortOrderText.setText(String.valueOf(account.getSortOrder()));
 
         /******** bill filtering ********/
-        if (account.closingDay > 0) {
-            closingDayText.setText(String.valueOf(account.closingDay));
+        if (account.getClosingDay() > 0) {
+            closingDayText.setText(String.valueOf(account.getClosingDay()));
         }
-        if (account.paymentDay > 0) {
-            paymentDayText.setText(String.valueOf(account.paymentDay));
+        if (account.getPaymentDay() > 0) {
+            paymentDayText.setText(String.valueOf(account.getPaymentDay()));
         }
         /********************************/
 
-        isIncludedIntoTotals.setChecked(account.isIncludeIntoTotals);
-        if (account.limitAmount != 0) {
-            limitInput.setAmount(-Math.abs(account.limitAmount));
+        isIncludedIntoTotals.setChecked(account.isIncludeIntoTotals());
+        if (account.getLimitAmount() != 0) {
+            limitInput.setAmount(-Math.abs(account.getLimitAmount()));
         }
-        noteText.setText(account.note);
+        noteText.setText(account.getNote());
     }
 
     @Override

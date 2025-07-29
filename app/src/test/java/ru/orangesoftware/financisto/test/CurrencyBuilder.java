@@ -11,7 +11,7 @@ import ru.orangesoftware.financisto.model.Currency;
 public class CurrencyBuilder {
 
     private final DatabaseAdapter db;
-    private final Currency c = new Currency();
+    private final Currency currency = new Currency();
 
     public static Currency createDefault(DatabaseAdapter db) {
         return withDb(db).title("Singapore Dollar").name("SGD").symbol("S$").create();
@@ -26,34 +26,34 @@ public class CurrencyBuilder {
     }
 
     public CurrencyBuilder title(String title) {
-        c.title = title;
+        currency.setTitle(title);
         return this;
     }
 
     public CurrencyBuilder name(String name) {
-        c.name = name;
+        currency.setName(name);
         return this;
     }
 
     public CurrencyBuilder symbol(String symbol) {
-        c.symbol = symbol;
+        currency.setSymbol(symbol);
         return this;
     }
 
     public CurrencyBuilder separators(String groupSeparator, String decimalSeparator) {
-        c.groupSeparator = groupSeparator;
-        c.decimalSeparator = decimalSeparator;
+        currency.setGroupSeparator(groupSeparator);
+        currency.setDecimalSeparator(decimalSeparator);
         return this;
     }
     
     public CurrencyBuilder makeDefault() {
-        c.isDefault = true;
+        currency.setDefault(true);
         return this;
     }
 
     public Currency create() {
-        db.saveOrUpdate(c);
-        return c;
+        db.saveOrUpdate(currency);
+        return currency;
     }
 
 }

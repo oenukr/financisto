@@ -95,7 +95,7 @@ public class QifExport extends Export {
             return true;
         }
         for (long id : selectedAccounts) {
-            if (id == a.id) {
+            if (id == a.getId()) {
                 return true;
             }
         }
@@ -138,7 +138,7 @@ public class QifExport extends Export {
 
     private Cursor getBlotterForAccount(Account account) {
         WhereFilter accountFilter = WhereFilter.copyOf(options.getFilter());
-        accountFilter.put(Criteria.eq(BlotterFilter.FROM_ACCOUNT_ID, String.valueOf(account.id)));
+        accountFilter.put(Criteria.eq(BlotterFilter.FROM_ACCOUNT_ID, String.valueOf(account.getId())));
         return db.getBlotterForAccount(accountFilter);
     }
 

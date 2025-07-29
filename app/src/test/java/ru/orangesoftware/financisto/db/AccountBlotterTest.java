@@ -148,14 +148,14 @@ public class AccountBlotterTest extends AbstractDbTest {
 
     private WhereFilter createBlotterForAccountFilter(Account account) {
         WhereFilter filter = WhereFilter.empty();
-        filter.put(Criteria.eq(BlotterFilter.FROM_ACCOUNT_ID, String.valueOf(account.id)));
+        filter.put(Criteria.eq(BlotterFilter.FROM_ACCOUNT_ID, String.valueOf(account.getId())));
         return filter;
     }
 
     private void assertAccountBlotterTotal(Account a1, DateTime start, DateTime end, int total) {
         WhereFilter filter = enhanceFilterForAccountBlotter(WhereFilter.empty());
         filter.btw(BlotterFilter.DATETIME, String.valueOf(start.atMidnight().asLong()), String.valueOf(end.atDayEnd().asLong()));
-        filter.eq(BlotterFilter.FROM_ACCOUNT_ID, String.valueOf(a1.id));
+        filter.eq(BlotterFilter.FROM_ACCOUNT_ID, String.valueOf(a1.getId()));
         TransactionsTotalCalculator calculator = new TransactionsTotalCalculator(db, filter);
         assertEquals(total, calculator.getAccountTotal().balance);
     }

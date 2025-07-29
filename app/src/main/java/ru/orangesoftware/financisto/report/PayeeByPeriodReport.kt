@@ -25,11 +25,7 @@ class PayeeByPeriodReport(
     override fun getFilterName(): String = if (filterIds.isNotEmpty()) {
         val payeeId: Long = filterIds[currentFilterOrder]
         val payee: Payee? = em.get(Payee::class.java, payeeId)
-        if (payee != null) {
-            payee.getTitle()
-        } else {
-            context.getString(R.string.no_payee)
-        }
+        payee?.title ?: context.getString(R.string.no_payee)
     } else {
         // no payee
         context.getString(R.string.no_payee)
@@ -38,7 +34,7 @@ class PayeeByPeriodReport(
     override fun setFilterIds() {
         filterIds = mutableListOf()
         currentFilterOrder = 0;
-        em.allPayeeList.forEach { filterIds.add(it.getId()) }
+        em.allPayeeList.forEach { filterIds.add(it.id) }
     }
 
     override fun setColumnFilter() {

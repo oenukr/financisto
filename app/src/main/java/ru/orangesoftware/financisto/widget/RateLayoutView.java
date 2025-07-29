@@ -1,5 +1,7 @@
 package ru.orangesoftware.financisto.widget;
 
+import static ru.orangesoftware.financisto.activity.AbstractActivity.setVisibility;
+
 import android.app.Activity;
 import android.view.View;
 import android.view.WindowManager;
@@ -11,8 +13,6 @@ import ru.orangesoftware.financisto.activity.AbstractActivity;
 import ru.orangesoftware.financisto.activity.ActivityLayout;
 import ru.orangesoftware.financisto.model.Currency;
 import ru.orangesoftware.financisto.utils.MyPreferences;
-
-import static ru.orangesoftware.financisto.activity.AbstractActivity.setVisibility;
 
 /**
  * Created by IntelliJ IDEA.
@@ -116,8 +116,8 @@ public class RateLayoutView implements RateNodeOwner {
 
     private void updateTitle(View node, int titleId, Currency currency) {
         TextView title = node.findViewById(R.id.label);
-        if (currency != null && currency.id > 0) {
-            title.setText(activity.getString(titleId)+" ("+currency.name+")");
+        if (currency != null && currency.getId() > 0) {
+            title.setText(activity.getString(titleId)+" ("+currency.getName()+")");
         } else {
             title.setText(activity.getString(titleId));
         }
@@ -157,7 +157,7 @@ public class RateLayoutView implements RateNodeOwner {
     }
 
     private boolean isDifferentCurrencies() {
-        return currencyFrom != null && currencyTo != null && currencyFrom.id != currencyTo.id;
+        return currencyFrom != null && currencyTo != null && currencyFrom.getId() != currencyTo.getId();
     }
 
     private final AmountInput.OnAmountChangedListener onAmountFromChangedListener = new AmountInput.OnAmountChangedListener(){
@@ -248,7 +248,7 @@ public class RateLayoutView implements RateNodeOwner {
     }
 
     public long getCurrencyToId() {
-        return currencyTo != null ? currencyTo.id : 0;
+        return currencyTo != null ? currencyTo.getId() : 0;
     }
 
     @Override

@@ -53,6 +53,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteException;
 
+import androidx.annotation.NonNull;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 import androidx.sqlite.db.SupportSQLiteQuery;
 import androidx.sqlite.db.SupportSQLiteQueryBuilder;
@@ -634,14 +635,14 @@ public class DatabaseAdapter extends MyEntityManager {
         db.beginTransaction();
         try {
             long id;
-            if (category.id == -1) {
+            if (category.getId() == -1) {
                 id = insertCategory(category);
             } else {
                 updateCategory(category);
-                id = category.id;
+                id = category.getId();
             }
             addAttributes(id, attributes);
-            category.id = id;
+            category.setId(id);
             db.setTransactionSuccessful();
             return id;
         } finally {
@@ -656,7 +657,7 @@ public class DatabaseAdapter extends MyEntityManager {
             ContentValues values = new ContentValues();
             values.put(CategoryAttributeColumns.CATEGORY_ID, categoryId);
             for (Attribute a : attributes) {
-                values.put(CategoryAttributeColumns.ATTRIBUTE_ID, a.id);
+                values.put(CategoryAttributeColumns.ATTRIBUTE_ID, a.getId());
                 db.insert(CATEGORY_ATTRIBUTE_TABLE, CONFLICT_NONE, values);
             }
         }
@@ -681,25 +682,25 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     private long insertAsLast(Category category, CategoryTree<Category> tree) {
-        long mateId = tree.getAt(tree.size() - 1).id;
+        long mateId = tree.getAt(tree.size() - 1).getId();
         return insertMateCategory(mateId, category);
     }
 
     private long updateCategory(Category category) {
-        Category oldCategory = getCategoryWithParent(category.id);
+        Category oldCategory = getCategoryWithParent(category.getId());
         if (oldCategory.getParentId() == category.getParentId()) {
-            updateCategory(category.id, category.title, category.type);
+            updateCategory(category.getId(), category.getTitle(), category.type);
             updateChildCategoriesType(category.type, category.left, category.right);
         } else {
             moveCategory(category);
         }
-        return category.id;
+        return category.getId();
     }
 
     private void moveCategory(Category category) {
         CategoryTree<Category> tree = getCategoriesTree(false);
         Map<Long, Category> map = tree.asMap();
-        Category oldCategory = map.get(category.id);
+        Category oldCategory = map.get(category.getId());
         if (oldCategory != null) {
             Category oldParent = map.get(oldCategory.getParentId());
             if (oldParent != null) {
@@ -717,7 +718,7 @@ public class DatabaseAdapter extends MyEntityManager {
             }
             tree.reIndex();
             updateCategoryTreeInTransaction(tree);
-            updateCategory(category.id, category.title, newCategoryType);
+            updateCategory(category.getId(), category.getTitle(), newCategoryType);
             updateChildCategoriesType(newCategoryType, oldCategory.left, oldCategory.right);
         }
     }
@@ -908,7 +909,7 @@ public class DatabaseAdapter extends MyEntityManager {
         //UPDATE `nset` SET `l` = `l` + 2 WHERE `l` > v_leftkey;
         //INSERT INTO `nset` (`name`, `l`, `r`) VALUES (NodeName, v_leftkey + 1, v_leftkey + 2);
         int type = getActualCategoryType(parentId, category);
-        return insertCategory(CategoryColumns.left.name(), parentId, category.title, type);
+        return insertCategory(CategoryColumns.left.name(), parentId, category.getTitle(), type);
     }
 
     public long insertMateCategory(long categoryId, Category category) {
@@ -920,7 +921,7 @@ public class DatabaseAdapter extends MyEntityManager {
         Category mate = getCategoryWithParent(categoryId);
         long parentId = mate.getParentId();
         int type = getActualCategoryType(parentId, category);
-        return insertCategory(CategoryColumns.right.name(), categoryId, category.title, type);
+        return insertCategory(CategoryColumns.right.name(), categoryId, category.getTitle(), type);
     }
 
     private int getActualCategoryType(long parentId, Category category) {
@@ -1061,7 +1062,7 @@ public class DatabaseAdapter extends MyEntityManager {
         for (Category c : tree) {
             values.put(CategoryColumns.left.name(), c.left);
             values.put(CategoryColumns.right.name(), c.right);
-            sid[0] = String.valueOf(c.id);
+            sid[0] = String.valueOf(c.getId());
             db().update(CATEGORY_TABLE, CONFLICT_NONE, values, WHERE_CATEGORY_ID, sid);
             if (c.hasChildren()) {
                 updateCategoryTreeInTransaction(c.children);
@@ -1203,10 +1204,11 @@ public class DatabaseAdapter extends MyEntityManager {
 
     public Attribute getSystemAttribute(SystemAttribute a) {
         Attribute sa = getAttribute(a.getId());
-        sa.title = context.getString(a.getTitleId());
+        sa.setTitle(context.getString(a.getTitleId()));
         return sa;
     }
 
+    @NonNull
     public Attribute getAttribute(long id) {
         SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(ATTRIBUTES_TABLE)
                 .columns(AttributeColumns.NORMAL_PROJECTION)
@@ -1217,15 +1219,15 @@ public class DatabaseAdapter extends MyEntityManager {
                 return Attribute.fromCursor(c);
             }
         }
-        return new Attribute();
+        return new Attribute(Attribute.TYPE_TEXT, null, null, 0);
     }
 
     public long insertOrUpdate(Attribute attribute) {
-        if (attribute.id == -1) {
+        if (attribute.getId() == -1) {
             return insertAttribute(attribute);
         } else {
             updateAttribute(attribute);
-            return attribute.id;
+            return attribute.getId();
         }
     }
 
@@ -1245,11 +1247,11 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     private long insertAttribute(Attribute attribute) {
-        return db().insert(ATTRIBUTES_TABLE, CONFLICT_NONE, attribute.toValues());
+        return db().insert(ATTRIBUTES_TABLE, CONFLICT_NONE, attribute.toContentValues());
     }
 
     private void updateAttribute(Attribute attribute) {
-        db().update(ATTRIBUTES_TABLE, CONFLICT_NONE, attribute.toValues(), AttributeColumns.ID + "=?", new String[]{String.valueOf(attribute.id)});
+        db().update(ATTRIBUTES_TABLE, CONFLICT_NONE, attribute.toContentValues(), AttributeColumns.ID + "=?", new String[]{String.valueOf(attribute.getId())});
     }
 
     public Cursor getAllAttributes() {
@@ -1551,7 +1553,7 @@ public class DatabaseAdapter extends MyEntityManager {
                     db.execSQL("insert into running_balance(account_id,transaction_id,datetime,balance) values (?,?,?,?)", values);
                 }
             }
-            updateAccountLastTransactionDate(account.id);
+            updateAccountLastTransactionDate(account.getId());
             db.setTransactionSuccessful();
         } finally {
             db.endTransaction();
@@ -1579,7 +1581,7 @@ public class DatabaseAdapter extends MyEntityManager {
         db.beginTransaction();
         try {
             for (Account account : getAllAccountsList()) {
-                recalculateAccountBalances(account.id);
+                recalculateAccountBalances(account.getId());
             }
             db.setTransactionSuccessful();
         } finally {
@@ -1660,7 +1662,7 @@ public class DatabaseAdapter extends MyEntityManager {
         long day = DateUtils.atMidnight(date);
         SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(EXCHANGE_RATES_TABLE)
                 .columns(ExchangeRateColumns.NORMAL_PROJECTION)
-                .selection(ExchangeRateColumns.NORMAL_PROJECTION_WHERE, new String[]{String.valueOf(fromCurrency.id), String.valueOf(toCurrency.id), String.valueOf(day)})
+                .selection(ExchangeRateColumns.NORMAL_PROJECTION_WHERE, new String[]{String.valueOf(fromCurrency.getId()), String.valueOf(toCurrency.getId()), String.valueOf(day)})
                 .create();
         try (Cursor c = db().query(query)) {
             if (c.moveToFirst()) {
@@ -1674,7 +1676,7 @@ public class DatabaseAdapter extends MyEntityManager {
         List<ExchangeRate> rates = new ArrayList<>();
         SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(EXCHANGE_RATES_TABLE)
                 .columns(ExchangeRateColumns.NORMAL_PROJECTION)
-                .selection(ExchangeRateColumns.from_currency_id + "=?", new String[]{String.valueOf(fromCurrency.id)})
+                .selection(ExchangeRateColumns.from_currency_id + "=?", new String[]{String.valueOf(fromCurrency.getId())})
                 .orderBy(ExchangeRateColumns.rate_date + " desc")
                 .create();
         try (Cursor c = db().query(query)) {
@@ -1689,7 +1691,7 @@ public class DatabaseAdapter extends MyEntityManager {
         List<ExchangeRate> rates = new ArrayList<>();
         SupportSQLiteQuery query = SupportSQLiteQueryBuilder.builder(EXCHANGE_RATES_TABLE)
                 .columns(ExchangeRateColumns.NORMAL_PROJECTION)
-                .selection(ExchangeRateColumns.from_currency_id + "=? and " + ExchangeRateColumns.to_currency_id + "=?", new String[]{String.valueOf(fromCurrency.id), String.valueOf(toCurrency.id)})
+                .selection(ExchangeRateColumns.from_currency_id + "=? and " + ExchangeRateColumns.to_currency_id + "=?", new String[]{String.valueOf(fromCurrency.getId()), String.valueOf(toCurrency.getId())})
                 .orderBy(ExchangeRateColumns.rate_date + " desc")
                 .create();
         try (Cursor c = db().query(query)) {
@@ -1768,13 +1770,13 @@ public class DatabaseAdapter extends MyEntityManager {
         Map<Currency, Total> totalsMap = new HashMap<>();
         for (Account account : accounts) {
             if (account.shouldIncludeIntoTotals()) {
-                Currency currency = account.currency;
+                Currency currency = account.getCurrency();
                 Total total = totalsMap.get(currency);
                 if (total == null) {
                     total = new Total(currency);
                     totalsMap.put(currency, total);
                 }
-                total.balance += account.totalAmount;
+                total.balance += account.getTotalAmount();
             }
         }
         Collection<Total> values = totalsMap.values();
@@ -1790,14 +1792,14 @@ public class DatabaseAdapter extends MyEntityManager {
         BigDecimal total = BigDecimal.ZERO;
         for (Account account : accounts) {
             if (account.shouldIncludeIntoTotals()) {
-                if (account.currency.id == homeCurrency.id) {
-                    total = total.add(BigDecimal.valueOf(account.totalAmount));
+                if (account.getCurrency().getId() == homeCurrency.getId()) {
+                    total = total.add(BigDecimal.valueOf(account.getTotalAmount()));
                 } else {
-                    ExchangeRate rate = rates.getRate(account.currency, homeCurrency);
+                    ExchangeRate rate = rates.getRate(account.getCurrency(), homeCurrency);
                     if (rate == ExchangeRate.NA) {
-                        return new Total(homeCurrency, TotalError.lastRateError(account.currency));
+                        return new Total(homeCurrency, TotalError.lastRateError(account.getCurrency()));
                     } else {
-                        total = total.add(BigDecimal.valueOf(rate.rate * account.totalAmount));
+                        total = total.add(BigDecimal.valueOf(rate.rate * account.getTotalAmount()));
                     }
                 }
             }
@@ -1841,9 +1843,9 @@ public class DatabaseAdapter extends MyEntityManager {
     public void setDefaultHomeCurrency() {
         Currency homeCurrency = getHomeCurrency();
         long singleCurrencyId = getSingleCurrencyId();
-        if (homeCurrency == Currency.EMPTY && singleCurrencyId > 0) {
+        if (homeCurrency == Currency.Companion.getEMPTY() && singleCurrencyId > 0) {
             Currency c = get(Currency.class, singleCurrencyId);
-            c.isDefault = true;
+            c.setDefault(true);
             saveOrUpdate(c);
         }
     }
@@ -1858,7 +1860,7 @@ public class DatabaseAdapter extends MyEntityManager {
                 breakSplitTransactions(account, date);
                 deleteOldTransactions(account, date);
                 insertWithoutUpdatingBalance(newTransaction);
-                db.execSQL(INSERT_RUNNING_BALANCE, new Object[]{account.id, newTransaction.id, newTransaction.dateTime, newTransaction.fromAmount});
+                db.execSQL(INSERT_RUNNING_BALANCE, new Object[]{account.getId(), newTransaction.id, newTransaction.dateTime, newTransaction.fromAmount});
                 db.setTransactionSuccessful();
             } finally {
                 db.endTransaction();
@@ -1870,11 +1872,11 @@ public class DatabaseAdapter extends MyEntityManager {
         Transaction nearestTransaction = get(Transaction.class, nearestTransactionId);
         long balance = getAccountBalanceForTransaction(account, nearestTransaction);
         Transaction newTransaction = new Transaction();
-        newTransaction.fromAccountId = account.id;
+        newTransaction.fromAccountId = account.getId();
         newTransaction.dateTime = DateUtils.atDayEnd(nearestTransaction.dateTime);
         newTransaction.fromAmount = balance;
         Payee payee = findOrInsertEntityByTitle(Payee.class, context.getString(R.string.purge_account_payee));
-        newTransaction.payeeId = payee != null ? payee.id : 0;
+        newTransaction.payeeId = payee != null ? payee.getId() : 0;
         newTransaction.status = TransactionStatus.CLEARED;
         return newTransaction;
     }
@@ -1887,8 +1889,8 @@ public class DatabaseAdapter extends MyEntityManager {
     private void breakSplitTransactions(Account account, long date) {
         SupportSQLiteDatabase db = db();
         long dayEnd = DateUtils.atDayEnd(date);
-        db.execSQL(BREAK_SPLIT_TRANSACTIONS_1, new Object[]{account.id, dayEnd});
-        db.execSQL(BREAK_SPLIT_TRANSACTIONS_2, new Object[]{account.id, dayEnd});
+        db.execSQL(BREAK_SPLIT_TRANSACTIONS_1, new Object[]{account.getId(), dayEnd});
+        db.execSQL(BREAK_SPLIT_TRANSACTIONS_2, new Object[]{account.getId(), dayEnd});
         db.delete(TRANSACTION_ATTRIBUTE_TABLE, TransactionAttributeColumns.TRANSACTION_ID
                         + " in (SELECT _id from " + TRANSACTION_TABLE + " where " + TransactionColumns.datetime + "<=?)",
                 new String[]{String.valueOf(dayEnd)});
@@ -1898,20 +1900,20 @@ public class DatabaseAdapter extends MyEntityManager {
         SupportSQLiteDatabase db = db();
         long dayEnd = DateUtils.atDayEnd(date);
         db.delete("transactions", "from_account_id=? and datetime<=? and is_template=0",
-                new String[]{String.valueOf(account.id), String.valueOf(dayEnd)});
+                new String[]{String.valueOf(account.getId()), String.valueOf(dayEnd)});
         db.delete("running_balance", "account_id=? and datetime<=?",
-                new String[]{String.valueOf(account.id), String.valueOf(dayEnd)});
+                new String[]{String.valueOf(account.getId()), String.valueOf(dayEnd)});
     }
 
     public long getAccountBalanceForTransaction(Account a, Transaction t) {
         return DatabaseUtils.rawFetchLongValue(this, "select balance from running_balance where account_id=? and transaction_id=?",
-                new String[]{String.valueOf(a.id), String.valueOf(t.id)});
+                new String[]{String.valueOf(a.getId()), String.valueOf(t.id)});
     }
 
     public long findNearestOlderTransactionId(Account account, long date) {
         return DatabaseUtils.rawFetchId(this,
                 "select _id from v_blotter where from_account_id=? and datetime<=? order by datetime desc limit 1",
-                new String[]{String.valueOf(account.id), String.valueOf(DateUtils.atDayEnd(date))});
+                new String[]{String.valueOf(account.getId()), String.valueOf(DateUtils.atDayEnd(date))});
     }
 
     public long findLatestTransactionDate(long accountId) {
@@ -1934,7 +1936,7 @@ public class DatabaseAdapter extends MyEntityManager {
     public void updateAccountsLastTransactionDate() {
         List<Account> accounts = getAllAccountsList();
         for (Account account : accounts) {
-            updateAccountLastTransactionDate(account.id);
+            updateAccountLastTransactionDate(account.getId());
         }
     }
 
@@ -1963,7 +1965,7 @@ public class DatabaseAdapter extends MyEntityManager {
     }
 
     private void restoreAttributes() {
-        reInsertEntity(Attribute.deleteAfterExpired());
+        reInsertEntity(Attribute.Companion.deleteAfterExpired());
     }
 
     private void restoreProjects() {
@@ -1976,6 +1978,6 @@ public class DatabaseAdapter extends MyEntityManager {
 
     public long getLastRunningBalanceForAccount(Account account) {
         return DatabaseUtils.rawFetchLongValue(this, "select balance from running_balance where account_id=? order by datetime desc, transaction_id desc limit 1",
-                new String[]{String.valueOf(account.id)});
+                new String[]{String.valueOf(account.getId())});
     }
 }

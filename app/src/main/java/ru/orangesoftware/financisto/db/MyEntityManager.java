@@ -95,7 +95,7 @@ public abstract class MyEntityManager extends EntityManager {
             ArrayList<T> list = new ArrayList<>();
             while (c.moveToNext()) {
                 T e = EntityManager.loadFromCursor(c, clazz);
-                if (e.id == 0) {
+                if (e.getId() == 0) {
                     e0 = e;
                 } else {
                     list.add(e);
@@ -265,7 +265,7 @@ public abstract class MyEntityManager extends EntityManager {
         Map<Long, Account> accountsMap = new HashMap<>();
         List<Account> list = getAllAccountsList();
         for (Account account : list) {
-            accountsMap.put(account.id, account);
+            accountsMap.put(account.getId(), account);
         }
         return accountsMap;
     }
@@ -280,7 +280,7 @@ public abstract class MyEntityManager extends EntityManager {
         SupportSQLiteDatabase db = db();
         db.beginTransaction();
         try {
-            if (currency.isDefault) {
+            if (currency.isDefault()) {
                 db.execSQL(UPDATE_DEFAULT_FLAG);
             }
             long id = super.saveOrUpdate(currency);
@@ -347,7 +347,7 @@ public abstract class MyEntityManager extends EntityManager {
     private <T extends MyEntity> void addZeroEntity(ArrayList<T> list, T zeroEntity) {
         int zeroPos = -1;
         for (int i=0; i<list.size(); i++) {
-            if (list.get(i).id == 0) {
+            if (list.get(i).getId() == 0) {
                 zeroPos = i;
                 break;
             }
@@ -369,23 +369,23 @@ public abstract class MyEntityManager extends EntityManager {
 
     public long insertBudget(Budget budget) {
         SupportSQLiteDatabase db = db();
-        budget.remoteKey = null;
+        budget.setRemoteKey(null);
 
         db.beginTransaction();
         try {
-            if (budget.id > 0) {
-                deleteBudget(budget.id);
+            if (budget.getId() > 0) {
+                deleteBudget(budget.getId());
             }
             long id = 0;
-            Recur recur = RecurUtils.createFromExtraString(budget.recur);
+            Recur recur = RecurUtils.createFromExtraString(budget.getRecur());
             Period[] periods = RecurUtils.periods(recur);
             for (int i = 0; i < periods.length; i++) {
                 Period p = periods[i];
-                budget.id = -1;
-                budget.parentBudgetId = id;
-                budget.recurNum = i;
-                budget.startDate = p.getStart();
-                budget.endDate = p.getEnd();
+                budget.setId(-1);
+                budget.setParentBudgetId(id);
+                budget.setRecurNum(i);
+                budget.setStartDate(p.getStart());
+                budget.setEndDate(p.getEnd());
                 long bid = super.saveOrUpdate(budget);
                 if (i == 0) {
                     id = bid;
@@ -478,8 +478,8 @@ public abstract class MyEntityManager extends EntityManager {
             T e = findEntityByTitle(entityClass, title);
             if (e == null) {
                 e = newEntity(entityClass);
-                e.title = title;
-                e.id = saveOrUpdate(e);
+                e.setTitle(title);
+                e.setId(saveOrUpdate(e));
             }
             return e;
         }
@@ -554,7 +554,7 @@ public abstract class MyEntityManager extends EntityManager {
     }
 
     void reInsertEntity(MyEntity e) {
-        if (get(e.getClass(), e.id) == null) {
+        if (get(e.getClass(), e.getId()) == null) {
             reInsert(e);
         }
     }
@@ -564,7 +564,7 @@ public abstract class MyEntityManager extends EntityManager {
         q.where(Expressions.eq("isDefault", "1")); //uh-oh
         Currency homeCurrency = q.uniqueResult();
         if (homeCurrency == null) {
-            homeCurrency = Currency.EMPTY;
+            homeCurrency = Currency.Companion.getEMPTY();
         }
         return homeCurrency;
     }
@@ -572,7 +572,7 @@ public abstract class MyEntityManager extends EntityManager {
     private static <T extends MyEntity> Map<String, T> entitiesAsTitleMap(List<T> entities) {
         Map<String, T> map = new HashMap<>();
         for (T e : entities) {
-            map.put(e.title, e);
+            map.put(e.getTitle(), e);
         }
         return map;
     }
@@ -580,7 +580,7 @@ public abstract class MyEntityManager extends EntityManager {
     private static <T extends MyEntity> Map<Long, T> entitiesAsIdMap(List<T> entities) {
         Map<Long, T> map = new HashMap<>();
         for (T e : entities) {
-            map.put(e.id, e);
+            map.put(e.getId(), e);
         }
         return map;
     }

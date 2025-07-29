@@ -31,7 +31,7 @@ public class LocationByPeriodReport extends Report2DChart {
             long locationId = filterIds.get(currentFilterOrder);
             MyLocation location = em.get(MyLocation.class, locationId);
             if (location != null) {
-                return location.title;
+                return location.getTitle();
             } else {
                 return context.getString(R.string.current_location);
             }
@@ -54,7 +54,7 @@ public class LocationByPeriodReport extends Report2DChart {
             MyLocation l;
             for (int i = 0; i < locations.size(); i++) {
                 l = locations.get(i);
-                filterIds.add(l.id);
+                filterIds.add(l.getId());
             }
         }
     }

@@ -1,5 +1,7 @@
 package ru.orangesoftware.financisto.activity;
 
+import static ru.orangesoftware.financisto.activity.AbstractActivity.setVisibility;
+
 import android.app.Activity;
 import android.content.Intent;
 import android.text.InputType;
@@ -22,8 +24,6 @@ import ru.orangesoftware.financisto.model.MultiChoiceItem;
 import ru.orangesoftware.financisto.model.MyEntity;
 import ru.orangesoftware.financisto.utils.ArrUtils;
 import ru.orangesoftware.financisto.utils.Utils;
-
-import static ru.orangesoftware.financisto.activity.AbstractActivity.setVisibility;
 
 public abstract class MyEntitySelector<T extends MyEntity, A extends AbstractActivity> {
 
@@ -120,7 +120,7 @@ public abstract class MyEntitySelector<T extends MyEntity, A extends AbstractAct
             autoCompleteView.setThreshold(1);
             autoCompleteView.setOnItemClickListener((parent, view, position, id) -> {
                 T e = filterAdapter.getItem(position);
-                activity.onSelectedId(layoutId, e.id);
+                activity.onSelectedId(layoutId, e.getId());
             });
             initAutoComplete = false;
         }
@@ -220,11 +220,11 @@ public abstract class MyEntitySelector<T extends MyEntity, A extends AbstractAct
     public static String getCheckedTitles(List<? extends MyEntity> list) {
         StringBuilder sb = new StringBuilder();
         for (MyEntity e : list) {
-            if (e.checked) {
+            if (e.getChecked()) {
                 if (sb.length() > 0) {
                     sb.append(", ");
                 }
-                sb.append(e.title);
+                sb.append(e.getTitle());
             }
         }
         return sb.toString();
@@ -237,8 +237,8 @@ public abstract class MyEntitySelector<T extends MyEntity, A extends AbstractAct
     public static String[] getCheckedIds(List<? extends MyEntity> list) {
         List<String> res = new LinkedList<>();
         for (MyEntity e : list) {
-            if (e.checked) {
-                res.add(String.valueOf(e.id));
+            if (e.getChecked()) {
+                res.add(String.valueOf(e.getId()));
             }
         }
         return ArrUtils.strListToArr(res);
@@ -251,11 +251,11 @@ public abstract class MyEntitySelector<T extends MyEntity, A extends AbstractAct
     public static String getCheckedIdsAsStr(List<? extends MyEntity> list) {
         StringBuilder sb = new StringBuilder();
         for (MyEntity e : list) {
-            if (e.checked) {
+            if (e.getChecked()) {
                 if (sb.length() > 0) {
                     sb.append(",");
                 }
-                sb.append(e.id);
+                sb.append(e.getId());
             }
         }
         return sb.toString();
@@ -283,9 +283,9 @@ public abstract class MyEntitySelector<T extends MyEntity, A extends AbstractAct
             if (e == null) {
                 clearSelection();
             } else {
-                selectedEntityId = e.id;
-                if (e.id > 0) {
-                    text.setText(e.title);
+                selectedEntityId = e.getId();
+                if (e.getId() > 0) {
+                    text.setText(e.getTitle());
                     showHideMinusBtn(true);
                 } else {
                     text.setText(defaultValueResId);
@@ -350,8 +350,8 @@ public abstract class MyEntitySelector<T extends MyEntity, A extends AbstractAct
         for (String s : checkedIds) {
             long id = Long.parseLong(s);
             for (MyEntity e : list) {
-                if (e.id == id) {
-                    e.checked = true;
+                if (e.getId() == id) {
+                    e.setChecked(true);
                     break;
                 }
             }

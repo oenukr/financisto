@@ -153,7 +153,7 @@ public class CategorySelectorActivity extends AbstractListActivity {
 
         @Override
         public long getItemId(int i) {
-            return getItem(i).id;
+            return getItem(i).getId();
         }
 
         @Override
@@ -167,25 +167,25 @@ public class CategorySelectorActivity extends AbstractListActivity {
                 v = (BlotterListAdapter.BlotterViewHolder)convertView.getTag();
             }
             Category c = getItem(position);
-            if (c.id == CategoryTreeNavigator.INCOME_CATEGORY_ID) {
+            if (c.getId() == CategoryTreeNavigator.INCOME_CATEGORY_ID) {
                 v.centerView.setText(getString(R.string.income));                
-            } else if (c.id == CategoryTreeNavigator.EXPENSE_CATEGORY_ID) {
+            } else if (c.getId() == CategoryTreeNavigator.EXPENSE_CATEGORY_ID) {
                 v.centerView.setText(getString(R.string.expense));
             } else {
-                v.centerView.setText(c.title);
+                v.centerView.setText(c.getTitle());
             }
             v.bottomView.setText(c.tag);
             v.indicator.setBackgroundColor(c.isIncome() ? incomeColor : expenseColor);
             v.rightCenterView.setVisibility(View.INVISIBLE);
             v.iconView.setVisibility(View.INVISIBLE);
-            if (attributes != null && attributes.containsKey(c.id)) {
-                v.rightView.setText(attributes.get(c.id));
+            if (attributes != null && attributes.containsKey(c.getId())) {
+                v.rightView.setText(attributes.get(c.getId()));
                 v.rightView.setVisibility(View.VISIBLE);
             } else {
                 v.rightView.setVisibility(View.GONE);
             }
             v.topView.setVisibility(View.INVISIBLE);
-            if (navigator.isSelected(c.id)) {
+            if (navigator.isSelected(c.getId())) {
                 v.layout.setBackgroundResource(R.drawable.list_selector_background_focus);
             } else {
                 v.layout.setBackgroundResource(0);

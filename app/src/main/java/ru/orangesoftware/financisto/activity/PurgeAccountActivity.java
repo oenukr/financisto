@@ -82,7 +82,7 @@ public class PurgeAccountActivity extends AbstractActivity {
     private void deleteOldTransactions() {
         new AlertDialog.Builder(this)
             .setTitle(R.string.purge_account_confirm_title)
-            .setMessage(getString(R.string.purge_account_confirm_message, account.title, getDateString()))
+            .setMessage(getString(R.string.purge_account_confirm_message, account.getTitle(), getDateString()))
             .setPositiveButton(R.string.ok, (dialogInterface, i) -> new PurgeAccountTask().execute())
             .setNegativeButton(R.string.cancel, null)
             .show();
@@ -111,7 +111,7 @@ public class PurgeAccountActivity extends AbstractActivity {
     }
 
     private void createNodes() {
-        activityLayout.addInfoNode(layout, 0, R.string.account, account.title);
+        activityLayout.addInfoNode(layout, 0, R.string.account, account.getTitle());
         activityLayout.addInfoNode(layout, 0, R.string.warning, R.string.purge_account_date_summary);
         dateText = activityLayout.addInfoNode(layout, R.id.date, R.string.date, "?");
         databaseBackup = activityLayout.addCheckboxNode(layout, R.id.backup, R.string.database_backup, R.string.purge_account_backup_database, true);

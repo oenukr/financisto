@@ -32,8 +32,8 @@ public abstract class AbstractRatesDownloaderTest {
         Currency c = nameToCurrency.get(name);
         if (c == null) {
             c = new Currency();
-            c.id = counter.getAndIncrement();
-            c.name = name;
+            c.setId(counter.getAndIncrement());
+            c.setName(name);
             nameToCurrency.put(name, c);
         }
         return c;
@@ -56,8 +56,8 @@ public abstract class AbstractRatesDownloaderTest {
     }
 
     void assertRate(ExchangeRate exchangeRate, String fromCurrency, String toCurrency) {
-        assertEquals("Expected "+fromCurrency, currency(fromCurrency).id, exchangeRate.fromCurrencyId);
-        assertEquals("Expected "+toCurrency, currency(toCurrency).id, exchangeRate.toCurrencyId);
+        assertEquals("Expected "+fromCurrency, currency(fromCurrency).getId(), exchangeRate.fromCurrencyId);
+        assertEquals("Expected "+toCurrency, currency(toCurrency).getId(), exchangeRate.toCurrencyId);
     }
 
     void assertRate(ExchangeRate exchangeRate, String fromCurrency, String toCurrency, double rate, long date) {

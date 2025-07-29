@@ -1,96 +1,72 @@
-/*******************************************************************************
- * Copyright (c) 2010 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- *
- * Contributors:
- *     Denis Solonenko - initial API and implementation
- ******************************************************************************/
-package ru.orangesoftware.financisto.model;
+package ru.orangesoftware.financisto.model
 
-import static ru.orangesoftware.financisto.db.DatabaseHelper.ATTRIBUTES_TABLE;
-import static ru.orangesoftware.orb.EntityManager.DEF_SORT_COL;
+import android.content.ContentValues
+import android.database.Cursor
+import androidx.room.ColumnInfo
+import androidx.room.Entity
+import ru.orangesoftware.financisto.db.DatabaseHelper.ATTRIBUTES_TABLE
+import ru.orangesoftware.financisto.db.DatabaseHelper.AttributeColumns
+import ru.orangesoftware.orb.EntityManager.DEF_SORT_COL
 
-import android.content.ContentValues;
-import android.database.Cursor;
+@Entity(tableName = ATTRIBUTES_TABLE)
+data class Attribute(
+    @ColumnInfo(name = "type") var type: Int,
+    @ColumnInfo(name = "list_values") var listValues: String?,
+    @ColumnInfo(name = "default_value") var defaultValue: String?,
+    @ColumnInfo(name = DEF_SORT_COL) override val sortOrder: Long,
+) : MyEntity(), SortableEntity {
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Table;
+    companion object {
+        const val DELETE_AFTER_EXPIRED_ID: Long = -1
 
-import ru.orangesoftware.financisto.db.DatabaseHelper.AttributeColumns;
+        const val TYPE_TEXT: Int = 1
+        const val TYPE_NUMBER: Int = 2
+        const val TYPE_LIST: Int = 3
+        const val TYPE_CHECKBOX: Int = 4
 
-@Entity
-@Table(name = ATTRIBUTES_TABLE)
-public class Attribute extends MyEntity implements SortableEntity {
-
-    public static final int DELETE_AFTER_EXPIRED_ID = -1;
-
-    public static Attribute deleteAfterExpired() {
-        Attribute attribute = new Attribute();
-        attribute.id = DELETE_AFTER_EXPIRED_ID;
-        attribute.title = "DELETE_AFTER_EXPIRED";
-        attribute.type = TYPE_CHECKBOX;
-        attribute.defaultValue = "true";
-        return attribute;
-    }
-
-    public static final int TYPE_TEXT = 1;
-    public static final int TYPE_NUMBER = 2;
-    public static final int TYPE_LIST = 3;
-    public static final int TYPE_CHECKBOX = 4;
-
-    @Column(name = "type")
-    public int type;
-
-    @Column(name = "list_values")
-    public String listValues;
-
-    @Column(name = "default_value")
-    public String defaultValue;
-
-    @Column(name = DEF_SORT_COL)
-    public long sortOrder;
-
-    public Attribute() {
-    }
-
-    public String getDefaultValue() {
-        if (type == TYPE_CHECKBOX) {
-            String[] values = listValues != null ? listValues.split(";") : null;
-            boolean checked = Boolean.parseBoolean(defaultValue);
-            if (values != null && values.length > 1) {
-                return values[checked ? 0 : 1];
+        fun deleteAfterExpired(): Attribute {
+            return Attribute(
+                type = TYPE_CHECKBOX,
+                listValues = null,
+                defaultValue = "true",
+                sortOrder = 0
+            ).apply {
+                id = DELETE_AFTER_EXPIRED_ID
+                title = "DELETE_AFTER_EXPIRED"
             }
-            return String.valueOf(checked);
-        } else {
-            return defaultValue;
+        }
+
+        @JvmStatic
+        fun fromCursor(cursor: Cursor): Attribute = Attribute(
+                type = cursor.getInt(AttributeColumns.Indicies.TYPE),
+                listValues = cursor.getString(AttributeColumns.Indicies.LIST_VALUES),
+                defaultValue = cursor.getString(AttributeColumns.Indicies.DEFAULT_VALUE),
+                sortOrder = cursor.getLong(5)
+        ).apply {
+            id = cursor.getLong(AttributeColumns.Indicies.ID)
+            title = cursor.getString(AttributeColumns.Indicies.TITLE)
         }
     }
 
-    public static Attribute fromCursor(Cursor c) {
-        Attribute a = new Attribute();
-        a.id = c.getLong(AttributeColumns.Indicies.ID);
-        a.title = c.getString(AttributeColumns.Indicies.TITLE);
-        a.type = c.getInt(AttributeColumns.Indicies.TYPE);
-        a.listValues = c.getString(AttributeColumns.Indicies.LIST_VALUES);
-        a.defaultValue = c.getString(AttributeColumns.Indicies.DEFAULT_VALUE);
-        return a;
+    fun getTheDefaultValue(): String? {
+        if (type == TYPE_CHECKBOX) {
+            val values: List<String>? = listValues?.split(";")
+            val checked: Boolean = defaultValue.toBoolean()
+            values?.size?.let {
+                if (it > 1) {
+                    return values[if (checked) 0 else 1]
+                }
+            }
+            return checked.toString()
+        } else {
+            return defaultValue
+        }
     }
 
-    public ContentValues toValues() {
-        ContentValues values = new ContentValues();
-        values.put(AttributeColumns.TITLE, title);
-        values.put(AttributeColumns.TYPE, type);
-        values.put(AttributeColumns.LIST_VALUES, listValues);
-        values.put(AttributeColumns.DEFAULT_VALUE, defaultValue);
-        return values;
-    }
-
-    @Override
-    public long getSortOrder() {
-        return sortOrder;
-    }
+        fun toContentValues(): ContentValues = ContentValues().apply {
+            put(AttributeColumns.TITLE, title)
+            put(AttributeColumns.TYPE, type)
+            put(AttributeColumns.LIST_VALUES, listValues)
+            put(AttributeColumns.DEFAULT_VALUE, defaultValue)
+        }
 }

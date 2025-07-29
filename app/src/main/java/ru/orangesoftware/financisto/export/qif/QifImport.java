@@ -225,7 +225,7 @@ public class QifImport extends FullDatabaseImport {
             Transaction t = transaction.toTransaction();
             t.payeeId = findPayee(transaction.payee);
             t.projectId = findProject(transaction.categoryClass);
-            t.fromAccountId = a.id;
+            t.fromAccountId = a.getId();
             findToAccount(transaction, t);
             findCategory(transaction, t);
             if (transaction.splits != null) {
@@ -261,7 +261,7 @@ public class QifImport extends FullDatabaseImport {
         if (transaction.isTransfer()) {
             Account toAccount = findAccount(transaction.toAccount);
             if (toAccount != null) {
-                t.toAccountId = toAccount.id;
+                t.toAccountId = toAccount.getId();
                 t.toAmount = -t.fromAmount;
             }
         }
@@ -275,7 +275,7 @@ public class QifImport extends FullDatabaseImport {
     private void findCategory(QifTransaction transaction, Transaction t) {
         Category c = categoryCache.findCategory(transaction.category);
         if (c != null) {
-            t.categoryId = c.id;
+            t.categoryId = c.getId();
         }
     }
 

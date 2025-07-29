@@ -49,10 +49,10 @@ public class CurrencyExportPreferences {
 
     private Currency getCurrencyFromIntent(Intent data) {
         Currency currency = new Currency();
-        currency.symbol = "";
-        currency.decimals = data.getIntExtra(prefix(EXPORT_DECIMALS), 2);
-        currency.decimalSeparator = data.getStringExtra(prefix(EXPORT_DECIMAL_SEPARATOR));
-        currency.groupSeparator = data.getStringExtra(prefix(EXPORT_GROUP_SEPARATOR));
+        currency.setSymbol("");
+        currency.setDecimals(data.getIntExtra(prefix(EXPORT_DECIMALS), 2));
+        currency.setDecimalSeparator(data.getStringExtra(prefix(EXPORT_DECIMAL_SEPARATOR)));
+        currency.setGroupSeparator(data.getStringExtra(prefix(EXPORT_GROUP_SEPARATOR)));
         return currency;
     }
 

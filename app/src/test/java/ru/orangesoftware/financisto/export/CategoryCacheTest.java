@@ -95,11 +95,11 @@ public class CategoryCacheTest extends AbstractImportExportTest {
         //when
         cache.loadExistingCategories(db);
         //then
-        assertEquals(existingCategories.get("A").id, cache.findCategory("A").id);
-        assertEquals(existingCategories.get("A1").id, cache.findCategory("A:A1").id);
-        assertEquals(existingCategories.get("AA1").id, cache.findCategory("A:A1:AA1").id);
-        assertEquals(existingCategories.get("A2").id, cache.findCategory("A:A2").id);
-        assertEquals(existingCategories.get("B").id, cache.findCategory("B").id);
+        assertEquals(existingCategories.get("A").getId(), cache.findCategory("A").getId());
+        assertEquals(existingCategories.get("A1").getId(), cache.findCategory("A:A1").getId());
+        assertEquals(existingCategories.get("AA1").getId(), cache.findCategory("A:A1:AA1").getId());
+        assertEquals(existingCategories.get("A2").getId(), cache.findCategory("A:A2").getId());
+        assertEquals(existingCategories.get("B").getId(), cache.findCategory("B").getId());
     }
 
     @Test

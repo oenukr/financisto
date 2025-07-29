@@ -16,6 +16,7 @@ import static ru.orangesoftware.financisto.db.DatabaseHelper.SmsTemplateColumns.
 import android.content.ContentValues;
 import android.database.Cursor;
 
+import androidx.annotation.NonNull;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 import androidx.sqlite.db.SupportSQLiteOpenHelper;
 
@@ -28,7 +29,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import javax.persistence.Column;
-import javax.persistence.Entity;
 import javax.persistence.EntityNotFoundException;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
@@ -61,8 +61,30 @@ public abstract class EntityManager {
         return databaseHelper.getWritableDatabase();
     }
 
+    private static boolean isEntityAnnotationNotPresent(@NonNull Class<?> clazz) {
+//        KClass<?> kClass = JvmClassMappingKt.getKotlinClass(clazz);
+//        KClass<androidx.room.Entity> roomKClass = JvmClassMappingKt.getKotlinClass(androidx.room.Entity.class);
+//        KClass<Entity> entityKClass = JvmClassMappingKt.getKotlinClass(Entity.class);
+        return !MyEntity.class.isAssignableFrom(clazz);
+//        return clazz.getAnnotation(androidx.room.Entity.class) == null
+//                && clazz.getAnnotation(Entity.class) == null
+//                && BinaryAnnotationReader.INSTANCE.getBinaryAnnotation(clazz, androidx.room.Entity.class) == null// KAnnotatedElements.findAnnotations(kClass, roomKClass).isEmpty()
+//                && BinaryAnnotationReader.INSTANCE.getBinaryAnnotation(clazz, Entity.class) == null;// KAnnotatedElements.findAnnotations(kClass, entityKClass).isEmpty();
+    }
+
+    private static boolean isTableAnnotationPresent(@NonNull Class<?> clazz) {
+//        KClass<?> kClass = JvmClassMappingKt.getKotlinClass(clazz);
+//        KClass<androidx.room.Entity> roomKClass = JvmClassMappingKt.getKotlinClass(androidx.room.Entity.class);
+//        KClass<Table> tableKClass = JvmClassMappingKt.getKotlinClass(Table.class);
+        return MyEntity.class.isAssignableFrom(clazz);
+//        return clazz.getAnnotation(androidx.room.Entity.class) != null
+//                || clazz.getAnnotation(Table.class) != null
+//                || BinaryAnnotationReader.INSTANCE.getBinaryAnnotation(clazz, androidx.room.Entity.class) != null//!KAnnotatedElements.findAnnotations(kClass, roomKClass).isEmpty()
+//                || BinaryAnnotationReader.INSTANCE.getBinaryAnnotation(clazz, Table.class) != null;//!KAnnotatedElements.findAnnotations(kClass, tableKClass).isEmpty();
+    }
+
     private static EntityDefinition parseDefinition(Class<?> clazz) {
-        if (!clazz.isAnnotationPresent(Entity.class)) {
+        if (isEntityAnnotationNotPresent(clazz)) {
             throw new IllegalArgumentException("Class " + clazz + " is not an @Entity");
         }
         EntityDefinition.Builder edb = new EntityDefinition.Builder(clazz);
@@ -72,9 +94,25 @@ public abstract class EntityManager {
         } catch (Exception e) {
             throw new IllegalArgumentException("Entity must have an empty constructor");
         }
-        if (clazz.isAnnotationPresent(Table.class)) {
+        if (isTableAnnotationPresent(clazz)) {
             Table tableAnnotation = clazz.getAnnotation(Table.class);
-            edb.withTable(tableAnnotation.name());
+            androidx.room.Entity entityAnnotation = clazz.getAnnotation(androidx.room.Entity.class);
+//            KClass<?> kClass = JvmClassMappingKt.getKotlinClass(clazz);
+//            KClass<Table> tableKClass = JvmClassMappingKt.getKotlinClass(Table.class);
+//            KClass<androidx.room.Entity> entityKClass = JvmClassMappingKt.getKotlinClass(androidx.room.Entity.class);
+//            List<Table> tableAnnotationKClass = KAnnotatedElements.findAnnotations(kClass, tableKClass);
+            Table tableAnnotationKClass = BinaryAnnotationReader.INSTANCE.getBinaryAnnotation(clazz, Table.class);
+//            List<androidx.room.Entity> entityAnnotationKClass = KAnnotatedElements.findAnnotations(kClass, entityKClass);
+            androidx.room.Entity entityAnnotationKClass = BinaryAnnotationReader.INSTANCE.getBinaryAnnotation(clazz, androidx.room.Entity.class);
+            if (tableAnnotation != null) {
+                edb.withTable(tableAnnotation.name());
+            } else if (entityAnnotation != null) {
+                edb.withTable(entityAnnotation.tableName());
+            } else if (tableAnnotationKClass != null) {
+                edb.withTable(tableAnnotationKClass.name());
+            } else if (entityAnnotationKClass != null) {
+                edb.withTable(entityAnnotationKClass.tableName());
+            }
         }
         Field[] fields = clazz.getFields();
         if (fields != null) {
@@ -125,7 +163,7 @@ public abstract class EntityManager {
         T obj = load(clazz, id);
         if (obj == null) return -1;
 
-        obj.id = -1;
+        obj.setId(-1);
         updateEntitySortOrder(obj, -1);
         return saveOrUpdate(obj);
     }

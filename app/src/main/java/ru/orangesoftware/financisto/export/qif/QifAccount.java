@@ -25,18 +25,18 @@ public class QifAccount {
 
     public static QifAccount fromAccount(Account account) {
         QifAccount qifAccount = new QifAccount();
-        qifAccount.type = decodeAccountType(account.type);
-        qifAccount.memo = account.title;
+        qifAccount.type = decodeAccountType(account.getType());
+        qifAccount.memo = account.getTitle();
         return qifAccount;
     }
 
     public Account toAccount(Currency currency) {
-        Account a = new Account();
-        a.id = -1;
-        a.currency = currency;
-        a.title = memo;
-        a.type = encodeAccountType(type);
-        return a;
+        Account account = new Account();
+        account.setId(-1);
+        account.setCurrency(currency);
+        account.setTitle(memo);
+        account.setType(encodeAccountType(type));
+        return account;
     }
 
     /*

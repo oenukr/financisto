@@ -53,8 +53,8 @@ public abstract class MyEntityActivity<T extends MyEntity> extends Activity {
 		Button bOK = findViewById(R.id.bOK);
 		bOK.setOnClickListener(arg0 -> {
 			EditText title = findViewById(R.id.title);
-			entity.title = title.getText().toString();
-			entity.isActive = activityCheckBox.isChecked();
+			entity.setTitle(title.getText().toString());
+			entity.setActive(activityCheckBox.isChecked());
 			long id = db.saveOrUpdate(entity);
 			Intent intent = new Intent();
 			intent.putExtra(DatabaseHelper.EntityColumns.ID, id);
@@ -81,9 +81,9 @@ public abstract class MyEntityActivity<T extends MyEntity> extends Activity {
 
     private void editEntity() {
 		EditText title = findViewById(R.id.title);
-		title.setText(entity.title);
+		title.setText(entity.getTitle());
 		CheckBox activityCheckBox = findViewById(R.id.isActive);
-		activityCheckBox.setChecked(entity.isActive);
+		activityCheckBox.setChecked(entity.isActive());
 	}
 
 	@Override

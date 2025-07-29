@@ -183,11 +183,11 @@ public class TransactionsTotalCalculator {
     public static BigDecimal getAmountFromTransaction(MyEntityManager em, TransactionInfo ti, Currency toCurrency, ExchangeRateProvider rates)
             throws UnableToCalculateRateException {
         long datetime = ti.dateTime;
-        long fromCurrencyId = ti.fromAccount.currency.id;
+        long fromCurrencyId = ti.fromAccount.getCurrency().getId();
         long fromAmount = ti.fromAmount;
-        long toCurrencyId = ti.toAccount != null ? ti.toAccount.currency.id : 0;
+        long toCurrencyId = ti.toAccount != null ? ti.toAccount.getCurrency().getId() : 0;
         long toAmount = ti.toAmount;
-        long originalCurrencyId = ti.originalCurrency != null ? ti.originalCurrency.id : 0;
+        long originalCurrencyId = ti.originalCurrency != null ? ti.originalCurrency.getId() : 0;
         long originalAmount = ti.originalFromAmount;
         return getConvertedAmount(em, toCurrency, rates, datetime, fromCurrencyId, fromAmount, toCurrencyId, toAmount, originalCurrencyId, originalAmount);
     }
@@ -196,11 +196,11 @@ public class TransactionsTotalCalculator {
                                                  long fromCurrencyId, long fromAmount,
                                                  long toCurrencyId, long toAmount,
                                                  long originalCurrencyId, long originalAmount) throws UnableToCalculateRateException {
-        if (fromCurrencyId == toCurrency.id) {
+        if (fromCurrencyId == toCurrency.getId()) {
             return BigDecimal.valueOf(fromAmount);
-        } else if (toCurrencyId > 0 && toCurrencyId == toCurrency.id) {
+        } else if (toCurrencyId > 0 && toCurrencyId == toCurrency.getId()) {
             return BigDecimal.valueOf(-toAmount);
-        } else if (originalCurrencyId > 0 && originalCurrencyId == toCurrency.id) {
+        } else if (originalCurrencyId > 0 && originalCurrencyId == toCurrency.getId()) {
             return BigDecimal.valueOf(originalAmount);
         } else {
             Currency fromCurrency = CurrencyCache.getCurrency(em, fromCurrencyId);

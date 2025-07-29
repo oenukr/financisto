@@ -50,7 +50,7 @@ public class CategoryTreeNavigator {
             Stack<Long> path = new Stack<>();
             Category parent = selectedCategory.parent;
             while (parent != null) {
-                path.push(parent.id);
+                path.push(parent.getId());
                 parent = parent.parent;
             }
             while (!path.isEmpty()) {
@@ -61,10 +61,10 @@ public class CategoryTreeNavigator {
     }
 
     public void tagCategories(Category parent) {
-        if (!categories.isEmpty() && categories.getAt(0).id != parent.id) {
+        if (!categories.isEmpty() && categories.getAt(0).getId() != parent.getId()) {
             Category copy = new Category();
-            copy.id = parent.id;
-            copy.title = parent.title;
+            copy.setId(parent.getId());
+            copy.setTitle(parent.getTitle());
             if (parent.isIncome()) {
                 copy.makeThisCategoryIncome();
             }
@@ -79,7 +79,7 @@ public class CategoryTreeNavigator {
                     if (sb.length() > 0) {
                         sb.append(",");
                     }
-                    sb.append(child.title);
+                    sb.append(child.getTitle());
                 }
                 c.tag = sb.toString();
             }
@@ -105,7 +105,7 @@ public class CategoryTreeNavigator {
     public boolean navigateTo(long categoryId) {
         Category selectedCategory = findCategory(categoryId);
         if (selectedCategory != null) {
-            selectedCategoryId = selectedCategory.id;
+            selectedCategoryId = selectedCategory.getId();
             if (selectedCategory.hasChildren()) {
                 categoriesStack.push(categories);
                 categories = selectedCategory.children;
@@ -118,7 +118,7 @@ public class CategoryTreeNavigator {
 
     private Category findCategory(long categoryId) {
         for (Category category : categories) {
-            if (category.id == categoryId) {
+            if (category.getId() == categoryId) {
                 return category;
             }
         }
@@ -141,15 +141,15 @@ public class CategoryTreeNavigator {
     public void separateIncomeAndExpense() {
         CategoryTree<Category> newCategories = new CategoryTree<>();
         Category income = new Category();
-        income.id = INCOME_CATEGORY_ID;
+        income.setId(INCOME_CATEGORY_ID);
         income.makeThisCategoryIncome();
-        income.title = "<INCOME>";
+        income.setTitle("<INCOME>");
         Category expense = new Category();
-        expense.id = EXPENSE_CATEGORY_ID;
+        expense.setId(EXPENSE_CATEGORY_ID);
         expense.makeThisCategoryExpense();
-        expense.title = "<EXPENSE>";
+        expense.setTitle("<EXPENSE>");
         for (Category category : categories) {
-            if (category.id <= 0) {
+            if (category.getId() <= 0) {
                 newCategories.add(category);
             } else {
                 if (category.isIncome()) {

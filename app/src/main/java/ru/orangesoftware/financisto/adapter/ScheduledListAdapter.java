@@ -104,19 +104,19 @@ public class ScheduledListAdapter extends BaseAdapter {
         if (t.toAccount != null) {
             v.topView.setText(R.string.transfer);
 
-            String fromAccountTitle = t.fromAccount.title;
-            String toAccountTitle = t.toAccount.title;
+            String fromAccountTitle = t.fromAccount.getTitle();
+            String toAccountTitle = t.toAccount.getTitle();
             sb.setLength(0);
             sb.append(fromAccountTitle).append(" \u00BB ").append(toAccountTitle);
             noteView.setText(sb.toString());
             noteView.setTextColor(transferColor);
 
-            Currency fromCurrency = t.fromAccount.currency;
-            Currency toCurrency = t.toAccount.currency;
+            Currency fromCurrency = t.fromAccount.getCurrency();
+            Currency toCurrency = t.toAccount.getCurrency();
 
             int dateViewColor = v.bottomView.getCurrentTextColor();
 
-            if (fromCurrency.id == toCurrency.id) {
+            if (fromCurrency.getId() == toCurrency.getId()) {
                 long amount = Math.abs(t.fromAmount);
                 u.setAmountText(v.rightCenterView, fromCurrency, amount, false);
                 v.rightCenterView.setTextColor(dateViewColor);
@@ -131,25 +131,25 @@ public class ScheduledListAdapter extends BaseAdapter {
             }
             v.iconView.setImageDrawable(icBlotterTransfer);
         } else {
-            String fromAccountTitle = t.fromAccount.title;
+            String fromAccountTitle = t.fromAccount.getTitle();
             v.topView.setText(fromAccountTitle);
             String note = t.note;
             String location = "";
-            if (t.location != null && t.location.id > 0) {
-                location = t.location.title;
+            if (t.location != null && t.location.getId() > 0) {
+                location = t.location.getTitle();
             }
             String category = "";
-            if (t.category.id > 0) {
-                category = t.category.title;
+            if (t.category.getId() > 0) {
+                category = t.category.getTitle();
             }
-            String payee = t.payee != null ? t.payee.title : null;
-            String text = generateTransactionTitle(sb, payee, note, location, t.category.id, category);
+            String payee = t.payee != null ? t.payee.getTitle() : null;
+            String text = generateTransactionTitle(sb, payee, note, location, t.category.getId(), category);
             noteView.setText(text);
             noteView.setTextColor(Color.WHITE);
 
             long amount = t.fromAmount;
             sb.setLength(0);
-            u.setAmountText(sb, v.rightCenterView, t.fromAccount.currency, amount, true);
+            u.setAmountText(sb, v.rightCenterView, t.fromAccount.getCurrency(), amount, true);
             if (amount > 0) {
                 v.iconView.setImageDrawable(icBlotterIncome);
             } else if (amount < 0) {
