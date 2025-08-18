@@ -4,10 +4,13 @@ import android.content.Context
 import android.os.AsyncTask
 import android.widget.TextView
 import android.widget.Toast
+import androidx.room.Room
 import ru.orangesoftware.financisto.R
 import ru.orangesoftware.financisto.app.DependenciesHolder
+import ru.orangesoftware.financisto.db.FinancistoDatabase
 import ru.orangesoftware.financisto.model.Currency
 import ru.orangesoftware.financisto.model.Total
+import ru.orangesoftware.financisto.utils.CurrencyCache
 import ru.orangesoftware.financisto.utils.Logger
 import ru.orangesoftware.financisto.utils.Utils
 
@@ -17,6 +20,15 @@ abstract class TotalCalculationTask(
 ) : AsyncTask<Any, Total, Total>() {
 
     private val logger: Logger = DependenciesHolder().logger
+
+    private val currencyCache: CurrencyCache by lazy {
+        val financistoDatabase = Room.databaseBuilder(
+            context,
+            FinancistoDatabase::class.java,
+            "financisto.db"
+        ).build()
+        CurrencyCache(financistoDatabase.currencyDao())
+    }
 
     @Volatile
     private var isRunning: Boolean = true
@@ -42,7 +54,7 @@ abstract class TotalCalculationTask(
                     .show()
             }
             val u = Utils(context)
-            u.setTotal(totalText, result)
+            u.setTotal(currencyCache, totalText, result)
         }
     }
 

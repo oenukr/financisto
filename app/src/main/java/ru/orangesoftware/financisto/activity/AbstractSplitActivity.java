@@ -12,7 +12,10 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.room.Room;
+
 import ru.orangesoftware.financisto.R;
+import ru.orangesoftware.financisto.db.FinancistoDatabase;
 import ru.orangesoftware.financisto.model.Account;
 import ru.orangesoftware.financisto.model.Currency;
 import ru.orangesoftware.financisto.model.Transaction;
@@ -36,6 +39,7 @@ public abstract class AbstractSplitActivity extends AbstractActivity {
     protected Transaction split;
 
     protected ProjectSelector<AbstractSplitActivity> projectSelector;
+    protected CurrencyCache currencyCache;
 
     private final int layoutId;
 
@@ -50,6 +54,10 @@ public abstract class AbstractSplitActivity extends AbstractActivity {
         setContentView(layoutId);
         setFeatureDrawableResource(Window.FEATURE_LEFT_ICON, R.drawable.ic_dialog_currency);
 
+        FinancistoDatabase roomDb = Room.databaseBuilder(getApplicationContext(),
+                FinancistoDatabase.class, "financisto.db").build();
+        currencyCache = new CurrencyCache(roomDb.currencyDao());
+
         fetchData();
         // todo.mb: check selector here
         projectSelector = new ProjectSelector<>(this, db, activityLayout);
@@ -61,7 +69,7 @@ public abstract class AbstractSplitActivity extends AbstractActivity {
             fromAccount = db.getAccount(split.fromAccountId);
         }
         if (split.originalCurrencyId > 0) {
-            originalCurrency = CurrencyCache.getCurrency(db, split.originalCurrencyId);
+            originalCurrency = currencyCache.getCurrency(split.originalCurrencyId);
         }
 
         LinearLayout layout = findViewById(R.id.list);
@@ -140,11 +148,11 @@ public abstract class AbstractSplitActivity extends AbstractActivity {
 
     protected void setUnsplitAmount(long amount) {
         Currency currency = getCurrency();
-        utils.setAmountText(unsplitAmountText, currency, amount, false);
+        utils.setAmountText(currencyCache, unsplitAmountText, currency, amount, false);
     }
 
     protected Currency getCurrency() {
-        return originalCurrency != null ? originalCurrency : (fromAccount != null ? fromAccount.getCurrency() : Currency.defaultCurrency());
+        return originalCurrency != null ? originalCurrency : (fromAccount != null ? currencyCache.getCurrency(fromAccount.getCurrency()) : Currency.defaultCurrency());
     }
 
     @Override

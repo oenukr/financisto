@@ -19,9 +19,12 @@ import android.os.Bundle;
 import android.preference.EditTextPreference;
 import android.preference.PreferenceActivity;
 
+import androidx.room.Room;
+
 import java.util.Collection;
 
 import ru.orangesoftware.financisto.R;
+import ru.orangesoftware.financisto.db.FinancistoDatabase;
 import ru.orangesoftware.financisto.model.Currency;
 import ru.orangesoftware.financisto.utils.CurrencyCache;
 import ru.orangesoftware.financisto.utils.MyPreferences;
@@ -40,6 +43,7 @@ public class ReportPreferencesActivity extends PreferenceActivity {
 	 * The index of the selected currency
 	 */
 	private int selectedCurrenceIndex;
+    private CurrencyCache currencyCache;
 
 	@Override
 	protected void attachBaseContext(Context base) {
@@ -49,7 +53,11 @@ public class ReportPreferencesActivity extends PreferenceActivity {
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);   
-		addPreferencesFromResource(R.xml.report_preferences);	
+		addPreferencesFromResource(R.xml.report_preferences);
+
+        FinancistoDatabase roomDb = Room.databaseBuilder(getApplicationContext(),
+                FinancistoDatabase.class, "financisto.db").build();
+        currencyCache = new CurrencyCache(roomDb.currencyDao());
 		
 		getCurrenciesList();		
 		final EditTextPreference pReportReferenceCurrency = (EditTextPreference)getPreferenceScreen().findPreference("report_reference_currency");
@@ -63,7 +71,7 @@ public class ReportPreferencesActivity extends PreferenceActivity {
 	 */
 	private void getCurrenciesList() {
 		String selectedCurrenceTitle = MyPreferences.getReferenceCurrencyTitle(this);
-		Collection<Currency> currenciesList = CurrencyCache.getAllCurrencies();
+		Collection<Currency> currenciesList = currencyCache.getAllCurrencies();
 		
 		int count = currenciesList.size();
 

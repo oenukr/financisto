@@ -17,7 +17,7 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Table;
 
-@Entity
+//@Entity
 @Table(name = PROJECT_TABLE)
 public class Project extends MyEntity implements SortableEntity {
 

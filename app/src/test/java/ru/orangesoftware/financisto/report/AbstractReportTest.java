@@ -27,6 +27,7 @@ public abstract class AbstractReportTest extends AbstractDbTest {
     Report report;
     Map<String, Category> categories;
     WhereFilter filter = WhereFilter.empty();
+    CurrencyCache currencyCache;
 
     @Override
     public void setUp() throws Exception {
@@ -38,7 +39,7 @@ public abstract class AbstractReportTest extends AbstractDbTest {
         a3 = AccountBuilder.createDefault(db, c2);
         categories = CategoryBuilder.createDefaultHierarchy(db);
         report = createReport(false);
-        CurrencyCache.initialize(db);
+        currencyCache = new CurrencyCache(db.currencyDao());
     }
 
     protected abstract Report createReport(boolean includeTransfers);

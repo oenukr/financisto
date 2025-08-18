@@ -9,7 +9,7 @@ import ru.orangesoftware.orb.EntityManager
 @Entity(tableName = DatabaseHelper.ACCOUNT_TABLE)
 data class Account(
     @ColumnInfo(name = "creation_date") val creationDate: Long = System.currentTimeMillis(),
-    @ColumnInfo(name = "last_transaction_date") val lastTransactionDate: Long = System.currentTimeMillis(),
+    @ColumnInfo(name = "last_transaction_date") var lastTransactionDate: Long = System.currentTimeMillis(),
     // @JoinColumn(name = "currency_id")
     @ForeignKey(
         entity = Currency::class,

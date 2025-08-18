@@ -18,7 +18,7 @@ class SplitsBlotterActivity : BlotterActivity() {
 	override fun createCursor(): Cursor = db.getBlotterForAccountWithSplits(blotterFilter)
 
 	override fun createAdapter(cursor: Cursor?): ListAdapter =
-		TransactionsListAdapter(this, db, cursor)
+		TransactionsListAdapter(this, cursor)
 
 	override fun createTotalCalculationTask(): TotalCalculationTask =
 		BlotterTotalCalculationTask(this, db, blotterFilter, totalText)

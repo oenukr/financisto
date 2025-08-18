@@ -40,6 +40,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -62,8 +63,10 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.MutableCreationExtras
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.room.Room
 import ru.orangesoftware.financisto.R
 import ru.orangesoftware.financisto.db.DatabaseHelper.ReportColumns
+import ru.orangesoftware.financisto.db.FinancistoDatabase
 import ru.orangesoftware.financisto.filter.Criteria
 import ru.orangesoftware.financisto.filter.WhereFilter
 import ru.orangesoftware.financisto.graph.GraphComposable
@@ -73,6 +76,7 @@ import ru.orangesoftware.financisto.report.Report
 import ru.orangesoftware.financisto.reports.ReportViewModel
 import ru.orangesoftware.financisto.reports.ReportViewModel.Companion.INTENT_KEY
 import ru.orangesoftware.financisto.reports.ReportViewModel.Companion.SCREEN_DENTITY_KEY
+import ru.orangesoftware.financisto.utils.CurrencyCache
 import ru.orangesoftware.financisto.utils.MyPreferences
 import ru.orangesoftware.financisto.utils.PinProtection
 import ru.orangesoftware.financisto.utils.Utils
@@ -129,6 +133,14 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
                 }
             }
 
+            val roomDb = Room.databaseBuilder(
+                applicationContext,
+                FinancistoDatabase::class.java,
+                "financisto.db",
+            ).build()
+            val currencyCache by remember(roomDb) {
+                mutableStateOf(CurrencyCache(roomDb.currencyDao()))
+            }
             val incomeExpense by reportsViewModel.incomeExpenseState.collectAsStateWithLifecycle()
             val incomeExpenseIcon by remember(incomeExpense) { mutableIntStateOf(incomeExpense.iconId) }
             val incomeExpenseTitle by remember(incomeExpense) { mutableIntStateOf(incomeExpense.titleId) }
@@ -181,6 +193,7 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
                             incomeExpenseTitle = incomeExpenseTitle,
                             shouldDisplayTotal = currentReport?.shouldDisplayTotal() == true,
                             total = total,
+                            currencyCache = currencyCache,
                             onPieButtonClick = { reportsViewModel.showPieChart(this) },
                         )
                     }
@@ -268,6 +281,7 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
         @StringRes incomeExpenseTitle: Int,
         shouldDisplayTotal: Boolean = false,
         total: Total,
+        currencyCache: CurrencyCache,
         onPieButtonClick: () -> Unit,
     ) {
         Column(
@@ -311,6 +325,7 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
                                     withStyle(style = total.amount.toTextStyle()) {
                                         append(
                                             Utils.amountToString(
+                                                currencyCache,
                                                 total.currency,
                                                 total.amount,
                                                 false
@@ -321,6 +336,7 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
                                     withStyle(style = total.balance.toTextStyle()) {
                                         append(
                                             Utils.amountToString(
+                                                currencyCache,
                                                 total.currency,
                                                 total.balance,
                                                 false
@@ -334,6 +350,7 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
                                     withStyle(style = total.income.toTextStyle()) {
                                         append(
                                             Utils.amountToString(
+                                                currencyCache,
                                                 total.currency,
                                                 total.income,
                                                 false
@@ -344,6 +361,7 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
                                     withStyle(style = total.expenses.toTextStyle()) {
                                         append(
                                             Utils.amountToString(
+                                                currencyCache,
                                                 total.currency,
                                                 total.expenses,
                                                 false
@@ -355,6 +373,7 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
                             } else {
                                 Text(
                                     text = Utils.amountToString(
+                                        currencyCache,
                                         StringBuilder(),
                                         total.currency,
                                         total.balance,

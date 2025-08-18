@@ -3,7 +3,6 @@ package ru.orangesoftware.financisto.model
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
-import androidx.room.Ignore
 import androidx.room.PrimaryKey
 import ru.orangesoftware.financisto.blotter.BlotterFilter
 import ru.orangesoftware.financisto.db.DatabaseHelper.BUDGET_TABLE
@@ -35,21 +34,21 @@ data class Budget(
 	@ColumnInfo(name = "title") var title: String,
 	@ColumnInfo(name = "category_id") var categories: String,
 	@ColumnInfo(name = "project_id") var projects: String,
-	@ColumnInfo(name = "currency_id") val currencyId: Long = -1,
+	@ColumnInfo(name = "currency_id") var currencyId: Long = -1,
 	// @JoinColumn(name = "budget_currency_id", required = false)
 //	@ForeignKey(
 //		entity = Currency::class,
 //		parentColumns = [EntityManager.DEF_ID_COL],
 //		childColumns = ["budget_currency_id"]
 //	)
-	@ColumnInfo(name = "budget_currency_id") var currency: Currency? = null,
+	@ColumnInfo(name = "budget_currency_id") var currency: Long? = null,
 	// @JoinColumn(name = "budget_account_id", required = false)
 //	@ForeignKey(
 //		entity = Account::class,
 //		parentColumns = [EntityManager.DEF_ID_COL],
 //		childColumns = ["budget_account_id"]
 //	)
-	@ColumnInfo(name = "budget_account_id") var account: Account? = null,
+	@ColumnInfo(name = "budget_account_id") var account: Long? = null,
 	@ColumnInfo(name = "amount") var amount: Long,
 	@ColumnInfo(name = "include_subcategories") var includeSubcategories: Boolean,
 	@ColumnInfo(name = "expanded") var expanded: Boolean,
@@ -58,25 +57,23 @@ data class Budget(
 	@ColumnInfo(name = "end_date") var endDate: Long,
 	@ColumnInfo(name = "recur") var recur: String,
 	@ColumnInfo(name = "recur_num") var recurNum: Long,
-	@ColumnInfo(name = "is_current") val isCurrent: Boolean,
+	@ColumnInfo(name = "is_current") var isCurrent: Boolean,
 	@ColumnInfo(name = "parent_budget_id") var parentBudgetId: Long,
-	@ColumnInfo(name = "updated_on") val updatedOn: Long = System.currentTimeMillis(),
+	@ColumnInfo(name = "updated_on") var updatedOn: Long = System.currentTimeMillis(),
 	@ColumnInfo(name = "remote_key") var remoteKey: String?,
-	@ColumnInfo(name = DEF_SORT_COL) override val sortOrder: Long,
-	@Transient
-	@Ignore var categoriesText: String = "",
-	@Transient
-	@Ignore var projectsText: String = "",
-	@Transient
-	@Ignore var spent: Long = 0,
-	@Transient
-	@Ignore var updated: Boolean = false,
+	@ColumnInfo(name = DEF_SORT_COL) override var sortOrder: Long,
 ) : SortableEntity {
+
+	var categoriesText: String = ""
+	var projectsText: String = ""
+	var spent: Long = 0
+	var updated: Boolean = false
 	
 	fun getTheRecur(): Recur = RecurUtils.createFromExtraString(recur)
 
 	fun getBudgetCurrency(): Currency? {
-		return currency ?: account?.currency
+//		return currency ?: account?.currency
+		return null
 	}
 
 	companion object {

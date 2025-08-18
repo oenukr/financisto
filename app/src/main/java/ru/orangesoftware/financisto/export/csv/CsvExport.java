@@ -26,6 +26,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
+import ru.orangesoftware.financisto.db.CurrencyDao;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
 import ru.orangesoftware.financisto.export.Export;
 import ru.orangesoftware.financisto.model.Account;
@@ -52,6 +53,7 @@ public class CsvExport extends Export {
 
     private final DatabaseAdapter db;
     private final CsvExportOptions options;
+    private final CurrencyCache currencyCache;
 
     private Map<Long, Category> categoriesMap;
     private Map<Long, Account> accountsMap;
@@ -59,10 +61,11 @@ public class CsvExport extends Export {
     private Map<Long, Project> projectMap;
     private Map<Long, MyLocation> locationMap;
 
-    public CsvExport(Context context, DatabaseAdapter db, CsvExportOptions options) {
+    public CsvExport(Context context, DatabaseAdapter db, CsvExportOptions options, CurrencyDao currencyDao) {
         super(context, false);
         this.db = db;
         this.options = options;
+        this.currencyCache = new CurrencyCache(currencyDao);
     }
 
     @Override
@@ -99,7 +102,7 @@ public class CsvExport extends Export {
             locationMap = db.getAllLocationsByIdMap(false);
             try (Cursor c = db.getBlotter(options.getFilter())) {
                 while (c.moveToNext()) {
-                    Transaction t = Transaction.fromBlotterCursor(c);
+                    Transaction t = Transaction.fromBlotterCursor(c, currencyCache);
                     writeLine(w, t);
                 }
             }
@@ -146,11 +149,11 @@ public class CsvExport extends Export {
         w.value(account);
         String amountFormatted = options.getAmountFormat().format(new BigDecimal(amount).divide(Utils.HUNDRED));
         w.value(amountFormatted);
-        Currency c = CurrencyCache.getCurrency(db, currencyId);
+        Currency c = currencyCache.getCurrency(currencyId);
         w.value(c.getName());
         if (originalCurrencyId > 0) {
             w.value(options.getAmountFormat().format(new BigDecimal(originalAmount).divide(Utils.HUNDRED)));
-            Currency originalCurrency = CurrencyCache.getCurrency(db, originalCurrencyId);
+            Currency originalCurrency = currencyCache.getCurrency(originalCurrencyId);
             w.value(originalCurrency.getName());
         } else {
             w.value("");

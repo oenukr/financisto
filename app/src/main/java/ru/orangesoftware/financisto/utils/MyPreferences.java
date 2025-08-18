@@ -8,12 +8,14 @@ import android.content.res.Resources;
 import android.preference.PreferenceManager;
 
 import androidx.annotation.Nullable;
+import androidx.room.Room;
 
 import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Locale;
 
 import ru.orangesoftware.financisto.app.DependenciesHolder;
+import ru.orangesoftware.financisto.db.FinancistoDatabase;
 import ru.orangesoftware.financisto.export.ImportExportException;
 import ru.orangesoftware.financisto.model.Currency;
 import ru.orangesoftware.financisto.model.TransactionStatus;
@@ -322,7 +324,10 @@ public class MyPreferences {
     public static Currency getReferenceCurrency(Context context) {
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
 
-        Collection<Currency> currencies = CurrencyCache.getAllCurrencies();
+        FinancistoDatabase roomDb = Room.databaseBuilder(context.getApplicationContext(),
+                FinancistoDatabase.class, "financisto.db").build();
+        CurrencyCache currencyCache = new CurrencyCache(roomDb.currencyDao());
+        Collection<Currency> currencies = currencyCache.getAllCurrencies();
         Currency cur = null;
         try {
             String refCurrency = sharedPreferences.getString("report_reference_currency", null);
@@ -701,6 +706,8 @@ public class MyPreferences {
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
         sharedPreferences.edit().putLong("last_autobackup_check", System.currentTimeMillis()).apply();
     }
+
+
 
     public static boolean isAutoBackupReminderEnabled(Context context) {
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);

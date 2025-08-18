@@ -19,6 +19,7 @@ import android.view.Window;
 import android.widget.TabHost;
 
 import androidx.core.content.ContextCompat;
+import androidx.room.Room;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import org.greenrobot.eventbus.Subscribe;
@@ -31,6 +32,7 @@ import ru.orangesoftware.financisto.bus.RefreshCurrentTab;
 import ru.orangesoftware.financisto.bus.SwitchToMenuTabEvent;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
 import ru.orangesoftware.financisto.db.DatabaseHelper;
+import ru.orangesoftware.financisto.db.FinancistoDatabase;
 import ru.orangesoftware.financisto.dialog.WebViewDialog;
 import ru.orangesoftware.financisto.utils.CurrencyCache;
 import ru.orangesoftware.financisto.utils.Logger;
@@ -42,6 +44,8 @@ public class MainActivity extends TabActivity implements TabHost.OnTabChangeList
     private final Logger logger = new DependenciesHolder().getLogger();
 
     private final GreenRobotBus greenRobotBus = new DependenciesHolder().getGreenRobotBus();
+    private FinancistoDatabase roomDb;
+    private CurrencyCache currencyCache;
 
     @Override
     protected void attachBaseContext(Context base) {
@@ -53,6 +57,10 @@ public class MainActivity extends TabActivity implements TabHost.OnTabChangeList
         super.onCreate(savedInstanceState);
 
         requestWindowFeature(Window.FEATURE_NO_TITLE);
+
+        roomDb = Room.databaseBuilder(getApplicationContext(),
+                FinancistoDatabase.class, "financisto.db").build();
+        currencyCache = new CurrencyCache(roomDb.currencyDao());
 
         initialLoad();
 
@@ -100,6 +108,7 @@ public class MainActivity extends TabActivity implements TabHost.OnTabChangeList
     protected void onDestroy() {
         super.onDestroy();
         PinProtection.immediateLock(this);
+        roomDb.close();
     }
 
     private void initialLoad() {
@@ -124,7 +133,7 @@ public class MainActivity extends TabActivity implements TabHost.OnTabChangeList
             if (MyPreferences.shouldUpdateHomeCurrency(this)) {
                 db.setDefaultHomeCurrency();
             }
-            CurrencyCache.initialize(db);
+            currencyCache.initialize();
             t3 = System.currentTimeMillis();
             if (MyPreferences.shouldRebuildRunningBalance(this)) {
                 db.rebuildRunningBalances();
@@ -154,7 +163,8 @@ public class MainActivity extends TabActivity implements TabHost.OnTabChangeList
 
     public void refreshCurrentTab() {
         Activity currentActivity = getLocalActivityManager().getCurrentActivity();
-        if (currentActivity instanceof RefreshSupportedActivity activity) {
+        if (currentActivity instanceof RefreshSupportedActivity) {
+            RefreshSupportedActivity activity = (RefreshSupportedActivity) currentActivity;
             activity.recreateCursor();
             activity.integrityCheck();
         }

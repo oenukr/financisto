@@ -1770,7 +1770,7 @@ public class DatabaseAdapter extends MyEntityManager {
         Map<Currency, Total> totalsMap = new HashMap<>();
         for (Account account : accounts) {
             if (account.shouldIncludeIntoTotals()) {
-                Currency currency = account.getCurrency();
+                Currency currency = getCurrency(account.getCurrency());
                 Total total = totalsMap.get(currency);
                 if (total == null) {
                     total = new Total(currency);
@@ -1792,12 +1792,12 @@ public class DatabaseAdapter extends MyEntityManager {
         BigDecimal total = BigDecimal.ZERO;
         for (Account account : accounts) {
             if (account.shouldIncludeIntoTotals()) {
-                if (account.getCurrency().getId() == homeCurrency.getId()) {
+                if (account.getCurrency() == homeCurrency.getId()) {
                     total = total.add(BigDecimal.valueOf(account.getTotalAmount()));
                 } else {
-                    ExchangeRate rate = rates.getRate(account.getCurrency(), homeCurrency);
+                    ExchangeRate rate = rates.getRate(getCurrency(account.getCurrency()), homeCurrency);
                     if (rate == ExchangeRate.NA) {
-                        return new Total(homeCurrency, TotalError.lastRateError(account.getCurrency()));
+                        return new Total(homeCurrency, TotalError.lastRateError(getCurrency(account.getCurrency())));
                     } else {
                         total = total.add(BigDecimal.valueOf(rate.rate * account.getTotalAmount()));
                     }

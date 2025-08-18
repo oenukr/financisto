@@ -6,15 +6,17 @@ import android.content.Context
 
 import ru.orangesoftware.financisto.R
 import ru.orangesoftware.financisto.backup.DatabaseImport
+import ru.orangesoftware.financisto.db.CurrencyDao
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 
 class BackupImportTask(
     activity: Activity,
     dialog: ProgressDialog,
+    private val currencyDao: CurrencyDao
 ) : ImportExportAsyncTask(activity, dialog) {
 
     override fun work(context: Context, db: DatabaseAdapter, vararg params: String?): Any {
-        DatabaseImport.createFromFileBackup(context, db, params[0]).importDatabase()
+        DatabaseImport.createFromFileBackup(context, db, currencyDao, params[0]).importDatabase()
         return true
     }
 

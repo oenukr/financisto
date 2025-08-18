@@ -24,6 +24,7 @@ import ru.orangesoftware.financisto.model.Account;
 import ru.orangesoftware.financisto.model.Budget;
 import ru.orangesoftware.financisto.model.Currency;
 import ru.orangesoftware.financisto.model.MultiChoiceItem;
+import ru.orangesoftware.financisto.utils.CurrencyCache;
 import ru.orangesoftware.financisto.utils.RecurUtils;
 import ru.orangesoftware.financisto.utils.RecurUtils.Recur;
 import ru.orangesoftware.financisto.widget.AmountInput;
@@ -65,11 +66,7 @@ public class BudgetActivity extends AbstractActivity {
             -1,
             -1,
             null,
-            0,
-            "",
-            "",
-            -1,
-            false
+            0
     );
 
     private List<AccountOption> accountOptions;
@@ -78,6 +75,8 @@ public class BudgetActivity extends AbstractActivity {
 
     private ListAdapter accountAdapter;
     private int selectedAccountOption;
+
+    private CurrencyCache currencyCache;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -293,7 +292,7 @@ public class BudgetActivity extends AbstractActivity {
         if (option.currency != null) {
             amountInput.setCurrency(option.currency);
         } else {
-            amountInput.setCurrency(option.account.getCurrency());
+            amountInput.setCurrency(db.getCurrency(option.account.getCurrency()));
         }
     }
 
@@ -343,13 +342,13 @@ public class BudgetActivity extends AbstractActivity {
 
 
         public boolean matches(Budget budget) {
-            return (currency != null && budget.getCurrency() != null && currency.getId() == budget.getCurrency().getId()) ||
-                    (account != null && budget.getAccount() != null && account.getId() == budget.getAccount().getId());
+            return (currency != null && budget.getCurrency() != null && currency.getId() == budget.getCurrency()) ||
+                    (account != null && budget.getAccount() != null && account.getId() == budget.getAccount());
         }
 
         public void updateBudget(Budget budget) {
-            budget.setCurrency(currency);
-            budget.setAccount(account);
+            budget.setCurrency(currency.getId());
+            budget.setAccount(account.getId());
         }
 
     }

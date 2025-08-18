@@ -8,7 +8,6 @@ import static ru.orangesoftware.financisto.utils.Utils.text;
 
 import android.Manifest;
 import android.content.Intent;
-import android.database.Cursor;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.View;
@@ -83,7 +82,7 @@ public abstract class AbstractTransactionActivity extends AbstractActivity imple
 
     protected EditText templateName;
     protected TextView accountText;
-    protected Cursor accountCursor;
+    protected List<Account> accounts;
     protected ListAdapter accountAdapter;
 
     protected Calendar dateTime;
@@ -185,11 +184,11 @@ public abstract class AbstractTransactionActivity extends AbstractActivity imple
         }
 
         if (transaction.id == -1) {
-            accountCursor = db.getAllActiveAccounts();
+            accounts = db.getAllActiveAccounts();
         } else {
-            accountCursor = db.getAccountsForTransaction(transaction);
+            accounts = db.getAccountsForTransaction(transaction);
         }
-        startManagingCursor(accountCursor);
+//        startManagingCursor(accountCursor);
         accountAdapter = TransactionUtils.createAccountAdapter(this, accountCursor);
 
         dateTime = Calendar.getInstance();
@@ -434,7 +433,7 @@ public abstract class AbstractTransactionActivity extends AbstractActivity imple
         locationSelector.onClick(id);
         switch (id) {
             case R.id.account:
-                activityLayout.select(this, R.id.account, R.string.account, accountCursor, accountAdapter,
+                activityLayout.select(this, R.id.account, R.string.account, accounts, accountAdapter,
                         AccountColumns.ID, getSelectedAccountId());
                 break;
             case R.id.recurrence_pattern: {
@@ -502,7 +501,7 @@ public abstract class AbstractTransactionActivity extends AbstractActivity imple
         Account a = db.getAccount(accountId);
         if (a != null) {
             accountText.setText(a.getTitle());
-            rateView.selectCurrencyFrom(a.getCurrency());
+            rateView.selectCurrencyFrom(db.getCurrency(a.getCurrency()));
             selectedAccount = a;
         }
         return a;

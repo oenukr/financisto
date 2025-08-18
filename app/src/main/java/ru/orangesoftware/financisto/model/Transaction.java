@@ -23,15 +23,16 @@ import java.util.List;
 import java.util.Map;
 
 import javax.persistence.Column;
-import javax.persistence.Entity;
 import javax.persistence.Table;
 import javax.persistence.Transient;
 
+import ru.orangesoftware.financisto.db.DatabaseHelper;
 import ru.orangesoftware.financisto.db.DatabaseHelper.BlotterColumns;
 import ru.orangesoftware.financisto.db.DatabaseHelper.TransactionColumns;
+import ru.orangesoftware.financisto.utils.CurrencyCache;
 
-@Entity
-@Table(name = "transactions")
+//@Entity
+@Table(name = DatabaseHelper.TRANSACTION_TABLE)
 public class Transaction extends TransactionBase {
 
     private static final String SPLIT_BLOB = "SPLIT_BLOB";
@@ -111,7 +112,7 @@ public class Transaction extends TransactionBase {
         return (Transaction) intent.getSerializableExtra(SPLIT_BLOB);
     }
 
-    public static Transaction fromBlotterCursor(Cursor c) {
+    public static Transaction fromBlotterCursor(Cursor c, CurrencyCache currencyCache) {
         long id = c.getLong(BlotterColumns._id.ordinal());
         Transaction t = new Transaction();
         t.id = id;

@@ -10,7 +10,7 @@ import java.text.DecimalFormat
 import java.text.NumberFormat
 
 @Entity(tableName = CURRENCY_TABLE)
-data class Currency(
+data class Currency @JvmOverloads constructor(
 	@ColumnInfo(name = "name") var name: String = "",
 	override var title: String? = "Default",
 	@ColumnInfo(name = "symbol") var symbol: String = "",
@@ -19,15 +19,15 @@ data class Currency(
 	@ColumnInfo(name = "decimals") var decimals: Int = 2,
 	@ColumnInfo(name = "decimal_separator") var decimalSeparator: String = "'.'",
 	@ColumnInfo(name = "group_separator") var groupSeparator: String = "','",
-	@ColumnInfo(name = DEF_SORT_COL) override val sortOrder: Long = 0,
+	@ColumnInfo(name = DEF_SORT_COL) override var sortOrder: Long = 0,
 	@Transient
 	@Ignore private var format: DecimalFormat? = null,
 ) : MyEntity(), SortableEntity {
 
     override fun toString(): String = name
 
-    fun getFormat(): NumberFormat {
-		format = format ?: CurrencyCache.createCurrencyFormat(this)
+    fun getFormat(currencyCache: CurrencyCache): NumberFormat {
+		format = format ?: currencyCache.createCurrencyFormat(this)
 		return format as NumberFormat
 	}
 

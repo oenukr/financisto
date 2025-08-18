@@ -39,6 +39,7 @@ import java.util.Set;
 import java.util.zip.GZIPInputStream;
 
 import ru.orangesoftware.financisto.app.DependenciesHolder;
+import ru.orangesoftware.financisto.db.CurrencyDao;
 import ru.orangesoftware.financisto.db.Database;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
 import ru.orangesoftware.financisto.db.DatabaseSchemaEvolution;
@@ -53,29 +54,29 @@ public class DatabaseImport extends FullDatabaseImport {
     private final DatabaseSchemaEvolution schemaEvolution;
     private final InputStream backupStream;
 
-    public static DatabaseImport createFromFileBackup(Context context, DatabaseAdapter dbAdapter, String backupFile) throws FileNotFoundException {
+    public static DatabaseImport createFromFileBackup(Context context, DatabaseAdapter dbAdapter, CurrencyDao currencyDao, String backupFile) throws FileNotFoundException {
         DocumentFile backupPath = Export.getBackupFolder(context);
         DocumentFile file = backupPath.findFile(backupFile);
         InputStream inputStream = context.getContentResolver().openInputStream(file.getUri());
-        return new DatabaseImport(context, dbAdapter, inputStream);
+        return new DatabaseImport(context, dbAdapter, currencyDao, inputStream);
     }
 
-    public static DatabaseImport createFromGoogleDriveBackup(Context context, DatabaseAdapter db, DriveContents driveFileContents)
+    public static DatabaseImport createFromGoogleDriveBackup(Context context, DatabaseAdapter db, CurrencyDao currencyDao, DriveContents driveFileContents)
             throws IOException {
         InputStream inputStream = driveFileContents.getInputStream();
         InputStream in = new GZIPInputStream(inputStream);
-        return new DatabaseImport(context, db, in);
+        return new DatabaseImport(context, db, currencyDao, in);
     }
 
-    public static DatabaseImport createFromDropboxBackup(Context context, DatabaseAdapter dbAdapter, Dropbox dropbox, String backupFile)
+    public static DatabaseImport createFromDropboxBackup(Context context, DatabaseAdapter dbAdapter, CurrencyDao currencyDao, Dropbox dropbox, String backupFile)
             throws Exception {
         InputStream inputStream = dropbox.getFileAsStream(backupFile);
         InputStream in = new GZIPInputStream(inputStream);
-        return new DatabaseImport(context, dbAdapter, in);
+        return new DatabaseImport(context, dbAdapter, currencyDao, in);
     }
 
-    private DatabaseImport(Context context, DatabaseAdapter dbAdapter, InputStream backupStream) {
-        super(context, dbAdapter);
+    private DatabaseImport(Context context, DatabaseAdapter dbAdapter, CurrencyDao currencyDao, InputStream backupStream) {
+        super(context, dbAdapter, currencyDao);
         this.schemaEvolution = new DatabaseSchemaEvolution(context, Database.DATABASE_NAME, null, Database.DATABASE_VERSION);
         this.backupStream = backupStream;
     }

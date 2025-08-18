@@ -21,10 +21,11 @@ import javax.persistence.Entity;
 import javax.persistence.Table;
 import javax.persistence.Transient;
 
+import ru.orangesoftware.financisto.db.DatabaseHelper;
 import ru.orangesoftware.financisto.db.DatabaseHelper.CategoryViewColumns;
 
 @Entity
-@Table(name = "category")
+@Table(name = DatabaseHelper.CATEGORY_TABLE)
 public class Category extends CategoryEntity<Category> {
 
     public static Category noCategory() {

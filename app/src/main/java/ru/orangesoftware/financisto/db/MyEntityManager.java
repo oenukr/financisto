@@ -2,15 +2,15 @@ package ru.orangesoftware.financisto.db;
 
 import static android.database.sqlite.SQLiteDatabase.CONFLICT_NONE;
 import static ru.orangesoftware.financisto.db.DatabaseHelper.ACCOUNT_TABLE;
-import static ru.orangesoftware.financisto.db.DatabaseHelper.AccountColumns;
 import static ru.orangesoftware.financisto.db.DatabaseHelper.BUDGET_TABLE;
-import static ru.orangesoftware.financisto.db.DatabaseHelper.CURRENCY_TABLE;
 
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 
 import androidx.annotation.Nullable;
+import androidx.room.Room;
+import androidx.sqlite.db.SimpleSQLiteQuery;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import java.util.ArrayList;
@@ -52,10 +52,17 @@ import ru.orangesoftware.orb.Sort;
 public abstract class MyEntityManager extends EntityManager {
 
     protected final Context context;
+    protected final FinancistoDatabase db;
 
     public MyEntityManager(Context context) {
         super(new DependenciesHolder().getDatabaseHelper(), new DatabaseFixPlugin());
         this.context = context;
+        this.db = Room.databaseBuilder(context.getApplicationContext(),
+                FinancistoDatabase.class, "financisto.db").build();
+    }
+
+    public Context getContext() {
+        return this.context;
     }
 
     public <T extends MyEntity> Cursor filterActiveEntities(Class<T> clazz, String titleLike) {
@@ -198,67 +205,66 @@ public abstract class MyEntityManager extends EntityManager {
     /* ===============================================
      * ACCOUNT
      * =============================================== */
-    public Cursor getAccountByNumber(String numberEnding) {
-        Query<Account> q = createQuery(Account.class);
-        q.where(Expressions.like(AccountColumns.NUMBER, "%" + numberEnding));
-        return q.execute();
+    public List<Account> getAccountByNumber(String numberEnding) {
+        return db.accountDao().getAccountByNumber(numberEnding);
     }
 
     @Nullable
     public Account getAccount(long id) {
-        return get(Account.class, id);
+        return db.accountDao().get(id);
     }
 
-    public Cursor getAccountsForTransaction(Transaction t) {
-        return getAllAccounts(true, t.fromAccountId, t.toAccountId);
+    public List<Account> getAccountsForTransaction(Transaction t) {
+        return getAccounts(true, t.fromAccountId, t.toAccountId);
     }
 
-    public Cursor getAllActiveAccounts() {
-        return getAllAccounts(true);
+    public List<Account> getAllActiveAccounts() {
+        return getAccounts(true);
     }
 
-    public Cursor getAllAccounts() {
-        return getAllAccounts(false);
+    public List<Account> getAllAccounts() {
+        return getAccounts(false);
     }
 
-    private Cursor getAllAccounts(boolean isActiveOnly, long... includeAccounts) {
+    private List<Account> getAccounts(boolean isActiveOnly, long... includeAccounts) {
         AccountSortOrder sortOrder = MyPreferences.getAccountSortOrder(context);
-        Query<Account> q = createQuery(Account.class);
+        StringBuilder query = new StringBuilder("SELECT * FROM " + ACCOUNT_TABLE);
+        ArrayList<Object> args = new ArrayList<>();
         if (isActiveOnly) {
-            int count = includeAccounts.length;
-            if (count > 0) {
-                Expression[] ee = new Expression[count + 1];
-                for (int i = 0; i < count; i++) {
-                    ee[i] = Expressions.eq("id", includeAccounts[i]);
+            query.append(" WHERE ");
+            if (includeAccounts.length > 0) {
+                query.append("_id IN (");
+                for (int i = 0; i < includeAccounts.length; i++) {
+                    query.append("?");
+                    if (i < includeAccounts.length - 1) {
+                        query.append(",");
+                    }
+                    args.add(includeAccounts[i]);
                 }
-                ee[count] = Expressions.eq("isActive", 1);
-                q.where(Expressions.or(ee));
-            } else {
-                q.where(Expressions.eq("isActive", 1));
+                query.append(") OR ");
             }
+            query.append("is_active = 1");
         }
-        q.desc("isActive");
-        if (sortOrder.asc) {
-            q.asc(sortOrder.property);
-        } else {
-            q.desc(sortOrder.property);
+        query.append(" ORDER BY is_active DESC, ");
+        query.append(sortOrder.property);
+        if (!sortOrder.asc) {
+            query.append(" DESC");
         }
-        return q.asc("title").execute();
+        query.append(", title ASC");
+        return db.accountDao().getAccounts(new SimpleSQLiteQuery(query.toString(), args.toArray()));
     }
 
     public long saveAccount(Account account) {
-        return saveOrUpdate(account);
+        if (account.getId() > 0) {
+            db.accountDao().update(account);
+        } else {
+            account.setId(db.accountDao().insert(account));
+        }
+        return account.getId();
     }
 
     public List<Account> getAllAccountsList() {
-        List<Account> list = new ArrayList<>();
-        try (Cursor c = getAllAccounts()) {
-            while (c.moveToNext()) {
-                Account a = EntityManager.loadFromCursor(c, Account.class);
-                list.add(a);
-            }
-        }
-        return list;
+        return db.accountDao().getAll();
     }
 
     public Map<Long, Account> getAllAccountsMap() {
@@ -277,25 +283,30 @@ public abstract class MyEntityManager extends EntityManager {
     private static final String UPDATE_DEFAULT_FLAG = "update currency set is_default=0";
 
     public long saveOrUpdate(Currency currency) {
-        SupportSQLiteDatabase db = db();
-        db.beginTransaction();
-        try {
+        db.runInTransaction(() -> {
             if (currency.isDefault()) {
-                db.execSQL(UPDATE_DEFAULT_FLAG);
+                db.currencyDao().clearDefaults();
             }
-            long id = super.saveOrUpdate(currency);
-            db.setTransactionSuccessful();
-            return id;
-        } finally {
-            db.endTransaction();
-        }
+            if (currency.getId() > 0) {
+                db.currencyDao().update(currency);
+            } else {
+                currency.setId(db.currencyDao().insert(currency));
+            }
+        });
+        return currency.getId();
     }
 
     public int deleteCurrency(long id) {
-        String sid = String.valueOf(id);
-        Currency c = load(Currency.class, id);
-        return db().delete(CURRENCY_TABLE, "_id=? AND NOT EXISTS (SELECT 1 FROM " + ACCOUNT_TABLE + " WHERE " + AccountColumns.CURRENCY_ID + "=?)",
-                new String[]{sid, sid});
+        Currency currency = db.currencyDao().get(id);
+        if (currency != null) {
+            db.currencyDao().delete(currency);
+            return 1;
+        }
+        return 0;
+    }
+
+    public Currency getCurrency(long id) {
+        return db.currencyDao().get(id);
     }
 
     public Cursor getAllCurrencies(String sortBy) {

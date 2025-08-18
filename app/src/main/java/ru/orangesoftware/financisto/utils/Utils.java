@@ -58,29 +58,29 @@ public class Utils {
                 android.text.format.DateUtils.FORMAT_SHOW_DATE | android.text.format.DateUtils.FORMAT_ABBREV_MONTH);
     }
 
-    public static String amountToString(Currency c, long amount) {
-        return amountToString(c, amount, false);
+    public static String amountToString(CurrencyCache currencyCache, Currency c, long amount) {
+        return amountToString(currencyCache, c, amount, false);
     }
 
-    public static String amountToString(Currency c, BigDecimal amount) {
+    public static String amountToString(CurrencyCache currencyCache, Currency c, BigDecimal amount) {
         StringBuilder sb = new StringBuilder();
-        return amountToString(sb, c, amount, false).toString();
+        return amountToString(currencyCache, sb, c, amount, false).toString();
     }
 
-    public static StringBuilder amountToString(StringBuilder sb, Currency c, long amount) {
-        return amountToString(sb, c, amount, false);
+    public static StringBuilder amountToString(CurrencyCache currencyCache, StringBuilder sb, Currency c, long amount) {
+        return amountToString(currencyCache, sb, c, amount, false);
     }
 
-    public static String amountToString(Currency c, long amount, boolean addPlus) {
+    public static String amountToString(CurrencyCache currencyCache, Currency c, long amount, boolean addPlus) {
         StringBuilder sb = new StringBuilder();
-        return amountToString(sb, c, amount, addPlus).toString();
+        return amountToString(currencyCache, sb, c, amount, addPlus).toString();
     }
 
-    public static StringBuilder amountToString(StringBuilder sb, Currency c, long amount, boolean addPlus) {
-        return amountToString(sb, c, new BigDecimal(amount), addPlus);
+    public static StringBuilder amountToString(CurrencyCache currencyCache, StringBuilder sb, Currency c, long amount, boolean addPlus) {
+        return amountToString(currencyCache, sb, c, new BigDecimal(amount), addPlus);
     }
 
-    public static StringBuilder amountToString(StringBuilder sb, Currency c, BigDecimal amount, boolean addPlus) {
+    public static StringBuilder amountToString(CurrencyCache currencyCache, StringBuilder sb, Currency c, BigDecimal amount, boolean addPlus) {
         if (amount.compareTo(BigDecimal.ZERO) > 0) {
             if (addPlus) {
                 sb.append("+");
@@ -89,7 +89,7 @@ public class Utils {
         if (c == null) {
             c = Currency.Companion.getEMPTY();
         }
-        String s = c.getFormat().format(amount.divide(HUNDRED));
+        String s = c.getFormat(currencyCache).format(amount.divide(HUNDRED));
         if (s.endsWith(".")) {
             s = s.substring(0, s.length() - 1);
         }
@@ -122,19 +122,19 @@ public class Utils {
         return !s.isEmpty() ? s : null;
     }
 
-    public void setAmountText(TextView view, Currency c, long amount, boolean addPlus) {
-        setAmountText(new StringBuilder(), view, c, amount, addPlus);
+    public void setAmountText(CurrencyCache currencyCache, TextView view, Currency c, long amount, boolean addPlus) {
+        setAmountText(currencyCache, new StringBuilder(), view, c, amount, addPlus);
     }
 
-    public void setAmountText(StringBuilder sb, TextView view, Currency c, long amount, boolean addPlus) {
-        view.setText(amountToString(sb, c, amount, addPlus).toString());
+    public void setAmountText(CurrencyCache currencyCache, StringBuilder sb, TextView view, Currency c, long amount, boolean addPlus) {
+        view.setText(amountToString(currencyCache, sb, c, amount, addPlus).toString());
         view.setTextColor(amount == 0 ? zeroColor : (amount > 0 ? positiveColor : negativeColor));
     }
 
-    public void setAmountText(StringBuilder sb, TextView view, Currency originalCurrency, long originalAmount, Currency currency, long amount, boolean addPlus) {
-        amountToString(sb, originalCurrency, originalAmount, addPlus);
+    public void setAmountText(CurrencyCache currencyCache, StringBuilder sb, TextView view, Currency originalCurrency, long originalAmount, Currency currency, long amount, boolean addPlus) {
+        amountToString(currencyCache, sb, originalCurrency, originalAmount, addPlus);
         sb.append(" (");
-        amountToString(sb, currency, amount, addPlus);
+        amountToString(currencyCache, sb, currency, amount, addPlus);
         sb.append(")");
         view.setText(sb.toString());
         view.setTextColor(amount == 0 ? zeroColor : (amount > 0 ? positiveColor : negativeColor));
@@ -231,18 +231,18 @@ public class Utils {
         textView.setTextColor(futureColor);
     }
 
-    public void setTransferAmountText(TextView textView, Currency fromCurrency, long fromAmount, Currency toCurrency, long toAmount) {
-        textView.setText(getTransferAmountText(fromCurrency, fromAmount, toCurrency, toAmount));
+    public void setTransferAmountText(CurrencyCache currencyCache, TextView textView, Currency fromCurrency, long fromAmount, Currency toCurrency, long toAmount) {
+        textView.setText(getTransferAmountText(currencyCache, fromCurrency, fromAmount, toCurrency, toAmount));
         setTransferTextColor(textView);
     }
 
-    public String getTransferAmountText(Currency fromCurrency, long fromAmount, Currency toCurrency, long toAmount) {
+    public String getTransferAmountText(CurrencyCache currencyCache, Currency fromCurrency, long fromAmount, Currency toCurrency, long toAmount) {
         sb.setLength(0);
         if (sameCurrency(fromCurrency, toCurrency)) {
-            Utils.amountToString(sb, fromCurrency, fromAmount);
+            Utils.amountToString(currencyCache, sb, fromCurrency, fromAmount);
         } else {
-            Utils.amountToString(sb, fromCurrency, Math.abs(fromAmount)).append(TRANSFER_DELIMITER);
-            Utils.amountToString(sb, toCurrency, toAmount);
+            Utils.amountToString(currencyCache, sb, fromCurrency, Math.abs(fromAmount)).append(TRANSFER_DELIMITER);
+            Utils.amountToString(currencyCache, sb, toCurrency, toAmount);
         }
         return sb.toString();
     }
@@ -251,10 +251,10 @@ public class Utils {
         return fromCurrency.getId() == toCurrency.getId();
     }
 
-    public void setTransferBalanceText(TextView textView, Currency fromCurrency, long fromBalance, Currency toCurrency, long toBalance) {
+    public void setTransferBalanceText(CurrencyCache currencyCache, TextView textView, Currency fromCurrency, long fromBalance, Currency toCurrency, long toBalance) {
         sb.setLength(0);
-        Utils.amountToString(sb, fromCurrency, fromBalance, false).append(TRANSFER_DELIMITER);
-        Utils.amountToString(sb, toCurrency, toBalance, false);
+        Utils.amountToString(currencyCache, sb, fromCurrency, fromBalance, false).append(TRANSFER_DELIMITER);
+        Utils.amountToString(currencyCache, sb, toCurrency, toBalance, false);
         textView.setText(sb.toString());
     }
 
@@ -270,32 +270,32 @@ public class Utils {
         textView.setTextColor(positiveColor);
     }
 
-    public void setTotal(TextView totalText, Total total) {
+    public void setTotal(CurrencyCache currencyCache, TextView totalText, Total total) {
         if (total.isError()) {
             setTotalError(totalText);
         } else {
-            setAmountText(totalText, total);
+            setAmountText(currencyCache, totalText, total);
             totalText.setError(null);
         }
     }
 
-    public void setAmountText(TextView totalText, Total total) {
+    public void setAmountText(CurrencyCache currencyCache, TextView totalText, Total total) {
         if (total.showAmount) {
-            setAmountTextWithTwoAmounts(totalText, total.currency, total.amount, total.balance);
+            setAmountTextWithTwoAmounts(currencyCache, totalText, total.currency, total.amount, total.balance);
         } else if (total.showIncomeExpense) {
-            setAmountTextWithTwoAmounts(totalText, total.currency, total.income, total.expenses);
+            setAmountTextWithTwoAmounts(currencyCache, totalText, total.currency, total.income, total.expenses);
         } else {
-            setAmountText(totalText, total.currency, total.balance, false);
+            setAmountText(currencyCache, totalText, total.currency, total.balance, false);
         }
     }
 
-    private void setAmountTextWithTwoAmounts(TextView textView, Currency c, long amount1, long amount2) {
+    private void setAmountTextWithTwoAmounts(CurrencyCache currencyCache, TextView textView, Currency c, long amount1, long amount2) {
         SpannableStringBuilder sb = new SpannableStringBuilder();
-        sb.append(Utils.amountToString(c, amount1, false));
+        sb.append(Utils.amountToString(currencyCache, c, amount1, false));
         int x = sb.length();
         sb.setSpan(getAmountSpan(context, amount1), 0, x, Spannable.SPAN_INCLUSIVE_EXCLUSIVE);
         sb.append(" | ");
-        sb.append(Utils.amountToString(c, amount2, false));
+        sb.append(Utils.amountToString(currencyCache, c, amount2, false));
         sb.setSpan(getAmountSpan(context, amount2), x + 3, sb.length(), Spannable.SPAN_INCLUSIVE_EXCLUSIVE);
         textView.setText(sb, TextView.BufferType.NORMAL);
     }

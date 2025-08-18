@@ -23,10 +23,13 @@ import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.Spinner;
 
+import androidx.room.Room;
+
 import java.text.DecimalFormatSymbols;
 
 import ru.orangesoftware.financisto.R;
-import ru.orangesoftware.financisto.db.DatabaseAdapter;
+import ru.orangesoftware.financisto.db.CurrencyDao;
+import ru.orangesoftware.financisto.db.FinancistoDatabase;
 import ru.orangesoftware.financisto.model.Currency;
 import ru.orangesoftware.financisto.model.SymbolFormat;
 import ru.orangesoftware.financisto.utils.CurrencyCache;
@@ -38,7 +41,8 @@ public class CurrencyActivity extends Activity {
     public static final String CURRENCY_ID_EXTRA = "currencyId";
     private static final DecimalFormatSymbols s = new DecimalFormatSymbols();
 
-    private DatabaseAdapter db;
+    private CurrencyDao currencyDao;
+    private CurrencyCache currencyCache;
 
     private String[] decimalSeparatorsItems;
     private String[] groupSeparatorsItems;
@@ -69,8 +73,10 @@ public class CurrencyActivity extends Activity {
         setContentView(R.layout.currency);
         setFeatureDrawableResource(Window.FEATURE_LEFT_ICON, R.drawable.ic_dialog_currency);
 
-        db = new DatabaseAdapter(this);
-        db.open();
+        FinancistoDatabase roomDb = Room.databaseBuilder(getApplicationContext(),
+                FinancistoDatabase.class, "financisto.db").build();
+        currencyDao = roomDb.currencyDao();
+        currencyCache = new CurrencyCache(currencyDao);
 
         name = findViewById(R.id.name);
         title = findViewById(R.id.title);
@@ -102,8 +108,17 @@ public class CurrencyActivity extends Activity {
                 currency.setDecimalSeparator(decimalSeparators.getSelectedItem().toString());
                 currency.setGroupSeparator(groupSeparators.getSelectedItem().toString());
                 currency.setSymbolFormat(symbolFormats[symbolFormat.getSelectedItemPosition()]);
-                long id = db.saveOrUpdate(currency);
-                CurrencyCache.initialize(db);
+                if (currency.isDefault()) {
+                    currencyDao.clearDefaults();
+                }
+                long id;
+                if (currency.getId() > 0) {
+                    currencyDao.update(currency);
+                    id = currency.getId();
+                } else {
+                    id = currencyDao.insert(currency);
+                }
+                currencyCache.initialize();
                 Intent data = new Intent();
                 data.putExtra(CURRENCY_ID_EXTRA, id);
                 setResult(RESULT_OK, data);
@@ -121,7 +136,7 @@ public class CurrencyActivity extends Activity {
         if (intent != null) {
             long id = intent.getLongExtra(CURRENCY_ID_EXTRA, -1);
             if (id != -1) {
-                currency = db.load(Currency.class, id);
+                currency = currencyDao.get(id);
                 editCurrency();
             } else {
                 makeDefaultIfNecessary();
@@ -130,7 +145,7 @@ public class CurrencyActivity extends Activity {
     }
 
     private void makeDefaultIfNecessary() {
-        isDefault.setChecked(db.getAllCurrenciesList().isEmpty());
+        isDefault.setChecked(currencyDao.getAll().isEmpty());
     }
 
     private void editCurrency() {
@@ -162,12 +177,6 @@ public class CurrencyActivity extends Activity {
             }
         }
         return d;
-    }
-
-    @Override
-    protected void onDestroy() {
-        db.close();
-        super.onDestroy();
     }
 
     @Override

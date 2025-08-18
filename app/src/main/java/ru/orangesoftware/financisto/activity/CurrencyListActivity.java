@@ -18,11 +18,15 @@ import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ListAdapter;
 
+import androidx.room.RoomDatabase;
+
 import java.util.List;
 
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.adapter.CurrencyListAdapter;
+import ru.orangesoftware.financisto.db.FinancistoDatabase;
 import ru.orangesoftware.financisto.model.Currency;
+import ru.orangesoftware.financisto.utils.CurrencyCache;
 import ru.orangesoftware.financisto.utils.MenuItemInfo;
 
 public class CurrencyListActivity extends AbstractListActivity {
@@ -89,7 +93,13 @@ public class CurrencyListActivity extends AbstractListActivity {
 
     @Override
     protected ListAdapter createAdapter(Cursor cursor) {
-        return new CurrencyListAdapter(db, this, cursor);
+        FinancistoDatabase financistoDatabase = new RoomDatabase.Builder<>(
+                this,
+                FinancistoDatabase.class,
+                "financisto.db"
+        ).build();
+        CurrencyCache currencyCache = new CurrencyCache(financistoDatabase.currencyDao());
+        return new CurrencyListAdapter(db, this, cursor, currencyCache);
     }
 
     @Override

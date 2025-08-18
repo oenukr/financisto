@@ -23,7 +23,7 @@ import javax.persistence.Transient;
 
 import ru.orangesoftware.financisto.repository.local.DatabaseHelper.CategoryViewColumns;
 
-@Entity
+//@Entity
 @Table(name = "category")
 public class Category extends CategoryEntity<Category> {
 

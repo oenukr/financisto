@@ -13,7 +13,7 @@ data class Attribute(
     @ColumnInfo(name = "type") var type: Int,
     @ColumnInfo(name = "list_values") var listValues: String?,
     @ColumnInfo(name = "default_value") var defaultValue: String?,
-    @ColumnInfo(name = DEF_SORT_COL) override val sortOrder: Long,
+    @ColumnInfo(name = DEF_SORT_COL) override var sortOrder: Long,
 ) : MyEntity(), SortableEntity {
 
     companion object {
