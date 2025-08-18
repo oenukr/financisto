@@ -8,6 +8,7 @@
 
 package ru.orangesoftware.financisto.utils;
 
+import android.content.Context;
 import android.database.Cursor;
 
 import java.util.ArrayList;
@@ -33,8 +34,10 @@ public abstract class AbstractPlanner {
 
     protected final WhereFilter filter;
     protected final Date now;
+    protected final Context context;
 
-    public AbstractPlanner(DatabaseAdapter db, WhereFilter filter, Date now) {
+    public AbstractPlanner(Context context, DatabaseAdapter db, WhereFilter filter, Date now) {
+        this.context = context;
         this.db = db;
         this.filter = filter;
         this.now = now;
@@ -154,7 +157,7 @@ public abstract class AbstractPlanner {
         try {
             List<TransactionInfo> transactions = new ArrayList<>(cursor.getCount());
             while (cursor.moveToNext()) {
-                transactions.add(TransactionInfo.fromBlotterCursor(cursor));
+                transactions.add(TransactionInfo.fromBlotterCursor(cursor, new CurrencyCache(db.currencyDao())));
             }
             return transactions;
         } finally {

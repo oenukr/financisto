@@ -24,12 +24,14 @@ import ru.orangesoftware.financisto.test.CategoryBuilder;
 import ru.orangesoftware.financisto.test.DateTime;
 import ru.orangesoftware.financisto.test.TransactionBuilder;
 import ru.orangesoftware.financisto.test.TransferBuilder;
+import ru.orangesoftware.financisto.utils.CurrencyCache;
 
 public class AccountPurgeTest extends AbstractDbTest {
 
     Account a1;
     Account a2;
     Map<String, Category> categoriesMap;
+    CurrencyCache currencyCache;
 
     @Override
     public void setUp() throws Exception {
@@ -37,6 +39,7 @@ public class AccountPurgeTest extends AbstractDbTest {
         a1 = AccountBuilder.createDefault(db);
         a2 = AccountBuilder.createDefault(db);
         categoriesMap = CategoryBuilder.createDefaultHierarchy(db);
+        currencyCache = new CurrencyCache(db.currencyDao());
         /*                        A1     A2
          * 29/05 A1 +10          |  40  |
          * 28/05 A1 -20          |  30  |
@@ -164,7 +167,7 @@ public class AccountPurgeTest extends AbstractDbTest {
         try {
             int i = 0;
             while (c.moveToNext()) {
-                Transaction t = Transaction.fromBlotterCursor(c);
+                Transaction t = Transaction.fromBlotterCursor(c, currencyCache);
                 actualAmounts[i++] = t.fromAmount;
             }
         } finally {

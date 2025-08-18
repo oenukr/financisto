@@ -43,6 +43,7 @@ public class PlannerTest extends AbstractDbTest {
     Account a2;
     Map<String, Category> categoriesMap;
     Currency homeCurrency;
+    CurrencyCache currencyCache;
 
     Date from = date(2011, 8, 1).atMidnight().asDate();
     Date to = date(2011, 8, 16).atDayEnd().asDate();
@@ -57,7 +58,7 @@ public class PlannerTest extends AbstractDbTest {
         a2 = AccountBuilder.createDefault(db, c2);
         categoriesMap = CategoryBuilder.createDefaultHierarchy(db);
         homeCurrency = db.getHomeCurrency();
-        CurrencyCache.initialize(db);
+        currencyCache = new CurrencyCache(db.currencyDao());
     }
 
     @Test

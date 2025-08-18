@@ -7,7 +7,7 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Table;
 
-@Entity
+//@Entity
 @Table(name = LOCATIONS_TABLE)
 public class MyLocation extends MyEntity implements SortableEntity {
 

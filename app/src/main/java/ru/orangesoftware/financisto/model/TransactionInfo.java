@@ -15,10 +15,11 @@ import android.content.Context;
 import android.database.Cursor;
 
 import androidx.annotation.NonNull;
+import androidx.room.Room;
 
 import java.util.Date;
+import java.util.Objects;
 
-import javax.persistence.Entity;
 import javax.persistence.JoinColumn;
 import javax.persistence.Table;
 import javax.persistence.Transient;
@@ -27,11 +28,12 @@ import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.activity.TransactionActivity;
 import ru.orangesoftware.financisto.activity.TransferActivity;
 import ru.orangesoftware.financisto.db.DatabaseHelper;
+import ru.orangesoftware.financisto.db.FinancistoDatabase;
 import ru.orangesoftware.financisto.utils.CurrencyCache;
 import ru.orangesoftware.financisto.utils.Utils;
 
-@Entity
-@Table(name = "transactions")
+//@Entity
+@Table(name = DatabaseHelper.TRANSACTION_TABLE)
 public class TransactionInfo extends TransactionBase {
 	
 	@JoinColumn(name = "from_account_id")
@@ -85,16 +87,18 @@ public class TransactionInfo extends TransactionBase {
 
     @NonNull
 	public String getNotificationContentText(Context context) {
+        FinancistoDatabase roomDb = Room.databaseBuilder(context, FinancistoDatabase.class, "financisto.db").build();
+        CurrencyCache currencyCache = new CurrencyCache(roomDb.currencyDao());
 		if (toAccount != null) {
-			if (fromAccount.getCurrency().getId() == toAccount.getCurrency().getId()) {
-				return context.getString(R.string.new_scheduled_transfer_notification_same_currency, 
-						Utils.amountToString(fromAccount.getCurrency(), Math.abs(fromAmount)),
+			if (Objects.equals(fromAccount.getCurrency(), toAccount.getCurrency())) {
+				return context.getString(R.string.new_scheduled_transfer_notification_same_currency,
+						Utils.amountToString(currencyCache, currencyCache.getCurrency(fromAccount.getCurrency()), Math.abs(fromAmount)),
 						fromAccount.getTitle(), toAccount.getTitle());
 			} else {
 				return context.getString(
                         R.string.new_scheduled_transfer_notification_differ_currency,
-						Utils.amountToString(fromAccount.getCurrency(), Math.abs(fromAmount)),
-						Utils.amountToString(toAccount.getCurrency(), Math.abs(toAmount)),
+						Utils.amountToString(currencyCache, currencyCache.getCurrency(fromAccount.getCurrency()), Math.abs(fromAmount)),
+						Utils.amountToString(currencyCache, currencyCache.getCurrency(toAccount.getCurrency()), Math.abs(toAmount)),
 						fromAccount.getTitle(),
                         toAccount.getTitle()
                 );
@@ -102,7 +106,7 @@ public class TransactionInfo extends TransactionBase {
 		} else {
 			return context.getString(
                     R.string.new_scheduled_transaction_notification,
-                    Utils.amountToString(fromAccount.getCurrency(), Math.abs(fromAmount)),
+                    Utils.amountToString(currencyCache, currencyCache.getCurrency(fromAccount.getCurrency()), Math.abs(fromAmount)),
                     context.getString(fromAmount > 0 ? R.string.new_scheduled_transaction_debit : R.string.new_scheduled_transaction_credit),
                     fromAccount.getTitle()
             );
@@ -123,7 +127,7 @@ public class TransactionInfo extends TransactionBase {
         return category.isSplit();
     }
 
-    public static TransactionInfo fromBlotterCursor(Cursor c) {
+    public static TransactionInfo fromBlotterCursor(Cursor c, CurrencyCache currencyCache) {
         long id = c.getLong(DatabaseHelper.BlotterColumns._id.ordinal());
         TransactionInfo t = new TransactionInfo();
         t.id = id;
@@ -134,13 +138,13 @@ public class TransactionInfo extends TransactionBase {
         t.fromAmount = c.getLong(DatabaseHelper.BlotterColumns.from_amount.ordinal());
         t.toAmount = c.getLong(DatabaseHelper.BlotterColumns.to_amount.ordinal());
 
-        t.originalCurrency = CurrencyCache.getCurrencyOrEmpty(c.getLong(DatabaseHelper.BlotterColumns.original_currency_id.ordinal()));
+        t.originalCurrency = currencyCache.getCurrencyOrEmpty(c.getLong(DatabaseHelper.BlotterColumns.original_currency_id.ordinal()));
         t.originalFromAmount = c.getLong(DatabaseHelper.BlotterColumns.original_from_amount.ordinal());
 
         Account fromAccount = new Account();
         fromAccount.setId(c.getLong(DatabaseHelper.BlotterColumns.from_account_id.ordinal()));
         fromAccount.setTitle(c.getString(DatabaseHelper.BlotterColumns.from_account_title.ordinal()));
-        fromAccount.setCurrency(CurrencyCache.getCurrencyOrEmpty(c.getLong(DatabaseHelper.BlotterColumns.from_account_currency_id.ordinal())));
+        fromAccount.setCurrency(currencyCache.getCurrencyOrEmpty(c.getLong(DatabaseHelper.BlotterColumns.from_account_currency_id.ordinal())).getId());
         t.fromAccount = fromAccount;
 
         long toAccountId = c.getLong(DatabaseHelper.BlotterColumns.to_account_id.ordinal());
@@ -148,7 +152,7 @@ public class TransactionInfo extends TransactionBase {
             Account toAccount = new Account();
             toAccount.setId(toAccountId);
             toAccount.setTitle(c.getString(DatabaseHelper.BlotterColumns.to_account_title.ordinal()));
-            toAccount.setCurrency(CurrencyCache.getCurrencyOrEmpty(c.getLong(DatabaseHelper.BlotterColumns.to_account_currency_id.ordinal())));
+            toAccount.setCurrency(currencyCache.getCurrencyOrEmpty(c.getLong(DatabaseHelper.BlotterColumns.to_account_currency_id.ordinal())).getId());
             t.toAccount = toAccount;
         }
 

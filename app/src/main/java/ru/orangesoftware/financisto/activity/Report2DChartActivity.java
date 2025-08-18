@@ -9,12 +9,15 @@ import android.view.View;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
+import androidx.room.Room;
+
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.GregorianCalendar;
 
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
+import ru.orangesoftware.financisto.db.FinancistoDatabase;
 import ru.orangesoftware.financisto.graph.Report2DChart;
 import ru.orangesoftware.financisto.model.Currency;
 import ru.orangesoftware.financisto.model.ReportDataByPeriod;
@@ -43,6 +46,7 @@ public class Report2DChartActivity extends Activity {
     // Data to display
     private Report2DChart reportData;
     private DatabaseAdapter db;
+    private CurrencyCache currencyCache;
 
     private int selectedPeriod;
     private Currency currency;
@@ -86,6 +90,9 @@ public class Report2DChartActivity extends Activity {
         // database adapter to query data
         db = new DatabaseAdapter(this);
         db.open();
+        FinancistoDatabase roomDb = Room.databaseBuilder(getApplicationContext(),
+                FinancistoDatabase.class, "financisto.db").build();
+        currencyCache = new CurrencyCache(roomDb.currencyDao());
 
         // get report preferences to display chart
         // Reference Currency
@@ -320,7 +327,7 @@ public class Report2DChartActivity extends Activity {
         Currency c = MyPreferences.getReferenceCurrency(this);
         if (c == null) {
             prefCurNotSet = true;
-            Collection<Currency> currencies = CurrencyCache.getAllCurrencies();
+            Collection<Currency> currencies = currencyCache.getAllCurrencies();
             if (currencies != null && !currencies.isEmpty()) {
                 for (Currency currency : currencies) {
                     if (currency.isDefault()) {

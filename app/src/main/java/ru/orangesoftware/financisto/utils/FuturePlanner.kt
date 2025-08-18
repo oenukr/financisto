@@ -13,7 +13,7 @@ class FuturePlanner(
     db: DatabaseAdapter,
     filter: WhereFilter,
     now: Date,
-) : AbstractPlanner(db, filter, now) {
+) : AbstractPlanner(db.context, db, filter, now) {
 
     override fun getRegularTransactions(): Cursor = db.getBlotter(WhereFilter.copyOf(filter))
 
@@ -27,9 +27,10 @@ class FuturePlanner(
 
     override fun calculateTotals(transactions: List<TransactionInfo>): Array<Total> =
         arrayOf(
-            TransactionsTotalCalculator.calculateTotalFromListInHomeCurrency(
-                db,
-                transactions
-            )
+            TransactionsTotalCalculator(db, filter).calculateTotalFromListInHomeCurrency(db, transactions)
+//            TransactionsTotalCalculator.calculateTotalFromListInHomeCurrency(
+//                db,
+//                transactions
+//            )
         )
 }

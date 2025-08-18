@@ -15,7 +15,6 @@ import static ru.orangesoftware.financisto.utils.MyPreferences.isQuickMenuEnable
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
-import android.database.Cursor;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.MenuInflater;
@@ -58,6 +57,7 @@ public class AccountListActivity extends AbstractListActivity {
     private static final int PURGE_ACCOUNT_REQUEST = 4;
 
     private QuickActionWidget accountActionGrid;
+    private AccountListAdapter2 adapter;
 
     public AccountListActivity() {
         super(R.layout.account_list);
@@ -70,6 +70,18 @@ public class AccountListActivity extends AbstractListActivity {
         setupMenuButton();
         calculateTotals();
         integrityCheck();
+        loadAccounts();
+    }
+
+    private void loadAccounts() {
+        List<Account> accounts;
+        if (MyPreferences.isHideClosedAccounts(this)) {
+            accounts = db.getAllActiveAccounts();
+        } else {
+            accounts = db.getAllAccounts();
+        }
+        adapter = new AccountListAdapter2(this, R.layout.account_list_item_new, accounts);
+        setListAdapter(adapter);
     }
 
     private void setupUi() {
@@ -177,6 +189,11 @@ public class AccountListActivity extends AbstractListActivity {
         calculateTotals();
     }
 
+    private void refreshList() {
+        loadAccounts();
+        adapter.notifyDataSetChanged();
+    }
+
     private AccountTotalsCalculationTask totalCalculationTask;
 
     private void calculateTotals() {
@@ -217,17 +234,8 @@ public class AccountListActivity extends AbstractListActivity {
     }
 
     @Override
-    protected ListAdapter createAdapter(Cursor cursor) {
-        return new AccountListAdapter2(this, cursor);
-    }
-
-    @Override
-    protected Cursor createCursor() {
-        if (MyPreferences.isHideClosedAccounts(this)) {
-            return db.getAllActiveAccounts();
-        } else {
-            return db.getAllAccounts();
-        }
+    protected ListAdapter createAdapter() {
+        return null;
     }
 
     protected List<MenuItemInfo> createContextMenus(long id) {
@@ -264,7 +272,7 @@ public class AccountListActivity extends AbstractListActivity {
                 .setMessage(R.string.delete_account_confirm)
                 .setPositiveButton(R.string.yes, (arg0, arg1) -> {
                     db.deleteAccount(id);
-                    recreateCursor();
+                    refreshList();
                 })
                 .setNegativeButton(R.string.no, null)
                 .show();
@@ -322,7 +330,7 @@ public class AccountListActivity extends AbstractListActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == VIEW_ACCOUNT_REQUEST || requestCode == PURGE_ACCOUNT_REQUEST) {
-            recreateCursor();
+            refreshList();
         }
     }
 
@@ -348,7 +356,7 @@ public class AccountListActivity extends AbstractListActivity {
     private void flipAccountActive(Account a) {
         a.setActive(!a.isActive());
         db.saveAccount(a);
-        recreateCursor();
+        refreshList();
     }
 
     private void deleteAccount() {
@@ -356,7 +364,7 @@ public class AccountListActivity extends AbstractListActivity {
                 .setMessage(R.string.delete_account_confirm)
                 .setPositiveButton(R.string.yes, (arg0, arg1) -> {
                     db.deleteAccount(selectedId);
-                    recreateCursor();
+                    refreshList();
                 })
                 .setNegativeButton(R.string.no, null)
                 .show();

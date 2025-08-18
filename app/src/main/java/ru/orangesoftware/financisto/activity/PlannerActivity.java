@@ -19,6 +19,8 @@ import android.widget.ImageButton;
 import android.widget.ListAdapter;
 import android.widget.TextView;
 
+import androidx.room.Room;
+
 import java.util.Calendar;
 import java.util.Date;
 
@@ -27,10 +29,12 @@ import ru.orangesoftware.financisto.adapter.ScheduledListAdapter;
 import ru.orangesoftware.financisto.datetime.Period;
 import ru.orangesoftware.financisto.datetime.PeriodType;
 import ru.orangesoftware.financisto.db.DatabaseHelper;
+import ru.orangesoftware.financisto.db.FinancistoDatabase;
 import ru.orangesoftware.financisto.filter.Criteria;
 import ru.orangesoftware.financisto.filter.DateTimeCriteria;
 import ru.orangesoftware.financisto.filter.WhereFilter;
 import ru.orangesoftware.financisto.model.Total;
+import ru.orangesoftware.financisto.utils.CurrencyCache;
 import ru.orangesoftware.financisto.utils.FuturePlanner;
 import ru.orangesoftware.financisto.utils.TransactionList;
 import ru.orangesoftware.financisto.utils.Utils;
@@ -179,7 +183,13 @@ public class PlannerActivity extends AbstractListActivity {
 
     private void setTotals(Total[] totals) {
         Utils u = new Utils(this);
-        u.setTotal(totalText, totals[0]);
+        FinancistoDatabase roomDb = Room.databaseBuilder(
+                getApplicationContext(),
+                FinancistoDatabase.class,
+                "financisto.db"
+        ).build();
+        CurrencyCache currencyCache = new CurrencyCache(roomDb.currencyDao());
+        u.setTotal(currencyCache, totalText, totals[0]);
     }
 
 }

@@ -15,6 +15,7 @@ import android.widget.TextView;
 import java.util.List;
 
 import ru.orangesoftware.financisto.R;
+import ru.orangesoftware.financisto.model.Account;
 import ru.orangesoftware.financisto.model.MultiChoiceItem;
 import ru.orangesoftware.financisto.utils.Utils;
 import ru.orangesoftware.financisto.view.NodeInflater;
@@ -356,6 +357,24 @@ public class ActivityLayout {
                 (dialog, which) -> {
                     dialog.cancel();
                     long selectedId = adapter.getItemId(which);
+                    listener.onSelectedId(id, selectedId);
+                });
+    }
+
+    public void select(Context context, final int id, int titleId, final List<Account> accounts, final ListAdapter adapter, final String idColumn, long valueId) {
+        int foundPos = 0;
+        for (int i = 0; i < accounts.size(); i++) {
+            if (accounts.get(i).getId() == valueId) {
+                foundPos = i;
+                break;
+            }
+        }
+
+        final int pos = foundPos;
+        selectSingleChoice(context, titleId, adapter, pos,
+                (dialog, which) -> {
+                    dialog.cancel();
+                    long selectedId = accounts.get(pos).getId();
                     listener.onSelectedId(id, selectedId);
                 });
     }

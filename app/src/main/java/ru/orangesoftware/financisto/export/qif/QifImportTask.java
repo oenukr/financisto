@@ -13,10 +13,13 @@ import android.app.ProgressDialog;
 import android.content.Context;
 
 import androidx.annotation.NonNull;
+import androidx.room.Room;
 
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.app.DependenciesHolder;
+import ru.orangesoftware.financisto.db.CurrencyDao;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
+import ru.orangesoftware.financisto.db.FinancistoDatabase;
 import ru.orangesoftware.financisto.export.ImportExportAsyncTask;
 import ru.orangesoftware.financisto.export.ImportExportException;
 import ru.orangesoftware.financisto.utils.Logger;
@@ -30,16 +33,20 @@ public class QifImportTask extends ImportExportAsyncTask {
     private final Logger logger = new DependenciesHolder().getLogger();
 
     private final QifImportOptions options;
+    private final CurrencyDao currencyDao;
 
     public QifImportTask(final Activity activity, ProgressDialog dialog, QifImportOptions options) {
         super(activity, dialog);
         this.options = options;
+        FinancistoDatabase roomDb = Room.databaseBuilder(activity.getApplicationContext(),
+                FinancistoDatabase.class, "financisto.db").build();
+        this.currencyDao = roomDb.currencyDao();
     }
 
     @Override
     protected Object work(@NonNull Context context, @NonNull DatabaseAdapter db, String... params) throws ImportExportException {
         try {
-            QifImport qifImport = new QifImport(context, db, options);
+            QifImport qifImport = new QifImport(context, db, currencyDao, options);
             qifImport.importDatabase();
             return null;
         } catch (Exception e) {

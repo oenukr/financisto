@@ -28,12 +28,15 @@ import android.widget.ListAdapter;
 import android.widget.Spinner;
 import android.widget.SpinnerAdapter;
 
+import androidx.room.Room;
+
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.adapter.GenericViewHolder;
+import ru.orangesoftware.financisto.db.FinancistoDatabase;
 import ru.orangesoftware.financisto.model.Currency;
 import ru.orangesoftware.financisto.rates.ExchangeRate;
 import ru.orangesoftware.financisto.rates.ExchangeRateProvider;
@@ -50,6 +53,7 @@ public class ExchangeRatesListActivity extends AbstractListActivity {
     private Spinner fromCurrencySpinner;
     private Spinner toCurrencySpinner;
     private List<Currency> currencies;
+    private CurrencyCache currencyCache;
 
     private long lastSelectedCurrencyId;
 
@@ -60,6 +64,9 @@ public class ExchangeRatesListActivity extends AbstractListActivity {
     @Override
     protected void internalOnCreate(Bundle savedInstanceState) {
         super.internalOnCreate(savedInstanceState);
+        FinancistoDatabase roomDb = Room.databaseBuilder(getApplicationContext(),
+                FinancistoDatabase.class, "financisto.db").build();
+        currencyCache = new CurrencyCache(roomDb.currencyDao());
         currencies = db.getAllCurrenciesList("name");
 
         fromCurrencySpinner = findViewById(R.id.spinnerFromCurrency);
@@ -282,8 +289,8 @@ public class ExchangeRatesListActivity extends AbstractListActivity {
         private void showResult(List<ExchangeRate> result) {
             StringBuilder sb = new StringBuilder();
             for (ExchangeRate rate : result) {
-                Currency fromCurrency = CurrencyCache.getCurrency(db, rate.fromCurrencyId);
-                Currency toCurrency = CurrencyCache.getCurrency(db, rate.toCurrencyId);
+                Currency fromCurrency = currencyCache.getCurrency(rate.fromCurrencyId);
+                Currency toCurrency = currencyCache.getCurrency(rate.toCurrencyId);
                 sb.append(fromCurrency.getName()).append(" -> ").append(toCurrency.getName());
                 if (rate.isOk()) {
                     sb.append(" = ").append(nf.format(rate.rate));

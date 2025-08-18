@@ -7,7 +7,7 @@ import ru.orangesoftware.orb.EntityManager.DEF_SORT_COL
 
 @Entity(tableName = PROJECT_TABLE)
 class Project(
-    @ColumnInfo(name = DEF_SORT_COL) override val sortOrder: Long = 0,
+    @ColumnInfo(name = DEF_SORT_COL) override var sortOrder: Long = 0,
 ) : MyEntity(), SortableEntity {
 
     companion object {

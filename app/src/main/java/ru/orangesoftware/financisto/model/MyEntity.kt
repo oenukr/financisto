@@ -6,10 +6,10 @@ import androidx.room.PrimaryKey
 import ru.orangesoftware.orb.EntityManager.DEF_ID_COL
 import ru.orangesoftware.orb.EntityManager.DEF_TITLE_COL
 
-open class MyEntity(
+open class MyEntity @JvmOverloads constructor(
 	@PrimaryKey(autoGenerate = true)
 	@ColumnInfo(name = DEF_ID_COL) override var id: Long = -1,
-	@ColumnInfo(name = DEF_TITLE_COL) override var title: String? = null,
+	@ColumnInfo(name = DEF_TITLE_COL) @Ignore override var title: String? = null,
 	@ColumnInfo(name = "is_active") var isActive: Boolean = true,
 	@Ignore @Transient override var checked: Boolean = false,
 ) : MultiChoiceItem {

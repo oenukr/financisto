@@ -17,6 +17,7 @@ import java.util.Map;
 import ru.orangesoftware.financisto.model.Account;
 import ru.orangesoftware.financisto.model.Category;
 import ru.orangesoftware.financisto.model.Transaction;
+import ru.orangesoftware.financisto.utils.CurrencyCache;
 import ru.orangesoftware.financisto.utils.Utils;
 
 /**
@@ -39,7 +40,7 @@ public class QifTransaction {
     public boolean isSplit = false;
     public List<QifTransaction> splits;
 
-    public static QifTransaction fromBlotterCursor(Cursor c, Map<Long, Category> categoriesMap) {
+    public static QifTransaction fromBlotterCursor(Cursor c, Map<Long, Category> categoriesMap, CurrencyCache currencyCache) {
         QifTransaction t = new QifTransaction();
         t.id = c.getLong(BlotterColumns._id.ordinal());
         t.date = new Date(c.getLong(BlotterColumns.datetime.ordinal()));

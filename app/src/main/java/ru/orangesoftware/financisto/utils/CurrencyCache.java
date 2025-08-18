@@ -4,58 +4,58 @@
  * are made available under the terms of the GNU Public License v2.0
  * which accompanies this distribution, and is available at
  * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * 
+ *
  * Contributors:
  *     Denis Solonenko - initial API and implementation
  ******************************************************************************/
 package ru.orangesoftware.financisto.utils;
 
-import android.database.Cursor;
-
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Collection;
+import java.util.List;
 
 import gnu.trove.map.hash.TLongObjectHashMap;
+import ru.orangesoftware.financisto.db.CurrencyDao;
 import ru.orangesoftware.financisto.model.Currency;
-import ru.orangesoftware.orb.EntityManager;
-import ru.orangesoftware.orb.Query;
 
 public class CurrencyCache {
 
-    //@ProtectedBy("this")
-	private static final TLongObjectHashMap<Currency> CURRENCIES = new TLongObjectHashMap<>();
-	
-	public static synchronized Currency getCurrency(EntityManager em, long currencyId) {
-		Currency cachedCurrency = CURRENCIES.get(currencyId);
+    private final TLongObjectHashMap<Currency> currencies = new TLongObjectHashMap<>();
+    private final CurrencyDao currencyDao;
+
+    public CurrencyCache(CurrencyDao currencyDao) {
+        this.currencyDao = currencyDao;
+        initialize();
+    }
+
+    public synchronized Currency getCurrency(long currencyId) {
+        Currency cachedCurrency = currencies.get(currencyId);
         if (cachedCurrency == null) {
-            cachedCurrency = em.get(Currency.class, currencyId);
+            cachedCurrency = currencyDao.get(currencyId);
             if (cachedCurrency == null) {
                 cachedCurrency = Currency.Companion.getEMPTY();
             }
-            CURRENCIES.put(currencyId, cachedCurrency);
+            currencies.put(currencyId, cachedCurrency);
         }
         return cachedCurrency;
-	}
-	
-	public static synchronized Currency getCurrencyOrEmpty(long currencyId) {
-		Currency c = CURRENCIES.get(currencyId);
+    }
+
+	public synchronized Currency getCurrencyOrEmpty(long currencyId) {
+		Currency c = currencies.get(currencyId);
 		return c != null ? c : Currency.Companion.getEMPTY();
 	}
 
-	public static synchronized void initialize(EntityManager em) {
-		TLongObjectHashMap<Currency> currencies = new TLongObjectHashMap<>();
-		Query<Currency> q = em.createQuery(Currency.class);
-		try (Cursor c = q.execute()) {
-			while (c.moveToNext()) {
-				Currency currency = EntityManager.loadFromCursor(c, Currency.class);
-				currencies.put(currency.getId(), currency);
-			}
-		}
-		CURRENCIES.putAll(currencies);
+	public synchronized void initialize() {
+		TLongObjectHashMap<Currency> newCurrencies = new TLongObjectHashMap<>();
+		List<Currency> currencyList = currencyDao.getAll();
+		for (Currency currency : currencyList) {
+		    newCurrencies.put(currency.getId(), currency);
+        }
+		this.currencies.putAll(newCurrencies);
 	}
-	
-	public static DecimalFormat createCurrencyFormat(Currency c) {
+
+	public DecimalFormat createCurrencyFormat(Currency c) {
 		DecimalFormatSymbols dfs = new DecimalFormatSymbols();
 		dfs.setDecimalSeparator(charOrEmpty(c.getDecimalSeparator(), dfs.getDecimalSeparator()));
 		dfs.setGroupingSeparator(charOrEmpty(c.getGroupSeparator(), dfs.getGroupingSeparator()));
@@ -74,8 +74,8 @@ public class CurrencyCache {
 		return s != null ? (s.length() > 2 ? s.charAt(1) : 0): c;
 	}
 
-	public static synchronized Collection<Currency> getAllCurrencies() {
-		return CURRENCIES.valueCollection();
+	public synchronized Collection<Currency> getAllCurrencies() {
+		return currencies.valueCollection();
 	}
 
 

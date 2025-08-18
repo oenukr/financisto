@@ -44,7 +44,7 @@ public class MonthlyViewPlanner extends AbstractPlanner {
     private final boolean isStatementPreview;
 
     public MonthlyViewPlanner(DatabaseAdapter db, Account account, boolean isStatementPreview, Date startDate, Date endDate, Date now) {
-        super(db, createMonthlyViewFilter(startDate, endDate, account), now);
+        super(db.getContext(), db, createMonthlyViewFilter(startDate, endDate, account), now);
         this.account = account;
         this.isStatementPreview = isStatementPreview;
     }
@@ -123,7 +123,8 @@ public class MonthlyViewPlanner extends AbstractPlanner {
     @Override
     protected Total[] calculateTotals(List<TransactionInfo> transactions) {
         Total[] totals = new Total[1];
-        totals[0] = new Total(account.getCurrency());
+        long currencyId = account.getCurrency() != null ? account.getCurrency() : -1;
+        totals[0] = new Total(db.getCurrency(currencyId));
         totals[0].balance = calculateTotal(transactions);
         return totals;
     }

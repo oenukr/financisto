@@ -16,14 +16,13 @@ import static ru.orangesoftware.orb.EntityManager.DEF_SORT_COL;
 import android.database.Cursor;
 
 import javax.persistence.Column;
-import javax.persistence.Entity;
 import javax.persistence.Table;
 import javax.persistence.Transient;
 
 import ru.orangesoftware.financisto.db.DatabaseHelper.SmsTemplateColumns;
 import ru.orangesoftware.financisto.db.DatabaseHelper.SmsTemplateListColumns;
 
-@Entity
+//@Entity
 @Table(name = SMS_TEMPLATES_TABLE)
 public class SmsTemplate extends MyEntity implements SortableEntity {
 

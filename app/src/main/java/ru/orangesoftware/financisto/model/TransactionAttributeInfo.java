@@ -13,14 +13,14 @@ package ru.orangesoftware.financisto.model;
 import android.content.Context;
 
 import javax.persistence.Column;
-import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
 
 import ru.orangesoftware.financisto.R;
+import ru.orangesoftware.financisto.db.DatabaseHelper;
 
-@Entity
-@Table(name = "V_TRANSACTION_ATTRIBUTES")
+//@Entity
+@Table(name = DatabaseHelper.V_TRANSACTION_ATTRIBUTES)
 public class TransactionAttributeInfo {
 
 	@Id

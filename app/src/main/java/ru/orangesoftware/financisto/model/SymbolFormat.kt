@@ -1,5 +1,7 @@
 package ru.orangesoftware.financisto.model
 
+import androidx.room.TypeConverter
+
 enum class SymbolFormat {
 
     RS {
@@ -36,4 +38,12 @@ enum class SymbolFormat {
     }
 
     abstract fun appendSymbol(sb: StringBuilder, symbol: String)
+}
+
+object SymbolFormatConverter {
+    @TypeConverter
+    fun toSymbolFormat(value: String) = enumValueOf<SymbolFormat>(value)
+
+    @TypeConverter
+    fun fromSymbolFormat(value: SymbolFormat) = value.name
 }

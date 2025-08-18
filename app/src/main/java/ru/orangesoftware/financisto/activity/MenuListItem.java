@@ -17,11 +17,13 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.documentfile.provider.DocumentFile;
+import androidx.room.Room;
 
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.backup.Backup;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
+import ru.orangesoftware.financisto.db.FinancistoDatabase;
 import ru.orangesoftware.financisto.export.BackupExportTask;
 import ru.orangesoftware.financisto.export.BackupImportTask;
 import ru.orangesoftware.financisto.export.Export;
@@ -93,7 +95,9 @@ public enum MenuListItem implements SummaryEntityEnum {
                     .setPositiveButton(R.string.restore, (dialog, which) -> {
                         if (selectedBackupFile[0] != null) {
                             ProgressDialog d = ProgressDialog.show(activity, null, activity.getString(R.string.restore_database_inprogress), true);
-                            new BackupImportTask(activity, d).execute(selectedBackupFile);
+                            FinancistoDatabase roomDb = Room.databaseBuilder(activity.getApplicationContext(),
+                                    FinancistoDatabase.class, "financisto.db").build();
+                            new BackupImportTask(activity, d, roomDb.currencyDao()).execute(selectedBackupFile[0]);
                         }
                     })
                     .setSingleChoiceItems(backupFilesNames, -1, (dialog, which) -> {

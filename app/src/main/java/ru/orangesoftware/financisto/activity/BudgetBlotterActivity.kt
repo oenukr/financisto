@@ -37,7 +37,7 @@ class BudgetBlotterActivity : BlotterActivity() {
 	}
 
 	override fun createAdapter(cursor: Cursor): ListAdapter {
-		return TransactionsListAdapter(this, db, cursor)
+		return TransactionsListAdapter(this, cursor)
 	}
 	
 	private fun getBlotterForBudget(budgetId: Long): Cursor {

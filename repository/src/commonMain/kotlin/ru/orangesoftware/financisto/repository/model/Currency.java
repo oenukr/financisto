@@ -26,7 +26,7 @@ import javax.persistence.Transient;
 
 import ru.orangesoftware.financisto.utils.CurrencyCache;
 
-@Entity
+//@Entity
 @Table(name = CURRENCY_TABLE)
 public class Currency extends MyEntity implements SortableEntity {
 

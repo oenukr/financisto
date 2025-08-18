@@ -30,6 +30,7 @@ import java.util.concurrent.TimeUnit;
 
 import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.backup.FullDatabaseImport;
+import ru.orangesoftware.financisto.db.CurrencyDao;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
 import ru.orangesoftware.financisto.export.CategoryCache;
 import ru.orangesoftware.financisto.model.Account;
@@ -55,8 +56,8 @@ public class QifImport extends FullDatabaseImport {
     private final Map<String, Long> projectToId = new HashMap<>();
     private final CategoryCache categoryCache = new CategoryCache();
 
-    public QifImport(Context context, DatabaseAdapter db, QifImportOptions options) {
-        super(context, db);
+    public QifImport(Context context, DatabaseAdapter db, CurrencyDao currencyDao, QifImportOptions options) {
+        super(context, db, currencyDao);
         this.options = options;
     }
 

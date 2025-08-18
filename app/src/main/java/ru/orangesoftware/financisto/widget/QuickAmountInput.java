@@ -25,10 +25,12 @@ import android.widget.LinearLayout.LayoutParams;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.DialogFragment;
+import androidx.room.Room;
 
 import java.math.BigDecimal;
 
 import ru.orangesoftware.financisto.R;
+import ru.orangesoftware.financisto.db.FinancistoDatabase;
 import ru.orangesoftware.financisto.model.Currency;
 import ru.orangesoftware.financisto.utils.CurrencyCache;
 
@@ -39,6 +41,7 @@ public class QuickAmountInput extends DialogFragment {
 
     private AmountPicker picker;
     private AmountListener listener;
+    private CurrencyCache currencyCache;
 
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
@@ -57,8 +60,12 @@ public class QuickAmountInput extends DialogFragment {
         LinearLayout.LayoutParams lpWrapWrap = new LinearLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
         lpWrapWrap.weight = 1;
 
+        FinancistoDatabase roomDb = Room.databaseBuilder(activity.getApplicationContext(),
+                FinancistoDatabase.class, "financisto.db").build();
+        currencyCache = new CurrencyCache(roomDb.currencyDao());
+
         // picker
-        Currency currency = CurrencyCache.getCurrencyOrEmpty(currencyId);
+        Currency currency = currencyCache.getCurrencyOrEmpty(currencyId);
         picker = new AmountPicker(activity, currency.getDecimals());
         layout.addView(picker, lpWrapWrap);
         picker.setCurrent(new BigDecimal(amount));

@@ -27,13 +27,14 @@ import android.widget.ResourceCursorAdapter;
 import android.widget.TextView;
 
 import androidx.core.content.ContextCompat;
+import androidx.room.Room;
 
 import java.util.Date;
 import java.util.HashMap;
 
 import ru.orangesoftware.financisto.R;
-import ru.orangesoftware.financisto.db.DatabaseAdapter;
 import ru.orangesoftware.financisto.db.DatabaseHelper.BlotterColumns;
+import ru.orangesoftware.financisto.db.FinancistoDatabase;
 import ru.orangesoftware.financisto.model.CategoryEntity;
 import ru.orangesoftware.financisto.model.Currency;
 import ru.orangesoftware.financisto.model.TransactionStatus;
@@ -53,7 +54,7 @@ public class BlotterListAdapter extends ResourceCursorAdapter {
     protected final Drawable icBlotterTransfer;
     protected final Drawable icBlotterSplit;
     protected final Utils u;
-    protected final DatabaseAdapter db;
+    protected final CurrencyCache currencyCache;
 
     private final int[] colors;
 
@@ -62,15 +63,15 @@ public class BlotterListAdapter extends ResourceCursorAdapter {
 
     private final boolean showRunningBalance;
 
-    public BlotterListAdapter(Context context, DatabaseAdapter db, Cursor c) {
-        this(context, db, R.layout.blotter_list_item, c, false);
+    public BlotterListAdapter(Context context, Cursor c) {
+        this(context, R.layout.blotter_list_item, c, false);
     }
 
-    public BlotterListAdapter(Context context, DatabaseAdapter db, int layoutId, Cursor c) {
-        this(context, db, layoutId, c, false);
+    public BlotterListAdapter(Context context, int layoutId, Cursor c) {
+        this(context, layoutId, c, false);
     }
 
-    public BlotterListAdapter(Context context, DatabaseAdapter db, int layoutId, Cursor c, boolean autoRequery) {
+    public BlotterListAdapter(Context context, int layoutId, Cursor c, boolean autoRequery) {
         super(context, layoutId, c, autoRequery);
         this.icBlotterIncome = ContextCompat.getDrawable(context, R.drawable.ic_action_arrow_left_bottom);
         this.icBlotterExpense = ContextCompat.getDrawable(context, R.drawable.ic_action_arrow_right_top);
@@ -79,7 +80,9 @@ public class BlotterListAdapter extends ResourceCursorAdapter {
         this.u = new Utils(context);
         this.colors = initializeColors(context);
         this.showRunningBalance = MyPreferences.isShowRunningBalance(context);
-        this.db = db;
+        FinancistoDatabase roomDb = Room.databaseBuilder(context.getApplicationContext(),
+                FinancistoDatabase.class, "financisto.db").build();
+        this.currencyCache = new CurrencyCache(roomDb.currencyDao());
     }
 
     private int[] initializeColors(Context context) {
@@ -126,17 +129,17 @@ public class BlotterListAdapter extends ResourceCursorAdapter {
             u.setTransferTitleText(noteView, fromAccountTitle, toAccountTitle);
 
             long fromCurrencyId = cursor.getLong(BlotterColumns.from_account_currency_id.ordinal());
-            Currency fromCurrency = CurrencyCache.getCurrency(db, fromCurrencyId);
+            Currency fromCurrency = currencyCache.getCurrency(fromCurrencyId);
             long toCurrencyId = cursor.getLong(BlotterColumns.to_account_currency_id.ordinal());
-            Currency toCurrency = CurrencyCache.getCurrency(db, toCurrencyId);
+            Currency toCurrency = currencyCache.getCurrency(toCurrencyId);
 
             long fromAmount = cursor.getLong(BlotterColumns.from_amount.ordinal());
             long toAmount = cursor.getLong(BlotterColumns.to_amount.ordinal());
             long fromBalance = cursor.getLong(BlotterColumns.from_account_balance.ordinal());
             long toBalance = cursor.getLong(BlotterColumns.to_account_balance.ordinal());
-            u.setTransferAmountText(v.rightCenterView, fromCurrency, fromAmount, toCurrency, toAmount);
+            u.setTransferAmountText(currencyCache, v.rightCenterView, fromCurrency, fromAmount, toCurrency, toAmount);
             if (v.rightView != null) {
-                u.setTransferBalanceText(v.rightView, fromCurrency, fromBalance, toCurrency, toBalance);
+                u.setTransferBalanceText(currencyCache, v.rightView, fromCurrency, fromBalance, toCurrency, toBalance);
             }
             v.iconView.setImageDrawable(icBlotterTransfer);
             v.iconView.setColorFilter(u.transferColor);
@@ -146,15 +149,15 @@ public class BlotterListAdapter extends ResourceCursorAdapter {
             setTransactionTitleText(cursor, noteView);
             sb.setLength(0);
             long fromCurrencyId = cursor.getLong(BlotterColumns.from_account_currency_id.ordinal());
-            Currency fromCurrency = CurrencyCache.getCurrency(db, fromCurrencyId);
+            Currency fromCurrency = currencyCache.getCurrency(fromCurrencyId);
             long amount = cursor.getLong(BlotterColumns.from_amount.ordinal());
             long originalCurrencyId = cursor.getLong(BlotterColumns.original_currency_id.ordinal());
             if (originalCurrencyId > 0) {
-                Currency originalCurrency = CurrencyCache.getCurrency(db, originalCurrencyId);
+                Currency originalCurrency = currencyCache.getCurrency(originalCurrencyId);
                 long originalAmount = cursor.getLong(BlotterColumns.original_from_amount.ordinal());
-                u.setAmountText(sb, v.rightCenterView, originalCurrency, originalAmount, fromCurrency, amount, true);
+                u.setAmountText(currencyCache, sb, v.rightCenterView, originalCurrency, originalAmount, fromCurrency, amount, true);
             } else {
-                u.setAmountText(sb, v.rightCenterView, fromCurrency, amount, true);
+                u.setAmountText(currencyCache, sb, v.rightCenterView, fromCurrency, amount, true);
             }
             long categoryId = cursor.getLong(BlotterColumns.category_id.ordinal());
             if (isSplit(categoryId)) {
@@ -180,7 +183,7 @@ public class BlotterListAdapter extends ResourceCursorAdapter {
             }
             if (v.rightView != null) {
                 long balance = cursor.getLong(BlotterColumns.from_account_balance.ordinal());
-                v.rightView.setText(Utils.amountToString(fromCurrency, balance, false));
+                v.rightView.setText(Utils.amountToString(currencyCache, fromCurrency, balance, false));
             }
         }
         setIndicatorColor(v, cursor);

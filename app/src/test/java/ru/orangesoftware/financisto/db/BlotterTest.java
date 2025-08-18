@@ -17,10 +17,12 @@ import ru.orangesoftware.financisto.model.Transaction;
 import ru.orangesoftware.financisto.test.AccountBuilder;
 import ru.orangesoftware.financisto.test.DateTime;
 import ru.orangesoftware.financisto.test.TransactionBuilder;
+import ru.orangesoftware.financisto.utils.CurrencyCache;
 
 public class BlotterTest extends AbstractDbTest {
 
     Account a1;
+    CurrencyCache currencyCache;
 
     DateTime dt = DateTime.fromTimestamp(System.currentTimeMillis());
 
@@ -28,6 +30,7 @@ public class BlotterTest extends AbstractDbTest {
     public void setUp() throws Exception {
         super.setUp();
         a1 = AccountBuilder.createDefault(db);
+        currencyCache = new CurrencyCache(db.currencyDao());
     }
 
     @Test
@@ -66,7 +69,7 @@ public class BlotterTest extends AbstractDbTest {
         try (Cursor c = db.getBlotter(filter)) {
             List<Transaction> list = new ArrayList<>();
             while (c.moveToNext()) {
-                list.add(Transaction.fromBlotterCursor(c));
+                list.add(Transaction.fromBlotterCursor(c, currencyCache));
             }
             return list;
         }

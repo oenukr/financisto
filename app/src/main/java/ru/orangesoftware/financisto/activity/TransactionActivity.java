@@ -22,6 +22,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.room.Room;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -39,6 +40,7 @@ import greendroid.widget.QuickActionGrid;
 import greendroid.widget.QuickActionWidget;
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.app.DependenciesHolder;
+import ru.orangesoftware.financisto.db.FinancistoDatabase;
 import ru.orangesoftware.financisto.model.Account;
 import ru.orangesoftware.financisto.model.Category;
 import ru.orangesoftware.financisto.model.Currency;
@@ -78,6 +80,7 @@ public class TransactionActivity extends AbstractTransactionActivity {
 
     private QuickActionWidget unsplitActionGrid;
     private long selectedOriginCurrencyId = -1;
+    private CurrencyCache currencyCache;
 
     public TransactionActivity() {
     }
@@ -89,6 +92,10 @@ public class TransactionActivity extends AbstractTransactionActivity {
     @Override
     protected void internalOnCreate() {
         u = new Utils(this);
+        FinancistoDatabase roomDb = Room.databaseBuilder(getApplicationContext(),
+                FinancistoDatabase.class, "financisto.db").build();
+        currencyCache = new CurrencyCache(roomDb.currencyDao());
+
         Intent intent = getIntent();
         if (intent != null) {
             if (intent.hasExtra(CURRENT_BALANCE_EXTRA)) {
@@ -463,7 +470,7 @@ public class TransactionActivity extends AbstractTransactionActivity {
             selectAccountCurrency();
         } else {
             long toAmount = rateView.getToAmount();
-            Currency currency = CurrencyCache.getCurrency(db, selectedId);
+            Currency currency = currencyCache.getCurrency(selectedId);
             rateView.selectCurrencyFrom(currency);
             if (selectedAccount != null) {
                 if (selectedId == selectedAccount.getCurrency().getId()) {
@@ -634,7 +641,7 @@ public class TransactionActivity extends AbstractTransactionActivity {
 
     private Currency getCurrency() {
         if (selectedOriginCurrencyId > 0) {
-            return CurrencyCache.getCurrency(db, selectedOriginCurrencyId);
+            return currencyCache.getCurrency(selectedOriginCurrencyId);
         }
         if (selectedAccount != null) {
             return selectedAccount.getCurrency();

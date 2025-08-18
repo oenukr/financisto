@@ -280,7 +280,7 @@ public class AccountActivity extends AbstractActivity {
                 break;
             case R.id.currency:
                 activityLayout.select(this, R.id.currency, R.string.currency, currencyCursor, currencyAdapter,
-                        "_id", account.getCurrency() != null ? account.getCurrency().getId() : -1);
+                        "_id", account.getCurrency() != null ? account.getCurrency() : -1);
                 break;
             case R.id.currency_add:
                 addNewCurrency();

@@ -460,9 +460,9 @@ public class BlotterActivity extends AbstractListActivity {
     @Override
     protected ListAdapter createAdapter(Cursor cursor) {
         if (isAccountBlotter) {
-            return new TransactionsListAdapter(this, db, cursor);
+            return new TransactionsListAdapter(this, cursor);
         } else {
-            return new BlotterListAdapter(this, db, cursor);
+            return new BlotterListAdapter(this, cursor);
         }
     }
 

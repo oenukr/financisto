@@ -2,6 +2,7 @@ package ru.orangesoftware.financisto.backup
 
 import android.content.Context
 import androidx.sqlite.db.SupportSQLiteDatabase
+import ru.orangesoftware.financisto.db.CurrencyDao
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.service.RecurrenceScheduler
 import ru.orangesoftware.financisto.utils.CurrencyCache
@@ -11,8 +12,10 @@ import java.io.IOException
 abstract class FullDatabaseImport(
     protected val context: Context,
     protected val dbAdapter: DatabaseAdapter,
+    protected val currencyDao: CurrencyDao
 ) {
     protected val db: SupportSQLiteDatabase = dbAdapter.db()
+    protected val currencyCache: CurrencyCache = CurrencyCache(currencyDao)
 
     @Throws(IOException::class)
     fun importDatabase() {
@@ -25,7 +28,7 @@ abstract class FullDatabaseImport(
             db.endTransaction()
         }
         IntegrityFix(dbAdapter).fix()
-        CurrencyCache.initialize(dbAdapter)
+        currencyCache.initialize()
         scheduleAll()
     }
 

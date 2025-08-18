@@ -5,19 +5,16 @@ import android.database.Cursor
 import android.graphics.Color
 import android.text.format.DateUtils
 import ru.orangesoftware.financisto.R
-import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.db.DatabaseHelper.BlotterColumns
 import ru.orangesoftware.financisto.model.Currency
-import ru.orangesoftware.financisto.utils.CurrencyCache
 import ru.orangesoftware.financisto.utils.StringUtils.capitalize
 import ru.orangesoftware.financisto.utils.TransactionTitleUtils.generateTransactionTitle
 import ru.orangesoftware.financisto.utils.Utils
 
 class TransactionsListAdapter(
     context: Context,
-    db: DatabaseAdapter,
     c: Cursor?,
-) : BlotterListAdapter(context, db, c) {
+) : BlotterListAdapter(context, c) {
 
     override fun bindView(v: BlotterViewHolder?, context: Context?, cursor: Cursor?) {
         val payee: String = cursor?.getString(BlotterColumns.payee.ordinal).orEmpty()
@@ -56,14 +53,14 @@ class TransactionsListAdapter(
         bindTransactionTitle(v, payee, note, location, categoryId, category)
 
         val currencyId: Long = cursor?.getLong(BlotterColumns.from_account_currency_id.ordinal) ?: -1
-        val c: Currency = CurrencyCache.getCurrency(db, currencyId)
+        val c: Currency = currencyCache.getCurrency(currencyId)
         val originalCurrencyId: Long = cursor?.getLong(BlotterColumns.original_currency_id.ordinal) ?: 0
         if (originalCurrencyId > 0) {
-            val originalCurrency: Currency = CurrencyCache.getCurrency(db, originalCurrencyId)
+            val originalCurrency: Currency = currencyCache.getCurrency(originalCurrencyId)
             val originalAmount: Long = cursor?.getLong(BlotterColumns.original_from_amount.ordinal) ?: 0
-            u.setAmountText(sb, v?.rightCenterView, originalCurrency, originalAmount, c, fromAmount, true)
+            u.setAmountText(currencyCache, sb, v?.rightCenterView, originalCurrency, originalAmount, c, fromAmount, true)
         } else {
-            u.setAmountText(v?.rightCenterView, c, fromAmount, true)
+            u.setAmountText(currencyCache, v?.rightCenterView, c, fromAmount, true)
         }
         if (fromAmount > 0) {
             v?.iconView?.setImageDrawable(icBlotterIncome)
@@ -86,7 +83,7 @@ class TransactionsListAdapter(
         }
 
         val balance: Long = cursor?.getLong(BlotterColumns.from_account_balance.ordinal) ?: 0
-        v?.rightView?.text = Utils.amountToString(c, balance, false)
+        v?.rightView?.text = Utils.amountToString(currencyCache, c, balance, false)
         removeRightViewIfNeeded(v)
         setIndicatorColor(v, cursor)
     }

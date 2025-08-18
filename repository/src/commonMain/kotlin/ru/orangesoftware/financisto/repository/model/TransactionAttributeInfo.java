@@ -19,7 +19,7 @@ import javax.persistence.Table;
 
 import ru.orangesoftware.financisto.R;
 
-@Entity
+//@Entity
 @Table(name = "V_TRANSACTION_ATTRIBUTES")
 public class TransactionAttributeInfo {
 

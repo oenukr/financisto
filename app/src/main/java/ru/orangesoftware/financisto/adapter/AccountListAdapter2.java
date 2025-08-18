@@ -11,16 +11,17 @@
 package ru.orangesoftware.financisto.adapter;
 
 import android.content.Context;
-import android.database.Cursor;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
-import android.widget.ResourceCursorAdapter;
 import android.widget.TextView;
 
 import java.text.DateFormat;
 import java.util.Date;
+import java.util.List;
 
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.datetime.DateUtils;
@@ -30,50 +31,55 @@ import ru.orangesoftware.financisto.model.CardIssuer;
 import ru.orangesoftware.financisto.model.ElectronicPaymentType;
 import ru.orangesoftware.financisto.utils.MyPreferences;
 import ru.orangesoftware.financisto.utils.Utils;
-import ru.orangesoftware.orb.EntityManager;
 
-public class AccountListAdapter2 extends ResourceCursorAdapter {
+public class AccountListAdapter2 extends ArrayAdapter<Account> {
 
     private final Utils u;
     private final DateFormat df;
     private final boolean isShowAccountLastTransactionDate;
+    private final int resource;
 
-    public AccountListAdapter2(Context context, Cursor c) {
-        super(context, R.layout.account_list_item, c);
+    public AccountListAdapter2(Context context, int resource, List<Account> items) {
+        super(context, resource, items);
         this.u = new Utils(context);
         this.df = DateUtils.getShortDateFormat(context);
         this.isShowAccountLastTransactionDate = MyPreferences.isShowAccountLastTransactionDate(context);
+        this.resource = resource;
     }
 
     @Override
-    public View newView(Context context, Cursor cursor, ViewGroup parent) {
-        View view = super.newView(context, cursor, parent);
-        return AccountListItemHolder.create(view);
-    }
+    public View getView(int position, View convertView, ViewGroup parent) {
+        View view;
+        AccountListItemHolder holder;
+        if (convertView == null) {
+            view = LayoutInflater.from(getContext()).inflate(resource, parent, false);
+            holder = AccountListItemHolder.create(view);
+            view.setTag(holder);
+        } else {
+            view = convertView;
+            holder = (AccountListItemHolder) view.getTag();
+        }
 
-    @Override
-    public void bindView(View view, Context context, Cursor cursor) {
-        Account a = EntityManager.loadFromCursor(cursor, Account.class);
-        AccountListItemHolder v = (AccountListItemHolder) view.getTag();
+        Account a = getItem(position);
 
-        v.centerView.setText(a.getTitle());
+        holder.centerView.setText(a.getTitle());
 
         AccountType type = AccountType.valueOf(a.getType());
         if (type.isCard() && a.getCardIssuer() != null) {
             CardIssuer cardIssuer = CardIssuer.valueOf(a.getCardIssuer());
-            v.iconView.setImageResource(cardIssuer.getIconId());
+            holder.iconView.setImageResource(cardIssuer.getIconId());
         } else if (type.isElectronic() && a.getCardIssuer() != null) {
             ElectronicPaymentType paymentType = ElectronicPaymentType.valueOf(a.getCardIssuer());
-            v.iconView.setImageResource(paymentType.getIconId());
+            holder.iconView.setImageResource(paymentType.getIconId());
         } else {
-            v.iconView.setImageResource(type.getIconId());
+            holder.iconView.setImageResource(type.getIconId());
         }
         if (a.isActive()) {
-            v.iconView.getDrawable().mutate().setAlpha(0xFF);
-            v.iconOverView.setVisibility(View.INVISIBLE);
+            holder.iconView.getDrawable().mutate().setAlpha(0xFF);
+            holder.iconOverView.setVisibility(View.INVISIBLE);
         } else {
-            v.iconView.getDrawable().mutate().setAlpha(0x77);
-            v.iconOverView.setVisibility(View.VISIBLE);
+            holder.iconView.getDrawable().mutate().setAlpha(0x77);
+            holder.iconOverView.setVisibility(View.VISIBLE);
         }
 
         StringBuilder sb = new StringBuilder();
@@ -84,32 +90,33 @@ public class AccountListAdapter2 extends ResourceCursorAdapter {
             sb.append(" #").append(a.getNumber());
         }
         if (sb.length() == 0) {
-            sb.append(context.getString(type.getTitleId()));
+            sb.append(getContext().getString(type.getTitleId()));
         }
-        v.topView.setText(sb.toString());
+        holder.topView.setText(sb.toString());
 
         long date = a.getCreationDate();
         if (isShowAccountLastTransactionDate && a.getLastTransactionDate() > 0) {
             date = a.getLastTransactionDate();
         }
-        v.bottomView.setText(df.format(new Date(date)));
+        holder.bottomView.setText(df.format(new Date(date)));
 
         long amount = a.getTotalAmount();
         if (type == AccountType.CREDIT_CARD && a.getLimitAmount() != 0) {
             long limitAmount = Math.abs(a.getLimitAmount());
             long balance = limitAmount + amount;
             long balancePercentage = 10000 * balance / limitAmount;
-            u.setAmountText(v.rightView, a.getCurrency(), amount, false);
-            u.setAmountText(v.rightCenterView, a.getCurrency(), balance, false);
-            v.rightView.setVisibility(View.VISIBLE);
-            v.progressBar.setMax(10000);
-            v.progressBar.setProgress((int) balancePercentage);
-            v.progressBar.setVisibility(View.VISIBLE);
+            u.setAmountText(holder.rightView, a.getCurrency(), amount, false);
+            u.setAmountText(holder.rightCenterView, a.getCurrency(), balance, false);
+            holder.rightView.setVisibility(View.VISIBLE);
+            holder.progressBar.setMax(10000);
+            holder.progressBar.setProgress((int) balancePercentage);
+            holder.progressBar.setVisibility(View.VISIBLE);
         } else {
-            u.setAmountText(v.rightCenterView, a.getCurrency(), amount, false);
-            v.rightView.setVisibility(View.GONE);
-            v.progressBar.setVisibility(View.GONE);
+            u.setAmountText(holder.rightCenterView, a.getCurrency(), amount, false);
+            holder.rightView.setVisibility(View.GONE);
+            holder.progressBar.setVisibility(View.GONE);
         }
+        return view;
     }
 
     private static class AccountListItemHolder {
@@ -122,7 +129,7 @@ public class AccountListAdapter2 extends ResourceCursorAdapter {
         TextView rightView;
         ProgressBar progressBar;
 
-        public static View create(View view) {
+        public static AccountListItemHolder create(View view) {
             AccountListItemHolder v = new AccountListItemHolder();
             v.iconView = view.findViewById(R.id.icon);
             v.iconOverView = view.findViewById(R.id.active_icon);
@@ -134,11 +141,8 @@ public class AccountListAdapter2 extends ResourceCursorAdapter {
             v.rightView.setVisibility(View.GONE);
             v.progressBar = view.findViewById(R.id.progress);
             v.progressBar.setVisibility(View.GONE);
-            view.setTag(v);
-            return view;
+            return v;
         }
 
     }
-
-
 }

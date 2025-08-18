@@ -29,8 +29,9 @@ import javax.persistence.Transient;
 
 import ru.orangesoftware.financisto.repository.local.DatabaseHelper.BlotterColumns;
 import ru.orangesoftware.financisto.repository.local.DatabaseHelper.TransactionColumns;
+import ru.orangesoftware.financisto.utils.CurrencyCache;
 
-@Entity
+//@Entity
 @Table(name = "transactions")
 public class Transaction extends TransactionBase {
 
@@ -111,7 +112,7 @@ public class Transaction extends TransactionBase {
         return (Transaction) intent.getSerializableExtra(SPLIT_BLOB);
     }
 
-    public static Transaction fromBlotterCursor(Cursor c) {
+    public static Transaction fromBlotterCursor(Cursor c, CurrencyCache currencyCache) {
         long id = c.getLong(BlotterColumns._id.ordinal());
         Transaction t = new Transaction();
         t.id = id;

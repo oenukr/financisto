@@ -12,6 +12,8 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.widget.Toast;
 
+import androidx.room.Room;
+
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -21,6 +23,7 @@ import java.util.List;
 
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.app.DependenciesHolder;
+import ru.orangesoftware.financisto.db.FinancistoDatabase;
 import ru.orangesoftware.financisto.db.MyEntityManager;
 import ru.orangesoftware.financisto.export.csv.Csv;
 import ru.orangesoftware.financisto.model.Currency;
@@ -44,6 +47,7 @@ public class CurrencySelector {
     private final MyEntityManager em;
     private final List<List<String>> currencies;
     private final OnCurrencyCreatedListener listener;
+    private final CurrencyCache currencyCache;
 
     private int selectedCurrency = 0;
 
@@ -52,6 +56,9 @@ public class CurrencySelector {
         this.em = em;
         this.listener = listener;
         this.currencies = readCurrenciesFromAsset();
+        FinancistoDatabase roomDb = Room.databaseBuilder(context.getApplicationContext(),
+                FinancistoDatabase.class, "financisto.db").build();
+        this.currencyCache = new CurrencyCache(roomDb.currencyDao());
     }
 
     public void show() {
@@ -86,7 +93,7 @@ public class CurrencySelector {
         currency.setGroupSeparator(decodeSeparator(list.get(5)));
         currency.setDefault(isTheFirstCurrencyAdded());
         em.saveOrUpdate(currency);
-        CurrencyCache.initialize(em);
+        currencyCache.initialize();
         listener.onCreated(currency.getId());
     }
 
