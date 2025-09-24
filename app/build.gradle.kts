@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "ru.orangesoftware.financisto"
 
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "ru.orangesoftware.financisto"
@@ -27,7 +27,7 @@ android {
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
-            proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 
@@ -171,9 +171,9 @@ dependencies {
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
 
     testImplementation("junit:junit:4.13.2")
-    testImplementation("androidx.test:core:1.6.1")
+    testImplementation("androidx.test:core:1.7.0")
     testImplementation("org.robolectric:robolectric:4.11.1") // can't be used because of the current target sdk
-    testImplementation("org.hamcrest:hamcrest:2.2")
+    testImplementation("org.hamcrest:hamcrest:3.0")
 }
 
 kover {
