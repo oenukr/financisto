@@ -83,6 +83,7 @@ dependencies {
 
     // Material Design 3
     implementation(compose.material3)
+    implementation(compose.extended.icons)
 
     // Android Studio Preview support
     implementation(compose.ui.tooling.preview)
