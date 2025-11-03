@@ -107,7 +107,7 @@ public class ExchangeRatesListActivity extends AbstractListActivity {
     }
 
     private SpinnerAdapter createCurrencyAdapter(List<Currency> currencies) {
-        ArrayAdapter<Currency> a = new ArrayAdapter<Currency>(this, android.R.layout.simple_spinner_item, currencies) {
+        ArrayAdapter<Currency> a = new ArrayAdapter<Currency>(this, R.layout.themed_spinner_item, currencies) {
             @Override
             public long getItemId(int position) {
                 return getItem(position).id;
@@ -298,6 +298,8 @@ public class ExchangeRatesListActivity extends AbstractListActivity {
                     .setNeutralButton(R.string.ok, null)
                     .create().show();
         }
+
+
 
         private ExchangeRateProvider getProvider() {
             return MyPreferences.createExchangeRatesProvider(context);

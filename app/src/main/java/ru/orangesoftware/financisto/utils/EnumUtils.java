@@ -15,6 +15,7 @@ import android.content.Context;
 import android.widget.ArrayAdapter;
 import android.widget.ListAdapter;
 
+import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.adapter.EntityEnumAdapter;
 
 public abstract class EnumUtils {
@@ -40,7 +41,7 @@ public abstract class EnumUtils {
 
 	public static ArrayAdapter<String> createSpinnerAdapter(Context context, LocalizableEnum[] values) {
 		String[] items = getLocalizedValues(context, values);
-		ArrayAdapter<String> adapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_item, items);
+		ArrayAdapter<String> adapter = new ArrayAdapter<>(context, R.layout.themed_spinner_item, items);
 		adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 		return adapter;
 	}
