@@ -202,12 +202,12 @@
         <item name="android:textColor">@color/colorPrimary</item>
     </style>
 
-    <style name="SpinnerItem.Selected" parent="android:Widget.TextView.SpinnerItem">
-        <item name="android:textColor">@color/colorPrimary</item>
+    <style name="SpinnerItem.Selected" parent="SpinnerItem">
+        <!-- This style is for dropdown items and inherits from SpinnerItem -->
     </style>
 
     <style name="Spinner" parent="android:Widget.Spinner">
-        <item name="android:textColor">@color/colorPrimary</item>
+        <!-- This style is applied to Spinners in layouts. Item appearance is controlled by theme attributes. -->
     </style>
 
 </resources>
