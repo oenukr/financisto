@@ -38,7 +38,7 @@ class CsvImportActivity : AbstractImportActivity(R.layout.csv_import) {
         accounts = db.getAllAccountsList()
         val accountsAdapter: ArrayAdapter<Account> = MyEntityAdapter(
             this,
-            android.R.layout.simple_spinner_item,
+            R.layout.themed_spinner_item,
             android.R.id.text1,
             accounts,
         )

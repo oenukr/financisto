@@ -42,7 +42,7 @@ public class QifImportActivity extends AbstractImportActivity implements Activit
         Spinner currencySpinner = findViewById(R.id.spinnerCurrency);
         Cursor currencyCursor = db.getAllCurrencies("name");
         startManagingCursor(currencyCursor);
-        SimpleCursorAdapter currencyAdapter = new SimpleCursorAdapter(this, android.R.layout.simple_spinner_item, currencyCursor,
+        SimpleCursorAdapter currencyAdapter = new SimpleCursorAdapter(this, R.layout.themed_spinner_item, currencyCursor,
                 new String[]{"e_name"}, new int[]{android.R.id.text1});
         currencyAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         currencySpinner.setAdapter(currencyAdapter);

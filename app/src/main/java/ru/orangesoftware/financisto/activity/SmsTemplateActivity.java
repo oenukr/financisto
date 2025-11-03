@@ -160,7 +160,7 @@ public class SmsTemplateActivity extends AbstractActivity {
         accounts.add(emptyItem);
         accounts.addAll(db.getAllAccountsList());
 
-        ArrayAdapter<Account> accountsAdapter = new MyEntityAdapter<>(this, android.R.layout.simple_spinner_item, android.R.id.text1, accounts);
+        ArrayAdapter<Account> accountsAdapter = new MyEntityAdapter<>(this, R.layout.themed_spinner_item, android.R.id.text1, accounts);
         accountsAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         accountSpinner = findViewById(R.id.spinnerAccount);
         accountSpinner.setAdapter(accountsAdapter);
