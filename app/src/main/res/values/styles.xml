@@ -10,7 +10,10 @@
 -->
 <resources>
 
-    <style name="AppTheme" parent="Theme.AppCompat.DayNight" />
+    <style name="AppTheme" parent="Theme.AppCompat.DayNight">
+        <item name="android:spinnerItemStyle">@style/SpinnerItem</item>
+        <item name="spinnerDropDownItemStyle">@style/SpinnerItem.Selected</item>
+    </style>
 
     <style name="CupcakeDialog" parent="Theme.AppCompat.DayNight.Dialog">
         <item name="android:windowAnimationStyle">@null</item>
@@ -193,6 +196,18 @@
         <item name="android:minHeight">@dimen/pin_button_height</item>
         <item name="android:minWidth">@dimen/pin_button_width</item>
         <item name="android:textSize">30sp</item>
+    </style>
+
+    <style name="SpinnerItem" parent="android:Widget.TextView.SpinnerItem">
+        <item name="android:textColor">@color/colorPrimary</item>
+    </style>
+
+    <style name="SpinnerItem.Selected" parent="SpinnerItem">
+        <!-- This style is for dropdown items and inherits from SpinnerItem -->
+    </style>
+
+    <style name="Spinner" parent="android:Widget.Spinner">
+        <!-- This style is applied to Spinners in layouts. Item appearance is controlled by theme attributes. -->
     </style>
 
 </resources>

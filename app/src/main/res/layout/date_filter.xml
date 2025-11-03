@@ -11,21 +11,25 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
+    xmlns:tools="http://schemas.android.com/tools"
     android:minWidth="300dp"
     android:orientation="vertical">
 
     <Spinner
         android:id="@+id/period"
+        style="@style/Spinner"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:layout_marginLeft="3dp"
         android:layout_marginRight="3dp"
+        tools:listitem="@layout/themed_spinner_item"
         android:prompt="@string/period" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
+        android:textColor="@color/colorPrimary"
         android:text="@string/period_from" />
 
     <Button
@@ -40,6 +44,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
+        android:textColor="@color/colorPrimary"
         android:text="@string/period_to" />
 
     <Button
