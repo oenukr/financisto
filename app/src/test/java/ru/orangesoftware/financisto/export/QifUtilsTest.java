@@ -44,7 +44,7 @@ public class QifUtilsTest {
     public void should_parse_money() {
         assertEquals(100, parseMoney("1.0"));
         assertEquals(-100, parseMoney("-1."));
-//        assertEquals(10100, parseMoney("1,01")); // todo.mb: if this test worked ever? 
+        assertEquals(101, parseMoney("1,01"));
         assertEquals(100250, parseMoney("1,002.5"));
         assertEquals(100250, parseMoney("1.002,5"));
     }
