@@ -12,12 +12,15 @@ import static ru.orangesoftware.financisto.export.qif.QifDateFormat.EU_FORMAT;
 import static ru.orangesoftware.financisto.export.qif.QifDateFormat.US_FORMAT;
 import static ru.orangesoftware.financisto.utils.Utils.isNotEmpty;
 
+import androidx.annotation.Nullable;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Locale;
 import java.util.regex.Pattern;
 
 import ru.orangesoftware.financisto.app.DependenciesHolder;
@@ -101,12 +104,13 @@ public class QifUtils {
     /**
      * Adopted from https://jgnash.svn.sourceforge.net/viewvc/jgnash/jgnash2/trunk/src/jgnash/imports/qif/QifUtils.java
      */
-    public static long parseMoney(String money) {
+    public static long parseMoney(@Nullable String money, @Nullable Locale locale) {
+        Locale sLocale = locale != null ? locale : Locale.getDefault();
         String sMoney = money;
 
         if (sMoney != null) {
             BigDecimal bdMoney;
-            sMoney = sMoney.trim(); // to be safe
+            sMoney = sMoney.trim();
             try {
                 bdMoney = new BigDecimal(sMoney);
                 return moneyAsLong(bdMoney);
@@ -121,24 +125,24 @@ public class QifUtils {
                     if (sMoney.startsWith("-")) {
                         buf.append('-');
                     }
-                    for (int i = 0; i < split.length - 1; i++) {
-                        buf.append(split[i]);
+                    for (int i = 0; i < split.length - 1; i++) {  // Loops through all parts except the last one (likely the decimal part)
+                        buf.append(split[i]);  // Appends the integer part(s) without any separators
                     }
-                    buf.append('.');
-                    buf.append(split[split.length - 1]);
+                    buf.append('.');  // Explicitly adds a decimal point (assuming the last part was the fractional part)
+                    buf.append(split[split.length - 1]);  // Appends the last part (likely just digits)
                     try {
                         bdMoney = new BigDecimal(buf.toString());
                         return moneyAsLong(bdMoney);
-                    } catch (final NumberFormatException e2) {
+                    } catch (final NumberFormatException e2) {  // If the second attempt fails (e.g., malformed decimal)
                         logger.e("Second parse attempt failed, falling back to rounding");
                     }
                 }
-                NumberFormat formatter = NumberFormat.getNumberInstance();
+                NumberFormat formatter = NumberFormat.getNumberInstance(sLocale);
                 try {
                     Number num = formatter.parse(sMoney);
-                    BigDecimal bd = BigDecimal.valueOf(num.floatValue());
-                    if (bd.scale() > 6) {
-                        bd = bd.setScale(2, RoundingMode.HALF_UP);
+                    BigDecimal bd = new BigDecimal(num.toString());
+                    if (bd.scale() > 6) {  // Checks if the number has more than 6 decimal places (e.g., 1234.567890 → true)
+                        bd = bd.setScale(2, RoundingMode.HALF_UP);  // Rounds the number to 2 decimal places using HALF_UP rounding mode
                     }
                     return moneyAsLong(bd);
                 } catch (ParseException ignored) {
