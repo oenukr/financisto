@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import ru.orangesoftware.financisto.model.Account;
@@ -131,7 +132,7 @@ public class QifTransaction {
             if (line.startsWith("D")) {
                 this.date = parseDate(trimFirstChar(line), dateFormat);
             } else if (line.startsWith("T")) {
-                this.amount = parseMoney(trimFirstChar(line));
+                this.amount = parseMoney(trimFirstChar(line), Locale.getDefault());
             } else if (line.startsWith("P")) {
                 this.payee = trimFirstChar(line);
             } else if (line.startsWith("M")) {
@@ -144,7 +145,7 @@ public class QifTransaction {
                 parseCategory(split, line);
             } else if (line.startsWith("$")) {
                 if (split != null) {
-                    split.amount = parseMoney(trimFirstChar(line));
+                    split.amount = parseMoney(trimFirstChar(line), Locale.getDefault());
                 }
             } else if (line.startsWith("E")) {
                 if (split != null) {
