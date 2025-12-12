@@ -19,6 +19,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 
+import java.util.Locale;
+
 import ru.orangesoftware.financisto.test.DateTime;
 
 @RunWith(RobolectricTestRunner.class)
@@ -42,11 +44,11 @@ public class QifUtilsTest {
 
     @Test
     public void should_parse_money() {
-        assertEquals(100, parseMoney("1.0"));
-        assertEquals(-100, parseMoney("-1."));
-        assertEquals(101, parseMoney("1,01"));
-        assertEquals(100250, parseMoney("1,002.5"));
-        assertEquals(100250, parseMoney("1.002,5"));
+        assertEquals(100, parseMoney("1.0", Locale.US));
+        assertEquals(-100, parseMoney("-1.", Locale.US));
+        assertEquals(101, parseMoney("1,01", Locale.GERMANY));
+        assertEquals(100250, parseMoney("1,002.5", Locale.US));
+        assertEquals(100250, parseMoney("1.002,5", Locale.GERMANY));
     }
 
 }
