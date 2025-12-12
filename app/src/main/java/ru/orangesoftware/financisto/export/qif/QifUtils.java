@@ -140,7 +140,7 @@ public class QifUtils {
                 NumberFormat formatter = NumberFormat.getNumberInstance(sLocale);
                 try {
                     Number num = formatter.parse(sMoney);
-                    BigDecimal bd = BigDecimal.valueOf(num.doubleValue());
+                    BigDecimal bd = new BigDecimal(num.toString());
                     if (bd.scale() > 6) {  // Checks if the number has more than 6 decimal places (e.g., 1234.567890 → true)
                         bd = bd.setScale(2, RoundingMode.HALF_UP);  // Rounds the number to 2 decimal places using HALF_UP rounding mode
                     }
