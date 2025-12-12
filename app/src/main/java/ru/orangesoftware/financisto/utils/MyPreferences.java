@@ -9,7 +9,6 @@ import android.preference.PreferenceManager;
 
 import androidx.annotation.Nullable;
 
-import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Locale;
 
@@ -97,18 +96,6 @@ public class MyPreferences {
         StartupScreen(String tag) {
             this.tag = tag;
         }
-    }
-
-    private static Method hasSystemFeatureMethod;
-
-    static {
-        // hack for 1.5/1.6 devices
-        try {
-            hasSystemFeatureMethod = PackageManager.class.getMethod("hasSystemFeature", String.class);
-        } catch (NoSuchMethodException ex) {
-            hasSystemFeatureMethod = null;
-        }
-
     }
 
     public static boolean isPinProtected(Context context) {
@@ -507,17 +494,7 @@ public class MyPreferences {
     }
 
     private static boolean isFeatureSupported(Context context, String feature) {
-        if (hasSystemFeatureMethod != null) {
-            PackageManager pm = context.getPackageManager();
-            try {
-                return (Boolean) hasSystemFeatureMethod.invoke(pm, feature);
-            } catch (Exception e) {
-                logger.w(e, "Some problems executing PackageManager.hasSystemFeature(" + feature + ")");
-                return false;
-            }
-        }
-        logger.i("It's an old device - no PackageManager.hasSystemFeature");
-        return true;
+        return context.getPackageManager().hasSystemFeature(feature);
     }
 
     public static boolean shouldRebuildRunningBalance(Context context) {
