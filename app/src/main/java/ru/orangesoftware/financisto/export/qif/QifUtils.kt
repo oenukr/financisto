@@ -25,7 +25,7 @@ private fun parseDecimal(moneyStr: String): Result<BigDecimal> =
         .recoverCatching {
             // Handle cases with currency symbols or grouping separators
             val split = MONEY_PREFIX_PATTERN.split(moneyStr)
-            if (split.size > 1) {
+            if (split.size > 2) {
                 val numberPart = StringBuilder()
                 if (moneyStr.startsWith("-")) {
                     numberPart.append('-')
