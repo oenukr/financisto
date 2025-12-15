@@ -69,8 +69,7 @@ private fun moneyAsLong(bd: BigDecimal) = bd
 
 object QifUtils {
     @JvmStatic
-    fun trimFirstChar(s: String): String =
-        if (s.length > 1) s.substring(1) else ""
+    fun trimFirstChar(s: String): String = s.drop(1)
 
     /**
      * Adopted from https://jgnash.svn.sourceforge.net/viewvc/jgnash/jgnash2/trunk/src/jgnash/imports/qif/QifUtils.java
@@ -109,10 +108,6 @@ object QifUtils {
         // Years from 00 to 39 are interpreted as 2000-2039.
         val formatter = DateTimeFormatterBuilder()
             .appendPattern(pattern)
-            .parseDefaulting(
-                ChronoField.YEAR_OF_ERA,
-                Year.now().value.toLong(),
-            ) // Default year if not present
             .toFormatter()
 
         val date = runCatching {
