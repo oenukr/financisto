@@ -19,6 +19,54 @@ private val DATE_DELIMITER_PATTERN = "/|'|\\.|-".toRegex()
 private val MONEY_PREFIX_PATTERN = "\\D".toRegex()
 private val HUNDRED = BigDecimal(100)
 
+
+private fun parseDecimal(moneyStr: String): Result<BigDecimal> =
+    runCatching { BigDecimal(moneyStr) }
+        .recoverCatching {
+            // Handle cases with currency symbols or grouping separators
+            val split = MONEY_PREFIX_PATTERN.split(moneyStr)
+            if (split.size > 1) {
+                val numberPart = StringBuilder()
+                if (moneyStr.startsWith("-")) {
+                    numberPart.append('-')
+                }
+                // Re-assemble the number, assuming the last part is the fraction
+                for (i in 0 until split.lastIndex) {
+                    numberPart.append(split[i])
+                }
+                numberPart.append('.').append(split.last())
+                BigDecimal(numberPart.toString())
+            } else {
+                // If splitting doesn't help, rethrow to trigger the next fallback
+                throw it
+            }
+        }
+
+private fun parseWithNumberFormat(moneyStr: String, locale: Locale): BigDecimal =
+    runCatching {
+        val formatter = NumberFormat.getNumberInstance(locale)
+        if (formatter is java.text.DecimalFormat) {
+            formatter.isParseBigDecimal = true
+        }
+        var bd = when (val parsedNumber = formatter.parse(moneyStr)) {
+            is BigDecimal -> parsedNumber
+            null -> BigDecimal.ZERO
+            else -> BigDecimal(parsedNumber.toString()) // Fallback for other Number types
+        }
+        // Limit scale to avoid overly long fractional parts from parsing.
+        if (bd.scale() > 6) {
+            bd = bd.setScale(2, RoundingMode.HALF_UP)
+        }
+        bd
+    }.onFailure {
+        logger.e(it, "Could not parse money '$moneyStr' with locale '$locale'")
+    }.getOrThrow()
+
+
+private fun moneyAsLong(bd: BigDecimal) = bd
+    .multiply(HUNDRED)
+    .toLong()
+
 object QifUtils {
     @JvmStatic
     fun trimFirstChar(s: String): String =
@@ -92,57 +140,11 @@ object QifUtils {
     @JvmStatic
     @JvmOverloads
     fun parseMoney(money: String?, locale: Locale = Locale.getDefault()): Long =
-        parseDecimal(money?.trim().orEmpty())
-            .recoverCatching { parseWithNumberFormat(money?.trim().orEmpty(), locale) }
-            .map(::moneyAsLong).getOrElse { 0L }
-
-    private fun parseDecimal(moneyStr: String): Result<BigDecimal> =
-        runCatching { BigDecimal(moneyStr) }
-            .recoverCatching {
-                // Handle cases with currency symbols or grouping separators
-                val split = MONEY_PREFIX_PATTERN.split(moneyStr)
-                if (split.size > 1) {
-                    val numberPart = StringBuilder()
-                    if (moneyStr.startsWith("-")) {
-                        numberPart.append('-')
-                    }
-                    // Re-assemble the number, assuming the last part is the fraction
-                    for (i in 0 until split.lastIndex) {
-                        numberPart.append(split[i])
-                    }
-                    numberPart.append('.').append(split.last())
-                    BigDecimal(numberPart.toString())
-                } else {
-                    // If splitting doesn't help, rethrow to trigger the next fallback
-                    throw it
-                }
-            }
-
-private fun parseWithNumberFormat(moneyStr: String, locale: Locale): BigDecimal =
-    runCatching {
-        val formatter = NumberFormat.getNumberInstance(locale)
-        if (formatter is java.text.DecimalFormat) {
-            formatter.isParseBigDecimal = true
+        money?.trim().orEmpty().let{ moneyTrimmed ->
+            parseDecimal(moneyTrimmed)
+                .recoverCatching { parseWithNumberFormat(moneyTrimmed, locale) }
+                .map(::moneyAsLong).getOrElse { 0L }
         }
-        val parsedNumber = formatter.parse(moneyStr)
-        var bd = when (parsedNumber) {
-            is BigDecimal -> parsedNumber
-            null -> BigDecimal.ZERO
-            else -> BigDecimal(parsedNumber.toString()) // Fallback for other Number types
-        }
-        // Limit scale to avoid overly long fractional parts from parsing.
-        if (bd.scale() > 6) {
-            bd = bd.setScale(2, RoundingMode.HALF_UP)
-        }
-        bd
-    }.onFailure {
-        logger.e(it, "Could not parse money '$moneyStr' with locale '$locale'")
-    }.getOrThrow()
-
-
-    private fun moneyAsLong(bd: BigDecimal) = bd
-        .multiply(HUNDRED)
-        .toLong()
 
     @JvmStatic
     fun isTransferCategory(category: String?): Boolean =
