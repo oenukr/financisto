@@ -5,13 +5,16 @@ import ru.orangesoftware.financisto.utils.Logger
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.NumberFormat
-import java.util.Calendar
+import java.time.LocalDate
+import java.time.Year
+import java.time.ZoneId
+import java.time.format.DateTimeFormatterBuilder
+import java.time.temporal.ChronoField
 import java.util.Date
 import java.util.Locale
 
 private val logger: Logger = DependenciesHolder().logger
 
-private val DATE_DELIMITER_PATTERN = "/|'|\\.|-".toRegex()
 private val MONEY_PREFIX_PATTERN = "\\D".toRegex()
 private val HUNDRED = BigDecimal(100)
 
@@ -37,51 +40,50 @@ object QifUtils {
      */
     @JvmStatic
     fun parseDate(sDate: String, format: QifDateFormat): Date {
-        val cal = Calendar.getInstance()
-        var month = cal.get(Calendar.MONTH)
-        var day = cal.get(Calendar.DAY_OF_MONTH)
-        var year = cal.get(Calendar.YEAR)
+        val delimiterPattern = "/|'|\\.|-".toRegex()
+        val chunks = sDate
+            .split(delimiterPattern)
+            .map(String::trim)
+            .toMutableList()
 
-        val chunks = DATE_DELIMITER_PATTERN.split(sDate)
-
-        when (format) {
-            QifDateFormat.US_FORMAT -> {
-                try {
-                    month = chunks[0].trim().toInt()
-                    day = chunks[1].trim().toInt()
-                    year = chunks[2].trim().toInt()
-                } catch (e: NumberFormatException) {
-                    //eat it
-                    logger.e(e, "Unable to parse US date")
-                }
-            }
-
-            QifDateFormat.EU_FORMAT -> {
-                try {
-                    day = chunks[0].trim().toInt()
-                    month = chunks[1].trim().toInt()
-                    year = chunks[2].trim().toInt()
-                } catch (e: NumberFormatException) {
-                    logger.e(e, "Unable to parse EU date")
-                }
-            }
-
-            else -> {
-                logger.e("Invalid date format specified")
-                return Date()
-            }
+        if (chunks.size != 3) {
+            logger.e("Invalid date format: expected 3 parts but found ${chunks.size} in '$sDate'")
+            return Date.from(LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant())
         }
 
-        if (year < 100) {
-            year += if (year < 29) {
-                2000
-            } else {
-                1900
-            }
+        val pattern = when (format) {
+            QifDateFormat.US_FORMAT -> "M/d/y"
+            QifDateFormat.EU_FORMAT -> "d/M/y"
         }
-        cal.set(year, month - 1, day, 0, 0, 0)
-        cal.set(Calendar.MILLISECOND, 0)
-        return cal.time
+
+        // Handles two-digit years by setting a pivot year.
+        // Years from 39 to 99 are interpreted as 1939-1999.
+        // Years from 00 to 38 are interpreted as 2000-2038.
+        val formatter = DateTimeFormatterBuilder()
+            .appendPattern(pattern)
+            .parseDefaulting(
+                ChronoField.YEAR_OF_ERA,
+                Year.now().value.toLong(),
+            ) // Default year if not present
+            .toFormatter()
+
+        val date = runCatching {
+            chunks[2] = chunks[2].toInt().let {
+                when {
+                    it < 40 -> 2000 + it
+                    it < 100 -> 1900 + it
+                    else -> it
+                }.toString()
+            }
+
+            // The input string is normalized by joining with a standard delimiter
+            // to match the pattern expected by the formatter.
+            LocalDate.parse(chunks.joinToString("/"), formatter)
+        }.onFailure {
+            logger.e(it, "Unable to parse date: '$sDate' with format $format")
+        }.getOrElse { LocalDate.now() }
+
+        return Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant())
     }
 
     /**

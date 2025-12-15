@@ -29,6 +29,16 @@ class QifUtilsTest {
         assertEquals(DateTime.date(2011, 2, 7).atMidnight().asDate(), parseDate("07.02.11", EU_FORMAT))
         assertEquals(DateTime.date(2011, 2, 7).atMidnight().asDate(), parseDate("07.02'11", EU_FORMAT))
         assertEquals(DateTime.date(2011, 1, 23).atMidnight().asDate(), parseDate("1.23'11", US_FORMAT))
+        assertEquals(DateTime.date(2001, 6, 21).atMidnight().asDate(), parseDate("6/21' 1", US_FORMAT))
+        assertEquals(DateTime.date(2001, 6, 21).atMidnight().asDate(), parseDate("6/21'01", US_FORMAT))
+        assertEquals(DateTime.date(2001, 9, 18).atMidnight().asDate(), parseDate("9/18'2001", US_FORMAT))
+        assertEquals(DateTime.date(2001, 6, 21).atMidnight().asDate(), parseDate("06/21/2001", US_FORMAT))
+        assertEquals(DateTime.date(2001, 6, 21).atMidnight().asDate(), parseDate("06/21/01", US_FORMAT))
+        assertEquals(DateTime.date(2003, 3, 26).atMidnight().asDate(), parseDate("3.26.03", US_FORMAT))
+        assertEquals(DateTime.date(2005, 3, 26).atMidnight().asDate(), parseDate("03-26-2005", US_FORMAT))
+        assertEquals(DateTime.date(2005, 1, 1).atMidnight().asDate(), parseDate("1.1.2005", EU_FORMAT))
+        assertEquals(DateTime.date(1994, 1, 20).atMidnight().asDate(), parseDate("20.1.94", EU_FORMAT))
+        assertEquals(DateTime.date(2007, 2, 21).atMidnight().asDate(), parseDate("21/2/07", EU_FORMAT))
     }
 
     @Test
