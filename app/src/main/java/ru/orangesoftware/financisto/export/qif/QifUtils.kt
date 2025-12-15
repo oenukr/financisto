@@ -15,6 +15,7 @@ import java.util.Locale
 
 private val logger: Logger = DependenciesHolder().logger
 
+private val DATE_DELIMITER_PATTERN = "/|'|\\.|-".toRegex()
 private val MONEY_PREFIX_PATTERN = "\\D".toRegex()
 private val HUNDRED = BigDecimal(100)
 
@@ -40,9 +41,8 @@ object QifUtils {
      */
     @JvmStatic
     fun parseDate(sDate: String, format: QifDateFormat): Date {
-        val delimiterPattern = "/|'|\\.|-".toRegex()
         val chunks = sDate
-            .split(delimiterPattern)
+            .split(DATE_DELIMITER_PATTERN)
             .map(String::trim)
             .toMutableList()
 
