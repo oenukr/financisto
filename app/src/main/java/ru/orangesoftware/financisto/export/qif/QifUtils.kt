@@ -57,8 +57,8 @@ object QifUtils {
         }
 
         // Handles two-digit years by setting a pivot year.
-        // Years from 39 to 99 are interpreted as 1939-1999.
-        // Years from 00 to 38 are interpreted as 2000-2038.
+        // Years from 40 to 99 are interpreted as 1940-1999.
+        // Years from 00 to 39 are interpreted as 2000-2039.
         val formatter = DateTimeFormatterBuilder()
             .appendPattern(pattern)
             .parseDefaulting(
