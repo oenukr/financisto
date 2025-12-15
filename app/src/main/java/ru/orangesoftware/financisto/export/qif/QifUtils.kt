@@ -123,7 +123,7 @@ object QifUtils {
             val formatter = NumberFormat.getNumberInstance(locale)
             val parsedNumber = formatter.parse(moneyStr)
             // Using Float can introduce precision loss, but it's a fallback.
-            var bd = BigDecimal.valueOf(parsedNumber?.toDouble() ?: 0.0)
+            var bd = BigDecimal(parsedNumber?.toString() ?: "0.0")
             // Limit scale to avoid overly long fractional parts from parsing.
             if (bd.scale() > 6) {
                 bd = bd.setScale(2, RoundingMode.HALF_UP)
