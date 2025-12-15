@@ -2,24 +2,31 @@
 accompanist = "0.36.0"
 activity-compose = "1.12.1"
 android_tools = "8.13.2"
+androidannotations = "4.8.0"
+appcompat = "1.7.1"
+biometric = "1.1.0"
+collection-ktx = "1.5.0"
+commons-io = "2.21.0"
+core-ktx = "1.17.0"
 datastore = "1.2.0"
 detekt = "1.23.8"
 glide = "5.0.5"
 glide-compose = "1.0.0-beta08"
 kotlin = "2.2.21"
 kotlinx-datetime = "0.7.1"
+kover = "0.9.4"
 workmanager = "2.11.0"
 
 [libraries]
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanist" }
 accompanist-webview = { module = "com.google.accompanist:accompanist-webview", version.ref = "accompanist" }
 activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity-compose" }
-androidannotations-api = { module = "org.androidannotations:androidannotations-api", version = "4.8.0" }
-appcompat = { module = "androidx.appcompat:appcompat", version = "1.7.1" }
-biometric = { module = "androidx.biometric:biometric", version = "1.1.0" }
-collection-ktx = { module = "androidx.collection:collection-ktx", version = "1.5.0" }
-commons-io = { module = "commons-io:commons-io", version = "2.21.0" }
-core-ktx = { module = "androidx.core:core-ktx", version = "1.17.0" }
+androidannotations-api = { module = "org.androidannotations:androidannotations-api", version.ref = "androidannotations" }
+appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
+biometric = { module = "androidx.biometric:biometric", version.ref = "biometric" }
+collection-ktx = { module = "androidx.collection:collection-ktx", version.ref = "collection-ktx" }
+commons-io = { module = "commons-io:commons-io", version.ref = "commons-io" }
+core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }
 datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
 datastore-preferences-rx = { module = "androidx.datastore:datastore-preferences-rxjava3", version.ref = "datastore" }
 detekt-formatting = { module = "io.gitlab.arturbosch.detekt:detekt-formatting", version.ref = "detekt" }
@@ -60,4 +67,4 @@ android-application = { id = "com.android.application", version.ref = "android_t
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt"}
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
-kover = { id = "org.jetbrains.kotlinx.kover", version = "0.9.3" }
+kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
