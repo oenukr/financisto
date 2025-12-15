@@ -14,6 +14,7 @@ glide = "5.0.5"
 glide-compose = "1.0.0-beta08"
 kotlin = "2.2.21"
 kotlinx-datetime = "0.7.1"
+kover = "0.9.4"
 workmanager = "2.11.0"
 
 [libraries]
