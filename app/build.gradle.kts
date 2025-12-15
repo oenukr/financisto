@@ -139,6 +139,8 @@ dependencies {
     // Timber logging
     implementation(libs.timber)
 
+    implementation(libs.kotlinx.datetime)
+
 
     implementation(libs.legacy.support)
     implementation(libs.appcompat)
