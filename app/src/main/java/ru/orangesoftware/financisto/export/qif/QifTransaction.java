@@ -40,7 +40,7 @@ public class QifTransaction {
     public boolean isSplit = false;
     public List<QifTransaction> splits;
 
-    public static QifTransaction fromBlotterCursor(Cursor c, Map<Long, Category> categoriesMap) {
+    public static QifTransaction fromBlotterCursor(Cursor c, Map<Long, Category> categoriesMap, Map<Long, Account> accountsMap) {
         QifTransaction t = new QifTransaction();
         t.id = c.getLong(BlotterColumns._id.ordinal());
         t.date = new Date(c.getLong(BlotterColumns.datetime.ordinal()));
@@ -58,6 +58,23 @@ public class QifTransaction {
         }
         t.isSplit = categoryIsSplit(c);
         t.toAccount = c.getString(BlotterColumns.to_account_title.ordinal());
+
+        long fromCurrencyId = c.getLong(BlotterColumns.from_account_currency_id.ordinal());
+        long toCurrencyId = c.getLong(BlotterColumns.to_account_currency_id.ordinal());
+
+        if (t.toAccount != null && fromCurrencyId != toCurrencyId) {
+            long toAmount = c.getLong(BlotterColumns.to_amount.ordinal());
+            long toAccountId = c.getLong(BlotterColumns.to_account_id.ordinal());
+            Account toAccount = accountsMap.get(toAccountId);
+            if (toAccount != null) {
+                String s = Utils.amountToString(toAccount.currency, toAmount);
+                if (Utils.isNotEmpty(t.memo)) {
+                    t.memo += " (" + s + ")";
+                } else {
+                    t.memo = "(" + s + ")";
+                }
+            }
+        }
         return t;
     }
 
@@ -196,7 +213,15 @@ public class QifTransaction {
         if (transaction.toAccountId > 0) {
             Account toAccount = accountsMap.get(transaction.toAccountId);
             qifTransaction.toAccount = toAccount.title;
-            //TODO: test if from and to accounts have different currencies
+            Account fromAccount = accountsMap.get(transaction.fromAccountId);
+            if (fromAccount != null && toAccount != null && fromAccount.currency != null && toAccount.currency != null && fromAccount.currency.id != toAccount.currency.id) {
+                String s = Utils.amountToString(toAccount.currency, transaction.toAmount);
+                if (Utils.isNotEmpty(qifTransaction.memo)) {
+                    qifTransaction.memo += " (" + s + ")";
+                } else {
+                    qifTransaction.memo = "(" + s + ")";
+                }
+            }
         }
         Category category = categoriesMap.get(transaction.categoryId);
         if (category != null) {
