@@ -118,20 +118,26 @@ object QifUtils {
                 }
             }
 
-    private fun parseWithNumberFormat(moneyStr: String, locale: Locale): BigDecimal =
-        runCatching {
-            val formatter = NumberFormat.getNumberInstance(locale)
-            val parsedNumber = formatter.parse(moneyStr)
-            // Using Float can introduce precision loss, but it's a fallback.
-            var bd = BigDecimal(parsedNumber?.toString() ?: "0.0")
-            // Limit scale to avoid overly long fractional parts from parsing.
-            if (bd.scale() > 6) {
-                bd = bd.setScale(2, RoundingMode.HALF_UP)
-            }
-            bd
-        }.onFailure {
-            logger.e(it, "Could not parse money '$moneyStr' with locale '$locale'")
-        }.getOrThrow()
+private fun parseWithNumberFormat(moneyStr: String, locale: Locale): BigDecimal =
+    runCatching {
+        val formatter = NumberFormat.getNumberInstance(locale)
+        if (formatter is java.text.DecimalFormat) {
+            formatter.isParseBigDecimal = true
+        }
+        val parsedNumber = formatter.parse(moneyStr)
+        var bd = when (parsedNumber) {
+            is BigDecimal -> parsedNumber
+            null -> BigDecimal.ZERO
+            else -> BigDecimal(parsedNumber.toString()) // Fallback for other Number types
+        }
+        // Limit scale to avoid overly long fractional parts from parsing.
+        if (bd.scale() > 6) {
+            bd = bd.setScale(2, RoundingMode.HALF_UP)
+        }
+        bd
+    }.onFailure {
+        logger.e(it, "Could not parse money '$moneyStr' with locale '$locale'")
+    }.getOrThrow()
 
 
     private fun moneyAsLong(bd: BigDecimal) = bd
