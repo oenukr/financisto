@@ -68,14 +68,18 @@ public class QifTransaction {
             Account toAccount = accountsMap.get(toAccountId);
             if (toAccount != null) {
                 String s = Utils.amountToString(toAccount.currency, toAmount);
-                if (Utils.isNotEmpty(t.memo)) {
-                    t.memo += " (" + s + ")";
-                } else {
-                    t.memo = "(" + s + ")";
-                }
+                appendToMemo(t, s);
             }
         }
         return t;
+    }
+
+    private static void appendToMemo(QifTransaction t, String value) {
+        if (Utils.isNotEmpty(t.memo)) {
+            t.memo += " (" + value + ")";
+        } else {
+            t.memo = "(" + value + ")";
+        }
     }
 
     private static Category getCategoryFromCursor(Cursor c, Map<Long, Category> categoriesMap) {
@@ -212,14 +216,12 @@ public class QifTransaction {
         qifTransaction.memo = transaction.note;
         if (transaction.toAccountId > 0) {
             Account toAccount = accountsMap.get(transaction.toAccountId);
-            qifTransaction.toAccount = toAccount.title;
-            Account fromAccount = accountsMap.get(transaction.fromAccountId);
-            if (fromAccount != null && toAccount != null && fromAccount.currency != null && toAccount.currency != null && fromAccount.currency.id != toAccount.currency.id) {
-                String s = Utils.amountToString(toAccount.currency, transaction.toAmount);
-                if (Utils.isNotEmpty(qifTransaction.memo)) {
-                    qifTransaction.memo += " (" + s + ")";
-                } else {
-                    qifTransaction.memo = "(" + s + ")";
+            if (toAccount != null) {
+                qifTransaction.toAccount = toAccount.title;
+                Account fromAccount = accountsMap.get(transaction.fromAccountId);
+                if (fromAccount != null && fromAccount.currency != null && toAccount.currency != null && fromAccount.currency.id != toAccount.currency.id) {
+                    String s = Utils.amountToString(toAccount.currency, transaction.toAmount);
+                    appendToMemo(qifTransaction, s);
                 }
             }
         }

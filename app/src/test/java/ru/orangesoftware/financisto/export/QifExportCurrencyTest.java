@@ -61,4 +61,20 @@ public class QifExportCurrencyTest extends AbstractExportTest<QifExport, QifExpo
 
         assertTrue(output.contains("M(-100.00 S$)"));
     }
+
+    @Test
+    public void should_export_transfer_split_with_different_currencies_and_existing_memo() throws Exception {
+        Account a1 = createFirstAccount(); // SGD
+        Account a2 = createSecondAccount(); // CZK
+
+        TransactionBuilder.withDb(db).account(a1).amount(-10000).dateTime(DateTime.date(2011, 7, 12))
+                .category(CategoryBuilder.split(db))
+                .withTransferSplit(a2, -10000, 100000, "Existing Memo")
+                .create();
+
+        String output = exportAsString();
+
+        // Expected memo: "Existing Memo (1000.00 S$)"
+        assertTrue(output.contains("EExisting Memo (1000.00 S$)"));
+    }
 }
