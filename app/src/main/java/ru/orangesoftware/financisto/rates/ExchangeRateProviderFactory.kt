@@ -2,7 +2,7 @@ package ru.orangesoftware.financisto.rates
 
 import android.content.SharedPreferences
 
-import okhttp3.OkHttpClient
+
 import ru.orangesoftware.financisto.http.HttpClientWrapper
 
 enum class ExchangeRateProviderFactory {
@@ -28,7 +28,7 @@ enum class ExchangeRateProviderFactory {
 
     companion object {
         private fun createDefaultWrapper(): HttpClientWrapper {
-            return HttpClientWrapper(OkHttpClient())
+            return HttpClientWrapper()
         }
     }
 }
