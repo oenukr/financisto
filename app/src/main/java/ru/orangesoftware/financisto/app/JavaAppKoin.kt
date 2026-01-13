@@ -1,11 +1,20 @@
 package ru.orangesoftware.financisto.app
 
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.serialization.kotlinx.json.json
+import kotlinx.serialization.json.Json
+import ru.orangesoftware.financisto.http.HttpClientWrapper
+
 import android.app.Application
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.koin.core.context.startKoin
+import org.koin.core.module.dsl.bind
+import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.module
 import ru.orangesoftware.financisto.BuildConfig
 import ru.orangesoftware.financisto.bus.GreenRobotBus
@@ -20,14 +29,26 @@ import timber.log.Timber
 
 // A module with Kotlin and Java components
 val modules = module {
-    single<PreferencesStore> { PreferencesStore(androidContext()) }
-    single<GreenRobotBus> { GreenRobotBus() }
-    single<GoogleDriveClient> { GoogleDriveClient(androidContext()) }
-    single<DatabaseAdapter> { DatabaseAdapter(androidContext()) }
-    single<DatabaseHelper> { DatabaseHelper(androidContext()) }
+    singleOf(::PreferencesStore) { bind<PreferencesStore>() }
+    singleOf(::GreenRobotBus) { bind<GreenRobotBus>() }
+    singleOf(::GoogleDriveClient) { bind<GoogleDriveClient>() }
+    singleOf(::DatabaseAdapter) { bind<DatabaseAdapter>() }
+    singleOf(::DatabaseHelper) { bind<DatabaseHelper>() }
 
     // Add the Logger definition to the module
-    single<Logger> { TimberLogger() }
+    singleOf(::TimberLogger) { bind<Logger>() }
+
+    single<HttpClient> {
+        HttpClient(CIO) {
+            install(ContentNegotiation) {
+                json(Json {
+                    ignoreUnknownKeys = true
+                    isLenient = true
+                })
+            }
+        }
+    }
+    singleOf(::HttpClientWrapper) { bind<HttpClientWrapper>() }
 }
 
 // Start

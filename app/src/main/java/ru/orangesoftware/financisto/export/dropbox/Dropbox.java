@@ -87,6 +87,7 @@ public class Dropbox {
         if (accessToken != null) {
             if (dropboxClient == null) {
                 DbxRequestConfig requestConfig = DbxRequestConfig.newBuilder("financisto")
+                        // TODO: Implement a Ktor-based DbxHttpRequestor to align with the app's networking stack.
                         // .withHttpRequestor(new OkHttp3Requestor(OkHttp3Requestor.defaultOkHttpClient()))
                         .build();
                 dropboxClient = new DbxClientV2(requestConfig, accessToken);
