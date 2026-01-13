@@ -10,7 +10,13 @@ import java.util.List;
 public class WebserviceXConversionRateDownloaderTest extends AbstractRatesDownloaderTest {
 
     long dateTime = System.currentTimeMillis();
-    WebserviceXConversionRateDownloader webserviceX = new WebserviceXConversionRateDownloader(client, dateTime);
+    WebserviceXConversionRateDownloader webserviceX;
+
+    @org.junit.Before
+    public void setUp() {
+        super.setUp();
+        webserviceX = new WebserviceXConversionRateDownloader(dateTime);
+    }
 
     @Override
     ExchangeRateProvider service() {
@@ -19,23 +25,23 @@ public class WebserviceXConversionRateDownloaderTest extends AbstractRatesDownlo
 
     @Test
     public void should_download_single_rate_cur_to_cur() {
-        //given
+        // given
         givenResponseFromWebService("USD", "SGD", 1.2387);
-        //when
+        // when
         ExchangeRate exchangeRate = downloadRate("USD", "SGD");
-        //then
+        // then
         assertEquals(1.2387, exchangeRate.rate, 0.0001);
     }
 
     @Test
     public void should_download_multiple_rates() {
-        //given
+        // given
         givenResponseFromWebService("USD", "SGD", 1.2);
         givenResponseFromWebService("USD", "RUB", 30);
         givenResponseFromWebService("SGD", "RUB", 25);
-        //when
+        // when
         List<ExchangeRate> rates = webserviceX.getRates(currencies("USD", "SGD", "RUB"));
-        //then
+        // then
         assertEquals(3, rates.size());
         assertRate(rates.get(0), "USD", "SGD", 1.2, dateTime);
         assertRate(rates.get(1), "USD", "RUB", 30, dateTime);
@@ -44,41 +50,45 @@ public class WebserviceXConversionRateDownloaderTest extends AbstractRatesDownlo
 
     @Test
     public void should_skip_unknown_currency() {
-        //given
+        // given
         givenResponseFromWebService(anyUrl(), "Exception: Unable to convert ToCurrency to Currency\r\nStacktrace...");
-        //when
+        // when
         ExchangeRate rate = downloadRate("USD", "AAA");
-        //then
+        // then
         assertFalse(rate.isOk());
         assertRate(rate, "USD", "AAA");
     }
 
     @Test
     public void should_handle_error_from_webservice_properly() {
-        //given
-        givenResponseFromWebService(anyUrl(), "System.IO.IOException: There is not enough space on the disk.\r\nStacktrace...");
-        //when
+        // given
+        givenResponseFromWebService(anyUrl(),
+                "System.IO.IOException: There is not enough space on the disk.\r\nStacktrace...");
+        // when
         ExchangeRate downloadedRate = downloadRate("USD", "SGD");
-        //then
+        // then
         assertFalse(downloadedRate.isOk());
-        assertEquals("Something wrong with the exchange rates provider. Response from the service - System.IO.IOException: There is not enough space on the disk.",
+        assertEquals(
+                "Something wrong with the exchange rates provider. Response from the service - System.IO.IOException: There is not enough space on the disk.",
                 downloadedRate.getErrorMessage());
     }
 
     @Test
     public void should_handle_runtime_error_properly() {
-        //given
+        // given
         givenExceptionWhileRequestingWebService();
-        //when
+        // when
         ExchangeRate downloadedRate = downloadRate("USD", "SGD");
-        //then
+        // then
         assertFalse(downloadedRate.isOk());
         assertRate(downloadedRate, "USD", "SGD");
         assertEquals("Unable to get exchange rates: Timeout", downloadedRate.getErrorMessage());
     }
 
     private void givenResponseFromWebService(String c1, String c2, double r) {
-        givenResponseFromWebService("https://www.webservicex.net/CurrencyConvertor.asmx/ConversionRate?FromCurrency=" + c1 + "&ToCurrency=" + c2,
+        givenResponseFromWebService(
+                "https://www.webservicex.net/CurrencyConvertor.asmx/ConversionRate?FromCurrency=" + c1 + "&ToCurrency="
+                        + c2,
                 "<double xmlns=\"https://www.webserviceX.NET/\">" + r + "</double>");
     }
 

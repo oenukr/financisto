@@ -24,14 +24,14 @@ import ru.orangesoftware.financisto.utils.Logger;
  */
 public class WebserviceXConversionRateDownloader extends AbstractMultipleRatesDownloader {
 
-    private final Logger logger = new DependenciesHolder().getLogger();
+    private final DependenciesHolder dependenciesHolder = new DependenciesHolder();
+    private final Logger logger = dependenciesHolder.getLogger();
+    private final HttpClientWrapper httpClient = dependenciesHolder.getHttpClientWrapper();
 
     private final Pattern pattern = Pattern.compile("<double.*?>(.+?)</double>");
-    private final HttpClientWrapper client;
     private final long dateTime;
 
-    public WebserviceXConversionRateDownloader(HttpClientWrapper client, long dateTime) {
-        this.client = client;
+    public WebserviceXConversionRateDownloader(long dateTime) {
         this.dateTime = dateTime;
     }
 
@@ -64,7 +64,7 @@ public class WebserviceXConversionRateDownloader extends AbstractMultipleRatesDo
     private String getResponse(Currency fromCurrency, Currency toCurrency) throws Exception {
         String url = buildUrl(fromCurrency, toCurrency);
         logger.i(url);
-        String s = client.getAsString(url);
+        String s = httpClient.getAsString(url);
         logger.i(s);
         return s;
     }

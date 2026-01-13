@@ -12,7 +12,13 @@ import ru.orangesoftware.financisto.utils.FileUtils;
 
 public class OpenExchangeRatesDownloaderTest extends AbstractRatesDownloaderTest {
 
-    OpenExchangeRatesDownloader openRates = new OpenExchangeRatesDownloader(client, "MY_APP_ID");
+    OpenExchangeRatesDownloader openRates;
+
+    @org.junit.Before
+    public void setUp() {
+        super.setUp();
+        openRates = new OpenExchangeRatesDownloader("MY_APP_ID");
+    }
 
     @Override
     ExchangeRateProvider service() {
@@ -21,12 +27,12 @@ public class OpenExchangeRatesDownloaderTest extends AbstractRatesDownloaderTest
 
     @Test
     public void should_download_single_rate_usd_to_cur() {
-        //given
+        // given
         givenResponseFromWebService("https://openexchangerates.org/api/latest.json?app_id=MY_APP_ID",
                 "open_exchange_normal_response.json");
-        //when
+        // when
         ExchangeRate downloadedExchangeRate = downloadRate("USD", "SGD");
-        //then
+        // then
         assertTrue(downloadedExchangeRate.isOk());
         assertEquals(1.236699, downloadedExchangeRate.rate, 0.00001);
         assertEquals(1361034009000L, downloadedExchangeRate.date);
@@ -34,20 +40,20 @@ public class OpenExchangeRatesDownloaderTest extends AbstractRatesDownloaderTest
 
     @Test
     public void should_download_single_rate_cur_to_cur() {
-        //given
+        // given
         givenResponseFromWebService(anyUrl(), "open_exchange_normal_response.json");
-        //then
+        // then
         assertEquals(1.0 / 1.236699, downloadRate("SGD", "USD").rate, 0.00001);
         assertEquals(0.00010655, downloadRate("BYR", "CHF").rate, 0.00001);
     }
 
     @Test
     public void should_download_multiple_rates() {
-        //given
+        // given
         givenResponseFromWebService(anyUrl(), "open_exchange_normal_response.json");
-        //when
+        // when
         List<ExchangeRate> rates = openRates.getRates(currencies("USD", "SGD", "RUB"));
-        //then
+        // then
         assertEquals(3, rates.size());
         assertRate(rates.get(0), "USD", "SGD", 1.236699, 1361034009000L);
         assertRate(rates.get(1), "USD", "RUB", 30.117065, 1361034009000L);
@@ -56,22 +62,22 @@ public class OpenExchangeRatesDownloaderTest extends AbstractRatesDownloaderTest
 
     @Test
     public void should_skip_unknown_currency() {
-        //given
+        // given
         givenResponseFromWebService(anyUrl(), "open_exchange_normal_response.json");
-        //when
+        // when
         ExchangeRate rate = downloadRate("USD", "AAA");
-        //then
+        // then
         assertFalse(rate.isOk());
         assertRate(rate, "USD", "AAA");
     }
 
     @Test
     public void should_handle_error_from_webservice_properly() {
-        //given
+        // given
         givenResponseFromWebService(anyUrl(), "open_exchange_error_response.json");
-        //when
+        // when
         ExchangeRate downloadedRate = downloadRate("USD", "SGD");
-        //then
+        // then
         assertFalse(downloadedRate.isOk());
         assertRate(downloadedRate, "USD", "SGD");
         assertEquals("400 (invalid_app_id): Invalid App ID", downloadedRate.getErrorMessage());
@@ -79,11 +85,11 @@ public class OpenExchangeRatesDownloaderTest extends AbstractRatesDownloaderTest
 
     @Test
     public void should_handle_runtime_error_properly() {
-        //given
+        // given
         givenExceptionWhileRequestingWebService();
-        //when
+        // when
         ExchangeRate downloadedRate = downloadRate("USD", "SGD");
-        //then
+        // then
         assertFalse(downloadedRate.isOk());
         assertEquals("Unable to get exchange rates: Timeout", downloadedRate.getErrorMessage());
     }

@@ -12,8 +12,8 @@ android {
 
     defaultConfig {
         applicationId = "ru.orangesoftware.financisto"
-        minSdk = 28
-        targetSdk = 30
+        minSdk = 29
+        targetSdk = 30 // must be 35+ for publishing to Google Play
         versionCode = 122
         versionName = "1.8.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -135,6 +135,7 @@ dependencies {
 
     // Lifecycle extensions
     implementation(libs.lifecycle.runtime.ktx)
+    implementation(libs.lifecycle.viewmodel.ktx)
 
     // Timber logging
     implementation(libs.timber)
@@ -154,7 +155,11 @@ dependencies {
     implementation(libs.java.collections)
 
     implementation("com.dropbox.core:dropbox-core-sdk:5.4.5")
-    implementation(libs.okhttp)
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.cio)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
+    implementation(libs.ktor.client.logging)
     implementation(libs.okio)
     implementation(libs.eventbus)
     implementation(libs.materialdatetimepicker)
@@ -205,7 +210,7 @@ kover {
 }
 
 composeCompiler {
-    enableStrongSkippingMode = true
+//    featureFlags = setOf(ComposeFeatureFlag.StrongSkipping.disabled())
 }
 
 java {
