@@ -13,7 +13,7 @@ import android.content.Context;
 import com.dropbox.core.DbxException;
 import com.dropbox.core.DbxRequestConfig;
 import com.dropbox.core.android.Auth;
-import com.dropbox.core.http.OkHttp3Requestor;
+
 import com.dropbox.core.util.IOUtil;
 import com.dropbox.core.v2.DbxClientV2;
 import com.dropbox.core.v2.files.FileMetadata;
@@ -87,7 +87,8 @@ public class Dropbox {
         if (accessToken != null) {
             if (dropboxClient == null) {
                 DbxRequestConfig requestConfig = DbxRequestConfig.newBuilder("financisto")
-                        .withHttpRequestor(new OkHttp3Requestor(OkHttp3Requestor.defaultOkHttpClient()))
+                        // TODO: Implement a Ktor-based DbxHttpRequestor to align with the app's networking stack.
+                        // .withHttpRequestor(new OkHttp3Requestor(OkHttp3Requestor.defaultOkHttpClient()))
                         .build();
                 dropboxClient = new DbxClientV2(requestConfig, accessToken);
             }

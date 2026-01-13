@@ -26,17 +26,18 @@ import ru.orangesoftware.financisto.utils.StringUtil;
 //@NotThreadSafe
 public class OpenExchangeRatesDownloader extends AbstractMultipleRatesDownloader {
 
-    private final Logger logger = new DependenciesHolder().getLogger();
+    private final DependenciesHolder dependenciesHolder = new DependenciesHolder();
+    private final Logger logger = dependenciesHolder.getLogger();
+    private final HttpClientWrapper httpClient = dependenciesHolder.getHttpClientWrapper();
+
 
     private static final String GET_LATEST = "https://openexchangerates.org/api/latest.json?app_id=";
 
     private final String appId;
-    private final HttpClientWrapper httpClient;
 
     private JSONObject json;
 
-    public OpenExchangeRatesDownloader(HttpClientWrapper httpClient, String appId) {
-        this.httpClient = httpClient;
+    public OpenExchangeRatesDownloader(String appId) {
         this.appId = appId;
     }
 

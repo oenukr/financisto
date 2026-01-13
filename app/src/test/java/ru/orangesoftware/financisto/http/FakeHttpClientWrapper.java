@@ -11,7 +11,7 @@ public class FakeHttpClientWrapper extends HttpClientWrapper {
     public Exception error;
 
     public FakeHttpClientWrapper() {
-        super(null);
+        super(TestKoinHelper.INSTANCE.createDummyClient());
     }
 
     @Override

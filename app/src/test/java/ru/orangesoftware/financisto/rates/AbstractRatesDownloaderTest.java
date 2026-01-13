@@ -13,6 +13,10 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import ru.orangesoftware.financisto.http.FakeHttpClientWrapper;
 import ru.orangesoftware.financisto.model.Currency;
+import ru.orangesoftware.financisto.http.TestKoinHelper;
+
+import org.junit.After;
+import org.junit.Before;
 
 @RunWith(RobolectricTestRunner.class)
 public abstract class AbstractRatesDownloaderTest {
@@ -21,6 +25,16 @@ public abstract class AbstractRatesDownloaderTest {
     private final AtomicLong counter = new AtomicLong(1);
 
     final FakeHttpClientWrapper client = new FakeHttpClientWrapper();
+
+    @Before
+    public void setUp() {
+        TestKoinHelper.INSTANCE.start(client);
+    }
+
+    @After
+    public void tearDown() {
+        TestKoinHelper.INSTANCE.stop();
+    }
 
     abstract ExchangeRateProvider service();
 
@@ -56,8 +70,8 @@ public abstract class AbstractRatesDownloaderTest {
     }
 
     void assertRate(ExchangeRate exchangeRate, String fromCurrency, String toCurrency) {
-        assertEquals("Expected "+fromCurrency, currency(fromCurrency).id, exchangeRate.fromCurrencyId);
-        assertEquals("Expected "+toCurrency, currency(toCurrency).id, exchangeRate.toCurrencyId);
+        assertEquals("Expected " + fromCurrency, currency(fromCurrency).id, exchangeRate.fromCurrencyId);
+        assertEquals("Expected " + toCurrency, currency(toCurrency).id, exchangeRate.toCurrencyId);
     }
 
     void assertRate(ExchangeRate exchangeRate, String fromCurrency, String toCurrency, double rate, long date) {
