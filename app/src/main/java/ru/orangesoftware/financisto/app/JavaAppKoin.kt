@@ -8,6 +8,7 @@ import kotlinx.serialization.json.Json
 import ru.orangesoftware.financisto.http.HttpClientWrapper
 
 import android.app.Application
+import io.ktor.client.engine.HttpClientEngine
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.component.KoinComponent
@@ -38,8 +39,9 @@ val modules = module {
     // Add the Logger definition to the module
     singleOf(::TimberLogger) { bind<Logger>() }
 
+    single<HttpClientEngine> { CIO.create() }
     single<HttpClient> {
-        HttpClient(CIO) {
+        HttpClient(get()) {
             install(ContentNegotiation) {
                 json(Json {
                     ignoreUnknownKeys = true
@@ -76,6 +78,7 @@ class DependenciesHolder : KoinComponent {
     val googleDriveClient: GoogleDriveClient by inject()
     val databaseAdapter: DatabaseAdapter by inject()
     val databaseHelper: DatabaseHelper by inject()
+    val httpClientWrapper: HttpClientWrapper by inject()
     //Inject the logger
     val logger: Logger by inject()
 }
