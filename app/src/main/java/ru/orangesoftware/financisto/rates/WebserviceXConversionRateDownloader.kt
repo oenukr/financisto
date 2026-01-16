@@ -1,94 +1,69 @@
-/*
- * Copyright (c) 2013 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- */
+package ru.orangesoftware.financisto.rates
 
-package ru.orangesoftware.financisto.rates;
+import ru.orangesoftware.financisto.http.HttpClientWrapper
+import ru.orangesoftware.financisto.model.Currency
+import ru.orangesoftware.financisto.utils.Logger
+import java.util.regex.Pattern
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+class WebserviceXConversionRateDownloader(
+    private val httpClientWrapper: HttpClientWrapper,
+    private val logger: Logger,
+    private val dateTime: Long
+) : AbstractMultipleRatesDownloader() {
 
-import ru.orangesoftware.financisto.app.DependenciesHolder;
-import ru.orangesoftware.financisto.http.HttpClientWrapper;
-import ru.orangesoftware.financisto.model.Currency;
-import ru.orangesoftware.financisto.utils.Logger;
+    private val pattern = Pattern.compile("<double.*?>(.+?)</double>")
 
-/**
- * Created with IntelliJ IDEA.
- * User: dsolonenko
- * Date: 2/18/13
- * Time: 9:59 PM
- */
-public class WebserviceXConversionRateDownloader extends AbstractMultipleRatesDownloader {
-
-    private final DependenciesHolder dependenciesHolder = new DependenciesHolder();
-    private final Logger logger = dependenciesHolder.getLogger();
-    private final HttpClientWrapper httpClient = dependenciesHolder.getHttpClientWrapper();
-
-    private final Pattern pattern = Pattern.compile("<double.*?>(.+?)</double>");
-    private final long dateTime;
-
-    public WebserviceXConversionRateDownloader(long dateTime) {
-        this.dateTime = dateTime;
-    }
-
-    @Override
-    public ExchangeRate getRate(Currency fromCurrency, Currency toCurrency) {
-        ExchangeRate rate = createRate(fromCurrency, toCurrency);
-        try {
-            String s = getResponse(fromCurrency, toCurrency);
-            Matcher m = pattern.matcher(s);
-            if (m.find()) {
-                rate.rate = parseRate(m.group(1));
-            } else {
-                rate.error = parseError(s);
+    override fun getRate(fromCurrency: Currency, toCurrency: Currency): ExchangeRate {
+        return createRate(fromCurrency, toCurrency).apply {
+            try {
+                val s = getResponse(fromCurrency, toCurrency)
+                val m = pattern.matcher(s)
+                if (m.find()) {
+                    val rateValue = m.group(1)?.toDoubleOrNull()
+                    if (rateValue != null) {
+                        rate = rateValue
+                    } else {
+                        error = "Invalid rate format: ${m.group(1)}"
+                    }
+                } else {
+                    error = parseError(s)
+                }
+            } catch (e: Exception) {
+                error = "Unable to get exchange rates: ${e.message}"
             }
-            return rate;
-        } catch (Exception e) {
-            rate.error = "Unable to get exchange rates: "+e.getMessage();
         }
-        return rate;
     }
 
-    private ExchangeRate createRate(Currency fromCurrency, Currency toCurrency) {
-        ExchangeRate rate = new ExchangeRate();
-        rate.fromCurrencyId = fromCurrency.id;
-        rate.toCurrencyId = toCurrency.id;
-        rate.date = dateTime;
-        return rate;
-    }
-
-    private String getResponse(Currency fromCurrency, Currency toCurrency) throws Exception {
-        String url = buildUrl(fromCurrency, toCurrency);
-        logger.i(url);
-        String s = httpClient.getAsString(url);
-        logger.i(s);
-        return s;
-    }
-
-    private double parseRate(String s) {
-        return Double.parseDouble(s);
-    }
-
-    private String parseError(String s) {
-        String[] x = s.split("\r\n");
-        String error = "Service is not available, please try again later";
-        if (x.length > 0) {
-            error = "Something wrong with the exchange rates provider. Response from the service - "+x[0];
+    private fun createRate(fromCurrency: Currency, toCurrency: Currency): ExchangeRate {
+        return ExchangeRate().apply {
+            fromCurrencyId = fromCurrency.id
+            toCurrencyId = toCurrency.id
+            date = dateTime
         }
-        return error;
     }
 
-    private String buildUrl(Currency fromCurrency, Currency toCurrency) {
-        return "https://www.webservicex.net/CurrencyConvertor.asmx/ConversionRate?FromCurrency="+fromCurrency.name+"&ToCurrency="+toCurrency.name;
+    private fun getResponse(fromCurrency: Currency, toCurrency: Currency): String {
+        val url = buildUrl(fromCurrency, toCurrency)
+        logger.i(url)
+        val s = httpClientWrapper.getAsString(url).orEmpty()
+        logger.i(s)
+        return s
     }
 
-    @Override
-    public ExchangeRate getRate(Currency fromCurrency, Currency toCurrency, long atTime) {
-        throw new UnsupportedOperationException("Not supported by WebserviceX.NET");
+    private fun parseError(s: String): String {
+        val x = s.split("\r\n".toRegex()).toTypedArray()
+        var error = "Service is not available, please try again later"
+        if (x.isNotEmpty()) {
+            error = "Something wrong with the exchange rates provider. Response from the service - ${x[0]}"
+        }
+        return error
     }
 
+    private fun buildUrl(fromCurrency: Currency, toCurrency: Currency): String {
+        return "https://www.webservicex.net/CurrencyConvertor.asmx/ConversionRate?FromCurrency=${fromCurrency.name}&ToCurrency=${toCurrency.name}"
+    }
+
+    override fun getRate(fromCurrency: Currency, toCurrency: Currency, atTime: Long): ExchangeRate {
+        throw UnsupportedOperationException("Not supported by WebserviceX.NET")
+    }
 }

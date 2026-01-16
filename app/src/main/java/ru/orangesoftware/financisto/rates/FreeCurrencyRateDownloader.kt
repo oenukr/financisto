@@ -1,62 +1,48 @@
-package ru.orangesoftware.financisto.rates;
+package ru.orangesoftware.financisto.rates
 
-import org.json.JSONObject;
+import ru.orangesoftware.financisto.http.HttpClientWrapper
+import ru.orangesoftware.financisto.model.Currency
+import ru.orangesoftware.financisto.utils.Logger
 
-import ru.orangesoftware.financisto.app.DependenciesHolder;
-import ru.orangesoftware.financisto.http.HttpClientWrapper;
-import ru.orangesoftware.financisto.model.Currency;
-import ru.orangesoftware.financisto.utils.Logger;
+class FreeCurrencyRateDownloader(
+    private val httpClientWrapper: HttpClientWrapper,
+    private val logger: Logger,
+    private val dateTime: Long,
+) : AbstractMultipleRatesDownloader() {
 
-/**
- * Created by vteremasov on 11/8/17.
- */
-
-public class FreeCurrencyRateDownloader extends AbstractMultipleRatesDownloader {
-
-    private final DependenciesHolder dependenciesHolder = new DependenciesHolder();
-    private final Logger logger = dependenciesHolder.getLogger();
-    private final HttpClientWrapper httpClient = dependenciesHolder.getHttpClientWrapper();
-    private final long dateTime;
-
-    public FreeCurrencyRateDownloader(long dateTime) {
-        this.dateTime = dateTime;
-    }
-
-    @Override
-    public ExchangeRate getRate(Currency fromCurrency, Currency toCurrency) {
-        ExchangeRate rate = createRate(fromCurrency, toCurrency);
-        try {
-            String s = getResponse(fromCurrency, toCurrency);
-            rate.rate = Double.parseDouble(s);
-            return rate;
-        } catch (Exception e) {
-            rate.error = "Unable to get exchange rates: "+e.getMessage();
+    override fun getRate(fromCurrency: Currency, toCurrency: Currency): ExchangeRate {
+        return createRate(fromCurrency, toCurrency).apply {
+            try {
+                val s = getResponse(fromCurrency, toCurrency)
+                rate = s.toDouble()
+            } catch (e: Exception) {
+                error = "Unable to get exchange rates: " + e.message
+            }
         }
-        return rate;
     }
 
-    @Override
-    public ExchangeRate getRate(Currency fromCurrency, Currency toCurrency, long atTime) {
-        throw new UnsupportedOperationException("Not yet implemented");
+    override fun getRate(fromCurrency: Currency, toCurrency: Currency, atTime: Long): ExchangeRate {
+        throw UnsupportedOperationException("Not yet implemented")
     }
 
-    private String getResponse(Currency fromCurrency, Currency toCurrency) throws Exception {
-        String url = buildUrl(fromCurrency, toCurrency);
-        logger.i(url);
-        JSONObject jsonObject = httpClient.getAsJson(url);
-        logger.i(jsonObject.getString(toCurrency.name));
-        return jsonObject.getString(toCurrency.name);
+    private fun getResponse(fromCurrency: Currency, toCurrency: Currency): String {
+        val url = buildUrl(fromCurrency, toCurrency)
+        logger.i(url)
+        val jsonObject = httpClientWrapper.getAsJson(url)
+        val result = jsonObject.getString(toCurrency.name)
+        logger.i(result)
+        return result
     }
 
-    private ExchangeRate createRate(Currency fromCurrency, Currency toCurrency) {
-        ExchangeRate rate = new ExchangeRate();
-        rate.fromCurrencyId = fromCurrency.id;
-        rate.toCurrencyId = toCurrency.id;
-        rate.date = dateTime;
-        return rate;
+    private fun createRate(fromCurrency: Currency, toCurrency: Currency): ExchangeRate {
+        return ExchangeRate().apply {
+            fromCurrencyId = fromCurrency.id
+            toCurrencyId = toCurrency.id
+            date = dateTime
+        }
     }
 
-    private String buildUrl (Currency fromCurrency, Currency toCurrency) {
-        return "https://freecurrencyrates.com/api/action.php?s=fcr&iso="+toCurrency.name+"&f="+fromCurrency.name+"&v=1&do=cvals";
+    private fun buildUrl(fromCurrency: Currency, toCurrency: Currency): String {
+        return "https://freecurrencyrates.com/api/action.php?s=fcr&iso=${toCurrency.name}&f=${fromCurrency.name}&v=1&do=cvals"
     }
 }

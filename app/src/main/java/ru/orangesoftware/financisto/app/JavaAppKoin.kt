@@ -17,29 +17,46 @@ import org.koin.core.context.startKoin
 import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.module
+import org.koin.dsl.onClose
 import ru.orangesoftware.financisto.BuildConfig
 import ru.orangesoftware.financisto.bus.GreenRobotBus
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.db.DatabaseHelper
 import ru.orangesoftware.financisto.export.drive.GoogleDriveClient
 import ru.orangesoftware.financisto.persistance.PreferencesStore
+import ru.orangesoftware.financisto.rates.FreeCurrencyRateDownloader
+import ru.orangesoftware.financisto.rates.OpenExchangeRatesDownloader
+import ru.orangesoftware.financisto.rates.WebserviceXConversionRateDownloader
 import ru.orangesoftware.financisto.utils.Logger
 import ru.orangesoftware.financisto.utils.TimberLogger
 import ru.orangesoftware.financisto.utils.TimberTree
 import timber.log.Timber
 
 // A module with Kotlin and Java components
-val modules = module {
+val storage = module {
     singleOf(::PreferencesStore) { bind<PreferencesStore>() }
+}
+
+val eventBus = module {
     singleOf(::GreenRobotBus) { bind<GreenRobotBus>() }
+}
+
+val remoteStorage = module {
     singleOf(::GoogleDriveClient) { bind<GoogleDriveClient>() }
+}
+
+val database = module {
     singleOf(::DatabaseAdapter) { bind<DatabaseAdapter>() }
     singleOf(::DatabaseHelper) { bind<DatabaseHelper>() }
+}
 
+val logger = module {
     // Add the Logger definition to the module
     singleOf(::TimberLogger) { bind<Logger>() }
+}
 
-    single<HttpClientEngine> { CIO.create() }
+val httpClient = module {
+    single<HttpClientEngine> { CIO.create() } onClose { it?.close() }
     single<HttpClient> {
         HttpClient(get()) {
             install(ContentNegotiation) {
@@ -49,8 +66,20 @@ val modules = module {
                 })
             }
         }
-    }
+    } onClose { it?.close() }
     singleOf(::HttpClientWrapper) { bind<HttpClientWrapper>() }
+}
+
+val exchangeRates = module {
+    factory<FreeCurrencyRateDownloader> {
+        FreeCurrencyRateDownloader(get(), get(), System.currentTimeMillis())
+    }
+    factory<WebserviceXConversionRateDownloader> {
+        WebserviceXConversionRateDownloader(get(), get(), System.currentTimeMillis())
+    }
+    factory<OpenExchangeRatesDownloader> { (appId: String?) ->
+        OpenExchangeRatesDownloader(get(), get(), appId)
+    }
 }
 
 // Start
@@ -62,7 +91,15 @@ fun start(myApplication: Application) {
         // Reference Android context
         androidContext(myApplication)
         // Load modules
-        modules(listOf(modules))
+        modules(listOf(
+            storage,
+            eventBus,
+            remoteStorage,
+            database,
+            logger,
+            httpClient,
+            exchangeRates,
+        ))
     }
 
     // Plant Timber tree only once when start Koin.

@@ -209,10 +209,6 @@ kover {
     }
 }
 
-composeCompiler {
-//    featureFlags = setOf(ComposeFeatureFlag.StrongSkipping.disabled())
-}
-
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
