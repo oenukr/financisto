@@ -31,6 +31,7 @@ import ru.orangesoftware.financisto.utils.Logger
 import ru.orangesoftware.financisto.utils.TimberLogger
 import ru.orangesoftware.financisto.utils.TimberTree
 import timber.log.Timber
+import kotlin.time.Clock as KotlinXClock
 
 // A module with Kotlin and Java components
 val storage = module {
@@ -55,6 +56,10 @@ val logger = module {
     singleOf(::TimberLogger) { bind<Logger>() }
 }
 
+val timeModule = module {
+    single<KotlinXClock> { KotlinXClock.System }
+}
+
 val httpClient = module {
     single<HttpClientEngine> { CIO.create() } onClose { it?.close() }
     single<HttpClient> {
@@ -72,15 +77,26 @@ val httpClient = module {
 
 val exchangeRates = module {
     factory<FreeCurrencyRateDownloader> {
-        FreeCurrencyRateDownloader(get(), get(), System.currentTimeMillis())
+        FreeCurrencyRateDownloader(get(), get(), get<KotlinXClock>())
     }
     factory<WebserviceXConversionRateDownloader> {
-        WebserviceXConversionRateDownloader(get(), get(), System.currentTimeMillis())
+        WebserviceXConversionRateDownloader(get(), get(), get<KotlinXClock>())
     }
     factory<OpenExchangeRatesDownloader> { (appId: String?) ->
-        OpenExchangeRatesDownloader(get(), get(), appId)
+        OpenExchangeRatesDownloader(get(), get(), appId, get<KotlinXClock>())
     }
 }
+
+val modules = listOf(
+    storage,
+    eventBus,
+    remoteStorage,
+    database,
+    logger,
+    timeModule,
+    httpClient,
+    exchangeRates,
+)
 
 // Start
 fun start(myApplication: Application) {
@@ -91,15 +107,7 @@ fun start(myApplication: Application) {
         // Reference Android context
         androidContext(myApplication)
         // Load modules
-        modules(listOf(
-            storage,
-            eventBus,
-            remoteStorage,
-            database,
-            logger,
-            httpClient,
-            exchangeRates,
-        ))
+        modules(modules)
     }
 
     // Plant Timber tree only once when start Koin.

@@ -1,5 +1,6 @@
 package ru.orangesoftware.financisto.rates
 
+import kotlin.time.Clock
 import ru.orangesoftware.financisto.http.HttpClientWrapper
 import ru.orangesoftware.financisto.model.Currency
 import ru.orangesoftware.financisto.utils.Logger
@@ -7,7 +8,7 @@ import ru.orangesoftware.financisto.utils.Logger
 class FreeCurrencyRateDownloader(
     private val httpClientWrapper: HttpClientWrapper,
     private val logger: Logger,
-    private val dateTime: Long,
+    private val clock: Clock,
 ) : AbstractMultipleRatesDownloader() {
 
     override fun getRate(fromCurrency: Currency, toCurrency: Currency): ExchangeRate {
@@ -38,7 +39,7 @@ class FreeCurrencyRateDownloader(
         return ExchangeRate().apply {
             fromCurrencyId = fromCurrency.id
             toCurrencyId = toCurrency.id
-            date = dateTime
+            date = clock.now().toEpochMilliseconds()
         }
     }
 

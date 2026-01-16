@@ -5,19 +5,29 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
+import org.mockito.Mock;
 
 import java.util.List;
 
+import kotlin.time.Clock;
+import ru.orangesoftware.financisto.http.HttpClientWrapper;
 import ru.orangesoftware.financisto.utils.FileUtils;
+import ru.orangesoftware.financisto.utils.Logger;
 
 public class OpenExchangeRatesDownloaderTest extends AbstractRatesDownloaderTest {
 
+    @Mock
+    HttpClientWrapper httpClientWrapper;
+    @Mock
+    Logger logger;
+    @Mock
+    Clock clock;
     OpenExchangeRatesDownloader openRates;
 
     @org.junit.Before
     public void setUp() {
         super.setUp();
-        openRates = new OpenExchangeRatesDownloader("MY_APP_ID");
+        openRates = new OpenExchangeRatesDownloader(httpClientWrapper, logger, "MY_APP_ID", clock);
     }
 
     @Override

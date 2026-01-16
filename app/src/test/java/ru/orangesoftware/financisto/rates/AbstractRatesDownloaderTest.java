@@ -3,6 +3,7 @@ package ru.orangesoftware.financisto.rates;
 import static org.junit.Assert.assertEquals;
 
 import org.junit.runner.RunWith;
+import org.mockito.MockitoAnnotations;
 import org.robolectric.RobolectricTestRunner;
 
 import java.util.ArrayList;
@@ -26,13 +27,17 @@ public abstract class AbstractRatesDownloaderTest {
 
     final FakeHttpClientWrapper client = new FakeHttpClientWrapper();
 
+    protected AutoCloseable closeable;
+
     @Before
     public void setUp() {
         TestKoinHelper.INSTANCE.start(client);
+        closeable = MockitoAnnotations.openMocks(this);
     }
 
     @After
-    public void tearDown() {
+    public void tearDown() throws Exception {
+        closeable.close();
         TestKoinHelper.INSTANCE.stop();
     }
 

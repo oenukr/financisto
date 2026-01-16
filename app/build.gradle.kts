@@ -182,6 +182,8 @@ dependencies {
     testImplementation("androidx.test:core:1.7.0")
     testImplementation("org.robolectric:robolectric:4.11.1") // can't be used because of the current target sdk
     testImplementation("org.hamcrest:hamcrest:3.0")
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.mockito.kotlin)
 }
 
 kover {

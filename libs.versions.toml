@@ -17,6 +17,8 @@ kotlinx-datetime = "0.7.1"
 kover = "0.9.4"
 ktor = "3.3.3"
 lifecycle = "2.10.0"
+mockito = "5.21.0"
+mockito-kotlin = "6.1.0"
 workmanager = "2.11.0"
 
 [libraries]
@@ -56,6 +58,8 @@ legacy-support = { module = "androidx.legacy:legacy-support-v4", version = "1.0.
 lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycle" }
 lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "lifecycle" }
 materialdatetimepicker = { module = "com.wdullaer:materialdatetimepicker", version = "4.2.3" }
+mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
+mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "mockito-kotlin" }
 okio = { module = "com.squareup.okio:okio", version = "3.16.4" }
 reactive-streams = { module = "org.reactivestreams:reactive-streams", version = "1.0.4" }
 rximagepicker = { module = "com.github.MLSDev:RxImagePicker", version = "master" }

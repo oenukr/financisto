@@ -3,19 +3,30 @@ package ru.orangesoftware.financisto.rates;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
+import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mock;
 
 import java.util.List;
 
+import ru.orangesoftware.financisto.http.HttpClientWrapper;
+import ru.orangesoftware.financisto.utils.Logger;
+import kotlin.time.Clock;
+
 public class WebserviceXConversionRateDownloaderTest extends AbstractRatesDownloaderTest {
 
-    long dateTime = System.currentTimeMillis();
+    @Mock
+    HttpClientWrapper httpClientWrapper;
+    @Mock
+    Logger logger;
+    @Mock
+    Clock clock;
     WebserviceXConversionRateDownloader webserviceX;
 
-    @org.junit.Before
+    @Before
     public void setUp() {
         super.setUp();
-        webserviceX = new WebserviceXConversionRateDownloader(dateTime);
+        webserviceX = new WebserviceXConversionRateDownloader(httpClientWrapper, logger, clock);
     }
 
     @Override
@@ -43,9 +54,9 @@ public class WebserviceXConversionRateDownloaderTest extends AbstractRatesDownlo
         List<ExchangeRate> rates = webserviceX.getRates(currencies("USD", "SGD", "RUB"));
         // then
         assertEquals(3, rates.size());
-        assertRate(rates.get(0), "USD", "SGD", 1.2, dateTime);
-        assertRate(rates.get(1), "USD", "RUB", 30, dateTime);
-        assertRate(rates.get(2), "SGD", "RUB", 25, dateTime);
+        assertRate(rates.get(0), "USD", "SGD", 1.2, 0);
+        assertRate(rates.get(1), "USD", "RUB", 30, 0);
+        assertRate(rates.get(2), "SGD", "RUB", 25, 0);
     }
 
     @Test

@@ -1,5 +1,6 @@
 package ru.orangesoftware.financisto.rates
 
+import kotlin.time.Clock
 import org.json.JSONException
 import org.json.JSONObject
 import ru.orangesoftware.financisto.http.HttpClientWrapper
@@ -10,7 +11,8 @@ import ru.orangesoftware.financisto.utils.Logger
 class OpenExchangeRatesDownloader(
     private val httpClientWrapper: HttpClientWrapper,
     private val logger: Logger,
-    private val appId: String?
+    private val appId: String?,
+    private val clock: Clock
 ) : AbstractMultipleRatesDownloader() {
 
     private var json: JSONObject? = null
@@ -70,7 +72,7 @@ class OpenExchangeRatesDownloader(
         val usdTo = rates.getDouble(toCurrency.name)
         exchangeRate.rate = if (usdFrom != 0.0) usdTo / usdFrom else 0.0
         val timestamp = json.optLong("timestamp", -1L)
-        exchangeRate.date = if (timestamp != -1L) timestamp * 1000 else System.currentTimeMillis()
+        exchangeRate.date = if (timestamp != -1L) timestamp * 1000 else clock.now().toEpochMilliseconds()
     }
 
     override fun getRate(fromCurrency: Currency, toCurrency: Currency, atTime: Long): ExchangeRate {
