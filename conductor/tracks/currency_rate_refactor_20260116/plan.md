@@ -8,10 +8,10 @@
 
 ## Phase 2: Refactor OpenExchangeRatesDownloader
 
-- [ ] Task: Write failing tests for OpenExchangeRatesDownloader
-- [ ] Task: Refactor OpenExchangeRatesDownloader to use Ktor and improve error handling
-- [ ] Task: Verify tests pass and coverage is >80% for OpenExchangeRatesDownloader
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Refactor OpenExchangeRatesDownloader' (Protocol in workflow.md)
+- [x] Task: Write failing tests for OpenExchangeRatesDownloader [62184a1]
+- [x] Task: Refactor OpenExchangeRatesDownloader to use Ktor and improve error handling [69279a1]
+- [x] Task: Verify tests pass and coverage is >80% for OpenExchangeRatesDownloader [69279a1]
+- [~] Task: Conductor - User Manual Verification 'Phase 2: Refactor OpenExchangeRatesDownloader' (Protocol in workflow.md)
 
 ## Phase 3: Refactor Remaining Downloaders
 
