@@ -66,10 +66,11 @@ class OpenExchangeRatesDownloader(
     @Throws(JSONException::class)
     private fun updateRate(json: JSONObject, exchangeRate: ExchangeRate, fromCurrency: Currency, toCurrency: Currency) {
         val rates = json.getJSONObject("rates")
-        val currencyFrom = rates.getDouble(fromCurrency.name).coerceAtLeast(0.000001)
-        val currencyTo = rates.getDouble(toCurrency.name)
-        exchangeRate.rate = currencyTo * (1 / currencyFrom)
-        exchangeRate.date = 1000 * json.optLong("timestamp", System.currentTimeMillis() / 1000)
+        val usdFrom = rates.getDouble(fromCurrency.name)
+        val usdTo = rates.getDouble(toCurrency.name)
+        exchangeRate.rate = if (usdFrom != 0.0) usdTo / usdFrom else 0.0
+        val timestamp = json.optLong("timestamp", -1L)
+        exchangeRate.date = if (timestamp != -1L) timestamp * 1000 else System.currentTimeMillis()
     }
 
     override fun getRate(fromCurrency: Currency, toCurrency: Currency, atTime: Long): ExchangeRate {
