@@ -59,7 +59,6 @@ class WebserviceXConversionRateDownloader(
             "Service is not available, please try again later"
         }
     }
-    }
 
     private fun buildUrl(fromCurrency: Currency, toCurrency: Currency): String {
         return "https://www.webservicex.net/CurrencyConvertor.asmx/ConversionRate?FromCurrency=${fromCurrency.name}&ToCurrency=${toCurrency.name}"
