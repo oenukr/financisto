@@ -13,9 +13,9 @@
 - [x] Task: Verify tests pass and coverage is >80% for OpenExchangeRatesDownloader [69279a1]
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Refactor OpenExchangeRatesDownloader' (Protocol in workflow.md) [bb905f3]
 
-## Phase 3: Refactor Remaining Downloaders
+## Phase 3: Refactor Remaining Downloaders [checkpoint: 240fa1f]
 
-- [ ] Task: Write failing tests for WebserviceXConversionRateDownloader and FreeCurrencyRateDownloader
-- [ ] Task: Refactor WebserviceXConversionRateDownloader and FreeCurrencyRateDownloader to use Ktor
-- [ ] Task: Verify tests pass and coverage is >80% for remaining downloaders
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Refactor Remaining Downloaders' (Protocol in workflow.md)
+- [x] Task: Write failing tests for WebserviceXConversionRateDownloader and FreeCurrencyRateDownloader [70538a1]
+- [x] Task: Refactor WebserviceXConversionRateDownloader and FreeCurrencyRateDownloader to use Ktor [74981a1]
+- [x] Task: Verify tests pass and coverage is >80% for remaining downloaders [75117a1]
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Refactor Remaining Downloaders' (Protocol in workflow.md) [240fa1f]
