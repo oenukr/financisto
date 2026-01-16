@@ -51,12 +51,13 @@ class WebserviceXConversionRateDownloader(
     }
 
     private fun parseError(s: String): String {
-        val x = s.split("\r\n".toRegex()).toTypedArray()
-        var error = "Service is not available, please try again later"
-        if (x.isNotEmpty()) {
-            error = "Something wrong with the exchange rates provider. Response from the service - ${x[0]}"
+        val firstLine = s.lines().firstOrNull { it.isNotBlank() }
+        return if (firstLine != null) {
+            "Something wrong with the exchange rates provider. Response from the service - $firstLine"
+        } else {
+            "Service is not available, please try again later"
         }
-        return error
+    }
     }
 
     private fun buildUrl(fromCurrency: Currency, toCurrency: Currency): String {
