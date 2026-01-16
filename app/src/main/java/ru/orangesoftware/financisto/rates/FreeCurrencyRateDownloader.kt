@@ -9,38 +9,28 @@ class FreeCurrencyRateDownloader(
     private val httpClientWrapper: HttpClientWrapper,
     private val logger: Logger,
     private val clock: Clock,
-) : AbstractMultipleRatesDownloader() {
+) : BaseExchangeRateDownloader(clock) {
 
     override fun getRate(fromCurrency: Currency, toCurrency: Currency): ExchangeRate {
-        return createRate(fromCurrency, toCurrency).apply {
-            try {
-                val s = getResponse(fromCurrency, toCurrency)
-                rate = s.toDouble()
-            } catch (e: Exception) {
-                error = "Unable to get exchange rates: ${e.message}"
-            }
+        val exchangeRate = createRate(fromCurrency, toCurrency)
+        exchangeRate.safeExecute {
+            val s = getResponse(fromCurrency, toCurrency)
+            exchangeRate.rate = s.toDouble()
         }
+        return exchangeRate
     }
 
     override fun getRate(fromCurrency: Currency, toCurrency: Currency, atTime: Long): ExchangeRate {
-        throw UnsupportedOperationException("Not yet implemented")
+        throw UnsupportedOperationException("Historical rates not supported yet by this downloader")
     }
 
     private fun getResponse(fromCurrency: Currency, toCurrency: Currency): String {
         val url = buildUrl(fromCurrency, toCurrency)
-        logger.i(url)
+        logger.i("Downloading rates from FreeCurrencyRates: $url")
         val jsonObject = httpClientWrapper.getAsJson(url)
         val result = jsonObject.getString(toCurrency.name)
-        logger.i(result)
+        logger.i("Response: $result")
         return result
-    }
-
-    private fun createRate(fromCurrency: Currency, toCurrency: Currency): ExchangeRate {
-        return ExchangeRate().apply {
-            fromCurrencyId = fromCurrency.id
-            toCurrencyId = toCurrency.id
-            date = clock.now().toEpochMilliseconds()
-        }
     }
 
     private fun buildUrl(fromCurrency: Currency, toCurrency: Currency): String {

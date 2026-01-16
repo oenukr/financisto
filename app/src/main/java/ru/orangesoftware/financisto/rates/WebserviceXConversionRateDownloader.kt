@@ -10,44 +10,34 @@ class WebserviceXConversionRateDownloader(
     private val httpClientWrapper: HttpClientWrapper,
     private val logger: Logger,
     private val clock: Clock
-) : AbstractMultipleRatesDownloader() {
+) : BaseExchangeRateDownloader(clock) {
 
     private val pattern = Pattern.compile("<double.*?>(.+?)</double>")
 
     override fun getRate(fromCurrency: Currency, toCurrency: Currency): ExchangeRate {
-        return createRate(fromCurrency, toCurrency).apply {
-            try {
-                val s = getResponse(fromCurrency, toCurrency)
-                val m = pattern.matcher(s)
-                if (m.find()) {
-                    val rateValue = m.group(1)?.toDoubleOrNull()
-                    if (rateValue != null) {
-                        rate = rateValue
-                    } else {
-                        error = "Invalid rate format: ${m.group(1)}"
-                    }
+        val exchangeRate = createRate(fromCurrency, toCurrency)
+        exchangeRate.safeExecute {
+            val s = getResponse(fromCurrency, toCurrency)
+            val m = pattern.matcher(s)
+            if (m.find()) {
+                val rateValue = m.group(1)?.toDoubleOrNull()
+                if (rateValue != null) {
+                    exchangeRate.rate = rateValue
                 } else {
-                    error = parseError(s)
+                    exchangeRate.error = "Invalid rate format: ${m.group(1)}"
                 }
-            } catch (e: Exception) {
-                error = "Unable to get exchange rates: ${e.message}"
+            } else {
+                exchangeRate.error = parseError(s)
             }
         }
-    }
-
-    private fun createRate(fromCurrency: Currency, toCurrency: Currency): ExchangeRate {
-        return ExchangeRate().apply {
-            fromCurrencyId = fromCurrency.id
-            toCurrencyId = toCurrency.id
-            date = clock.now().toEpochMilliseconds()
-        }
+        return exchangeRate
     }
 
     private fun getResponse(fromCurrency: Currency, toCurrency: Currency): String {
         val url = buildUrl(fromCurrency, toCurrency)
-        logger.i(url)
+        logger.i("Downloading rates from WebserviceX: $url")
         val s = httpClientWrapper.getAsString(url).orEmpty()
-        logger.i(s)
+        logger.i("Response: $s")
         return s
     }
 
@@ -65,6 +55,6 @@ class WebserviceXConversionRateDownloader(
     }
 
     override fun getRate(fromCurrency: Currency, toCurrency: Currency, atTime: Long): ExchangeRate {
-        throw UnsupportedOperationException("Not supported by WebserviceX.NET")
+        throw UnsupportedOperationException("Historical rates not supported yet by this downloader")
     }
 }
