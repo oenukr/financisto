@@ -16,9 +16,9 @@ abstract class BaseExchangeRateDownloader(
     }
 
     protected fun ExchangeRate.safeExecute(block: () -> Unit) {
-        try {
+        runCatching {
             block()
-        } catch (e: Exception) {
+        }.onFailure { e ->
             error = "Unable to get exchange rates: ${e.message}"
         }
     }
