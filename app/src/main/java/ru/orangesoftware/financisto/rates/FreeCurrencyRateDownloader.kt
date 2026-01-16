@@ -16,7 +16,7 @@ class FreeCurrencyRateDownloader(
                 val s = getResponse(fromCurrency, toCurrency)
                 rate = s.toDouble()
             } catch (e: Exception) {
-                error = "Unable to get exchange rates: " + e.message
+                error = "Unable to get exchange rates: ${e.message}"
             }
         }
     }
