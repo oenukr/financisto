@@ -1,23 +1,27 @@
 package ru.orangesoftware.financisto.rates
 
 import android.content.SharedPreferences
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.get
 
-enum class ExchangeRateProviderFactory {
+import org.koin.core.parameter.parametersOf
+
+enum class ExchangeRateProviderFactory : KoinComponent {
 
     webservicex {
         override fun createProvider(sharedPreferences: SharedPreferences): ExchangeRateProvider {
-            return WebserviceXConversionRateDownloader(System.currentTimeMillis())
+            return get<WebserviceXConversionRateDownloader>()
         }
     },
     openexchangerates {
         override fun createProvider(sharedPreferences: SharedPreferences): ExchangeRateProvider {
             val appId: String? = sharedPreferences.getString("openexchangerates_app_id", "")
-            return OpenExchangeRatesDownloader(appId)
+            return get<OpenExchangeRatesDownloader> { parametersOf(appId) }
         }
     },
     freeCurrency {
         override fun createProvider(sharedPreferences: SharedPreferences): ExchangeRateProvider {
-            return FreeCurrencyRateDownloader(System.currentTimeMillis())
+            return get<FreeCurrencyRateDownloader>()
         }
     };
 
