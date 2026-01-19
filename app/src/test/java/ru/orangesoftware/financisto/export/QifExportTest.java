@@ -4,10 +4,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static ru.orangesoftware.financisto.test.DateTime.date;
 
+import org.junit.Before;
 import org.junit.Test;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Locale;
 import java.util.Map;
 
 import ru.orangesoftware.financisto.blotter.BlotterFilter;
@@ -31,6 +33,13 @@ public class QifExportTest extends AbstractExportTest<QifExport, QifExportOption
 
     Account a1;
     Account a2;
+
+    @Before
+    @Override
+    public void setUp() throws Exception {
+        super.setUp();
+        Locale.setDefault(Locale.US);
+    }
 
     @Test
     public void should_export_empty_file() throws Exception {
@@ -235,6 +244,7 @@ public class QifExportTest extends AbstractExportTest<QifExport, QifExportOption
                 "D08/02/2011\n"+
                 "T20.00\n"+
                 "L[My Bank Account]\n"+
+                "M(-20.00 S$)\n"+
                 "^\n"+
                 "!Account\n"+
                 "NMy Bank Account\n"+
@@ -244,6 +254,7 @@ public class QifExportTest extends AbstractExportTest<QifExport, QifExportOption
                 "D08/02/2011\n"+
                 "T-20.00\n"+
                 "L[My Cash Account]\n"+
+                "M(20.00 S$)\n"+
                 "^\n",
                 exportAsString());
     }
@@ -297,6 +308,7 @@ public class QifExportTest extends AbstractExportTest<QifExport, QifExportOption
                 "T-2,600.66\n" +
                 "S[My Bank Account]\n" +
                 "$-1,100.56\n" +
+                "E(500.25 S$)\n" +
                 "^\n" +
                 "!Account\n" +
                 "NMy Bank Account\n" +
@@ -306,6 +318,7 @@ public class QifExportTest extends AbstractExportTest<QifExport, QifExportOption
                 "D12/07/2011\n" +
                 "T500.25\n" +
                 "L[My Cash Account]\n" +
+                "M(-1100.56 S$)\n" +
                 "^\n",
                 exportAsString());
     }
@@ -332,13 +345,16 @@ public class QifExportTest extends AbstractExportTest<QifExport, QifExportOption
                 "D13/07/2011\n"+
                 "T1,234.56\n"+
                 "L[My Bank Account]\n"+
+                "M(-4200.12 S$)\n"+
                 "^\n"+
                 "D12/07/2011\n"+
                 "T-2,600.66\n"+
                 "S[My Bank Account]\n"+
                 "$-1,100.56\n"+
+                "E(500.25 S$)\n"+
                 "S[My Bank Account]\n"+
                 "$-1,500.10\n"+
+                "E(620.00 S$)\n"+
                 "^\n"+
                 "!Account\n"+
                 "NMy Bank Account\n"+
@@ -349,14 +365,17 @@ public class QifExportTest extends AbstractExportTest<QifExport, QifExportOption
                 "T-4,200.12\n"+
                 "S[My Cash Account]\n"+
                 "$-4,200.12\n"+
+                "E(1234.56 S$)\n"+
                 "^\n"+
                 "D12/07/2011\n"+
                 "T620.00\n"+
                 "L[My Cash Account]\n"+
+                "M(-1500.10 S$)\n"+
                 "^\n"+
                 "D12/07/2011\n"+
                 "T500.25\n"+
                 "L[My Cash Account]\n"+
+                "M(-1100.56 S$)\n"+
                 "^\n",
                 exportAsString());
     }
