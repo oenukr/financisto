@@ -39,7 +39,6 @@ glide = { module = "com.github.bumptech.glide:glide", version.ref = "glide" }
 glide-compose = { module = "com.github.bumptech.glide:compose", version.ref = "glide-compose" }
 google-play-base = { module = "com.google.android.gms:play-services-base", version = "18.10.0" }
 google-play-drive = { module = "com.google.android.gms:play-services-drive", version = "17.0.0" }
-google-play-plus = { module = "com.google.android.gms:play-services-plus", version = "17.0.0" }
 java-collections = { module = "net.sf.trove4j:core", version = "3.1.0" }
 koala-chart = { module = "io.github.koalaplot:koalaplot-core", version = "0.10.4" }
 koin-bom = { module = "io.insert-koin:koin-bom", version = "4.1.1" }
@@ -54,7 +53,6 @@ ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
 ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
-legacy-support = { module = "androidx.legacy:legacy-support-v4", version = "1.0.0" }
 lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycle" }
 lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "lifecycle" }
 materialdatetimepicker = { module = "com.wdullaer:materialdatetimepicker", version = "4.2.3" }

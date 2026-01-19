@@ -143,12 +143,10 @@ dependencies {
     implementation(libs.kotlinx.datetime)
 
 
-    implementation(libs.legacy.support)
     implementation(libs.appcompat)
 
     implementation(libs.google.play.base)
     implementation(libs.google.play.drive)
-    implementation(libs.google.play.plus)
 
     implementation(libs.androidannotations.api)
 
