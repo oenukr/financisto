@@ -76,9 +76,9 @@ public class QifTransaction {
 
     private static void appendToMemo(QifTransaction t, String value) {
         if (Utils.isNotEmpty(t.memo)) {
-            t.memo += " (" + value + ")";
+            t.memo = String.format("%s (%s)", t.memo, value);
         } else {
-            t.memo = "(" + value + ")";
+            t.memo = String.format("(%s)", value);
         }
     }
 

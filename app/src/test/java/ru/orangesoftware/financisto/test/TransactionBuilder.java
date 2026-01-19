@@ -83,6 +83,12 @@ public class TransactionBuilder {
         return this;
     }
 
+    public TransactionBuilder transfer(Account toAccount, long toAmount) {
+        t.toAccountId = toAccount.id;
+        t.toAmount = toAmount;
+        return this;
+    }
+
     public TransactionBuilder ccPayment() {
         t.isCCardPayment = 1;
         return this;
