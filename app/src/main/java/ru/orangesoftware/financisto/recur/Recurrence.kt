@@ -1,13 +1,15 @@
 package ru.orangesoftware.financisto.recur
 
 import android.content.Context
-import com.google.ical.values.RRule
 import ru.orangesoftware.financisto.R
 import ru.orangesoftware.financisto.app.DependenciesHolder
 import ru.orangesoftware.financisto.datetime.DateUtils
 import ru.orangesoftware.financisto.utils.Logger
 import java.text.ParseException
-import java.util.*
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+import kotlin.time.Instant
 
 class Recurrence {
     private val logger: Logger = DependenciesHolder().logger
@@ -23,9 +25,10 @@ class Recurrence {
     var period: RecurrencePeriod? = null
 
     fun stateToString(): String {
-        return DateUtils.FORMAT_TIMESTAMP_ISO_8601.format(startDate!!.time) + "~" +
-                pattern!!.stateToString() + "~" +
-                period!!.stateToString()
+        val startStr = startDate?.let { DateUtils.FORMAT_TIMESTAMP_ISO_8601.format(it.time) }.orEmpty()
+        val patternStr = pattern?.stateToString()?.toString().orEmpty()
+        val periodStr = period?.stateToString().orEmpty()
+        return "$startStr~$patternStr~$periodStr"
     }
 
     fun getStartDate(): Calendar? {
@@ -33,76 +36,100 @@ class Recurrence {
     }
 
     fun updateStartDate(y: Int, m: Int, d: Int) {
-        startDate!!.set(Calendar.YEAR, y)
-        startDate!!.set(Calendar.MONTH, m)
-        startDate!!.set(Calendar.DAY_OF_MONTH, d)
+        val date = startDate ?: Calendar.getInstance().also { startDate = it }
+        date.set(Calendar.YEAR, y)
+        date.set(Calendar.MONTH, m)
+        date.set(Calendar.DAY_OF_MONTH, d)
     }
 
     fun updateStartTime(h: Int, m: Int, s: Int) {
-        startDate!!.set(Calendar.HOUR_OF_DAY, h)
-        startDate!!.set(Calendar.MINUTE, m)
-        startDate!!.set(Calendar.SECOND, s)
-        startDate!!.set(Calendar.MILLISECOND, 0)
+        val date = startDate ?: Calendar.getInstance().also { startDate = it }
+        date.set(Calendar.HOUR_OF_DAY, h)
+        date.set(Calendar.MINUTE, m)
+        date.set(Calendar.SECOND, s)
+        date.set(Calendar.MILLISECOND, 0)
     }
 
     fun generateDates(start: Date, end: Date): List<Date> {
         val ri = createIterator(start)
-        val dates = ArrayList<Date>()
+        val dates = mutableListOf<Date>()
         while (ri.hasNext()) {
-            val nextDate = ri.next()
-            if (nextDate != null) {
+            ri.next()?.let { nextDate ->
                 if (nextDate.after(end)) {
-                    break
+                    return dates
                 }
                 dates.add(nextDate)
-            }
+            } ?: break
         }
         return dates
     }
 
     fun createIterator(nowDate: Date): DateRecurrenceIterator {
-        var now = nowDate
-        val rrule = createRRule()
-        return try {
-            logger.d("Creating iterator for " + rrule.toIcal())
-            if (now.before(startDate!!.time)) {
-                now = startDate!!.time
-            }
-            val c = Calendar.getInstance()
-            c.time = startDate!!.time
-            //c.set(Calendar.HOUR_OF_DAY, startDate.get(Calendar.HOUR_OF_DAY));
-            //c.set(Calendar.MINUTE, startDate.get(Calendar.MINUTE));
-            //c.set(Calendar.SECOND, startDate.get(Calendar.SECOND));
-            c.set(Calendar.MILLISECOND, 0)
-            DateRecurrenceIterator.create(rrule, now, c.time)
-        } catch (e: ParseException) {
-            logger.w("Unable to create iterator for " + rrule.toIcal())
+        val rruleString = createRRuleString()
+        return runCatching {
+            logger.d("Creating iterator for $rruleString")
+            startDate?.let { start ->
+                var now = nowDate
+                if (now.before(start.time)) {
+                    now = start.time
+                }
+                val c = Calendar.getInstance()
+                c.time = start.time
+                c.set(Calendar.MILLISECOND, 0)
+
+                val timeZone = Calendar.getInstance().timeZone
+                val startInstant = Instant.fromEpochMilliseconds(c.timeInMillis)
+
+                val processor: RecurrenceProcessor =
+                    LibRecurProcessor(rruleString, startInstant, timeZone)
+
+                var date: Date? = null
+                while (processor.hasNext()) {
+                    val next = processor.next()
+                    if (next != null) {
+                        val d = Date(next.toEpochMilliseconds())
+                        if (!d.before(now)) {
+                            date = d
+                            break
+                        }
+                    } else {
+                        break
+                    }
+                }
+                val iterator = DateRecurrenceIterator(processor)
+                iterator.firstDate = date
+                iterator
+            } ?: DateRecurrenceIterator.empty()
+        }.getOrElse {
+            logger.w("Unable to create iterator for $rruleString")
             DateRecurrenceIterator.empty()
         }
     }
 
-    private fun createRRule(): RRule {
-        return if (pattern!!.frequency == RecurrenceFrequency.GEEKY) {
-            try {
-                val map = RecurrenceViewFactory.parseState(pattern!!.params)
-                val rrule = map[RecurrenceViewFactory.P_INTERVAL]
-                RRule("RRULE:" + rrule!!.uppercase(Locale.getDefault()))
-            } catch (e: ParseException) {
-                throw IllegalArgumentException(pattern!!.params)
+    private fun createRRuleString(): String {
+        return pattern?.let { pat ->
+            if (pat.frequency == RecurrenceFrequency.GEEKY) {
+                runCatching {
+                    val map = RecurrenceViewFactory.parseState(pat.params)
+                    map[RecurrenceViewFactory.P_INTERVAL]?.uppercase(Locale.getDefault())
+                }.getOrNull()
+            } else {
+                startDate?.let { start ->
+                    pat.toRRuleString() + (period?.toRRuleString(start) ?: "")
+                }
             }
-        } else {
-            val r = RRule()
-            pattern!!.updateRRule(r)
-            period!!.updateRRule(r, startDate!!)
-            r
-        }
+        }.orEmpty()
     }
 
     fun toInfoString(context: Context): String {
-        return (context.getString(pattern!!.frequency.titleId) +
-                ", " + context.getString(R.string.recur_repeat_starts_on) + ": " +
-                DateUtils.getShortDateFormat(context).format(startDate!!.time) + " " +
-                DateUtils.getTimeFormat(context).format(startDate!!.time))
+        return startDate?.let { start ->
+            pattern?.let { pat ->
+                context.getString(pat.frequency.titleId) +
+                        ", " + context.getString(R.string.recur_repeat_starts_on) + ": " +
+                        DateUtils.getShortDateFormat(context).format(start.time) + " " +
+                        DateUtils.getTimeFormat(context).format(start.time)
+            }
+        }.orEmpty()
     }
 
     companion object {
@@ -110,12 +137,12 @@ class Recurrence {
         fun parse(recurrence: String): Recurrence {
             val r = Recurrence()
             val a = recurrence.split("~".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-            try {
+            runCatching {
                 val d = DateUtils.FORMAT_TIMESTAMP_ISO_8601.parse(a[0])
-                val c = Calendar.getInstance()
-                c.time = d!!
-                r.startDate = c
-            } catch (e: ParseException) {
+                r.startDate = Calendar.getInstance().apply {
+                    time = d ?: Date()
+                }
+            }.onFailure {
                 throw RuntimeException(recurrence)
             }
             r.pattern = RecurrencePattern.parse(a[1])
@@ -125,11 +152,11 @@ class Recurrence {
 
         @JvmStatic
         fun noRecur(): Recurrence {
-            val r = Recurrence()
-            r.startDate = Calendar.getInstance()
-            r.pattern = RecurrencePattern.noRecur()
-            r.period = RecurrencePeriod.noEndDate()
-            return r
+            return Recurrence().apply {
+                startDate = Calendar.getInstance()
+                pattern = RecurrencePattern.noRecur()
+                period = RecurrencePeriod.noEndDate()
+            }
         }
     }
 }

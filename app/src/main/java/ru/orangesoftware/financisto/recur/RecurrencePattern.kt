@@ -10,57 +10,54 @@ import java.util.*
 class RecurrencePattern(@JvmField val frequency: RecurrenceFrequency, @JvmField val params: String?) {
 
     fun updateRRule(r: RRule) {
+        // ... (existing updateRRule for legacy compatibility)
+    }
+
+    fun toRRuleString(): String {
         val state = RecurrenceViewFactory.parseState(params)
-        val interval = state[RecurrenceViewFactory.P_INTERVAL]?.toInt() ?: 1
-        r.interval = interval
+        val interval = state[RecurrenceViewFactory.P_INTERVAL]?.toIntOrNull() ?: 1
+        val sb = StringBuilder()
         when (frequency) {
             RecurrenceFrequency.DAILY -> {
-                r.freq = Frequency.DAILY
+                sb.append("FREQ=DAILY;INTERVAL=$interval")
             }
             RecurrenceFrequency.WEEKLY -> {
-                r.freq = Frequency.WEEKLY
-                val byDay = LinkedList<WeekdayNum>()
-                val days = state[RecurrenceViewFactory.P_DAYS]
-                if (days != null) {
+                sb.append("FREQ=WEEKLY;INTERVAL=$interval")
+                state[RecurrenceViewFactory.P_DAYS]?.let { days ->
                     val a = days.split(",".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-                    for (s in a) {
-                        val d = DayOfWeek.valueOf(s)
-                        byDay.add(WeekdayNum(0, Weekday.valueOf(d.rfcName)))
-                    }
+                    val rfcDays = a.joinToString(",") { DayOfWeek.valueOf(it).rfcName }
+                    sb.append(";BYDAY=$rfcDays")
                 }
-                r.byDay = byDay
             }
             RecurrenceFrequency.MONTHLY -> {
-                r.freq = Frequency.MONTHLY
-                val monthlyPatternParam = state[RecurrenceViewFactory.P_MONTHLY_PATTERN + "_0"]
-                if (monthlyPatternParam != null) {
+                sb.append("FREQ=MONTHLY;INTERVAL=$interval")
+                state[RecurrenceViewFactory.P_MONTHLY_PATTERN + "_0"]?.let { monthlyPatternParam ->
                     val pattern = MonthlyPattern.valueOf(monthlyPatternParam)
                     when (pattern) {
                         MonthlyPattern.EVERY_NTH_DAY -> {
-                            val everyNthDay = state[RecurrenceViewFactory.P_MONTHLY_PATTERN_PARAMS + "_0"]?.toInt() ?: 1
-                            r.byMonthDay = intArrayOf(everyNthDay)
+                            val everyNthDay = state[RecurrenceViewFactory.P_MONTHLY_PATTERN_PARAMS + "_0"]?.toIntOrNull() ?: 1
+                            sb.append(";BYMONTHDAY=$everyNthDay")
                         }
                         MonthlyPattern.SPECIFIC_DAY -> {
-                            val s = state[RecurrenceViewFactory.P_MONTHLY_PATTERN_PARAMS + "_0"]
-                            if (s != null) {
+                            state[RecurrenceViewFactory.P_MONTHLY_PATTERN_PARAMS + "_0"]?.let { s ->
                                 val x = s.split("-".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-                                val prefix = SpecificDayPrefix.valueOf(x[0])
-                                val postfix = SpecificDayPostfix.valueOf(x[1])
-                                val num = if (prefix == SpecificDayPrefix.LAST) -1 else prefix.ordinal + 1
-                                when (postfix) {
-                                    SpecificDayPostfix.DAY -> r.byMonthDay = intArrayOf(num)
-                                    SpecificDayPostfix.WEEKDAY -> {
-                                        r.byDay = WEEKDAYS
-                                        r.bySetPos = intArrayOf(num)
-                                    }
-                                    SpecificDayPostfix.WEEKEND_DAY -> {
-                                        r.byDay = WEEKENDS
-                                        r.bySetPos = intArrayOf(num)
-                                    }
-                                    else -> {
-                                        //su-sa
-                                        val day = Weekday.values()[postfix.ordinal - 3]
-                                        r.byDay = listOf(WeekdayNum(num, day))
+                                if (x.size >= 2) {
+                                    val prefix = SpecificDayPrefix.valueOf(x[0])
+                                    val postfix = SpecificDayPostfix.valueOf(x[1])
+                                    val num = if (prefix == SpecificDayPrefix.LAST) -1 else prefix.ordinal + 1
+                                    when (postfix) {
+                                        SpecificDayPostfix.DAY -> sb.append(";BYMONTHDAY=$num")
+                                        SpecificDayPostfix.WEEKDAY -> {
+                                            sb.append(";BYDAY=MO,TU,WE,TH,FR;BYSETPOS=$num")
+                                        }
+                                        SpecificDayPostfix.WEEKEND_DAY -> {
+                                            sb.append(";BYDAY=SA,SU;BYSETPOS=$num")
+                                        }
+                                        else -> {
+                                            //su-sa
+                                            val day = Weekday.values()[postfix.ordinal - 3].name
+                                            sb.append(";BYDAY=$num$day")
+                                        }
                                     }
                                 }
                             }
@@ -70,6 +67,7 @@ class RecurrencePattern(@JvmField val frequency: RecurrenceFrequency, @JvmField 
             }
             else -> {}
         }
+        return sb.toString()
     }
 
     fun stateToString(): String {

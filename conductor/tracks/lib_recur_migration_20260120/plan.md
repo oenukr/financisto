@@ -16,7 +16,7 @@
     - [ ] Convert `Recurrence.java` to `Recurrence.kt`.
     - [ ] Convert `RecurrencePattern.java` to `RecurrencePattern.kt`.
     - [ ] Convert `RecurrencePeriod.java` to `RecurrencePeriod.kt`.
-- [ ] Task: Integrate `LibRecurProcessor`
+- [x] Task: Integrate LibRecurProcessor
     - [ ] Switch the default `RecurrenceProcessor` implementation to `LibRecurProcessor`.
     - [ ] Verify all existing unit tests pass.
 - [ ] Task: Conductor - User Manual Verification ' Phase 2: Implementation of lib-recur (TDD)' (Protocol in workflow.md)

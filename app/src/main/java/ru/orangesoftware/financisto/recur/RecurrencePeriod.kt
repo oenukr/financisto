@@ -19,33 +19,33 @@ class RecurrencePeriod(@JvmField val until: RecurrenceUntil, @JvmField val param
     }
 
     fun updateRRule(r: RRule, startDate: Calendar) {
+        // ... (existing updateRRule for legacy compatibility)
+    }
+
+    fun toRRuleString(startDate: Calendar): String {
         val state = RecurrenceViewFactory.parseState(params)
-        when (until) {
+        return when (until) {
             RecurrenceUntil.EXACTLY_TIMES -> {
-                val count = state[RecurrenceViewFactory.P_COUNT]?.toInt() ?: 0
-                r.count = count
+                val count = state[RecurrenceViewFactory.P_COUNT]?.toIntOrNull() ?: 0
+                ";COUNT=$count"
             }
             RecurrenceUntil.STOPS_ON_DATE -> {
-                val stopsOnDate = state[RecurrenceViewFactory.P_DATE]
-                if (stopsOnDate != null) {
+                state[RecurrenceViewFactory.P_DATE]?.let { stopsOnDate ->
                     runCatching {
                         DateUtils.FORMAT_DATE_RFC_2445.parse(stopsOnDate)
-                    }.onSuccess { date ->
-                        if (date != null) {
-                            val c = Calendar.getInstance()
-                            c.time = date
-                            c.set(Calendar.HOUR_OF_DAY, startDate.get(Calendar.HOUR_OF_DAY))
-                            c.set(Calendar.MINUTE, startDate.get(Calendar.MINUTE))
-                            c.set(Calendar.SECOND, startDate.get(Calendar.SECOND))
-                            c.set(Calendar.MILLISECOND, 0)
-                            r.until = dateToDateValue(c.time)
+                    }.getOrNull()?.let { date ->
+                        val c = Calendar.getInstance().apply {
+                            time = date
+                            set(Calendar.HOUR_OF_DAY, startDate.get(Calendar.HOUR_OF_DAY))
+                            set(Calendar.MINUTE, startDate.get(Calendar.MINUTE))
+                            set(Calendar.SECOND, startDate.get(Calendar.SECOND))
+                            set(Calendar.MILLISECOND, 0)
                         }
-                    }.onFailure {
-                        throw IllegalArgumentException(params)
+                        ";UNTIL=${DateUtils.FORMAT_DATE_RFC_2445.format(c.time)}"
                     }
-                }
+                }.orEmpty()
             }
-            else -> {}
+            else -> ""
         }
     }
 

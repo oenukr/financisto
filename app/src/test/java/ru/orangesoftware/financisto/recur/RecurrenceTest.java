@@ -15,11 +15,20 @@ import java.util.TimeZone;
 import ru.orangesoftware.financisto.test.DateTime;
 import timber.log.Timber;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.robolectric.RobolectricTestRunner;
+import org.junit.Before;
+import org.junit.After;
 
-@RunWith(RobolectricTestRunner.class)
 public class RecurrenceTest {
+
+    @Before
+    public void setUp() {
+        RecurrenceTestHelper.start();
+    }
+
+    @After
+    public void tearDown() {
+        RecurrenceTestHelper.stop();
+    }
 
     private final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
