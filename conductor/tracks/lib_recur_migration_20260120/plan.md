@@ -12,7 +12,7 @@
 - [x] Task: Implement Legacy Wrapper (Optional/Transition) [d937f0b]
     - [ ] Create `LegacyRecurrenceProcessor` (wrapping `rfc2445-no-joda`) to verify the abstraction works with existing logic.
     - [ ] Update `DateRecurrenceIterator.kt` to use the new abstraction.
-- [ ] Task: Conductor - User Manual Verification ' Phase 1: Infrastructure & Abstraction (TDD)' (Protocol in workflow.md)
+- [~] Task: Conductor - User Manual Verification ' Phase 1: Infrastructure & Abstraction (TDD)' (Protocol in workflow.md)
 
 ## Phase 2: Implementation of `lib-recur` (TDD)
 - [ ] Task: Create `LibRecurProcessor`
