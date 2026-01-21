@@ -15,7 +15,7 @@ preferences.
 ## Development Conventions
 - **Language:** Use Kotlin for all new code.
 - **Dependency Injection:** Define new dependencies in `JavaAppKoin.kt`.
-- **Coding Style:** Try to follow the style of other code parts and ensure `detekt` passes before committing. Prefer the composition over inheritance whenever it's possible. Use `runCatching` in Kotlin code instead of the `try` and `catch`. 
+- **Coding Style:** Try to follow the style of other code parts and ensure `detekt` passes before committing. Prefer the composition over inheritance whenever it's possible. Use `runCatching` in Kotlin code instead of the `try` and `catch`. Avoid using not-null assertion operator `!!` in Kotlin. 
 - **Database:** Database schema and migrations are located in `app/src/main/assets/database`.
 
 ## Comments
