@@ -11,7 +11,7 @@
     - [ ] Write failing tests for `LibRecurProcessor` using various RRULE patterns.
     - [ ] Implement `LibRecurProcessor.kt` using `dmfs/lib-recur`.
     - [ ] Ensure parity in date calculation with `LegacyRecurrenceProcessor`.
-- [x] Task: Convert Recurrence and RecurrencePattern to Kotlin
+- [x] Task: Convert Recurrence and RecurrencePattern to Kotlin [f979a25]
     - [ ] Write failing tests for `Recurrence` logic in Kotlin.
     - [ ] Convert `Recurrence.java` to `Recurrence.kt`.
     - [ ] Convert `RecurrencePattern.java` to `RecurrencePattern.kt`.
