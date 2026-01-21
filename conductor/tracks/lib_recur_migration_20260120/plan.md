@@ -19,7 +19,7 @@
 - [x] Task: Integrate LibRecurProcessor [6f2ccc5]
     - [ ] Switch the default `RecurrenceProcessor` implementation to `LibRecurProcessor`.
     - [ ] Verify all existing unit tests pass.
-- [ ] Task: Conductor - User Manual Verification ' Phase 2: Implementation of lib-recur (TDD)' (Protocol in workflow.md)
+- [~] Task: Conductor - User Manual Verification ' Phase 2: Implementation of lib-recur (TDD)' (Protocol in workflow.md)
 
 ## Phase 3: Verification & Cleanup
 - [ ] Task: Integration & Migration Testing
