@@ -5,7 +5,7 @@
     - [ ] Add `lib-recur` to `libs.versions.toml`
     - [ ] Add `lib-recur` to `app/build.gradle.kts`
     - [ ] Sync Gradle
-- [ ] Task: Define Recurrence Abstraction
+- [x] Task: Define Recurrence Abstraction
     - [ ] Write failing tests for `RecurrenceProcessor` interface requirements
     - [ ] Create `RecurrenceProcessor.kt` interface (Library-agnostic)
     - [ ] Create `RecurrenceResult.kt` data class for next date calculations

@@ -1,0 +1,31 @@
+package ru.orangesoftware.financisto.recur
+
+import kotlin.time.Instant
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+class RecurrenceProcessorTest {
+
+    @Test
+    fun `RecurrenceResult should hold next date`() {
+        val fixedTime = Instant.parse("2024-01-01T00:00:00Z")
+        // RecurrenceResult doesn't exist yet
+        val result = RecurrenceResult(fixedTime) 
+        assertEquals(fixedTime, result.date)
+    }
+
+    @Test
+    fun `RecurrenceProcessor should define iterator methods`() {
+        // RecurrenceProcessor doesn't exist yet
+        val processor = object : RecurrenceProcessor {
+             override fun hasNext(): Boolean {
+                 return false
+             }
+             
+             override fun next(): Instant? {
+                 return null
+             }
+        }
+        assertEquals(false, processor.hasNext())
+    }
+}
