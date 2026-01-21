@@ -1,18 +1,10 @@
 # Implementation Plan: Replace `rfc2445-no-joda` with `lib-recur`
 
-## Phase 1: Infrastructure & Abstraction (TDD)
+## Phase 1: Infrastructure & Abstraction (TDD) [checkpoint: 98b74e4]
 - [x] Task: Update dependencies [b78ce62]
-    - [ ] Add `lib-recur` to `libs.versions.toml`
-    - [ ] Add `lib-recur` to `app/build.gradle.kts`
-    - [ ] Sync Gradle
 - [x] Task: Define Recurrence Abstraction [05c82ff]
-    - [ ] Write failing tests for `RecurrenceProcessor` interface requirements
-    - [ ] Create `RecurrenceProcessor.kt` interface (Library-agnostic)
-    - [ ] Create `RecurrenceResult.kt` data class for next date calculations
 - [x] Task: Implement Legacy Wrapper (Optional/Transition) [d937f0b]
-    - [ ] Create `LegacyRecurrenceProcessor` (wrapping `rfc2445-no-joda`) to verify the abstraction works with existing logic.
-    - [ ] Update `DateRecurrenceIterator.kt` to use the new abstraction.
-- [~] Task: Conductor - User Manual Verification ' Phase 1: Infrastructure & Abstraction (TDD)' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification ' Phase 1: Infrastructure & Abstraction (TDD)' (Protocol in workflow.md)
 
 ## Phase 2: Implementation of `lib-recur` (TDD)
 - [ ] Task: Create `LibRecurProcessor`
