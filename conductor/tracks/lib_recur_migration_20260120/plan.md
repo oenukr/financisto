@@ -1,7 +1,7 @@
 # Implementation Plan: Replace `rfc2445-no-joda` with `lib-recur`
 
 ## Phase 1: Infrastructure & Abstraction (TDD)
-- [x] Task: Update dependencies
+- [x] Task: Update dependencies [b78ce62]
     - [ ] Add `lib-recur` to `libs.versions.toml`
     - [ ] Add `lib-recur` to `app/build.gradle.kts`
     - [ ] Sync Gradle
