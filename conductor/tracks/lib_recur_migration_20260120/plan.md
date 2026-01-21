@@ -9,7 +9,7 @@
     - [ ] Write failing tests for `RecurrenceProcessor` interface requirements
     - [ ] Create `RecurrenceProcessor.kt` interface (Library-agnostic)
     - [ ] Create `RecurrenceResult.kt` data class for next date calculations
-- [ ] Task: Implement Legacy Wrapper (Optional/Transition)
+- [x] Task: Implement Legacy Wrapper (Optional/Transition)
     - [ ] Create `LegacyRecurrenceProcessor` (wrapping `rfc2445-no-joda`) to verify the abstraction works with existing logic.
     - [ ] Update `DateRecurrenceIterator.kt` to use the new abstraction.
 - [ ] Task: Conductor - User Manual Verification ' Phase 1: Infrastructure & Abstraction (TDD)' (Protocol in workflow.md)

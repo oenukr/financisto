@@ -8,14 +8,15 @@ import ru.orangesoftware.financisto.recur.RecurrencePeriod.dateValueToDate
 import java.text.ParseException
 import java.util.Calendar
 import java.util.Date
+import kotlin.time.Instant
 
-open class DateRecurrenceIterator(private val ri: RecurrenceIterator?) {
+open class DateRecurrenceIterator(private val processor: RecurrenceProcessor) {
 
     private var firstDate: Date? = null
 
-	open fun hasNext(): Boolean {
-		return firstDate != null || ri?.hasNext() ?: false
-	}
+    open fun hasNext(): Boolean {
+        return firstDate != null || processor.hasNext()
+    }
 
     open fun next(): Date? {
         if (firstDate != null) {
@@ -23,7 +24,7 @@ open class DateRecurrenceIterator(private val ri: RecurrenceIterator?) {
             firstDate = null
             return date
         }
-        return dateValueToDate(ri?.next())
+        return processor.next()?.let { Date(it.toEpochMilliseconds()) }
     }
 
     companion object {
@@ -40,20 +41,19 @@ open class DateRecurrenceIterator(private val ri: RecurrenceIterator?) {
                 date = dateValueToDate(ri.next())
                 if (!date.before(nowDate)) break
             }
-            //ri.advanceTo(dateToDateValue(nowDate))
-            val iterator: DateRecurrenceIterator = DateRecurrenceIterator(ri)
+            val iterator = DateRecurrenceIterator(LegacyRecurrenceProcessor(ri))
             iterator.firstDate = date
             return iterator
         }
 
         @JvmStatic
         fun empty(): DateRecurrenceIterator {
-            return EmptyDateRecurrenceIterator
+            return DateRecurrenceIterator(EmptyRecurrenceProcessor)
         }
     }
 
-    private object EmptyDateRecurrenceIterator : DateRecurrenceIterator(null) {
+    private object EmptyRecurrenceProcessor : RecurrenceProcessor {
         override fun hasNext(): Boolean = false
-        override fun next(): Date? = null
+        override fun next(): Instant? = null
     }
 }
