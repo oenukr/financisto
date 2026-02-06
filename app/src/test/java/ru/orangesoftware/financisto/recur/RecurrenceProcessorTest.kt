@@ -1,8 +1,8 @@
 package ru.orangesoftware.financisto.recur
 
-import kotlin.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import kotlin.time.Instant
 
 class RecurrenceProcessorTest {
 
@@ -25,6 +25,8 @@ class RecurrenceProcessorTest {
              override fun next(): Instant? {
                  return null
              }
+
+             override fun fastForward(until: Instant) {}
         }
         assertEquals(false, processor.hasNext())
     }

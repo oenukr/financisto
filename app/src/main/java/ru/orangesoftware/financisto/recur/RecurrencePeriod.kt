@@ -7,7 +7,7 @@ import com.google.ical.values.DateValueImpl
 import com.google.ical.values.RRule
 import com.google.ical.values.TimeValue
 import ru.orangesoftware.financisto.datetime.DateUtils
-import java.text.ParseException
+import timber.log.Timber
 import java.util.Calendar
 import java.util.Date
 import java.util.GregorianCalendar
@@ -33,15 +33,24 @@ class RecurrencePeriod(@JvmField val until: RecurrenceUntil, @JvmField val param
                 state[RecurrenceViewFactory.P_DATE]?.let { stopsOnDate ->
                     runCatching {
                         DateUtils.FORMAT_DATE_RFC_2445.parse(stopsOnDate)
+                    }.onFailure {
+                        Timber.w(it, "Unable to parse stopsOnDate: %s", stopsOnDate)
                     }.getOrNull()?.let { date ->
-                        val c = Calendar.getInstance().apply {
-                            time = date
-                            set(Calendar.HOUR_OF_DAY, startDate.get(Calendar.HOUR_OF_DAY))
-                            set(Calendar.MINUTE, startDate.get(Calendar.MINUTE))
-                            set(Calendar.SECOND, startDate.get(Calendar.SECOND))
-                            set(Calendar.MILLISECOND, 0)
-                        }
-                        ";UNTIL=${DateUtils.FORMAT_DATE_RFC_2445.format(c.time)}"
+                        val c = Calendar.getInstance().apply { time = date }
+                        
+                        val year = c.get(Calendar.YEAR)
+                        val month = c.get(Calendar.MONTH) + 1
+                        val day = c.get(Calendar.DAY_OF_MONTH)
+                        
+                        val hour = startDate.get(Calendar.HOUR_OF_DAY)
+                        val minute = startDate.get(Calendar.MINUTE)
+                        val second = startDate.get(Calendar.SECOND)
+                        
+                        val untilString = "%04d%02d%02dT%02d%02d%02dZ".format(
+                            year, month, day,
+                            hour, minute, second
+                        )
+                        ";UNTIL=$untilString"
                     }
                 }.orEmpty()
             }
@@ -64,6 +73,9 @@ class RecurrencePeriod(@JvmField val until: RecurrenceUntil, @JvmField val param
         fun parse(string: String): RecurrencePeriod {
             // fix for the typo in INDEFINETELY that is used in the database
             val a = string.replace("INDEFINETELY", "INDEFINITELY").split(":")
+            if (a.size < 2) {
+                return noEndDate()
+            }
             return RecurrencePeriod(RecurrenceUntil.valueOf(a[0]), a[1])
         }
 

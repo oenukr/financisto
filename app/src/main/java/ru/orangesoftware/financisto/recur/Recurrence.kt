@@ -5,11 +5,9 @@ import ru.orangesoftware.financisto.R
 import ru.orangesoftware.financisto.app.DependenciesHolder
 import ru.orangesoftware.financisto.datetime.DateUtils
 import ru.orangesoftware.financisto.utils.Logger
-import java.text.ParseException
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import kotlin.time.Instant
 
 class Recurrence {
     private val logger: Logger = DependenciesHolder().logger
@@ -26,7 +24,7 @@ class Recurrence {
 
     fun stateToString(): String {
         val startStr = startDate?.let { DateUtils.FORMAT_TIMESTAMP_ISO_8601.format(it.time) }.orEmpty()
-        val patternStr = pattern?.stateToString()?.toString().orEmpty()
+        val patternStr = pattern?.stateToString().orEmpty()
         val periodStr = period?.stateToString().orEmpty()
         return "$startStr~$patternStr~$periodStr"
     }
@@ -73,32 +71,7 @@ class Recurrence {
                 if (now.before(start.time)) {
                     now = start.time
                 }
-                val c = Calendar.getInstance()
-                c.time = start.time
-                c.set(Calendar.MILLISECOND, 0)
-
-                val timeZone = Calendar.getInstance().timeZone
-                val startInstant = Instant.fromEpochMilliseconds(c.timeInMillis)
-
-                val processor: RecurrenceProcessor =
-                    LibRecurProcessor(rruleString, startInstant, timeZone)
-
-                var date: Date? = null
-                while (processor.hasNext()) {
-                    val next = processor.next()
-                    if (next != null) {
-                        val d = Date(next.toEpochMilliseconds())
-                        if (!d.before(now)) {
-                            date = d
-                            break
-                        }
-                    } else {
-                        break
-                    }
-                }
-                val iterator = DateRecurrenceIterator(processor)
-                iterator.firstDate = date
-                iterator
+                DateRecurrenceIterator.create(rruleString, now, start.time)
             } ?: DateRecurrenceIterator.empty()
         }.getOrElse {
             logger.w("Unable to create iterator for $rruleString")
@@ -111,7 +84,7 @@ class Recurrence {
             if (pat.frequency == RecurrenceFrequency.GEEKY) {
                 runCatching {
                     val map = RecurrenceViewFactory.parseState(pat.params)
-                    map[RecurrenceViewFactory.P_INTERVAL]?.uppercase(Locale.getDefault())
+                    map[RecurrenceViewFactory.P_INTERVAL]?.uppercase(Locale.ROOT)
                 }.getOrNull()
             } else {
                 startDate?.let { start ->
@@ -137,6 +110,9 @@ class Recurrence {
         fun parse(recurrence: String): Recurrence {
             val r = Recurrence()
             val a = recurrence.split("~".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+            if (a.size < 3) {
+                return noRecur()
+            }
             runCatching {
                 val d = DateUtils.FORMAT_TIMESTAMP_ISO_8601.parse(a[0])
                 r.startDate = Calendar.getInstance().apply {

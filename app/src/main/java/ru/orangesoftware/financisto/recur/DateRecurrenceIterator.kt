@@ -1,7 +1,5 @@
 package ru.orangesoftware.financisto.recur
 
-import com.google.ical.iter.RecurrenceIterator
-import com.google.ical.iter.RecurrenceIteratorFactory
 import com.google.ical.values.RRule
 import java.text.ParseException
 import java.util.Calendar
@@ -31,25 +29,20 @@ open class DateRecurrenceIterator(private val processor: RecurrenceProcessor) {
         @Throws(ParseException::class)
         fun create(rrule: RRule, nowDate: Date, startDate: Date): DateRecurrenceIterator {
             val rruleString = rrule.toIcal().replace("RRULE:", "")
+            return create(rruleString, nowDate, startDate)
+        }
+
+        @JvmStatic
+        fun create(rruleString: String, nowDate: Date, startDate: Date): DateRecurrenceIterator {
             val timeZone = Calendar.getInstance().timeZone
             val startInstant = Instant.fromEpochMilliseconds(startDate.time)
             val nowInstant = Instant.fromEpochMilliseconds(nowDate.time)
 
             val processor: RecurrenceProcessor = LibRecurProcessor(rruleString, startInstant, timeZone)
-            
-            var date: Date? = null
-            while (processor.hasNext()) {
-                val next = processor.next()
-                if (next != null) {
-                    val d = Date(next.toEpochMilliseconds())
-                    if (!d.before(nowDate)) {
-                        date = d
-                        break
-                    }
-                }
-            }
+            processor.fastForward(nowInstant)
+
             val iterator = DateRecurrenceIterator(processor)
-            iterator.firstDate = date
+            iterator.firstDate = processor.next()?.let { Date(it.toEpochMilliseconds()) }
             return iterator
         }
 
@@ -62,5 +55,6 @@ open class DateRecurrenceIterator(private val processor: RecurrenceProcessor) {
     private object EmptyRecurrenceProcessor : RecurrenceProcessor {
         override fun hasNext(): Boolean = false
         override fun next(): Instant? = null
+        override fun fastForward(until: Instant) {}
     }
 }

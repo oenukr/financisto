@@ -3,13 +3,13 @@ package ru.orangesoftware.financisto.recur
 import org.dmfs.rfc5545.DateTime
 import org.dmfs.rfc5545.recur.RecurrenceRule
 import org.dmfs.rfc5545.recur.RecurrenceRuleIterator
-import kotlin.time.Instant
 import java.util.TimeZone
+import kotlin.time.Instant
 
 class LibRecurProcessor(
     rruleString: String,
     startDate: Instant,
-    timeZone: TimeZone
+    private val timeZone: TimeZone
 ) : RecurrenceProcessor {
 
     private val iterator: RecurrenceRuleIterator
@@ -25,5 +25,9 @@ class LibRecurProcessor(
     override fun next(): Instant? {
         if (!hasNext()) return null
         return Instant.fromEpochMilliseconds(iterator.nextDateTime().timestamp)
+    }
+
+    override fun fastForward(until: Instant) {
+        iterator.fastForward(DateTime(timeZone, until.toEpochMilliseconds()))
     }
 }

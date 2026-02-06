@@ -1,11 +1,11 @@
 package ru.orangesoftware.financisto.recur
 
-import com.google.ical.values.Frequency
 import com.google.ical.values.RRule
 import com.google.ical.values.Weekday
-import com.google.ical.values.WeekdayNum
-import ru.orangesoftware.financisto.recur.RecurrenceViewFactory.*
-import java.util.*
+import ru.orangesoftware.financisto.recur.RecurrenceViewFactory.DayOfWeek
+import ru.orangesoftware.financisto.recur.RecurrenceViewFactory.MonthlyPattern
+import ru.orangesoftware.financisto.recur.RecurrenceViewFactory.SpecificDayPostfix
+import ru.orangesoftware.financisto.recur.RecurrenceViewFactory.SpecificDayPrefix
 
 class RecurrencePattern(@JvmField val frequency: RecurrenceFrequency, @JvmField val params: String?) {
 
@@ -75,23 +75,13 @@ class RecurrencePattern(@JvmField val frequency: RecurrenceFrequency, @JvmField 
     }
 
     companion object {
-        private val WEEKDAYS = LinkedList<WeekdayNum>()
-        private val WEEKENDS = LinkedList<WeekdayNum>()
-
-        init {
-            WEEKDAYS.add(WeekdayNum(0, Weekday.MO))
-            WEEKDAYS.add(WeekdayNum(0, Weekday.TU))
-            WEEKDAYS.add(WeekdayNum(0, Weekday.WE))
-            WEEKDAYS.add(WeekdayNum(0, Weekday.TH))
-            WEEKDAYS.add(WeekdayNum(0, Weekday.FR))
-            WEEKENDS.add(WeekdayNum(0, Weekday.SU))
-            WEEKENDS.add(WeekdayNum(0, Weekday.SA))
-        }
-
         @JvmStatic
         fun parse(recurrencePattern: String): RecurrencePattern {
             // fix for the typo in INDEFINETELY that is used in the database
             val a = recurrencePattern.replace("INDEFINETELY", "INDEFINITELY").split(":")
+            if (a.size < 2) {
+                return noRecur()
+            }
             return RecurrencePattern(RecurrenceFrequency.valueOf(a[0]), a[1])
         }
 
