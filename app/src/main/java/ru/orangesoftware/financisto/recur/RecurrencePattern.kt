@@ -1,17 +1,11 @@
 package ru.orangesoftware.financisto.recur
 
-import com.google.ical.values.RRule
-import com.google.ical.values.Weekday
 import ru.orangesoftware.financisto.recur.RecurrenceViewFactory.DayOfWeek
 import ru.orangesoftware.financisto.recur.RecurrenceViewFactory.MonthlyPattern
 import ru.orangesoftware.financisto.recur.RecurrenceViewFactory.SpecificDayPostfix
 import ru.orangesoftware.financisto.recur.RecurrenceViewFactory.SpecificDayPrefix
 
 class RecurrencePattern(@JvmField val frequency: RecurrenceFrequency, @JvmField val params: String?) {
-
-    fun updateRRule(r: RRule) {
-        // ... (existing updateRRule for legacy compatibility)
-    }
 
     fun toRRuleString(): String {
         val state = RecurrenceViewFactory.parseState(params)
@@ -55,7 +49,7 @@ class RecurrencePattern(@JvmField val frequency: RecurrenceFrequency, @JvmField 
                                         }
                                         else -> {
                                             //su-sa
-                                            val day = Weekday.values()[postfix.ordinal - 3].name
+                                            val day = postfix.rfcName
                                             sb.append(";BYDAY=$num$day")
                                         }
                                     }
