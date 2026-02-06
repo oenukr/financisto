@@ -63,8 +63,8 @@ class Recurrence {
     }
 
     fun createIterator(nowDate: Date): DateRecurrenceIterator {
-        val rruleString = createRRuleString()
         return runCatching {
+            val rruleString = createRRuleString()
             logger.d("Creating iterator for $rruleString")
             startDate?.let { start ->
                 var now = nowDate
@@ -74,7 +74,7 @@ class Recurrence {
                 DateRecurrenceIterator.create(rruleString, now, start.time)
             } ?: DateRecurrenceIterator.empty()
         }.getOrElse {
-            logger.w("Unable to create iterator for $rruleString")
+            logger.w(it, "Unable to create iterator")
             DateRecurrenceIterator.empty()
         }
     }

@@ -33,9 +33,9 @@ class RecurrencePeriod(@JvmField val until: RecurrenceUntil, @JvmField val param
                 state[RecurrenceViewFactory.P_DATE]?.let { stopsOnDate ->
                     runCatching {
                         DateUtils.FORMAT_DATE_RFC_2445.parse(stopsOnDate)
-                    }.onFailure {
-                        Timber.w(it, "Unable to parse stopsOnDate: %s", stopsOnDate)
-                    }.getOrNull()?.let { date ->
+                    }.getOrElse {
+                        throw IllegalArgumentException("Unable to parse stopsOnDate: $stopsOnDate", it)
+                    }?.let { date ->
                         val c = Calendar.getInstance().apply { time = date }
                         
                         val year = c.get(Calendar.YEAR)
