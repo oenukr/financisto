@@ -22,7 +22,7 @@
 - [x] Task: Conductor - User Manual Verification ' Phase 2: Implementation of lib-recur (TDD)' (Protocol in workflow.md) [160922b]
 
 ## Phase 3: Verification & Cleanup
-- [ ] Task: Integration & Migration Testing
+- [x] Task: Integration & Migration Testing [eac74a6]
     - [ ] Write integration tests for `RecurrenceScheduler` with the new implementation.
     - [ ] Write migration tests using sample RRULE strings from the database.
 - [ ] Task: Library Removal
