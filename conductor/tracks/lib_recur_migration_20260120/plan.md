@@ -6,7 +6,7 @@
 - [x] Task: Implement Legacy Wrapper (Optional/Transition) [d937f0b]
 - [x] Task: Conductor - User Manual Verification ' Phase 1: Infrastructure & Abstraction (TDD)' (Protocol in workflow.md)
 
-## Phase 2: Implementation of `lib-recur` (TDD)
+## Phase 2: Implementation of `lib-recur` (TDD) [checkpoint: 160922b]
 - [x] Task: Create LibRecurProcessor [f98eecb]
     - [ ] Write failing tests for `LibRecurProcessor` using various RRULE patterns.
     - [ ] Implement `LibRecurProcessor.kt` using `dmfs/lib-recur`.
@@ -19,7 +19,7 @@
 - [x] Task: Integrate LibRecurProcessor [6f2ccc5]
     - [ ] Switch the default `RecurrenceProcessor` implementation to `LibRecurProcessor`.
     - [ ] Verify all existing unit tests pass.
-- [~] Task: Conductor - User Manual Verification ' Phase 2: Implementation of lib-recur (TDD)' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification ' Phase 2: Implementation of lib-recur (TDD)' (Protocol in workflow.md) [160922b]
 
 ## Phase 3: Verification & Cleanup
 - [ ] Task: Integration & Migration Testing
