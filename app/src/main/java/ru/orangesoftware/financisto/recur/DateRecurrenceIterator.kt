@@ -1,6 +1,5 @@
 package ru.orangesoftware.financisto.recur
 
-import com.google.ical.values.RRule
 import java.text.ParseException
 import java.util.Calendar
 import java.util.Date
@@ -25,13 +24,6 @@ open class DateRecurrenceIterator(private val processor: RecurrenceProcessor) {
     }
 
     companion object {
-        @JvmStatic
-        @Throws(ParseException::class)
-        fun create(rrule: RRule, nowDate: Date, startDate: Date): DateRecurrenceIterator {
-            val rruleString = rrule.toIcal().replace("RRULE:", "")
-            return create(rruleString, nowDate, startDate)
-        }
-
         @JvmStatic
         fun create(rruleString: String, nowDate: Date, startDate: Date): DateRecurrenceIterator {
             val timeZone = Calendar.getInstance().timeZone

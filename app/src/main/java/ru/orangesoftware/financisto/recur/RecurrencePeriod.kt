@@ -1,8 +1,5 @@
 package ru.orangesoftware.financisto.recur
 
-import com.google.ical.util.TimeUtils
-import com.google.ical.values.DateValue
-import com.google.ical.values.TimeValue
 import ru.orangesoftware.financisto.datetime.DateUtils
 import java.util.Calendar
 import java.util.Date
@@ -73,33 +70,6 @@ class RecurrencePeriod(@JvmField val until: RecurrenceUntil, @JvmField val param
             }.getOrElse {
                 noEndDate()
             }
-        }
-
-        @JvmStatic
-        fun dateValueToDate(dvUtc: DateValue): Date {
-            val c = GregorianCalendar()
-            val dv = TimeUtils.fromUtc(dvUtc, c.timeZone)
-            if (dv is TimeValue) {
-                c.set(
-                    dv.year(),
-                    dv.month() - 1, // java.util's dates are zero-indexed
-                    dv.day(),
-                    dv.hour(),
-                    dv.minute(),
-                    dv.second()
-                )
-            } else {
-                c.set(
-                    dv.year(),
-                    dv.month() - 1, // java.util's dates are zero-indexed
-                    dv.day(),
-                    0,
-                    0,
-                    0
-                )
-            }
-            c.set(Calendar.MILLISECOND, 0)
-            return c.time
         }
     }
 }

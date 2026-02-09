@@ -3,6 +3,8 @@ package ru.orangesoftware.financisto.recur
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
 import org.koin.dsl.module
+import org.mockito.Mockito.mock
+import ru.orangesoftware.financisto.db.DatabaseHelper
 import ru.orangesoftware.financisto.utils.Logger
 
 object RecurrenceTestHelper {
@@ -22,6 +24,7 @@ object RecurrenceTestHelper {
                         override fun w(t: Throwable?, message: String?, vararg args: Any?) {}
                     }
                 }
+                single<DatabaseHelper> { mock(DatabaseHelper::class.java) }
             })
         }
     }
