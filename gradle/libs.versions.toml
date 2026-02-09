@@ -1,6 +1,6 @@
 [versions]
 accompanist = "0.36.0"
-activity-compose = "1.12.2"
+activity-compose = "1.12.3"
 android_tools = "8.13.2"
 androidannotations = "4.8.0"
 appcompat = "1.7.1"
@@ -12,14 +12,15 @@ datastore = "1.2.0"
 detekt = "1.23.8"
 glide = "5.0.5"
 glide-compose = "1.0.0-beta08"
-kotlin = "2.3.0"
+kotlin = "2.3.10"
 kotlinx-datetime = "0.7.1"
-kover = "0.9.4"
-ktor = "3.3.3"
+kover = "0.9.6"
+ktor = "3.4.0"
 lifecycle = "2.10.0"
+lib-recur = "0.17.1"
 mockito = "5.21.0"
-mockito-kotlin = "6.1.0"
-workmanager = "2.11.0"
+mockito-kotlin = "6.2.3"
+workmanager = "2.11.1"
 
 [libraries]
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanist" }
@@ -40,7 +41,7 @@ glide-compose = { module = "com.github.bumptech.glide:compose", version.ref = "g
 google-play-base = { module = "com.google.android.gms:play-services-base", version = "18.10.0" }
 google-play-drive = { module = "com.google.android.gms:play-services-drive", version = "17.0.0" }
 java-collections = { module = "net.sf.trove4j:core", version = "3.1.0" }
-koala-chart = { module = "io.github.koalaplot:koalaplot-core", version = "0.10.4" }
+koala-chart = { module = "io.github.koalaplot:koalaplot-core", version = "0.11.0" }
 koin-bom = { module = "io.insert-koin:koin-bom", version = "4.1.1" }
 koin-android = { module = "io.insert-koin:koin-android" }
 koin-android-compat = { module = "io.insert-koin:koin-android-compat" }
@@ -48,6 +49,7 @@ koin-compose = { module = "io.insert-koin:koin-androidx-compose" }
 koin-core = { module = "io.insert-koin:koin-core" }
 koin-test = { module = "io.insert-koin:koin-test" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
+lib-recur = { module = "org.dmfs:lib-recur", version.ref = "lib-recur" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
