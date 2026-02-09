@@ -25,7 +25,7 @@
 - [x] Task: Integration & Migration Testing [eac74a6]
     - [ ] Write integration tests for `RecurrenceScheduler` with the new implementation.
     - [ ] Write migration tests using sample RRULE strings from the database.
-- [ ] Task: Library Removal
+- [x] Task: Library Removal [f654251]
     - [ ] Remove `app/libs/rfc2445-no-joda.jar`.
     - [ ] Remove any remaining references to `com.google.ical` in the codebase.
     - [ ] Final project build and `detekt` check.
