@@ -115,11 +115,12 @@ class Recurrence {
             }
             runCatching {
                 val d = DateUtils.FORMAT_TIMESTAMP_ISO_8601.parse(a[0])
+                    ?: throw java.text.ParseException("Date string is empty or invalid in recurrence", 0)
                 r.startDate = Calendar.getInstance().apply {
-                    time = d ?: Date()
+                    time = d
                 }
             }.onFailure {
-                throw RuntimeException(recurrence)
+                throw RuntimeException("Failed to parse recurrence start date: $recurrence", it)
             }
             r.pattern = RecurrencePattern.parse(a[1])
             r.period = RecurrencePeriod.parse(a[2])

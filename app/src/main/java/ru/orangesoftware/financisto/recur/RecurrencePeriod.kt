@@ -68,7 +68,11 @@ class RecurrencePeriod(@JvmField val until: RecurrenceUntil, @JvmField val param
             if (a.size < 2) {
                 return noEndDate()
             }
-            return RecurrencePeriod(RecurrenceUntil.valueOf(a[0]), a[1])
+            return runCatching {
+                RecurrencePeriod(RecurrenceUntil.valueOf(a[0]), a[1])
+            }.getOrElse {
+                noEndDate()
+            }
         }
 
         @JvmStatic
