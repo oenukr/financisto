@@ -13,6 +13,8 @@
     - **SQLite:** Legacy database for structured financial data.
     - **DataStore (Preferences):** Modern solution for storing application settings and small key-value pairs.
 - **Logging:** **Timber** for robust and extensible logging across the application.
+- **Recurrence Logic:** **lib-recur (dmfs)** for modern and RFC-compliant recurrence rule (RRULE) processing.
+
 
 ## Quality Assurance and Tooling
 - **Testing:** **JUnit 4** for unit testing, with **Kover** for code coverage analysis.
