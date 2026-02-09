@@ -10,6 +10,8 @@ package ru.orangesoftware.financisto.export;
 
 import static org.junit.Assert.assertEquals;
 
+import android.net.Uri;
+
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -156,13 +158,11 @@ public class CsvImportTest extends AbstractImportExportTest {
         assertEquals(3, payees.size());
     }
 
-    @Ignore("Need to tell robolectric to make the needed folder writable")
     @Test
     public void should_import_empty_file() throws Exception {
         doImport("", defaultOptions);
     }
 
-    @Ignore("Need to tell robolectric to make the needed folder writable")
     @Test
     public void should_import_one_transaction_into_the_selected_account() throws Exception {
         categories = CategoryBuilder.createDefaultHierarchy(db);
@@ -180,7 +180,6 @@ public class CsvImportTest extends AbstractImportExportTest {
         assertEquals("P1", t.payee.title);
     }
 
-    @Ignore("Need to tell robolectric to make the needed folder writable")
     @Test
     public void should_import_one_transaction_without_the_header() throws Exception {
         categories = CategoryBuilder.createDefaultHierarchy(db);
@@ -215,9 +214,10 @@ public class CsvImportTest extends AbstractImportExportTest {
         FileWriter w = new FileWriter(tmp);
         w.write(csv);
         w.close();
+        registerFileForContentResolver(tmp);
         Timber.d("Created a temporary backup file: %s", tmp.getAbsolutePath());
         options = new CsvImportOptions(options.getCurrency(), options.getDateFormat(),
-                options.getSelectedAccountId(), options.getFilter(), tmp.getAbsolutePath(), options.getFieldSeparator(), options.getUseHeaderFromFile());
+                options.getSelectedAccountId(), options.getFilter(), Uri.fromFile(tmp).toString(), options.getFieldSeparator(), options.getUseHeaderFromFile());
         csvImport = new CsvImport(getContext(), db, options);
         csvImport.doImport();
     }

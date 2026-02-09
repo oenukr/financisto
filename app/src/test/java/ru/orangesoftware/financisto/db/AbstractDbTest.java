@@ -5,6 +5,8 @@ import static org.junit.Assert.assertEquals;
 import android.Manifest;
 import android.app.Application;
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 
 import androidx.test.core.app.ApplicationProvider;
 
@@ -14,11 +16,14 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.Shadows;
 import org.robolectric.shadows.ShadowApplication;
+import org.robolectric.shadows.ShadowContentResolver;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
+import ru.orangesoftware.financisto.export.Export;
 import ru.orangesoftware.financisto.model.Account;
 import ru.orangesoftware.financisto.model.Category;
 import ru.orangesoftware.financisto.model.Transaction;
@@ -39,9 +44,21 @@ public abstract class AbstractDbTest {
         app.grantPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE);
 
         context = application;
+
+        File exportPath = Export.DEFAULT_EXPORT_PATH;
+        if (!exportPath.exists()) {
+            exportPath.mkdirs();
+        }
+
         dbHelper = new DatabaseHelper(context);
         db = new TestDatabaseAdapter(context, dbHelper);
         db.open();
+    }
+
+    protected void registerFileForContentResolver(File file) throws Exception {
+        Uri uri = Uri.fromFile(file);
+        ShadowContentResolver shadowContentResolver = Shadows.shadowOf(context.getContentResolver());
+        shadowContentResolver.registerInputStream(uri, new java.io.FileInputStream(file));
     }
 
     @After

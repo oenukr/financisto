@@ -39,12 +39,16 @@ object RequestPermission {
     }
 
     private fun checkWritablePath(ctx: Context): Boolean {
+        if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+            return true
+        }
         val backupPreferences: BackupPreferences =
             dependencies.preferencesStore.backupPreferencesRx.blockingFirst()
-        val isWritable: Boolean = ctx.contentResolver.persistedUriPermissions.stream()
-            .anyMatch { persistedUriPermission ->
-                persistedUriPermission.uri.equals(backupPreferences.folder)
-            }
-        return isWritable
+        val folderUri = backupPreferences.folder
+        return if (folderUri.scheme == "content") {
+            ctx.contentResolver.persistedUriPermissions.any { it.uri == folderUri }
+        } else {
+            false
+        }
     }
 }
