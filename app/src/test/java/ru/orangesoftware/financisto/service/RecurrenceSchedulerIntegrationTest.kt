@@ -11,26 +11,25 @@ import java.util.TimeZone
 
 class RecurrenceSchedulerIntegrationTest {
 
-    private var oldDefault: TimeZone? = null
-
     @Before
     fun setUp() {
-        oldDefault = TimeZone.getDefault()
-        TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
         RecurrenceTestHelper.start()
     }
 
     @After
     fun tearDown() {
-        TimeZone.setDefault(oldDefault)
         RecurrenceTestHelper.stop()
     }
 
     @Test
     fun `should restore missed daily schedules`() {
-        val timeZone = TimeZone.getTimeZone("UTC")
+        val timeZone = Calendar.getInstance().timeZone
         val last = calendar(2026, 2, 5, 10, 0, 0, timeZone)
         val now = calendar(2026, 2, 9, 12, 0, 0, timeZone)
+        
+        // Use ISO 8601 without 'Z' to represent local time if needed, but start date in Recurrence.parse
+        // is parsed using FORMAT_TIMESTAMP_ISO_8601 which expects 'Z' or offset?
+        // Let's check DateUtils.FORMAT_TIMESTAMP_ISO_8601.
         
         val recurrenceStr = "2026-02-01T10:00:00Z~DAILY:interval@1#~INDEFINITELY:"
         
@@ -54,11 +53,10 @@ class RecurrenceSchedulerIntegrationTest {
 
     @Test
     fun `should handle monthly recurrence on the last day using SPECIFIC_DAY LAST`() {
-        val timeZone = TimeZone.getTimeZone("UTC")
+        val timeZone = Calendar.getInstance().timeZone
         val last = calendar(2026, 1, 31, 10, 0, 0, timeZone)
         val now = calendar(2026, 3, 1, 12, 0, 0, timeZone)
         
-        // MONTHLY:interval@1#monthly_pattern_0@SPECIFIC_DAY#monthly_pattern_params_0@LAST-DAY#
         val recurrenceStr = "2026-01-31T10:00:00Z~MONTHLY:interval@1#monthly_pattern_0@SPECIFIC_DAY#monthly_pattern_params_0@LAST-DAY#~INDEFINITELY:"
         
         val t = TransactionInfo().apply {
@@ -78,11 +76,10 @@ class RecurrenceSchedulerIntegrationTest {
 
     @Test
     fun `should handle monthly recurrence every 15th`() {
-        val timeZone = TimeZone.getTimeZone("UTC")
+        val timeZone = Calendar.getInstance().timeZone
         val last = calendar(2026, 1, 15, 10, 0, 0, timeZone)
         val now = calendar(2026, 3, 16, 12, 0, 0, timeZone)
         
-        // MONTHLY:interval@1#monthly_pattern_0@EVERY_NTH_DAY#monthly_pattern_params_0@15#
         val recurrenceStr = "2026-01-15T10:00:00Z~MONTHLY:interval@1#monthly_pattern_0@EVERY_NTH_DAY#monthly_pattern_params_0@15#~INDEFINITELY:"
         
         val t = TransactionInfo().apply {
@@ -103,10 +100,11 @@ class RecurrenceSchedulerIntegrationTest {
 
     @Test
     fun `should respect UNTIL period`() {
-        val timeZone = TimeZone.getTimeZone("UTC")
+        val timeZone = Calendar.getInstance().timeZone
         val last = calendar(2026, 2, 1, 10, 0, 0, timeZone)
         val now = calendar(2026, 2, 10, 12, 0, 0, timeZone)
         
+        // UNTIL is in UTC in RRule string
         val recurrenceStr = "2026-02-01T10:00:00Z~DAILY:interval@1#~STOPS_ON_DATE:date@20260203T000000#"
         
         val t = TransactionInfo().apply {
