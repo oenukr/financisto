@@ -76,7 +76,11 @@ class RecurrencePattern(@JvmField val frequency: RecurrenceFrequency, @JvmField 
             if (a.size < 2) {
                 return noRecur()
             }
-            return RecurrencePattern(RecurrenceFrequency.valueOf(a[0]), a[1])
+            return runCatching {
+                RecurrencePattern(RecurrenceFrequency.valueOf(a[0]), a[1])
+            }.getOrElse {
+                noRecur()
+            }
         }
 
         @JvmStatic
