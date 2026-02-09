@@ -141,7 +141,7 @@ dependencies {
     implementation(libs.timber)
 
     implementation(libs.kotlinx.datetime)
-
+    implementation(libs.lib.recur)
 
     implementation(libs.appcompat)
 

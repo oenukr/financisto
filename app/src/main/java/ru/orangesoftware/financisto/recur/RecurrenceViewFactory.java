@@ -475,21 +475,23 @@ public class RecurrenceViewFactory {
     }
 
     enum SpecificDayPostfix implements LocalizableEnum {
-        DAY(R.string.day),
-        WEEKDAY(R.string.weekday),
-        WEEKEND_DAY(R.string.weekend_day),
-        SUNDAY(R.string.sunday),
-        MONDAY(R.string.monday),
-        TUESDAY(R.string.tuesday),
-        WEDNESDAY(R.string.wednesday),
-        THURSDAY(R.string.thursday),
-        FRIDAY(R.string.friday),
-        SATURDAY(R.string.saturday);
+        DAY(R.string.day, null),
+        WEEKDAY(R.string.weekday, null),
+        WEEKEND_DAY(R.string.weekend_day, null),
+        SUNDAY(R.string.sunday, "SU"),
+        MONDAY(R.string.monday, "MO"),
+        TUESDAY(R.string.tuesday, "TU"),
+        WEDNESDAY(R.string.wednesday, "WE"),
+        THURSDAY(R.string.thursday, "TH"),
+        FRIDAY(R.string.friday, "FR"),
+        SATURDAY(R.string.saturday, "SA");
 
         private final int titleId;
+        public final String rfcName;
 
-        SpecificDayPostfix(int titleId) {
+        SpecificDayPostfix(int titleId, String rfcName) {
             this.titleId = titleId;
+            this.rfcName = rfcName;
         }
 
         @Override
