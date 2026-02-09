@@ -21,7 +21,7 @@
     - [ ] Verify all existing unit tests pass.
 - [x] Task: Conductor - User Manual Verification ' Phase 2: Implementation of lib-recur (TDD)' (Protocol in workflow.md) [160922b]
 
-## Phase 3: Verification & Cleanup
+## Phase 3: Verification & Cleanup [checkpoint: 90fe8a5]
 - [x] Task: Integration & Migration Testing [eac74a6]
     - [ ] Write integration tests for `RecurrenceScheduler` with the new implementation.
     - [ ] Write migration tests using sample RRULE strings from the database.
@@ -29,4 +29,4 @@
     - [ ] Remove `app/libs/rfc2445-no-joda.jar`.
     - [ ] Remove any remaining references to `com.google.ical` in the codebase.
     - [ ] Final project build and `detekt` check.
-- [ ] Task: Conductor - User Manual Verification ' Phase 3: Verification & Cleanup' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification ' Phase 3: Verification & Cleanup' (Protocol in workflow.md) [90fe8a5]
