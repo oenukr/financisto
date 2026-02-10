@@ -24,13 +24,13 @@ Focus: Resolve "Need to tell robolectric to make the needed folder writable" iss
 ## Phase 2: Logic Stability & Flaky Tests
 Focus: Analyze and fix the intermittent failure in `RunningBalanceTest`.
 
-- [ ] **Task: Investigate RunningBalanceTest Flakiness**
-    - [ ] Remove `@Ignore` from `RunningBalanceTest.should_update_running_balance_for_two_accounts_when_updating_transfer_split`
-    - [ ] Create a reproduction script/loop to confirm the intermittent failure (e.g., run 100 times)
-    - [ ] Analyze the logs and state to identify the root cause of the "600 instead of 800" error
-- [ ] **Task: Implement Fix for RunningBalanceTest**
-    - [ ] Apply fix to the running balance calculation logic
-    - [ ] Verify the fix by running the test 100 times without failure
+- [x] **Task: Investigate RunningBalanceTest Flakiness**
+    - [x] Remove `@Ignore` from `RunningBalanceTest.should_update_running_balance_for_two_accounts_when_updating_transfer_split`
+    - [x] Create a reproduction script/loop to confirm the intermittent failure (e.g., run 100 times)
+    - [x] Analyze the logs and state to identify the root cause of the "600 instead of 800" error
+- [x] **Task: Implement Fix for RunningBalanceTest**
+    - [x] Apply fix to the running balance calculation logic
+    - [x] Verify the fix by running the test 100 times without failure
 - [ ] **Task: Conductor - User Manual Verification 'Phase 2: Logic Stability & Flaky Tests' (Protocol in workflow.md)**
 
 ## Phase 3: Final Verification & Documentation
