@@ -29,6 +29,20 @@ import ru.orangesoftware.financisto.model.Category;
 import ru.orangesoftware.financisto.model.Transaction;
 import ru.orangesoftware.financisto.test.DateTime;
 
+/**
+ * Base class for database-related tests using Robolectric.
+ * <p>
+ * This class sets up a simulated Android environment with:
+ * <ul>
+ *     <li>A fresh {@link DatabaseHelper} and {@link TestDatabaseAdapter} for each test.</li>
+ *     <li>Standard storage permissions granted via {@link ShadowApplication}.</li>
+ *     <li>Automatic creation of the default export directory to satisfy {@link ru.orangesoftware.financisto.activity.RequestPermission#checkPermission}.</li>
+ * </ul>
+ * <p>
+ * Note on URI registration: When tests use {@code ContentResolver.openInputStream(uri)} with {@code file://} URIs,
+ * you must call {@link #registerFileForContentResolver(File)} beforehand to register the input stream with
+ * {@link ShadowContentResolver}, otherwise Robolectric will throw an {@link UnsupportedOperationException}.
+ */
 @RunWith(RobolectricTestRunner.class)
 public abstract class AbstractDbTest {
 

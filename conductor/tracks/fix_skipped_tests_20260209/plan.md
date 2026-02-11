@@ -19,7 +19,7 @@ Focus: Resolve "Need to tell robolectric to make the needed folder writable" iss
     - [x] Remove `@Ignore` from `QifImportTestCases`
     - [x] Implement fix for writable paths in `QifImportTestCases`
     - [x] Verify `QifImportTestCases` passes
-- [ ] **Task: Conductor - User Manual Verification 'Phase 1: Robolectric Infrastructure Fixes' (Protocol in workflow.md)**
+- [x] **Task: Conductor - User Manual Verification 'Phase 1: Robolectric Infrastructure Fixes' (Protocol in workflow.md)**
 
 ## Phase 2: Logic Stability & Flaky Tests
 Focus: Analyze and fix the intermittent failure in `RunningBalanceTest`.
@@ -31,15 +31,15 @@ Focus: Analyze and fix the intermittent failure in `RunningBalanceTest`.
 - [x] **Task: Implement Fix for RunningBalanceTest**
     - [x] Apply fix to the running balance calculation logic
     - [x] Verify the fix by running the test 100 times without failure
-- [ ] **Task: Conductor - User Manual Verification 'Phase 2: Logic Stability & Flaky Tests' (Protocol in workflow.md)**
+- [x] **Task: Conductor - User Manual Verification 'Phase 2: Logic Stability & Flaky Tests' (Protocol in workflow.md)**
 
 ## Phase 3: Final Verification & Documentation
 Focus: Ensure project-wide stability and document environment requirements.
 
-- [ ] **Task: Full Test Suite Verification**
-    - [ ] Run `./gradlew test` and ensure 100% pass rate with no skips
-    - [ ] Run `./gradlew detekt` to ensure code style compliance
-- [ ] **Task: Documentation & Cleanup**
-    - [ ] Add internal documentation (e.g., in a `TESTING.md` or as class-level comments) explaining the Robolectric writable folder configuration
-    - [ ] Ensure all temporary artifacts created during tests are properly cleaned up
-- [ ] **Task: Conductor - User Manual Verification 'Phase 3: Final Verification & Documentation' (Protocol in workflow.md)**
+- [x] **Task: Full Test Suite Verification**
+    - [x] Run `./gradlew test` and ensure 100% pass rate with no skips
+    - [x] Run `./gradlew detekt` to ensure code style compliance
+- [x] **Task: Documentation & Cleanup**
+    - [x] Add internal documentation (e.g., in a `TESTING.md` or as class-level comments) explaining the Robolectric writable folder configuration
+    - [x] Ensure all temporary artifacts created during tests are properly cleaned up
+- [x] **Task: Conductor - User Manual Verification 'Phase 3: Final Verification & Documentation' (Protocol in workflow.md)**
