@@ -1,6 +1,5 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.kover)
 }
@@ -8,7 +7,7 @@ plugins {
 android {
     namespace = "ru.orangesoftware.financisto"
 
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "ru.orangesoftware.financisto"
@@ -44,7 +43,7 @@ android {
         }
     }
 
-    sourceSets["test"].resources.srcDirs("src/test/resources")
+    sourceSets["test"].resources.directories.add("src/test/resources")
 
     packaging {
         resources.excludes.add("META-INF/DEPENDENCIES.txt")

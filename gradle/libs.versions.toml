@@ -1,26 +1,26 @@
 [versions]
 accompanist = "0.36.0"
-activity-compose = "1.12.3"
-android_tools = "8.13.2"
+activity-compose = "1.13.0"
+android_tools = "9.1.1"
 androidannotations = "4.8.0"
 appcompat = "1.7.1"
 biometric = "1.1.0"
-collection-ktx = "1.5.0"
+collection-ktx = "1.6.0"
 commons-io = "2.21.0"
-core-ktx = "1.17.0"
-datastore = "1.2.0"
+core-ktx = "1.18.0"
+datastore = "1.2.1"
 detekt = "1.23.8"
 glide = "5.0.5"
 glide-compose = "1.0.0-beta08"
-kotlin = "2.3.10"
+kotlin = "2.3.20"
 kotlinx-datetime = "0.7.1"
-kover = "0.9.6"
-ktor = "3.4.0"
+kover = "0.9.8"
+ktor = "3.4.2"
 lifecycle = "2.10.0"
 lib-recur = "0.17.1"
-mockito = "5.21.0"
-mockito-kotlin = "6.2.3"
-workmanager = "2.11.1"
+mockito = "5.23.0"
+mockito-kotlin = "6.3.0"
+workmanager = "2.11.2"
 
 [libraries]
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanist" }
@@ -42,7 +42,7 @@ google-play-base = { module = "com.google.android.gms:play-services-base", versi
 google-play-drive = { module = "com.google.android.gms:play-services-drive", version = "17.0.0" }
 java-collections = { module = "net.sf.trove4j:core", version = "3.1.0" }
 koala-chart = { module = "io.github.koalaplot:koalaplot-core", version = "0.11.0" }
-koin-bom = { module = "io.insert-koin:koin-bom", version = "4.1.1" }
+koin-bom = { module = "io.insert-koin:koin-bom", version = "4.2.1" }
 koin-android = { module = "io.insert-koin:koin-android" }
 koin-android-compat = { module = "io.insert-koin:koin-android-compat" }
 koin-compose = { module = "io.insert-koin:koin-androidx-compose" }
@@ -60,7 +60,7 @@ lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx
 materialdatetimepicker = { module = "com.wdullaer:materialdatetimepicker", version = "4.2.3" }
 mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
 mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "mockito-kotlin" }
-okio = { module = "com.squareup.okio:okio", version = "3.16.4" }
+okio = { module = "com.squareup.okio:okio", version = "3.17.0" }
 reactive-streams = { module = "org.reactivestreams:reactive-streams", version = "1.0.4" }
 rximagepicker = { module = "com.github.MLSDev:RxImagePicker", version = "master" }
 rxjava2-rxandroid = { module = "io.reactivex.rxjava2:rxandroid", version = "2.1.1"}
@@ -77,5 +77,4 @@ workmanager-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "wo
 android-application = { id = "com.android.application", version.ref = "android_tools" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt"}
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
