@@ -1,6 +1,5 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.kover)
 }
@@ -8,7 +7,7 @@ plugins {
 android {
     namespace = "ru.orangesoftware.financisto"
 
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "ru.orangesoftware.financisto"
@@ -44,7 +43,7 @@ android {
         }
     }
 
-    sourceSets["test"].resources.srcDirs("src/test/resources")
+    sourceSets["test"].resources.directories.add("src/test/resources")
 
     packaging {
         resources.excludes.add("META-INF/DEPENDENCIES.txt")
@@ -176,12 +175,12 @@ dependencies {
 
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
 
-    testImplementation("junit:junit:4.13.2")
-    testImplementation("androidx.test:core:1.7.0")
-    testImplementation("org.robolectric:robolectric:4.11.1") // can't be used because of the current target sdk
-    testImplementation("org.hamcrest:hamcrest:3.0")
-    testImplementation(libs.mockito.core)
-    testImplementation(libs.mockito.kotlin)
+    testImplementation(libs.test.junit)
+    testImplementation(libs.test.core)
+    testImplementation(libs.test.robolectric)
+    testImplementation(libs.test.hamcrest)
+    testImplementation(libs.test.mockito.core)
+    testImplementation(libs.test.mockito.kotlin)
 }
 
 kover {
@@ -220,6 +219,7 @@ kotlin {
 }
 
 tasks.withType<Test> {
+    jvmArgs("-XX:+EnableDynamicAgentLoading")
     testLogging {
         events("failed", "passed", "skipped")
         setExceptionFormat("full")

@@ -64,6 +64,12 @@ public class DateTime {
         return this;
     }
 
+    public DateTime plusMinutes(int minutes) {
+        DateTime dt = DateTime.fromTimestamp(this.asLong());
+        dt.c.add(Calendar.MINUTE, minutes);
+        return dt;
+    }
+
     public long asLong() {
         return c.getTimeInMillis();
     }
