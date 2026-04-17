@@ -18,8 +18,12 @@ kover = "0.9.8"
 ktor = "3.4.2"
 lifecycle = "2.10.0"
 lib-recur = "0.17.1"
-mockito = "5.23.0"
-mockito-kotlin = "6.3.0"
+test-core = "1.7.0"
+test-hamcrest = "3.0"
+test-junit = "4.13.2"
+test-mockito = "5.23.0"
+test-mockito-kotlin = "6.3.0"
+test-robolectric = "4.17-SNAPSHOT"
 workmanager = "2.11.2"
 
 [libraries]
@@ -58,8 +62,6 @@ ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "k
 lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycle" }
 lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "lifecycle" }
 materialdatetimepicker = { module = "com.wdullaer:materialdatetimepicker", version = "4.2.3" }
-mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
-mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "mockito-kotlin" }
 okio = { module = "com.squareup.okio:okio", version = "3.17.0" }
 reactive-streams = { module = "org.reactivestreams:reactive-streams", version = "1.0.4" }
 rximagepicker = { module = "com.github.MLSDev:RxImagePicker", version = "master" }
@@ -69,6 +71,12 @@ rxjava3-bridge = { module = "com.github.akarnokd:rxjava3-bridge", version = "3.0
 rxjava3-rxandroid = { module = "io.reactivex.rxjava3:rxandroid", version = "3.0.2" }
 rxjava3-rxjava = { module = "io.reactivex.rxjava3:rxjava", version = "3.1.12" }
 sqlite-ktx = { module = "androidx.sqlite:sqlite-ktx", version = "2.6.2" }
+test-core = { module = "androidx.test:core", version.ref = "test-core" }
+test-hamcrest = { module = "org.hamcrest:hamcrest", version.ref = "test-hamcrest" }
+test-junit = { module = "junit:junit", version.ref = "test-junit" }
+test-mockito-core = { module = "org.mockito:mockito-core", version.ref = "test-mockito" }
+test-mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "test-mockito-kotlin" }
+test-robolectric = { module = "org.robolectric:robolectric", version.ref = "test-robolectric" }
 timber = { module = "com.jakewharton.timber:timber", version = "5.0.1" }
 workmanager = { module = "androidx.work:work-runtime", version.ref = "workmanager" }
 workmanager-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workmanager" }
