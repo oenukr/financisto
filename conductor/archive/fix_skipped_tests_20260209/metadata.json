@@ -1,0 +1,8 @@
+{
+  "track_id": "fix_skipped_tests_20260209",
+  "type": "bug",
+  "status": "new",
+  "created_at": "2026-02-09T13:58:00Z",
+  "updated_at": "2026-02-09T13:58:00Z",
+  "description": "Fix 13 skipped tests in the project, addressing Robolectric infrastructure issues and logic flakiness."
+}

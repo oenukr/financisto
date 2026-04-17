@@ -12,6 +12,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static ru.orangesoftware.financisto.export.qif.QifDateFormat.EU_FORMAT;
 
+import android.net.Uri;
+
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -44,7 +46,6 @@ public class QifImportTestCases extends AbstractDbTest {
         db.db().execSQL("insert into currency(_id,title,name,symbol) values(0,'Default','?','$')");
     }
 
-    @Ignore("Need to tell robolectric to make the needed folder writable")
     @Test
     public void should_import_homebank_case_1() throws Exception {
         doImport("!Account\n" +
@@ -127,9 +128,8 @@ public class QifImportTestCases extends AbstractDbTest {
         assertEquals("c1", t.category.title);
     }
 
-    @Ignore("Need to tell robolectric to make the needed folder writable")
     @Test
-    public void should_import_financisto_qif_export_case_1() throws IOException {
+    public void should_import_financisto_qif_export_case_1() throws Exception {
         doImport(
             "!Type:Cat\n" +
             "NA1\n" +
@@ -208,13 +208,14 @@ public class QifImportTestCases extends AbstractDbTest {
         assertAccountTotal(a, 10500);
     }
 
-    private void doImport(String qif) throws IOException {
+    private void doImport(String qif) throws Exception {
         File tmp = File.createTempFile("backup", ".qif");
         FileWriter w = new FileWriter(tmp);
         w.write(qif);
         w.close();
+        registerFileForContentResolver(tmp);
         Timber.d("Created a temporary backup file: %s", tmp.getAbsolutePath());
-        QifImportOptions options = new QifImportOptions(tmp.getAbsolutePath(), EU_FORMAT, Currency.EMPTY);
+        QifImportOptions options = new QifImportOptions(Uri.fromFile(tmp).toString(), EU_FORMAT, Currency.EMPTY);
         qifImport = new QifImport(getContext(), db, options);
         qifImport.importDatabase();
     }
