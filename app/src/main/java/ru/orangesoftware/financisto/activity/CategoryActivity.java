@@ -284,9 +284,7 @@ public class CategoryActivity extends AbstractActivity implements CategorySelect
                 }
             }
         } else if (id == R.id.remove_sms_template) {
-            Object o = v.getTag();
-            if (o instanceof Long) {
-                final long clickedItemId = (Long) o;
+            if (v.getTag() instanceof Long clickedItemId) {
                 new AlertDialog.Builder(this)
                         .setTitle(R.string.delete)
                         .setIcon(android.R.drawable.ic_dialog_alert)

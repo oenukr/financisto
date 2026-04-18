@@ -273,7 +273,7 @@ public class BlotterActivity extends AbstractListActivity {
                 Account account = db.getAccount(accountId);
 
                 // call credit card bill activity sending account id
-                if (account.paymentDay > 0 && account.closingDay > 0) {
+                if (account != null && account.paymentDay > 0 && account.closingDay > 0) {
                     intent.putExtra(MonthlyViewActivity.BILL_PREVIEW_EXTRA, true);
                     startActivityForResult(intent, BILL_PREVIEW_REQUEST);
                 } else {
