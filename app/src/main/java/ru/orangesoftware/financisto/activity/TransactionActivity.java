@@ -394,31 +394,25 @@ public class TransactionActivity extends AbstractTransactionActivity {
     @Override
     protected void onClick(View v, int id) {
         super.onClick(v, id);
-        switch (id) {
-            case R.id.unsplit_action:
-                unsplitActionGrid.show(v);
-                break;
-            case R.id.add_split:
-                createSplit(false);
-                break;
-            case R.id.add_split_transfer:
-                if (selectedOriginCurrencyId > 0) {
-                    Toast.makeText(this, R.string.split_transfer_not_supported_yet, Toast.LENGTH_LONG).show();
-                    break;
-                }
+        if (id == R.id.unsplit_action) {
+            unsplitActionGrid.show(v);
+        } else if (id == R.id.add_split) {
+            createSplit(false);
+        } else if (id == R.id.add_split_transfer) {
+            if (selectedOriginCurrencyId > 0) {
+                Toast.makeText(this, R.string.split_transfer_not_supported_yet, Toast.LENGTH_LONG).show();
+            } else {
                 createSplit(true);
-                break;
-            case R.id.delete_split:
-                View parentView = (View) v.getParent();
-                deleteSplit(parentView);
-                break;
-            case R.id.original_currency:
-                List<Currency> currencies = db.getAllCurrenciesList();
-                currencies.add(0, currencyAsAccount);
-                ListAdapter adapter = TransactionUtils.createCurrencyAdapter(this, currencies);
-                int selectedPos = MyEntity.indexOf(currencies, selectedOriginCurrencyId);
-                activityLayout.selectItemId(this, R.id.currency, R.string.currency, adapter, selectedPos);
-                break;
+            }
+        } else if (id == R.id.delete_split) {
+            View parentView = (View) v.getParent();
+            deleteSplit(parentView);
+        } else if (id == R.id.original_currency) {
+            List<Currency> currencies = db.getAllCurrenciesList();
+            currencies.add(0, currencyAsAccount);
+            ListAdapter adapter = TransactionUtils.createCurrencyAdapter(this, currencies);
+            int selectedPos = MyEntity.indexOf(currencies, selectedOriginCurrencyId);
+            activityLayout.selectItemId(this, R.id.currency, R.string.currency, adapter, selectedPos);
         }
         Transaction split = viewToSplitMap.get(v);
         if (split != null) {
@@ -440,15 +434,12 @@ public class TransactionActivity extends AbstractTransactionActivity {
     @Override
     public void onSelectedId(int id, long selectedId) {
         super.onSelectedId(id, selectedId);
-        switch (id) {
-            case R.id.currency:
-                selectOriginalCurrency(selectedId);
-                break;
-            case R.id.payee:
-                if (isRememberLastCategory) {
-                    selectLastCategoryForPayee(selectedId);
-                }
-                break;
+        if (id == R.id.currency) {
+            selectOriginalCurrency(selectedId);
+        } else if (id == R.id.payee) {
+            if (isRememberLastCategory) {
+                selectLastCategoryForPayee(selectedId);
+            }
         }
     }
 

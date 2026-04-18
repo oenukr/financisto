@@ -115,28 +115,22 @@ public class TransferActivity extends AbstractTransactionActivity {
     @Override
     protected void onClick(View v, int id) {
         super.onClick(v, id);
-        switch (id) {
-            case R.id.account_from:
-                activityLayout.select(this, R.id.account_from, R.string.account, accountCursor, accountAdapter,
-                        AccountColumns.ID, selectedAccountFromId);
-                break;
-            case R.id.account_to:
-                activityLayout.select(this, R.id.account_to, R.string.account, accountCursor, accountAdapter,
-                        AccountColumns.ID, selectedAccountToId);
-                break;
+        if (id == R.id.account_from) {
+            activityLayout.select(this, R.id.account_from, R.string.account, accountCursor, accountAdapter,
+                    AccountColumns.ID, selectedAccountFromId);
+        } else if (id == R.id.account_to) {
+            activityLayout.select(this, R.id.account_to, R.string.account, accountCursor, accountAdapter,
+                    AccountColumns.ID, selectedAccountToId);
         }
     }
 
     @Override
     public void onSelectedId(int id, long selectedId) {
         super.onSelectedId(id, selectedId);
-        switch (id) {
-            case R.id.account_from:
-                selectFromAccount(selectedId);
-                break;
-            case R.id.account_to:
-                selectToAccount(selectedId);
-                break;
+        if (id == R.id.account_from) {
+            selectFromAccount(selectedId);
+        } else if (id == R.id.account_to) {
+            selectToAccount(selectedId);
         }
     }
 
