@@ -257,10 +257,9 @@ public class CategoryActivity extends AbstractActivity implements CategorySelect
             Intent intent = new Intent(this, AttributeActivity.class);
             startActivityForResult(intent, NEW_ATTRIBUTE_REQUEST);
         } else if (id == R.id.edit_attribute) {
-            Object o = v.getTag();
-            if (o instanceof Attribute) {
+            if (v.getTag() instanceof Attribute attribute) {
                 Intent intent = new Intent(this, AttributeActivity.class);
-                intent.putExtra(AttributeColumns.ID, ((Attribute) o).id);
+                intent.putExtra(AttributeColumns.ID, attribute.id);
                 startActivityForResult(intent, EDIT_ATTRIBUTE_REQUEST);
             }
         } else if (id == R.id.remove_attribute) {
@@ -275,8 +274,7 @@ public class CategoryActivity extends AbstractActivity implements CategorySelect
             }
         } else if (id == R.id.edit_sms_template) {
             if (!isRequestingPermission(this, RECEIVE_SMS)) {
-                Object o = v.getTag();
-                if (o instanceof SmsTemplate clickedItem) {
+                if (v.getTag() instanceof SmsTemplate clickedItem) {
                     Intent intent = new Intent(this, SmsTemplateActivity.class);
                     intent.putExtra(SmsTemplateColumns._id.name(), clickedItem.id);
                     intent.putExtra(SmsTemplateColumns.category_id.name(), clickedItem.categoryId);
@@ -376,8 +374,7 @@ public class CategoryActivity extends AbstractActivity implements CategorySelect
         int count = layout.getChildCount();
         for (int i = 0; i < count; i++) {
             View v = layout.getChildAt(i);
-            Object o = v.getTag();
-            if (o instanceof SmsTemplate a2) {
+            if (v.getTag() instanceof SmsTemplate a2) {
                 if (a2.id == t.id) {
                     setSmsTemplateData(v, t);
                 }
