@@ -83,146 +83,109 @@ public abstract class FilterAbstractActivity extends AbstractActivity implements
 
     @Override
     protected void onClick(View v, int id) {
-        switch (id) {
-            case R.id.category:
-            case R.id.category_show_list:
-            case R.id.category_close_filter:
-            case R.id.category_show_filter:
-                categorySelector.onClick(id);
-            break;
-            case R.id.category_clear:
-                categorySelector.onClick(id);
-                clearCategoryFilter();
-                break;
-            case R.id.project: {
-                Criteria c = filter.get(PROJECT_ID);
-                if (c != null) projectSelector.updateCheckedEntities(c.getValues());
-                projectSelector.onClick(id);
-            }
-            break;
-            case R.id.project_clear:
-                clear(PROJECT_ID);
-                projectSelector.onClick(id);
-                break;
-            case R.id.project_show_filter:
-            case R.id.project_close_filter:
-            case R.id.project_show_list:
-                projectSelector.onClick(id);
-                break;
-            case R.id.location: {
-                Criteria c = filter.get(LOCATION_ID);
-                if (c != null) locationSelector.updateCheckedEntities(c.getValues());
-                locationSelector.onClick(id);
-            }
-            break;
-            case R.id.location_clear:
-                clear(LOCATION_ID);
-                locationSelector.onClick(id);
-                break;
-            case R.id.location_show_filter:
-            case R.id.location_close_filter:
-            case R.id.location_show_list:
-                locationSelector.onClick(id);
-                break;
-            case R.id.payee: {
-                Criteria c = filter.get(BlotterFilter.PAYEE_ID);
-                if (c != null) projectSelector.updateCheckedEntities(c.getValues());
-                payeeSelector.onClick(id);
-            }
-            break;
-            case R.id.payee_clear:
-                clear(BlotterFilter.PAYEE_ID);
-                payeeSelector.onClick(id);
-                break;
-            case R.id.payee_show_filter:
-            case R.id.payee_close_filter:
-            case R.id.payee_show_list:
-                payeeSelector.onClick(id);
-                break;
+        if (id == R.id.category || id == R.id.category_show_list || id == R.id.category_close_filter || id == R.id.category_show_filter) {
+            categorySelector.onClick(id);
+        } else if (id == R.id.category_clear) {
+            categorySelector.onClick(id);
+            clearCategoryFilter();
+        } else if (id == R.id.project) {
+            Criteria c = filter.get(PROJECT_ID);
+            if (c != null) projectSelector.updateCheckedEntities(c.getValues());
+            projectSelector.onClick(id);
+        } else if (id == R.id.project_clear) {
+            clear(PROJECT_ID);
+            projectSelector.onClick(id);
+        } else if (id == R.id.project_show_filter || id == R.id.project_close_filter || id == R.id.project_show_list) {
+            projectSelector.onClick(id);
+        } else if (id == R.id.location) {
+            Criteria c = filter.get(LOCATION_ID);
+            if (c != null) locationSelector.updateCheckedEntities(c.getValues());
+            locationSelector.onClick(id);
+        } else if (id == R.id.location_clear) {
+            clear(LOCATION_ID);
+            locationSelector.onClick(id);
+        } else if (id == R.id.location_show_filter || id == R.id.location_close_filter || id == R.id.location_show_list) {
+            locationSelector.onClick(id);
+        } else if (id == R.id.payee) {
+            Criteria c = filter.get(BlotterFilter.PAYEE_ID);
+            if (c != null) projectSelector.updateCheckedEntities(c.getValues());
+            payeeSelector.onClick(id);
+        } else if (id == R.id.payee_clear) {
+            clear(BlotterFilter.PAYEE_ID);
+            payeeSelector.onClick(id);
+        } else if (id == R.id.payee_show_filter || id == R.id.payee_close_filter || id == R.id.payee_show_list) {
+            payeeSelector.onClick(id);
         }
     }
 
     @Override
     public void onSelectedId(final int id, final long selectedId) {
-        switch (id) {
-            case R.id.project:
-                projectSelector.onSelectedId(id, selectedId);
-                filter.put(Criteria.in(PROJECT_ID, projectSelector.getCheckedIds()));
-                updateProjectFromFilter();
-                break;
-            case R.id.payee:
-                payeeSelector.onSelectedId(id, selectedId);
-                if (selectedId == 0) {
-                    filter.put(Criteria.isNull(BlotterFilter.PAYEE_ID));
-                } else {
-                    filter.put(Criteria.in(BlotterFilter.PAYEE_ID, payeeSelector.getCheckedIds()));
-                }
-                updatePayeeFromFilter();
-                break;
-            case R.id.category:
-                categorySelector.onSelectedId(id, selectedId, false);
+        if (id == R.id.project) {
+            projectSelector.onSelectedId(id, selectedId);
+            filter.put(Criteria.in(PROJECT_ID, projectSelector.getCheckedIds()));
+            updateProjectFromFilter();
+        } else if (id == R.id.payee) {
+            payeeSelector.onSelectedId(id, selectedId);
+            if (selectedId == 0) {
+                filter.put(Criteria.isNull(BlotterFilter.PAYEE_ID));
+            } else {
+                filter.put(Criteria.in(BlotterFilter.PAYEE_ID, payeeSelector.getCheckedIds()));
+            }
+            updatePayeeFromFilter();
+        } else if (id == R.id.category) {
+            categorySelector.onSelectedId(id, selectedId, false);
 //                filter.put(Criteria.btw(CATEGORY_LEFT, categorySelector.getCheckedCategoryLeafs()));
 //                updateCategoryFromFilter();
-                break;
-            case R.id.location:
-                locationSelector.onSelectedId(id, selectedId);
-                filter.put(Criteria.in(LOCATION_ID, locationSelector.getCheckedIds()));
-                updateLocationFromFilter();
-                break;
+        } else if (id == R.id.location) {
+            locationSelector.onSelectedId(id, selectedId);
+            filter.put(Criteria.in(LOCATION_ID, locationSelector.getCheckedIds()));
+            updateLocationFromFilter();
         }
     }
 
     @Override
     public void onSelected(int id, List<? extends MultiChoiceItem> items) {
-        switch (id) {
-            case R.id.category:
-                if (ArrUtils.isEmpty(categorySelector.getCheckedCategoryLeafs())) {
-                    clearCategoryFilter();
-                } else {
-                    filter.put(Criteria.btw(CATEGORY_LEFT, categorySelector.getCheckedCategoryLeafs()));
-                    updateCategoryFromFilter();
-                }
-                break;
-            case R.id.project:
-                if (ArrUtils.isEmpty(projectSelector.getCheckedIds())) {
-                    clear(PROJECT_ID);
-                } else {
-                    filter.put(Criteria.in(PROJECT_ID, projectSelector.getCheckedIds()));
-                    updateProjectFromFilter();
-                }
-                break;
-            case R.id.payee:
-                if (ArrUtils.isEmpty(payeeSelector.getCheckedIds())) {
-                    clear(PAYEE_ID);
-                } else {
-                    filter.put(Criteria.in(PAYEE_ID, payeeSelector.getCheckedIds()));
-                    updatePayeeFromFilter();
-                }
-                break;
-            case R.id.location:
-                if (ArrUtils.isEmpty(locationSelector.getCheckedIds())) {
-                    clear(LOCATION_ID);
-                } else {
-                    filter.put(Criteria.in(LOCATION_ID, locationSelector.getCheckedIds()));
-                    updateLocationFromFilter();
-                }
-                break;
+        if (id == R.id.category) {
+            if (ArrUtils.isEmpty(categorySelector.getCheckedCategoryLeafs())) {
+                clearCategoryFilter();
+            } else {
+                filter.put(Criteria.btw(CATEGORY_LEFT, categorySelector.getCheckedCategoryLeafs()));
+                updateCategoryFromFilter();
+            }
+        } else if (id == R.id.project) {
+            if (ArrUtils.isEmpty(projectSelector.getCheckedIds())) {
+                clear(PROJECT_ID);
+            } else {
+                filter.put(Criteria.in(PROJECT_ID, projectSelector.getCheckedIds()));
+                updateProjectFromFilter();
+            }
+        } else if (id == R.id.payee) {
+            if (ArrUtils.isEmpty(payeeSelector.getCheckedIds())) {
+                clear(PAYEE_ID);
+            } else {
+                filter.put(Criteria.in(PAYEE_ID, payeeSelector.getCheckedIds()));
+                updatePayeeFromFilter();
+            }
+        } else if (id == R.id.location) {
+            if (ArrUtils.isEmpty(locationSelector.getCheckedIds())) {
+                clear(LOCATION_ID);
+            } else {
+                filter.put(Criteria.in(LOCATION_ID, locationSelector.getCheckedIds()));
+                updateLocationFromFilter();
+            }
         }
     }
 
     @Override
     public void onSelectedPos(int id, int selectedPos) { // todo.mb: not used in case of multi-select, so remove then
-        switch (id) {
-            case R.id.project:
-                projectSelector.onSelectedPos(id, selectedPos);
-                filter.put(Criteria.eq(PROJECT_ID, String.valueOf(projectSelector.getSelectedEntityId())));
-                updateProjectFromFilter();
-                break;
-            case R.id.payee:
-                payeeSelector.onSelectedPos(id, selectedPos);
-                filter.put(Criteria.eq(PAYEE_ID, String.valueOf(payeeSelector.getSelectedEntityId())));
-                updatePayeeFromFilter();
-                break;
+        if (id == R.id.project) {
+            projectSelector.onSelectedPos(id, selectedPos);
+            filter.put(Criteria.eq(PROJECT_ID, String.valueOf(projectSelector.getSelectedEntityId())));
+            updateProjectFromFilter();
+        } else if (id == R.id.payee) {
+            payeeSelector.onSelectedPos(id, selectedPos);
+            filter.put(Criteria.eq(PAYEE_ID, String.valueOf(payeeSelector.getSelectedEntityId())));
+            updatePayeeFromFilter();
         }
     }
 
@@ -285,11 +248,8 @@ public abstract class FilterAbstractActivity extends AbstractActivity implements
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        switch (requestCode) {
-            case R.id.category_pick:
-            case R.id.category_add:
-                categorySelector.onActivityResult(requestCode, resultCode, data);
-                break;
+        if (requestCode == R.id.category_pick || requestCode == R.id.category_add) {
+            categorySelector.onActivityResult(requestCode, resultCode, data);
         }
     }
 

@@ -264,32 +264,28 @@ public class BlotterActivity extends AbstractListActivity {
         Intent intent = new Intent(this, MonthlyViewActivity.class);
         intent.putExtra(MonthlyViewActivity.ACCOUNT_EXTRA, accountId);
 
-        switch (id) {
+        if (id == R.id.opt_menu_month) {
+            // call credit card bill activity sending account id
+            intent.putExtra(MonthlyViewActivity.BILL_PREVIEW_EXTRA, false);
+            startActivityForResult(intent, MONTHLY_VIEW_REQUEST);
+        } else if (id == R.id.opt_menu_bill) {
+            if (accountId != -1) {
+                Account account = db.getAccount(accountId);
 
-            case R.id.opt_menu_month:
                 // call credit card bill activity sending account id
-                intent.putExtra(MonthlyViewActivity.BILL_PREVIEW_EXTRA, false);
-                startActivityForResult(intent, MONTHLY_VIEW_REQUEST);
-                break;
-
-            case R.id.opt_menu_bill:
-                if (accountId != -1) {
-                    Account account = db.getAccount(accountId);
-
-                    // call credit card bill activity sending account id
-                    if (account.paymentDay > 0 && account.closingDay > 0) {
-                        intent.putExtra(MonthlyViewActivity.BILL_PREVIEW_EXTRA, true);
-                        startActivityForResult(intent, BILL_PREVIEW_REQUEST);
-                    } else {
-                        // display message: need payment and closing day
-                        AlertDialog.Builder dlgAlert = new AlertDialog.Builder(this);
-                        dlgAlert.setMessage(R.string.statement_error);
-                        dlgAlert.setTitle(R.string.ccard_statement);
-                        dlgAlert.setPositiveButton(R.string.ok, null);
-                        dlgAlert.setCancelable(true);
-                        dlgAlert.create().show();
-                    }
+                if (account != null && account.paymentDay > 0 && account.closingDay > 0) {
+                    intent.putExtra(MonthlyViewActivity.BILL_PREVIEW_EXTRA, true);
+                    startActivityForResult(intent, BILL_PREVIEW_REQUEST);
+                } else {
+                    // display message: need payment and closing day
+                    AlertDialog.Builder dlgAlert = new AlertDialog.Builder(this);
+                    dlgAlert.setMessage(R.string.statement_error);
+                    dlgAlert.setTitle(R.string.ccard_statement);
+                    dlgAlert.setPositiveButton(R.string.ok, null);
+                    dlgAlert.setCancelable(true);
+                    dlgAlert.create().show();
                 }
+            }
         }
     }
 

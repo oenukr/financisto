@@ -178,43 +178,26 @@ public class BudgetActivity extends AbstractActivity {
 
     @Override
     protected void onClick(View v, int id) {
-        switch (id) {
-            case R.id.include_subcategories:
-                cbIncludeSubCategories.performClick();
-                break;
-            case R.id.include_credit:
-                cbIncludeCredit.performClick();
-                break;
-            case R.id.budget_mode:
-                cbMode.performClick();
-                break;
-            case R.id.type:
-                cbSavingBudget.performClick();
-                break;
-            case R.id.category:
-            case R.id.category_clear:
-            case R.id.category_show_list:
-            case R.id.category_close_filter:
-            case R.id.category_show_filter:
-                categorySelector.onClick(id);
-                break;
-            case R.id.project:
-            case R.id.project_clear:
-            case R.id.project_show_filter:
-            case R.id.project_close_filter:
-                projectSelector.onClick(id);
-                break;
-            case R.id.account:
-                activityLayout.selectPosition(this, R.id.account, R.string.account, accountAdapter, selectedAccountOption);
-                break;
-            case R.id.period_recur: {
-                Intent intent = new Intent(this, RecurActivity.class);
-                if (budget.recur != null) {
-                    intent.putExtra(RecurActivity.EXTRA_RECUR, budget.recur);
-                }
-                startActivityForResult(intent, RECUR_REQUEST);
+        if (id == R.id.include_subcategories) {
+            cbIncludeSubCategories.performClick();
+        } else if (id == R.id.include_credit) {
+            cbIncludeCredit.performClick();
+        } else if (id == R.id.budget_mode) {
+            cbMode.performClick();
+        } else if (id == R.id.type) {
+            cbSavingBudget.performClick();
+        } else if (id == R.id.category || id == R.id.category_clear || id == R.id.category_show_list || id == R.id.category_close_filter || id == R.id.category_show_filter) {
+            categorySelector.onClick(id);
+        } else if (id == R.id.project || id == R.id.project_clear || id == R.id.project_show_filter || id == R.id.project_close_filter) {
+            projectSelector.onClick(id);
+        } else if (id == R.id.account) {
+            activityLayout.selectPosition(this, R.id.account, R.string.account, accountAdapter, selectedAccountOption);
+        } else if (id == R.id.period_recur) {
+            Intent intent = new Intent(this, RecurActivity.class);
+            if (budget.recur != null) {
+                intent.putExtra(RecurActivity.EXTRA_RECUR, budget.recur);
             }
-            break;
+            startActivityForResult(intent, RECUR_REQUEST);
         }
     }
 
@@ -227,26 +210,20 @@ public class BudgetActivity extends AbstractActivity {
 
     @Override
     public void onSelectedId(int id, long selectedId) {
-        switch (id) {
-            case R.id.category:
-                categorySelector.onSelectedId(id, selectedId);
-                categorySelector.fillCategoryInUI();
-                break;
-            case R.id.project:
-                projectSelector.onSelectedId(id, selectedId);
-                break;
+        if (id == R.id.category) {
+            categorySelector.onSelectedId(id, selectedId);
+            categorySelector.fillCategoryInUI();
+        } else if (id == R.id.project) {
+            projectSelector.onSelectedId(id, selectedId);
         }
     }
 
     @Override
     public void onSelected(int id, List<? extends MultiChoiceItem> items) {
-        switch (id) {
-            case R.id.category:
-                categorySelector.onSelected(id, items);
-                break;
-            case R.id.project:
-                projectSelector.onSelected(id, items);
-                break;
+        if (id == R.id.category) {
+            categorySelector.onSelected(id, items);
+        } else if (id == R.id.project) {
+            projectSelector.onSelected(id, items);
         }
     }
 

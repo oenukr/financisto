@@ -432,39 +432,28 @@ public abstract class AbstractTransactionActivity extends AbstractActivity imple
         projectSelector.onClick(id);
         categorySelector.onClick(id);
         locationSelector.onClick(id);
-        switch (id) {
-            case R.id.account:
-                activityLayout.select(this, R.id.account, R.string.account, accountCursor, accountAdapter,
-                        AccountColumns.ID, getSelectedAccountId());
-                break;
-            case R.id.recurrence_pattern: {
-                Intent intent = new Intent(this, RecurrenceActivity.class);
-                intent.putExtra(RecurrenceActivity.RECURRENCE_PATTERN, recurrence);
-                startActivityForResult(intent, RECURRENCE_REQUEST);
-                break;
+        if (id == R.id.account) {
+            activityLayout.select(this, R.id.account, R.string.account, accountCursor, accountAdapter,
+                    AccountColumns.ID, getSelectedAccountId());
+        } else if (id == R.id.recurrence_pattern) {
+            Intent intent = new Intent(this, RecurrenceActivity.class);
+            intent.putExtra(RecurrenceActivity.RECURRENCE_PATTERN, recurrence);
+            startActivityForResult(intent, RECURRENCE_REQUEST);
+        } else if (id == R.id.notification) {
+            Intent intent = new Intent(this, NotificationOptionsActivity.class);
+            intent.putExtra(NotificationOptionsActivity.NOTIFICATION_OPTIONS, notificationOptions);
+            startActivityForResult(intent, NOTIFICATION_REQUEST);
+        } else if (id == R.id.attach_picture) {
+            if (isRequestingPermission(this, Manifest.permission.CAMERA)) {
+                return;
             }
-            case R.id.notification: {
-                Intent intent = new Intent(this, NotificationOptionsActivity.class);
-                intent.putExtra(NotificationOptionsActivity.NOTIFICATION_OPTIONS, notificationOptions);
-                startActivityForResult(intent, NOTIFICATION_REQUEST);
-                break;
-            }
-            case R.id.attach_picture: {
-                if (isRequestingPermission(this, Manifest.permission.CAMERA)) {
-                    return;
-                }
-                transaction.blobKey = null;
-                pickImageActionGrid.show(v);
-                break;
-            }
-            case R.id.delete_picture: {
-                removePicture();
-                break;
-            }
-            case R.id.is_ccard_payment: {
-                ccardPayment.setChecked(!ccardPayment.isChecked());
-                transaction.isCCardPayment = ccardPayment.isChecked() ? 1 : 0;
-            }
+            transaction.blobKey = null;
+            pickImageActionGrid.show(v);
+        } else if (id == R.id.delete_picture) {
+            removePicture();
+        } else if (id == R.id.is_ccard_payment) {
+            ccardPayment.setChecked(!ccardPayment.isChecked());
+            transaction.isCCardPayment = ccardPayment.isChecked() ? 1 : 0;
         }
     }
 

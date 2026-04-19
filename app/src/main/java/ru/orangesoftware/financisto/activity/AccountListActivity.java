@@ -101,13 +101,10 @@ public class AccountListActivity extends AbstractListActivity {
     }
 
     private void handlePopupMenu(int id) {
-        switch (id) {
-            case R.id.backup:
-                MenuListItem.MENU_BACKUP.call(this);
-                break;
-            case R.id.go_to_menu:
-                new DependenciesHolder().getGreenRobotBus().post(new SwitchToMenuTabEvent());
-                break;
+        if (id == R.id.backup) {
+            MenuListItem.MENU_BACKUP.call(this);
+        } else if (id == R.id.go_to_menu) {
+            new DependenciesHolder().getGreenRobotBus().post(new SwitchToMenuTabEvent());
         }
     }
 

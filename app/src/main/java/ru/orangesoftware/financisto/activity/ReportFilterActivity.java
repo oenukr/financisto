@@ -139,64 +139,49 @@ public class ReportFilterActivity extends FilterAbstractActivity {
     @Override
     protected void onClick(View v, int id) {
         super.onClick(v, id);
-        switch (id) {
-            case R.id.period:
-                Intent intent = new Intent(this, DateFilterActivity.class);
-                filter.toIntent(intent);
-                startActivityForResult(intent, 1);
-                break;
-            case R.id.period_clear:
-                clear(BlotterFilter.DATETIME, period);
-                break;
-            case R.id.account: {
-                Cursor cursor = db.getAllAccounts();
-                startManagingCursor(cursor);
-                ListAdapter adapter = TransactionUtils.createAccountAdapter(this, cursor);
-                Criteria c = filter.get(BlotterFilter.FROM_ACCOUNT_ID);
-                long selectedId = c != null ? c.getLongValue1() : -1;
-                activityLayout.select(this, R.id.account, R.string.account, cursor, adapter, "_id", selectedId);
-            }
-            break;
-            case R.id.account_clear:
-                clear(BlotterFilter.FROM_ACCOUNT_ID, account);
-                break;
-            case R.id.currency: {
-                Cursor cursor = db.getAllCurrencies("name");
-                startManagingCursor(cursor);
-                ListAdapter adapter = TransactionUtils.createCurrencyAdapter(this, cursor);
-                Criteria c = filter.get(BlotterFilter.FROM_ACCOUNT_CURRENCY_ID);
-                long selectedId = c != null ? c.getLongValue1() : -1;
-                activityLayout.select(this, R.id.currency, R.string.currency, cursor, adapter, "_id", selectedId);
-            }
-            break;
-            case R.id.currency_clear:
-                clear(BlotterFilter.FROM_ACCOUNT_CURRENCY_ID, currency);
-                break;
-            case R.id.status: {
-                ArrayAdapter<String> adapter = EnumUtils.createDropDownAdapter(this, statuses);
-                Criteria c = filter.get(BlotterFilter.STATUS);
-                int selectedPos = c != null ? TransactionStatus.valueOf(c.getStringValue()).ordinal() : -1;
-                activityLayout.selectPosition(this, R.id.status, R.string.transaction_status, adapter, selectedPos);
-            }
-            break;
-            case R.id.status_clear:
-                clear(BlotterFilter.STATUS, status);
-                break;
+        if (id == R.id.period) {
+            Intent intent = new Intent(this, DateFilterActivity.class);
+            filter.toIntent(intent);
+            startActivityForResult(intent, 1);
+        } else if (id == R.id.period_clear) {
+            clear(BlotterFilter.DATETIME, period);
+        } else if (id == R.id.account) {
+            Cursor cursor = db.getAllAccounts();
+            startManagingCursor(cursor);
+            ListAdapter adapter = TransactionUtils.createAccountAdapter(this, cursor);
+            Criteria c = filter.get(BlotterFilter.FROM_ACCOUNT_ID);
+            long selectedId = c != null ? c.getLongValue1() : -1;
+            activityLayout.select(this, R.id.account, R.string.account, cursor, adapter, "_id", selectedId);
+        } else if (id == R.id.account_clear) {
+            clear(BlotterFilter.FROM_ACCOUNT_ID, account);
+        } else if (id == R.id.currency) {
+            Cursor cursor = db.getAllCurrencies("name");
+            startManagingCursor(cursor);
+            ListAdapter adapter = TransactionUtils.createCurrencyAdapter(this, cursor);
+            Criteria c = filter.get(BlotterFilter.FROM_ACCOUNT_CURRENCY_ID);
+            long selectedId = c != null ? c.getLongValue1() : -1;
+            activityLayout.select(this, R.id.currency, R.string.currency, cursor, adapter, "_id", selectedId);
+        } else if (id == R.id.currency_clear) {
+            clear(BlotterFilter.FROM_ACCOUNT_CURRENCY_ID, currency);
+        } else if (id == R.id.status) {
+            ArrayAdapter<String> adapter = EnumUtils.createDropDownAdapter(this, statuses);
+            Criteria c = filter.get(BlotterFilter.STATUS);
+            int selectedPos = c != null ? TransactionStatus.valueOf(c.getStringValue()).ordinal() : -1;
+            activityLayout.selectPosition(this, R.id.status, R.string.transaction_status, adapter, selectedPos);
+        } else if (id == R.id.status_clear) {
+            clear(BlotterFilter.STATUS, status);
         }
     }
 
     @Override
     public void onSelectedId(int id, long selectedId) {
         super.onSelectedId(id, selectedId);
-        switch (id) {
-            case R.id.account:
-                filter.put(Criteria.eq(BlotterFilter.FROM_ACCOUNT_ID, String.valueOf(selectedId)));
-                updateAccountFromFilter();
-                break;
-            case R.id.currency:
-                filter.put(Criteria.eq(BlotterFilter.FROM_ACCOUNT_CURRENCY_ID, String.valueOf(selectedId)));
-                updateCurrencyFromFilter();
-                break;
+        if (id == R.id.account) {
+            filter.put(Criteria.eq(BlotterFilter.FROM_ACCOUNT_ID, String.valueOf(selectedId)));
+            updateAccountFromFilter();
+        } else if (id == R.id.currency) {
+            filter.put(Criteria.eq(BlotterFilter.FROM_ACCOUNT_CURRENCY_ID, String.valueOf(selectedId)));
+            updateCurrencyFromFilter();
         }
     }
 

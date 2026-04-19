@@ -119,23 +119,20 @@ public class PurgeAccountActivity extends AbstractActivity {
 
     @Override
     protected void onClick(View v, int id) {
-        switch (id) {
-            case R.id.date:
-                DatePickerDialog dialog = DatePickerDialog.newInstance(
-                        (view, year, monthOfYear, dayOfMonth) -> {
-                            date.set(year, monthOfYear, dayOfMonth);
-                            setDateText();
-                        },
-                        date.get(Calendar.YEAR),
-                        date.get(Calendar.MONTH),
-                        date.get(Calendar.DAY_OF_MONTH)
-                );
-                UiUtils.INSTANCE.applyTheme(this, dialog);
-                dialog.show(getSupportFragmentManager(), "DatePickerDialog");
-                break;
-            case R.id.backup:
-                databaseBackup.setChecked(!databaseBackup.isChecked());
-                break;
+        if (id == R.id.date) {
+            DatePickerDialog dialog = DatePickerDialog.newInstance(
+                    (view, year, monthOfYear, dayOfMonth) -> {
+                        date.set(year, monthOfYear, dayOfMonth);
+                        setDateText();
+                    },
+                    date.get(Calendar.YEAR),
+                    date.get(Calendar.MONTH),
+                    date.get(Calendar.DAY_OF_MONTH)
+            );
+            UiUtils.INSTANCE.applyTheme(this, dialog);
+            dialog.show(getSupportFragmentManager(), "DatePickerDialog");
+        } else if (id == R.id.backup) {
+            databaseBackup.setChecked(!databaseBackup.isChecked());
         }
     }
 
