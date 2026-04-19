@@ -16,11 +16,6 @@ android {
         versionCode = 122
         versionName = "1.8.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        javaCompileOptions {
-            annotationProcessorOptions {
-                argument("androidManifestFile", "$projectDir/src/main/AndroidManifest.xml")
-            }
-        }
     }
 
     buildTypes {

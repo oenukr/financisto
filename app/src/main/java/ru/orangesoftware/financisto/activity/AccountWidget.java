@@ -273,13 +273,12 @@ public class AccountWidget extends AppWidgetProvider {
     }
 
     private static int getNoDataLayout(int layoutId) {
-        switch (layoutId) {
-            case R.layout.widget_3x1:
-                return R.layout.widget_3x1_no_data;
-            case R.layout.widget_4x1:
-                return R.layout.widget_4x1_no_data;
-            default:
-                return R.layout.widget_2x1_no_data;
+        if (layoutId == R.layout.widget_3x1) {
+            return R.layout.widget_3x1_no_data;
+        } else if (layoutId == R.layout.widget_4x1) {
+            return R.layout.widget_4x1_no_data;
+        } else {
+            return R.layout.widget_2x1_no_data;
         }
     }
 

@@ -263,28 +263,21 @@ public class AccountActivity extends AbstractActivity {
 
     @Override
     protected void onClick(View v, int id) {
-        switch (id) {
-            case R.id.is_included_into_totals:
-                isIncludedIntoTotals.performClick();
-                break;
-            case R.id.account_type:
-                activityLayout.selectPosition(this, R.id.account_type, R.string.account_type, accountTypeAdapter, AccountType.valueOf(account.type).ordinal());
-                break;
-            case R.id.card_issuer:
-                activityLayout.selectPosition(this, R.id.card_issuer, R.string.card_issuer, cardIssuerAdapter,
-                        account.cardIssuer != null ? CardIssuer.valueOf(account.cardIssuer).ordinal() : 0);
-                break;
-            case R.id.electronic_payment_type:
-                activityLayout.selectPosition(this, R.id.electronic_payment_type, R.string.electronic_payment_type, electronicPaymentAdapter,
-                        selectEnum(ElectronicPaymentType.class, account.cardIssuer, ElectronicPaymentType.PAYPAL).ordinal());
-                break;
-            case R.id.currency:
-                activityLayout.select(this, R.id.currency, R.string.currency, currencyCursor, currencyAdapter,
-                        "_id", account.currency != null ? account.currency.id : -1);
-                break;
-            case R.id.currency_add:
-                addNewCurrency();
-                break;
+        if (id == R.id.is_included_into_totals) {
+            isIncludedIntoTotals.performClick();
+        } else if (id == R.id.account_type) {
+            activityLayout.selectPosition(this, R.id.account_type, R.string.account_type, accountTypeAdapter, AccountType.valueOf(account.type).ordinal());
+        } else if (id == R.id.card_issuer) {
+            activityLayout.selectPosition(this, R.id.card_issuer, R.string.card_issuer, cardIssuerAdapter,
+                    account.cardIssuer != null ? CardIssuer.valueOf(account.cardIssuer).ordinal() : 0);
+        } else if (id == R.id.electronic_payment_type) {
+            activityLayout.selectPosition(this, R.id.electronic_payment_type, R.string.electronic_payment_type, electronicPaymentAdapter,
+                    selectEnum(ElectronicPaymentType.class, account.cardIssuer, ElectronicPaymentType.PAYPAL).ordinal());
+        } else if (id == R.id.currency) {
+            activityLayout.select(this, R.id.currency, R.string.currency, currencyCursor, currencyAdapter,
+                    "_id", account.currency != null ? account.currency.id : -1);
+        } else if (id == R.id.currency_add) {
+            addNewCurrency();
         }
     }
 
@@ -309,19 +302,15 @@ public class AccountActivity extends AbstractActivity {
 
     @Override
     public void onSelectedPos(int id, int selectedPos) {
-        switch (id) {
-            case R.id.account_type:
-                AccountType type = AccountType.values()[selectedPos];
-                selectAccountType(type);
-                break;
-            case R.id.card_issuer:
-                CardIssuer issuer = CardIssuer.values()[selectedPos];
-                selectCardIssuer(issuer);
-                break;
-            case R.id.electronic_payment_type:
-                ElectronicPaymentType paymentType = ElectronicPaymentType.values()[selectedPos];
-                selectElectronicType(paymentType);
-                break;
+        if (id == R.id.account_type) {
+            AccountType type = AccountType.values()[selectedPos];
+            selectAccountType(type);
+        } else if (id == R.id.card_issuer) {
+            CardIssuer issuer = CardIssuer.values()[selectedPos];
+            selectCardIssuer(issuer);
+        } else if (id == R.id.electronic_payment_type) {
+            ElectronicPaymentType paymentType = ElectronicPaymentType.values()[selectedPos];
+            selectElectronicType(paymentType);
         }
     }
 

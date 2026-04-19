@@ -150,98 +150,84 @@ public class RecurrenceActivity extends AbstractActivity {
 
     @Override
     protected void onClick(View v, int id) {
-        switch (id) {
-            case R.id.recurrence_pattern: {
-                ArrayAdapter<String> adapter = EnumUtils.createDropDownAdapter(this, frequencies);
-                activityLayout.selectPosition(this, R.id.recurrence_pattern, R.string.recurrence_pattern, adapter, recurrence.pattern.frequency.ordinal());
-            }
-            break;
-            case R.id.recurrence_period: {
-                ArrayAdapter<String> adapter = EnumUtils.createDropDownAdapter(this, until);
-                activityLayout.selectPosition(this, R.id.recurrence_period, R.string.recurrence_period, adapter, recurrence.period.until.ordinal());
-            }
-            break;
-            case R.id.start_date: {
-                final Calendar c = recurrence.getStartDate();
-                DatePickerDialog dialog = DatePickerDialog.newInstance(
-                        (view, year, monthOfYear, dayOfMonth) -> {
-                            recurrence.updateStartDate(year, monthOfYear, dayOfMonth);
-                            startDateView.setText(DateUtils.getMediumDateFormat(RecurrenceActivity.this).format(c.getTime()));
-                        },
-                        c.get(Calendar.YEAR),
-                        c.get(Calendar.MONTH),
-                        c.get(Calendar.DAY_OF_MONTH)
-                );
-                UiUtils.INSTANCE.applyTheme(this, dialog);
-                dialog.show(getSupportFragmentManager(), "DatePickerDialog");
-            }
-            break;
-            case R.id.start_time: {
-                final Calendar c = recurrence.getStartDate();
-                boolean is24Format = DateUtils.is24HourFormat(RecurrenceActivity.this);
-                TimePickerDialog dialog = TimePickerDialog.newInstance(
-                        (view, hourOfDay, minute, second) -> {
-                            recurrence.updateStartTime(hourOfDay, minute, 0);
-                            startTimeView.setText(DateUtils.getTimeFormat(RecurrenceActivity.this).format(c.getTime()));
-                        },
-                        c.get(Calendar.HOUR_OF_DAY), c.get(Calendar.MINUTE), is24Format
-                );
-                UiUtils.INSTANCE.applyTheme(this, dialog);
-                dialog.show(getSupportFragmentManager(), "TimePickerDialog");
-            }
-            break;
-            case R.id.result: {
-                try {
-                    String stateAsString = stateToString();
-                    logger.d("RRULE", stateAsString);
-                    Recurrence r = Recurrence.parse(stateAsString);
-                    DateRecurrenceIterator ri = r.createIterator(new Date());
-                    StringBuilder sb = new StringBuilder();
-                    DateFormat df = DateUtils.getMediumDateFormat(this);
-                    String n = String.format("%n");
-                    int count = 0;
-                    while (count++ < 10 && ri.hasNext()) {
-                        Date nextDate = ri.next();
-                        if (count > 1) {
-                            sb.append(n);
-                        }
-                        sb.append(df.format(nextDate.getTime()));
+        if (id == R.id.recurrence_pattern) {
+            ArrayAdapter<String> adapter = EnumUtils.createDropDownAdapter(this, frequencies);
+            activityLayout.selectPosition(this, R.id.recurrence_pattern, R.string.recurrence_pattern, adapter, recurrence.pattern.frequency.ordinal());
+        } else if (id == R.id.recurrence_period) {
+            ArrayAdapter<String> adapter = EnumUtils.createDropDownAdapter(this, until);
+            activityLayout.selectPosition(this, R.id.recurrence_period, R.string.recurrence_period, adapter, recurrence.period.until.ordinal());
+        } else if (id == R.id.start_date) {
+            final Calendar c = recurrence.getStartDate();
+            DatePickerDialog dialog = DatePickerDialog.newInstance(
+                    (view, year, monthOfYear, dayOfMonth) -> {
+                        recurrence.updateStartDate(year, monthOfYear, dayOfMonth);
+                        startDateView.setText(DateUtils.getMediumDateFormat(RecurrenceActivity.this).format(c.getTime()));
+                    },
+                    c.get(Calendar.YEAR),
+                    c.get(Calendar.MONTH),
+                    c.get(Calendar.DAY_OF_MONTH)
+            );
+            UiUtils.INSTANCE.applyTheme(this, dialog);
+            dialog.show(getSupportFragmentManager(), "DatePickerDialog");
+        } else if (id == R.id.start_time) {
+            final Calendar c = recurrence.getStartDate();
+            boolean is24Format = DateUtils.is24HourFormat(RecurrenceActivity.this);
+            TimePickerDialog dialog = TimePickerDialog.newInstance(
+                    (view, hourOfDay, minute, second) -> {
+                        recurrence.updateStartTime(hourOfDay, minute, 0);
+                        startTimeView.setText(DateUtils.getTimeFormat(RecurrenceActivity.this).format(c.getTime()));
+                    },
+                    c.get(Calendar.HOUR_OF_DAY), c.get(Calendar.MINUTE), is24Format
+            );
+            UiUtils.INSTANCE.applyTheme(this, dialog);
+            dialog.show(getSupportFragmentManager(), "TimePickerDialog");
+        } else if (id == R.id.result) {
+            try {
+                String stateAsString = stateToString();
+                logger.d("RRULE", stateAsString);
+                Recurrence r = Recurrence.parse(stateAsString);
+                DateRecurrenceIterator ri = r.createIterator(new Date());
+                StringBuilder sb = new StringBuilder();
+                DateFormat df = DateUtils.getMediumDateFormat(this);
+                String n = String.format("%n");
+                int count = 0;
+                while (count++ < 10 && ri.hasNext()) {
+                    Date nextDate = ri.next();
+                    if (count > 1) {
+                        sb.append(n);
                     }
-                    if (ri.hasNext()) {
-                        sb.append(n).append("...");
-                    }
-                    new AlertDialog.Builder(this)
-                            .setTitle(getString(r.pattern.frequency.getTitleId()))
-                            .setMessage(sb.toString())
-                            .setPositiveButton(R.string.ok, (dialog, which) -> dialog.dismiss())
-                            .show();
-                } catch (Exception ex) {
-                    Toast.makeText(this, ex.getClass().getSimpleName() + ":" + ex.getMessage(), Toast.LENGTH_SHORT).show();
+                    sb.append(df.format(nextDate.getTime()));
                 }
+                if (ri.hasNext()) {
+                    sb.append(n).append("...");
+                }
+                new AlertDialog.Builder(this)
+                        .setTitle(getString(r.pattern.frequency.getTitleId()))
+                        .setMessage(sb.toString())
+                        .setPositiveButton(R.string.ok, (dialog, which) -> dialog.dismiss())
+                        .show();
+            } catch (Exception ex) {
+                Toast.makeText(this, ex.getClass().getSimpleName() + ":" + ex.getMessage(), Toast.LENGTH_SHORT).show();
             }
-            break;
         }
     }
 
     @Override
     public void onSelectedPos(int id, int selectedPos) {
-        switch (id) {
-            case R.id.recurrence_pattern:
-                RecurrenceFrequency newFrequency = frequencies[selectedPos];
-                if (recurrence.pattern.frequency != newFrequency) {
-                    recurrence.pattern = RecurrencePattern.empty(newFrequency);
-                    recurrencePatternView = viewFactory.create(recurrence.pattern);
-                    createNodes();
-                }
-                break;
-            case R.id.recurrence_period:
-                RecurrenceUntil newUntil = until[selectedPos];
-                if (recurrence.period.until != newUntil) {
-                    recurrence.period = RecurrencePeriod.empty(newUntil);
-                    recurrencePeriodView = viewFactory.create(newUntil);
-                    createNodes();
-                }
-                break;
+        if (id == R.id.recurrence_pattern) {
+            RecurrenceFrequency newFrequency = frequencies[selectedPos];
+            if (recurrence.pattern.frequency != newFrequency) {
+                recurrence.pattern = RecurrencePattern.empty(newFrequency);
+                recurrencePatternView = viewFactory.create(recurrence.pattern);
+                createNodes();
+            }
+        } else if (id == R.id.recurrence_period) {
+            RecurrenceUntil newUntil = until[selectedPos];
+            if (recurrence.period.until != newUntil) {
+                recurrence.period = RecurrencePeriod.empty(newUntil);
+                recurrencePeriodView = viewFactory.create(newUntil);
+                createNodes();
+            }
         }
     }
 

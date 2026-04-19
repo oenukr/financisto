@@ -206,131 +206,108 @@ public class BlotterFilterActivity extends FilterAbstractActivity {
 	protected void onClick(View v, int id) {
     	super.onClick(v, id);
 		Intent intent;
-		switch (id) {
-			case R.id.period:
-				intent = new Intent(this, DateFilterActivity.class);
-				filter.toIntent(intent);
-				startActivityForResult(intent, REQUEST_DATE_FILTER);
-				break;
-			case R.id.period_clear:
-				clear(BlotterFilter.DATETIME, period);
-				break;
-			case R.id.account: {
-				if (isAccountFilter()) {
-					return;
-				}
-				Cursor cursor = db.getAllAccounts();
-				startManagingCursor(cursor);
-				ListAdapter adapter = TransactionUtils.createAccountAdapter(this, cursor);
-				Criteria c = filter.get(FROM_ACCOUNT_ID);
-				long selectedId = c != null ? c.getLongValue1() : -1;
-				activityLayout.select(this, R.id.account, R.string.account, cursor, adapter, "_id", selectedId);
-			} break;
-			case R.id.account_clear:
-				if (isAccountFilter()) {
-					return;
-				}
-				clear(FROM_ACCOUNT_ID, account);
-				break;
-			case R.id.currency: {
-				Cursor cursor = db.getAllCurrencies("name");
-				startManagingCursor(cursor);
-				ListAdapter adapter = TransactionUtils.createCurrencyAdapter(this, cursor);
-				Criteria c = filter.get(BlotterFilter.FROM_ACCOUNT_CURRENCY_ID);
-				long selectedId = c != null ? c.getLongValue1() : -1;
-				activityLayout.select(this, R.id.currency, R.string.currency, cursor, adapter, "_id", selectedId);
-			} break;
-			case R.id.currency_clear:
-				clear(BlotterFilter.FROM_ACCOUNT_CURRENCY_ID, currency);
-				break;
-			case R.id.note:
-				intent = new Intent(this, NoteFilterActivity.class);
-				filter.toIntent(intent);
-				startActivityForResult(intent, REQUEST_NOTE_FILTER);
-				break;
-			case R.id.note_clear:
-				clear(BlotterFilter.NOTE, note);
-				break;
-			case R.id.sort_order: {
-				ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, sortBlotterEntries);
-				int selectedId = BlotterFilter.SORT_OLDER_TO_NEWER.equals(filter.getSortOrder()) ? 1 : 0;
-				activityLayout.selectPosition(this, R.id.sort_order, R.string.sort_order, adapter, selectedId);
-			} break;
-			case R.id.sort_order_clear:
-				filter.resetSort();
-				filter.desc(BlotterFilter.DATETIME);
-				updateSortOrderFromFilter();
-				break;
-			case R.id.status: {
-				ArrayAdapter<String> adapter = EnumUtils.createDropDownAdapter(this, statuses);
-				Criteria c = filter.get(BlotterFilter.STATUS);
-				int selectedPos = c != null ? TransactionStatus.valueOf(c.getStringValue()).ordinal() : -1;
-				activityLayout.selectPosition(this, R.id.status, R.string.transaction_status, adapter, selectedPos);
-			} break;
-			case R.id.status_clear:
-				clear(BlotterFilter.STATUS, status);
-				break;
+		if (id == R.id.period) {
+			intent = new Intent(this, DateFilterActivity.class);
+			filter.toIntent(intent);
+			startActivityForResult(intent, REQUEST_DATE_FILTER);
+		} else if (id == R.id.period_clear) {
+			clear(BlotterFilter.DATETIME, period);
+		} else if (id == R.id.account) {
+			if (isAccountFilter()) {
+				return;
+			}
+			Cursor cursor = db.getAllAccounts();
+			startManagingCursor(cursor);
+			ListAdapter adapter = TransactionUtils.createAccountAdapter(this, cursor);
+			Criteria c = filter.get(FROM_ACCOUNT_ID);
+			long selectedId = c != null ? c.getLongValue1() : -1;
+			activityLayout.select(this, R.id.account, R.string.account, cursor, adapter, "_id", selectedId);
+		} else if (id == R.id.account_clear) {
+			if (isAccountFilter()) {
+				return;
+			}
+			clear(FROM_ACCOUNT_ID, account);
+		} else if (id == R.id.currency) {
+			Cursor cursor = db.getAllCurrencies("name");
+			startManagingCursor(cursor);
+			ListAdapter adapter = TransactionUtils.createCurrencyAdapter(this, cursor);
+			Criteria c = filter.get(BlotterFilter.FROM_ACCOUNT_CURRENCY_ID);
+			long selectedId = c != null ? c.getLongValue1() : -1;
+			activityLayout.select(this, R.id.currency, R.string.currency, cursor, adapter, "_id", selectedId);
+		} else if (id == R.id.currency_clear) {
+			clear(BlotterFilter.FROM_ACCOUNT_CURRENCY_ID, currency);
+		} else if (id == R.id.note) {
+			intent = new Intent(this, NoteFilterActivity.class);
+			filter.toIntent(intent);
+			startActivityForResult(intent, REQUEST_NOTE_FILTER);
+		} else if (id == R.id.note_clear) {
+			clear(BlotterFilter.NOTE, note);
+		} else if (id == R.id.sort_order) {
+			ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, sortBlotterEntries);
+			int selectedId = BlotterFilter.SORT_OLDER_TO_NEWER.equals(filter.getSortOrder()) ? 1 : 0;
+			activityLayout.selectPosition(this, R.id.sort_order, R.string.sort_order, adapter, selectedId);
+		} else if (id == R.id.sort_order_clear) {
+			filter.resetSort();
+			filter.desc(BlotterFilter.DATETIME);
+			updateSortOrderFromFilter();
+		} else if (id == R.id.status) {
+			ArrayAdapter<String> adapter = EnumUtils.createDropDownAdapter(this, statuses);
+			Criteria c = filter.get(BlotterFilter.STATUS);
+			int selectedPos = c != null ? TransactionStatus.valueOf(c.getStringValue()).ordinal() : -1;
+			activityLayout.selectPosition(this, R.id.status, R.string.transaction_status, adapter, selectedPos);
+		} else if (id == R.id.status_clear) {
+			clear(BlotterFilter.STATUS, status);
 		}
 	}
 
 	@Override
 	public void onSelectedId(final int id, final long selectedId) {
 		super.onSelectedId(id, selectedId);
-		switch (id) {
-			case R.id.account:
-				filter.put(Criteria.eq(FROM_ACCOUNT_ID, String.valueOf(selectedId)));
-				updateAccountFromFilter();
-				break;
-			case R.id.currency:
-				filter.put(Criteria.eq(BlotterFilter.FROM_ACCOUNT_CURRENCY_ID, String.valueOf(selectedId)));
-				updateCurrencyFromFilter();
-				break;
+		if (id == R.id.account) {
+			filter.put(Criteria.eq(FROM_ACCOUNT_ID, String.valueOf(selectedId)));
+			updateAccountFromFilter();
+		} else if (id == R.id.currency) {
+			filter.put(Criteria.eq(BlotterFilter.FROM_ACCOUNT_CURRENCY_ID, String.valueOf(selectedId)));
+			updateCurrencyFromFilter();
 		}
 	}
 
 	@Override
 	public void onSelectedPos(int id, int selectedPos) {
 		super.onSelectedPos(id, selectedPos);
-		switch (id) {
-			case R.id.status:
-				filter.put(Criteria.eq(BlotterFilter.STATUS, statuses[selectedPos].name()));
-				updateStatusFromFilter();
-				break;
-			case R.id.sort_order:
-				filter.resetSort();
-				if (selectedPos == 1) {
-					filter.asc(BlotterFilter.DATETIME);
-				} else {
-					filter.desc(BlotterFilter.DATETIME);
-				}
-				updateSortOrderFromFilter();
-				break;
+		if (id == R.id.status) {
+			filter.put(Criteria.eq(BlotterFilter.STATUS, statuses[selectedPos].name()));
+			updateStatusFromFilter();
+		} else if (id == R.id.sort_order) {
+			filter.resetSort();
+			if (selectedPos == 1) {
+				filter.asc(BlotterFilter.DATETIME);
+			} else {
+				filter.desc(BlotterFilter.DATETIME);
+			}
+			updateSortOrderFromFilter();
 		}
 	}
 
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 		super.onActivityResult(requestCode, resultCode, data);
-		switch (requestCode) {
-			case REQUEST_DATE_FILTER:
-				if (resultCode == RESULT_FIRST_USER) {
-					onClick(period, R.id.period_clear);
-				} else if (resultCode == RESULT_OK) {
-					DateTimeCriteria c = WhereFilter.dateTimeFromIntent(data);
-					filter.put(c);
-					updatePeriodFromFilter();
-				}
-				break;
-
-			case REQUEST_NOTE_FILTER:
-				if (resultCode == RESULT_FIRST_USER) {
-					onClick(note, R.id.note_clear);
-				} else if (resultCode == RESULT_OK) {
-					filter.put(new Criteria(BlotterFilter.NOTE, WhereFilter.Operation.LIKE,
-							data.getStringExtra(NoteFilterActivity.NOTE_CONTAINING)));
-					updateNoteFromFilter();
-				}
-				break;
+		if (requestCode == REQUEST_DATE_FILTER) {
+			if (resultCode == RESULT_FIRST_USER) {
+				onClick(period, R.id.period_clear);
+			} else if (resultCode == RESULT_OK) {
+				DateTimeCriteria c = WhereFilter.dateTimeFromIntent(data);
+				filter.put(c);
+				updatePeriodFromFilter();
+			}
+		} else if (requestCode == REQUEST_NOTE_FILTER) {
+			if (resultCode == RESULT_FIRST_USER) {
+				onClick(note, R.id.note_clear);
+			} else if (resultCode == RESULT_OK) {
+				filter.put(new Criteria(BlotterFilter.NOTE, WhereFilter.Operation.LIKE,
+						data.getStringExtra(NoteFilterActivity.NOTE_CONTAINING)));
+				updateNoteFromFilter();
+			}
 		}
 	}
 }

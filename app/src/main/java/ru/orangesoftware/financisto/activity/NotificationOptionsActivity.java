@@ -89,31 +89,25 @@ public class NotificationOptionsActivity extends AbstractActivity {
 
 	@Override
 	protected void onClick(View v, int id) {
-		switch (id) {
-			case R.id.notification_sound: {
-				Intent intent = new Intent(RingtoneManager.ACTION_RINGTONE_PICKER);
-				if (options.getSound() != null) {
-					intent.putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, Uri.parse(options.getSound()));
-				}
-				intent.putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_NOTIFICATION);
-				startActivityForResult(intent, PICKUP_RINGTONE);
-			} break;
-			case R.id.notification_vibra: {
-				ArrayAdapter<String> adapter = EnumUtils.createDropDownAdapter(this, patterns);
-				activityLayout.selectPosition(this, R.id.notification_vibra, R.string.notification_vibra, adapter, options.getVibration().ordinal());
-			} break;
-			case R.id.notification_led:  {
-				ArrayAdapter<String> adapter = EnumUtils.createDropDownAdapter(this, colors);
-				activityLayout.selectPosition(this, R.id.notification_led, R.string.notification_led, adapter, options.getLedColor().ordinal());
-			} break;
-			case R.id.result1: {
-				options = NotificationOptions.createDefault();
-				updateOptions();
-			} break;
-			case R.id.result2: {
-				options = NotificationOptions.createOff();
-				updateOptions();
-			} break;
+		if (id == R.id.notification_sound) {
+			Intent intent = new Intent(RingtoneManager.ACTION_RINGTONE_PICKER);
+			if (options.getSound() != null) {
+				intent.putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, Uri.parse(options.getSound()));
+			}
+			intent.putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_NOTIFICATION);
+			startActivityForResult(intent, PICKUP_RINGTONE);
+		} else if (id == R.id.notification_vibra) {
+			ArrayAdapter<String> adapter = EnumUtils.createDropDownAdapter(this, patterns);
+			activityLayout.selectPosition(this, R.id.notification_vibra, R.string.notification_vibra, adapter, options.getVibration().ordinal());
+		} else if (id == R.id.notification_led) {
+			ArrayAdapter<String> adapter = EnumUtils.createDropDownAdapter(this, colors);
+			activityLayout.selectPosition(this, R.id.notification_led, R.string.notification_led, adapter, options.getLedColor().ordinal());
+		} else if (id == R.id.result1) {
+			options = NotificationOptions.createDefault();
+			updateOptions();
+		} else if (id == R.id.result2) {
+			options = NotificationOptions.createOff();
+			updateOptions();
 		}
 	}
 
@@ -129,18 +123,14 @@ public class NotificationOptionsActivity extends AbstractActivity {
 
 	@Override
 	public void onSelectedPos(int id, int selectedPos) {
-		switch (id) {
-		case R.id.notification_sound:
+		if (id == R.id.notification_sound) {
 			updateOptions();
-			break;
-		case R.id.notification_vibra:
+		} else if (id == R.id.notification_vibra) {
 			options.setVibration(patterns[selectedPos]);
 			updateOptions();
-			break;
-		case R.id.notification_led:
+		} else if (id == R.id.notification_led) {
 			options.setLedColor(colors[selectedPos]);
 			updateOptions();
-			break;
 		}
 	}
 

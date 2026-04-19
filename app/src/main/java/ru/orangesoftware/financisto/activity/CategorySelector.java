@@ -208,32 +208,24 @@ public class CategorySelector<A extends AbstractActivity> {
     }
 
     public void onClick(int id) {
-        switch (id) {
-            case R.id.category:
-                if (isListPick()) {
-                    pickCategory();
-                } else {
-                    showFilter();
-                }
-                break;
-            case R.id.category_show_list:
+        if (id == R.id.category) {
+            if (isListPick()) {
                 pickCategory();
-                break;
-            case R.id.category_add:
-                addCategory();
-                break;
-            case R.id.category_split:
-                selectCategory(Category.SPLIT_CATEGORY_ID);
-                break;
-            case R.id.category_clear:
-                clearCategory();
-                break;
-            case R.id.category_show_filter:
+            } else {
                 showFilter();
-                break;
-            case R.id.category_close_filter:
-                filterNode.hideFilter();
-                break;
+            }
+        } else if (id == R.id.category_show_list) {
+            pickCategory();
+        } else if (id == R.id.category_add) {
+            addCategory();
+        } else if (id == R.id.category_split) {
+            selectCategory(Category.SPLIT_CATEGORY_ID);
+        } else if (id == R.id.category_clear) {
+            clearCategory();
+        } else if (id == R.id.category_show_filter) {
+            showFilter();
+        } else if (id == R.id.category_close_filter) {
+            filterNode.hideFilter();
         }
     }
 
