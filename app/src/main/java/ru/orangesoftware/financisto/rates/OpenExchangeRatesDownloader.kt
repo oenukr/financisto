@@ -32,26 +32,25 @@ class OpenExchangeRatesDownloader(
         val result = runCatching { downloadLatestRates() }
 
         val count = currencies.size
+        val exception = result.exceptionOrNull()
+        val json = result.getOrNull()
+        val jsonError = json?.let { if (hasError(it)) parseErrorMessage(it) else null }
+
         for (i in 0 until count) {
             for (j in i + 1 until count) {
                 val fromCurrency = currencies[i]
                 val toCurrency = currencies[j]
                 val exchangeRate = createRate(fromCurrency, toCurrency)
                 
-                result.fold(
-                    onSuccess = { json ->
-                        exchangeRate.safeExecute {
-                            if (hasError(json)) {
-                                exchangeRate.error = parseErrorMessage(json)
-                            } else {
-                                updateRate(json, exchangeRate, fromCurrency, toCurrency)
-                            }
-                        }
-                    },
-                    onFailure = { e ->
-                        exchangeRate.error = "Unable to get exchange rates: ${e.message}"
+                if (exception != null) {
+                    exchangeRate.error = "Unable to get exchange rates: ${exception.message}"
+                } else if (jsonError != null) {
+                    exchangeRate.error = jsonError
+                } else if (json != null) {
+                    exchangeRate.safeExecute {
+                        updateRate(json, exchangeRate, fromCurrency, toCurrency)
                     }
-                )
+                }
                 rates.add(exchangeRate)
             }
         }
