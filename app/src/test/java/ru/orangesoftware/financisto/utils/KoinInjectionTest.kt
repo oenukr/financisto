@@ -12,6 +12,6 @@ class KoinInjectionTest {
         fun checkKoinModule() {
 
             // Verify Koin configuration
-            modules.forEach { it.verify(extraTypes = listOf(android.content.Context::class, ru.orangesoftware.financisto.http.HttpClientWrapper::class, ru.orangesoftware.financisto.utils.Logger::class, kotlin.time.Clock::class, android.content.SharedPreferences::class)) }
+            org.koin.dsl.module { includes(modules) }.verify(extraTypes = listOf(android.content.Context::class))
         }
 }
