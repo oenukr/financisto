@@ -8,6 +8,7 @@ import org.junit.Test
 import org.mockito.Mock
 import org.mockito.Mockito.`when`
 import org.mockito.MockitoAnnotations
+import ru.orangesoftware.financisto.http.FakeHttpClientWrapper
 import ru.orangesoftware.financisto.utils.FileUtils
 import ru.orangesoftware.financisto.utils.Logger
 import kotlin.time.Clock
@@ -100,6 +101,50 @@ class OpenExchangeRatesDownloaderTest : AbstractRatesDownloaderTest() {
         // then
         assertFalse(downloadedRate.isOk)
         assertEquals("Unable to get exchange rates: Timeout", downloadedRate.errorMessage)
+    }
+
+    @Test
+    fun should_fetch_from_network_only_once_for_getRates() {
+        // given
+        var requestCount = 0
+        val countingClient = object : FakeHttpClientWrapper() {
+            override fun getAsString(url: String): String? {
+                requestCount++
+                return super.getAsString(url)
+            }
+        }
+        countingClient.givenResponse(anyUrl(), FileUtils.testFileAsString("open_exchange_normal_response.json"))
+        
+        val countingOpenRates = OpenExchangeRatesDownloader(countingClient, logger, "MY_APP_ID", clock)
+        
+        // when
+        val rates = countingOpenRates.getRates(currencies("USD", "SGD", "RUB"))
+        
+        // then
+        assertEquals(3, rates.size)
+        assertEquals(1, requestCount)
+    }
+
+    @Test
+    fun should_fetch_from_network_every_time_for_getRate_when_stateless() {
+        // given
+        var requestCount = 0
+        val countingClient = object : FakeHttpClientWrapper() {
+            override fun getAsString(url: String): String? {
+                requestCount++
+                return super.getAsString(url)
+            }
+        }
+        countingClient.givenResponse(anyUrl(), FileUtils.testFileAsString("open_exchange_normal_response.json"))
+        
+        val countingOpenRates = OpenExchangeRatesDownloader(countingClient, logger, "MY_APP_ID", clock)
+        
+        // when
+        countingOpenRates.getRate(currency("USD"), currency("SGD"))
+        countingOpenRates.getRate(currency("USD"), currency("RUB"))
+        
+        // then
+        assertEquals(2, requestCount)
     }
 
     override fun givenResponseFromWebService(url: String, fileName: String) {
