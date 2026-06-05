@@ -72,7 +72,7 @@ import ru.orangesoftware.financisto.report.PeriodReport
 import ru.orangesoftware.financisto.report.Report
 import ru.orangesoftware.financisto.reports.ReportViewModel
 import ru.orangesoftware.financisto.reports.ReportViewModel.Companion.INTENT_KEY
-import ru.orangesoftware.financisto.reports.ReportViewModel.Companion.SCREEN_DENTITY_KEY
+import ru.orangesoftware.financisto.reports.ReportViewModel.Companion.SCREEN_DENSITY_KEY
 import ru.orangesoftware.financisto.utils.MyPreferences
 import ru.orangesoftware.financisto.utils.PinProtection
 import ru.orangesoftware.financisto.utils.Utils
@@ -104,7 +104,7 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
                 extras = MutableCreationExtras(defaultViewModelCreationExtras).apply {
                     set(APPLICATION_KEY, application)
 //                    set(REPORT_NAME_KEY, intent.getStringExtra(EXTRA_REPORT_TYPE).orEmpty())
-                    set(SCREEN_DENTITY_KEY, screenDensity.density)
+                    set(SCREEN_DENSITY_KEY, screenDensity.density)
                     set(INTENT_KEY, intent)
                 },
             )
