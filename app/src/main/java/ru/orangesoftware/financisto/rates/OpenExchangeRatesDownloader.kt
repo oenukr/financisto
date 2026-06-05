@@ -14,12 +14,10 @@ class OpenExchangeRatesDownloader(
     private val clock: Clock
 ) : BaseExchangeRateDownloader(clock) {
 
-    private var cachedJson: JSONObject? = null
-
     override fun getRate(fromCurrency: Currency, toCurrency: Currency): ExchangeRate {
         val exchangeRate = createRate(fromCurrency, toCurrency)
         exchangeRate.safeExecute {
-            val json = getLatestRates()
+            val json = downloadLatestRates()
             if (hasError(json)) {
                 exchangeRate.error = parseErrorMessage(json)
             } else {
@@ -29,16 +27,44 @@ class OpenExchangeRatesDownloader(
         return exchangeRate
     }
 
-    private fun getLatestRates(): JSONObject {
-        cachedJson?.let { return it }
-        
+    override fun getRates(currencies: List<Currency>): List<ExchangeRate> {
+        val rates = mutableListOf<ExchangeRate>()
+        val result = runCatching { downloadLatestRates() }
+
+        val count = currencies.size
+        for (i in 0 until count) {
+            for (j in i + 1 until count) {
+                val fromCurrency = currencies[i]
+                val toCurrency = currencies[j]
+                val exchangeRate = createRate(fromCurrency, toCurrency)
+                
+                result.fold(
+                    onSuccess = { json ->
+                        exchangeRate.safeExecute {
+                            if (hasError(json)) {
+                                exchangeRate.error = parseErrorMessage(json)
+                            } else {
+                                updateRate(json, exchangeRate, fromCurrency, toCurrency)
+                            }
+                        }
+                    },
+                    onFailure = { e ->
+                        exchangeRate.error = "Unable to get exchange rates: ${e.message}"
+                    }
+                )
+                rates.add(exchangeRate)
+            }
+        }
+        return rates
+    }
+
+    private fun downloadLatestRates(): JSONObject {
         if (appId.isNullOrEmpty()) {
             throw RuntimeException("App ID is not set")
         }
         
         logger.i("Downloading latest rates from OpenExchangeRates...")
         val response = httpClientWrapper.getAsJson(getLatestUrl())
-        cachedJson = response
         logger.i("Response: $response")
         return response
     }
