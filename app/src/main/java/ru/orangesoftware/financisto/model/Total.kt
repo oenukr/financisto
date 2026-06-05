@@ -4,7 +4,7 @@ import android.content.Context
 import ru.orangesoftware.financisto.R
 import ru.orangesoftware.financisto.utils.Utils
 
-data class Total @JvmOverloads constructor(
+class Total @JvmOverloads constructor(
     @JvmField val currency: Currency,
     @JvmField val showAmount: Boolean = false,
     @JvmField val error: TotalError? = null

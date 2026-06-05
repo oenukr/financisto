@@ -1,7 +1,6 @@
 package ru.orangesoftware.financisto.model
 
 import ru.orangesoftware.financisto.db.DatabaseAdapter
-import java.util.Stack
 
 class CategoryTreeNavigator @JvmOverloads constructor(
     private val db: DatabaseAdapter,
@@ -13,7 +12,7 @@ class CategoryTreeNavigator @JvmOverloads constructor(
         const val EXPENSE_CATEGORY_ID: Long = -102
     }
 
-    private val categoriesStack = Stack<CategoryTree<Category>>()
+    private val categoriesStack = ArrayDeque<CategoryTree<Category>>()
 
     @JvmField
     var categories: CategoryTree<Category> = db.getCategoriesTreeWithoutSubTree(excludedTreeId, false)
@@ -30,14 +29,14 @@ class CategoryTreeNavigator @JvmOverloads constructor(
         val map = categories.asMap()
         val selectedCategory = map[selectedCategoryId]
         if (selectedCategory != null) {
-            val path = Stack<Long>()
+            val path = ArrayDeque<Long>()
             var parent = selectedCategory.parent
             while (parent != null) {
-                path.push(parent.id)
+                path.addLast(parent.id)
                 parent = parent.parent
             }
-            while (!path.isEmpty()) {
-                navigateTo(path.pop())
+            while (path.isNotEmpty()) {
+                navigateTo(path.removeLast())
             }
             this.selectedCategoryId = selectedCategoryId
         }
@@ -53,36 +52,27 @@ class CategoryTreeNavigator @JvmOverloads constructor(
             }
             categories.insertAtTop(copy)
         }
-        val sb = StringBuilder()
         for (c in categories) {
             if (c.tag == null && c.hasChildren()) {
-                sb.setLength(0)
-                val children = c.children
-                for (child in children) {
-                    if (sb.isNotEmpty()) {
-                        sb.append(",")
-                    }
-                    sb.append(child.title)
-                }
-                c.tag = sb.toString()
+                c.tag = c.children.joinToString(",") { it.title }
             }
         }
     }
 
     fun goBack(): Boolean {
-        if (!categoriesStack.isEmpty()) {
+        if (categoriesStack.isNotEmpty()) {
             val selectedCategory = findCategory(selectedCategoryId)
             if (selectedCategory != null) {
                 selectedCategoryId = selectedCategory.parentId
             }
-            categories = categoriesStack.pop()
+            categories = categoriesStack.removeLast()
             return true
         }
         return false
     }
 
     fun canGoBack(): Boolean {
-        return !categoriesStack.isEmpty()
+        return categoriesStack.isNotEmpty()
     }
 
     fun navigateTo(categoryId: Long): Boolean {
@@ -90,7 +80,7 @@ class CategoryTreeNavigator @JvmOverloads constructor(
         if (selectedCategory != null) {
             selectedCategoryId = selectedCategory.id
             if (selectedCategory.hasChildren()) {
-                categoriesStack.push(categories)
+                categoriesStack.addLast(categories)
                 categories = selectedCategory.children
                 tagCategories(selectedCategory)
                 return true
@@ -99,14 +89,8 @@ class CategoryTreeNavigator @JvmOverloads constructor(
         return false
     }
 
-    private fun findCategory(categoryId: Long): Category? {
-        for (category in categories) {
-            if (category.id == categoryId) {
-                return category
-            }
-        }
-        return null
-    }
+    private fun findCategory(categoryId: Long): Category? =
+        categories.find { it.id == categoryId }
 
     fun isSelected(categoryId: Long): Boolean {
         return selectedCategoryId == categoryId
