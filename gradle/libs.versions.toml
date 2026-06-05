@@ -1,21 +1,21 @@
 [versions]
 accompanist = "0.36.0"
 activity-compose = "1.13.0"
-android_tools = "9.1.1"
+android_tools = "9.2.1"
 androidannotations = "4.8.0"
 appcompat = "1.7.1"
 biometric = "1.1.0"
 collection-ktx = "1.6.0"
-commons-io = "2.21.0"
-core-ktx = "1.18.0"
+commons-io = "2.22.0"
+core-ktx = "1.19.0"
 datastore = "1.2.1"
 detekt = "1.23.8"
-glide = "5.0.5"
-glide-compose = "1.0.0-beta08"
-kotlin = "2.3.20"
-kotlinx-datetime = "0.7.1"
+glide = "5.0.7"
+glide-compose = "1.0.0-beta09"
+kotlin = "2.4.0"
+kotlinx-datetime = "0.8.0"
 kover = "0.9.8"
-ktor = "3.4.2"
+ktor = "3.5.0"
 lifecycle = "2.10.0"
 lib-recur = "0.17.1"
 test-core = "1.7.0"
@@ -45,7 +45,7 @@ glide-compose = { module = "com.github.bumptech.glide:compose", version.ref = "g
 google-play-base = { module = "com.google.android.gms:play-services-base", version = "18.10.0" }
 google-play-drive = { module = "com.google.android.gms:play-services-drive", version = "17.0.0" }
 java-collections = { module = "net.sf.trove4j:core", version = "3.1.0" }
-koala-chart = { module = "io.github.koalaplot:koalaplot-core", version = "0.11.0" }
+koala-chart = { module = "io.github.koalaplot:koalaplot-core", version = "0.11.2" }
 koin-bom = { module = "io.insert-koin:koin-bom", version = "4.2.1" }
 koin-android = { module = "io.insert-koin:koin-android" }
 koin-android-compat = { module = "io.insert-koin:koin-android-compat" }

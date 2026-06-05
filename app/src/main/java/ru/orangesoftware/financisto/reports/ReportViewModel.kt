@@ -202,14 +202,14 @@ class ReportViewModel(
         val INTENT_KEY = object : CreationExtras.Key<Intent> {}
 
         @JvmField
-        val SCREEN_DENTITY_KEY = object : CreationExtras.Key<Float> {}
+        val SCREEN_DENSITY_KEY = object : CreationExtras.Key<Float> {}
 
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val context = requireNotNull(this[APPLICATION_KEY]) { "Context is required" }
                 val intent = requireNotNull(this[INTENT_KEY]) { "Intent is required" }
                 val screenDensity =
-                    requireNotNull(this[SCREEN_DENTITY_KEY]) { "Screen density is required" }
+                    requireNotNull(this[SCREEN_DENSITY_KEY]) { "Screen density is required" }
                 val reportName =
                     requireNotNull(intent.getStringExtra(EXTRA_REPORT_TYPE)) { "Report name is required" }
                 ReportViewModel(
