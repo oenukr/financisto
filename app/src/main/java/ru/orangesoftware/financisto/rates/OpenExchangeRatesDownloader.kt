@@ -1,5 +1,6 @@
 package ru.orangesoftware.financisto.rates
 
+import android.content.SharedPreferences
 import kotlin.time.Clock
 import org.json.JSONException
 import org.json.JSONObject
@@ -10,7 +11,7 @@ import ru.orangesoftware.financisto.utils.Logger
 class OpenExchangeRatesDownloader(
     private val httpClientWrapper: HttpClientWrapper,
     private val logger: Logger,
-    private val appId: String?,
+    private val sharedPreferences: SharedPreferences,
     private val clock: Clock
 ) : BaseExchangeRateDownloader(clock) {
 
@@ -58,17 +59,18 @@ class OpenExchangeRatesDownloader(
     }
 
     private fun downloadLatestRates(): JSONObject {
+        val appId = sharedPreferences.getString("openexchangerates_app_id", "")
         if (appId.isNullOrEmpty()) {
             throw RuntimeException("App ID is not set")
         }
         
         logger.i("Downloading latest rates from OpenExchangeRates...")
-        val response = httpClientWrapper.getAsJson(getLatestUrl())
+        val response = httpClientWrapper.getAsJson(getLatestUrl(appId))
         logger.i("Response: $response")
         return response
     }
 
-    private fun getLatestUrl() = "$BASE_URL$appId"
+    private fun getLatestUrl(appId: String) = "$BASE_URL$appId"
 
     private fun hasError(json: JSONObject) = json.optBoolean("error", false)
 
