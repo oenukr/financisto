@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AppFunctionAppMetadata 
+    xmlns:appfn="http://schemas.android.com/apk/androidx.appfunctions" 
+    appfn:description="Personal finance tracker. Exposes transaction and transfer creation." 
+    appfn:displayDescription="@string/app_name" />

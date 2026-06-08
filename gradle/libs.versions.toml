@@ -25,6 +25,8 @@ test-mockito = "5.23.0"
 test-mockito-kotlin = "6.3.0"
 test-robolectric = "4.17-SNAPSHOT"
 workmanager = "2.11.2"
+ksp = "2.3.9"
+appfunctions = "1.0.0-alpha09"
 
 [libraries]
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanist" }
@@ -80,9 +82,14 @@ test-robolectric = { module = "org.robolectric:robolectric", version.ref = "test
 timber = { module = "com.jakewharton.timber:timber", version = "5.0.1" }
 workmanager = { module = "androidx.work:work-runtime", version.ref = "workmanager" }
 workmanager-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workmanager" }
+appfunctions-core = { module = "androidx.appfunctions:appfunctions", version.ref = "appfunctions" }
+appfunctions-service = { module = "androidx.appfunctions:appfunctions-service", version.ref = "appfunctions" }
+appfunctions-compiler = { module = "androidx.appfunctions:appfunctions-compiler", version.ref = "appfunctions" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "android_tools" }
+android-library = { id = "com.android.library", version.ref = "android_tools" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt"}
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
