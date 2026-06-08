@@ -27,6 +27,8 @@ import ru.orangesoftware.financisto.persistance.PreferencesStore
 import ru.orangesoftware.financisto.rates.FreeCurrencyRateDownloader
 import ru.orangesoftware.financisto.rates.OpenExchangeRatesDownloader
 import ru.orangesoftware.financisto.rates.WebserviceXConversionRateDownloader
+import android.content.Context
+import android.content.SharedPreferences
 import ru.orangesoftware.financisto.utils.Logger
 import ru.orangesoftware.financisto.utils.TimberLogger
 import ru.orangesoftware.financisto.utils.TimberTree
@@ -35,6 +37,9 @@ import kotlin.time.Clock as KotlinXClock
 
 // A module with Kotlin and Java components
 val storage = module {
+    single<SharedPreferences> {
+        androidContext().getSharedPreferences("${androidContext().packageName}_preferences", Context.MODE_PRIVATE)
+    }
     singleOf(::PreferencesStore) { bind<PreferencesStore>() }
 }
 
@@ -82,8 +87,8 @@ val exchangeRates = module {
     factory<WebserviceXConversionRateDownloader> {
         WebserviceXConversionRateDownloader(get(), get(), get<KotlinXClock>())
     }
-    factory<OpenExchangeRatesDownloader> { (appId: String?) ->
-        OpenExchangeRatesDownloader(get(), get(), appId, get<KotlinXClock>())
+    factory<OpenExchangeRatesDownloader> {
+        OpenExchangeRatesDownloader(get(), get(), get(), get<KotlinXClock>())
     }
 }
 

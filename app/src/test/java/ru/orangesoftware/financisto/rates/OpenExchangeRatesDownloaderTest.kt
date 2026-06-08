@@ -1,5 +1,6 @@
 package ru.orangesoftware.financisto.rates
 
+import android.content.SharedPreferences
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -20,6 +21,8 @@ class OpenExchangeRatesDownloaderTest : AbstractRatesDownloaderTest() {
     lateinit var logger: Logger
     @Mock
     lateinit var clock: Clock
+    @Mock
+    lateinit var sharedPreferences: SharedPreferences
     
     private lateinit var openRates: OpenExchangeRatesDownloader
 
@@ -28,8 +31,9 @@ class OpenExchangeRatesDownloaderTest : AbstractRatesDownloaderTest() {
         super.setUp()
         MockitoAnnotations.openMocks(this)
         `when`(clock.now()).thenReturn(Instant.fromEpochMilliseconds(1361034009000L))
+        `when`(sharedPreferences.getString("openexchangerates_app_id", "")).thenReturn("MY_APP_ID")
         // Use the 'client' from AbstractRatesDownloaderTest
-        openRates = OpenExchangeRatesDownloader(client, logger, "MY_APP_ID", clock)
+        openRates = OpenExchangeRatesDownloader(client, logger, sharedPreferences, clock)
     }
 
     override fun service(): ExchangeRateProvider = openRates
@@ -115,7 +119,7 @@ class OpenExchangeRatesDownloaderTest : AbstractRatesDownloaderTest() {
         }
         countingClient.givenResponse(anyUrl(), FileUtils.testFileAsString("open_exchange_normal_response.json"))
         
-        val countingOpenRates = OpenExchangeRatesDownloader(countingClient, logger, "MY_APP_ID", clock)
+        val countingOpenRates = OpenExchangeRatesDownloader(countingClient, logger, sharedPreferences, clock)
         
         // when
         val rates = countingOpenRates.getRates(currencies("USD", "SGD", "RUB"))
@@ -137,7 +141,7 @@ class OpenExchangeRatesDownloaderTest : AbstractRatesDownloaderTest() {
         }
         countingClient.givenResponse(anyUrl(), FileUtils.testFileAsString("open_exchange_normal_response.json"))
         
-        val countingOpenRates = OpenExchangeRatesDownloader(countingClient, logger, "MY_APP_ID", clock)
+        val countingOpenRates = OpenExchangeRatesDownloader(countingClient, logger, sharedPreferences, clock)
         
         // when
         countingOpenRates.getRate(currency("USD"), currency("SGD"))
