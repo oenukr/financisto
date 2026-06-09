@@ -203,4 +203,44 @@ class TransactionAppFunctionsTest {
             assertEquals(-1L, result)
         }
     }
+
+    @Test
+    fun testAddTransactionFuzzyMatching() {
+        runBlocking {
+            whenever(db.insertOrUpdateTransaction(
+                fromAccountId = eq(1L),
+                toAccountId = eq(null),
+                categoryId = eq(10L),
+                payeeId = eq(100L),
+                amount = eq(-1550L),
+                toAmount = eq(null),
+                note = eq("Coffee"),
+                dateTime = any()
+            )).thenReturn(1000L)
+
+            // 1. Test "Csh!" typo for "Cash", "food" (casing) for "Food", "Starbuck" typo for "Starbucks"
+            val result = appFunctions.addTransaction(
+                context = context,
+                amount = 15.50,
+                accountName = "Csh!",      // matches "Cash" (Levenshtein/Punctuation)
+                categoryName = "food",     // matches "Food" (Casing)
+                payeeName = "Starbuck",    // matches "Starbucks" (Levenshtein)
+                note = "Coffee",
+                isIncome = false,
+                toAccountName = null
+            )
+
+            assertEquals(1000L, result)
+            verify(db).insertOrUpdateTransaction(
+                fromAccountId = eq(1L),
+                toAccountId = eq(null),
+                categoryId = eq(10L),
+                payeeId = eq(100L),
+                amount = eq(-1550L),
+                toAmount = eq(null),
+                note = eq("Coffee"),
+                dateTime = any()
+            )
+        }
+    }
 }
