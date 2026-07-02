@@ -243,4 +243,90 @@ class TransactionAppFunctionsTest {
             )
         }
     }
+
+    @Test
+    fun testAddTransactionNegativeAmountExpense() {
+        runBlocking {
+            whenever(db.insertOrUpdateTransaction(
+                fromAccountId = eq(1L),
+                toAccountId = eq(null),
+                categoryId = eq(10L),
+                payeeId = eq(100L),
+                amount = eq(-1550L), // Absolute value of -15.50 is 15.50, expense sign is -1
+                toAmount = eq(null),
+                note = eq("Coffee"),
+                dateTime = any()
+            )).thenReturn(1000L)
+
+            val result = appFunctions.addTransaction(
+                context = context,
+                amount = -15.50, // negative amount
+                accountName = "Cash",
+                categoryName = "Food",
+                payeeName = "Starbucks",
+                note = "Coffee",
+                isIncome = false,
+                toAccountName = null
+            )
+
+            assertEquals(1000L, result)
+        }
+    }
+
+    @Test
+    fun testAddTransactionNegativeAmountTransfer() {
+        runBlocking {
+            whenever(db.insertOrUpdateTransaction(
+                fromAccountId = eq(1L),
+                toAccountId = eq(2L),
+                categoryId = eq(0L),
+                payeeId = eq(0L),
+                amount = eq(-5000L), // Absolute value of -50.00 is 50.00, deducted from source: -50.00
+                toAmount = eq(5000L),  // Added to destination: 50.00
+                note = eq("ATM"),
+                dateTime = any()
+            )).thenReturn(1002L)
+
+            val result = appFunctions.addTransaction(
+                context = context,
+                amount = -50.00, // negative amount
+                accountName = "Cash",
+                categoryName = null,
+                payeeName = null,
+                note = "ATM",
+                isIncome = null,
+                toAccountName = "Card"
+            )
+
+            assertEquals(1002L, result)
+        }
+    }
+
+    @Test
+    fun testAddTransactionShortQueryNoFuzzyMatch() {
+        runBlocking {
+            // Setup accounts containing an account named "C"
+            whenever(db.getAccounts()).thenReturn(
+                listOf(
+                    AccountInfo(1L, "Cash"),
+                    AccountInfo(3L, "C")
+                )
+            )
+
+            // Query "B" should NOT match "C" even though Levenshtein distance is 1 (length <= 2 requires exact normalized match)
+            val result = appFunctions.addTransaction(
+                context = context,
+                amount = 10.0,
+                accountName = "B",
+                categoryName = null,
+                payeeName = null,
+                note = null,
+                isIncome = false,
+                toAccountName = null
+            )
+
+            // Should fail since "B" does not match any account
+            assertEquals(-1L, result)
+        }
+    }
 }

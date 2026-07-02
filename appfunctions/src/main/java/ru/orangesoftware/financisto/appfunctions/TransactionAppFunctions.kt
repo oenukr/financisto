@@ -2,8 +2,12 @@ package ru.orangesoftware.financisto.appfunctions
 
 import androidx.appfunctions.AppFunctionContext
 import androidx.appfunctions.service.AppFunction
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import kotlin.math.abs
+import kotlin.math.round
 
 class TransactionAppFunctions : KoinComponent {
 
@@ -32,10 +36,10 @@ class TransactionAppFunctions : KoinComponent {
         note: String?,
         isIncome: Boolean?,
         toAccountName: String?
-    ): Long {
-        return try {
+    ): Long = withContext(Dispatchers.IO) {
+        try {
             // 1. Resolve source account with intelligent matching
-            val account = findBestMatch(db.getAccounts(), accountName) { it.title } ?: return -1L
+            val account = findBestMatch(db.getAccounts(), accountName) { it.title } ?: return@withContext -1L
 
             // 2. Resolve category (optional) with intelligent matching
             val categoryId = if (!categoryName.isNullOrBlank()) {
@@ -52,14 +56,15 @@ class TransactionAppFunctions : KoinComponent {
                 0L
             }
 
-            val amountInCents = Math.round(amount * 100)
+            val absAmount = abs(amount)
+            val amountInCents = round(absAmount * 100).toLong()
             val finalNote = note ?: ""
 
             if (!toAccountName.isNullOrBlank()) {
                 // 4a. Handle Transfer with intelligent matching
-                val toAccount = findBestMatch(db.getAccounts(), toAccountName) { it.title } ?: return -1L
+                val toAccount = findBestMatch(db.getAccounts(), toAccountName) { it.title } ?: return@withContext -1L
 
-                if (account.id == toAccount.id) return -1L
+                if (account.id == toAccount.id) return@withContext -1L
 
                 db.insertOrUpdateTransaction(
                     fromAccountId = account.id,
@@ -151,10 +156,12 @@ private fun <T> findBestMatch(items: List<T>, query: String, getTitle: (T) -> St
         val distance = calculateLevenshteinDistance(normalizedQuery, normalizedTitle)
 
         // Threshold:
+        // - Allow 0 typos for queries of length <= 2
         // - Allow 1 typo for queries of length <= 4
         // - Allow 2 typos for queries of length <= 8
         // - Allow 3 typos for longer queries
         val threshold = when {
+            normalizedQuery.length <= 2 -> 0
             normalizedQuery.length <= 4 -> 1
             normalizedQuery.length <= 8 -> 2
             else -> 3
