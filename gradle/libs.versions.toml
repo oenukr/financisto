@@ -4,6 +4,7 @@ activity-compose = "1.13.0"
 android_tools = "9.2.1"
 androidannotations = "4.8.0"
 appcompat = "1.7.1"
+appfunctions = "1.0.0-alpha10"
 biometric = "1.1.0"
 collection-ktx = "1.6.0"
 commons-io = "2.22.0"
@@ -15,8 +16,9 @@ glide-compose = "1.0.0-beta09"
 kotlin = "2.4.0"
 kotlinx-datetime = "0.8.0"
 kover = "0.9.8"
-ktor = "3.5.0"
-lifecycle = "2.10.0"
+ksp = "2.3.9"
+ktor = "3.5.1"
+lifecycle = "2.11.0"
 lib-recur = "0.17.1"
 test-core = "1.7.0"
 test-hamcrest = "3.0"
@@ -25,8 +27,6 @@ test-mockito = "5.23.0"
 test-mockito-kotlin = "6.3.0"
 test-robolectric = "4.17-SNAPSHOT"
 workmanager = "2.11.2"
-ksp = "2.3.9"
-appfunctions = "1.0.0-alpha09"
 
 [libraries]
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanist" }
@@ -34,6 +34,9 @@ accompanist-webview = { module = "com.google.accompanist:accompanist-webview", v
 activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity-compose" }
 androidannotations-api = { module = "org.androidannotations:androidannotations-api", version.ref = "androidannotations" }
 appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
+appfunctions-core = { module = "androidx.appfunctions:appfunctions", version.ref = "appfunctions" }
+appfunctions-service = { module = "androidx.appfunctions:appfunctions-service", version.ref = "appfunctions" }
+appfunctions-compiler = { module = "androidx.appfunctions:appfunctions-compiler", version.ref = "appfunctions" }
 biometric = { module = "androidx.biometric:biometric", version.ref = "biometric" }
 collection-ktx = { module = "androidx.collection:collection-ktx", version.ref = "collection-ktx" }
 commons-io = { module = "commons-io:commons-io", version.ref = "commons-io" }
@@ -48,7 +51,7 @@ google-play-base = { module = "com.google.android.gms:play-services-base", versi
 google-play-drive = { module = "com.google.android.gms:play-services-drive", version = "17.0.0" }
 java-collections = { module = "net.sf.trove4j:core", version = "3.1.0" }
 koala-chart = { module = "io.github.koalaplot:koalaplot-core", version = "0.11.2" }
-koin-bom = { module = "io.insert-koin:koin-bom", version = "4.2.1" }
+koin-bom = { module = "io.insert-koin:koin-bom", version = "4.2.2" }
 koin-android = { module = "io.insert-koin:koin-android" }
 koin-android-compat = { module = "io.insert-koin:koin-android-compat" }
 koin-compose = { module = "io.insert-koin:koin-androidx-compose" }
@@ -82,9 +85,6 @@ test-robolectric = { module = "org.robolectric:robolectric", version.ref = "test
 timber = { module = "com.jakewharton.timber:timber", version = "5.0.1" }
 workmanager = { module = "androidx.work:work-runtime", version.ref = "workmanager" }
 workmanager-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workmanager" }
-appfunctions-core = { module = "androidx.appfunctions:appfunctions", version.ref = "appfunctions" }
-appfunctions-service = { module = "androidx.appfunctions:appfunctions-service", version.ref = "appfunctions" }
-appfunctions-compiler = { module = "androidx.appfunctions:appfunctions-compiler", version.ref = "appfunctions" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "android_tools" }
