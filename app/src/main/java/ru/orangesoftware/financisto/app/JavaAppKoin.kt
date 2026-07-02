@@ -1,14 +1,14 @@
 package ru.orangesoftware.financisto.app
 
+import android.app.Application
+import android.content.Context
+import android.content.SharedPreferences
 import io.ktor.client.HttpClient
+import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
-import ru.orangesoftware.financisto.http.HttpClientWrapper
-
-import android.app.Application
-import io.ktor.client.engine.HttpClientEngine
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.component.KoinComponent
@@ -19,16 +19,16 @@ import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.module
 import org.koin.dsl.onClose
 import ru.orangesoftware.financisto.BuildConfig
+import ru.orangesoftware.financisto.appfunctions.AppFunctionDatabase
 import ru.orangesoftware.financisto.bus.GreenRobotBus
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.db.DatabaseHelper
 import ru.orangesoftware.financisto.export.drive.GoogleDriveClient
+import ru.orangesoftware.financisto.http.HttpClientWrapper
 import ru.orangesoftware.financisto.persistance.PreferencesStore
 import ru.orangesoftware.financisto.rates.FreeCurrencyRateDownloader
 import ru.orangesoftware.financisto.rates.OpenExchangeRatesDownloader
 import ru.orangesoftware.financisto.rates.WebserviceXConversionRateDownloader
-import android.content.Context
-import android.content.SharedPreferences
 import ru.orangesoftware.financisto.utils.Logger
 import ru.orangesoftware.financisto.utils.TimberLogger
 import ru.orangesoftware.financisto.utils.TimberTree
@@ -54,6 +54,7 @@ val remoteStorage = module {
 val database = module {
     singleOf(::DatabaseAdapter) { bind<DatabaseAdapter>() }
     singleOf(::DatabaseHelper) { bind<DatabaseHelper>() }
+    singleOf(::AppFunctionDatabaseImpl) { bind<AppFunctionDatabase>() }
 }
 
 val logger = module {

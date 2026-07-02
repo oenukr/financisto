@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.kover)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -67,6 +68,10 @@ android {
 
         checkReleaseBuilds = false
     }
+}
+
+ksp {
+    arg("appfunctions:aggregateAppFunctions", "true")
 }
 
 dependencies {
@@ -176,6 +181,11 @@ dependencies {
     testImplementation(libs.test.hamcrest)
     testImplementation(libs.test.mockito.core)
     testImplementation(libs.test.mockito.kotlin)
+
+    implementation(project(":appfunctions"))
+    implementation(libs.appfunctions.core)
+    implementation(libs.appfunctions.service)
+    ksp(libs.appfunctions.compiler)
 }
 
 kover {
