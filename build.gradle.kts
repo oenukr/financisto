@@ -2,9 +2,11 @@ import io.gitlab.arturbosch.detekt.Detekt
 
 plugins {
     alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.android.library) apply false
     alias(libs.plugins.compose.compiler) apply false
     alias(libs.plugins.kover) apply false
     alias(libs.plugins.detekt)
+    alias(libs.plugins.ksp) apply false
 }
 
 detekt {
