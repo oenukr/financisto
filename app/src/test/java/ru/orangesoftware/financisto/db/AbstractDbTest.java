@@ -5,7 +5,6 @@ import static org.junit.Assert.assertEquals;
 import android.Manifest;
 import android.app.Application;
 import android.content.Context;
-import android.content.Intent;
 import android.net.Uri;
 
 import androidx.test.core.app.ApplicationProvider;
@@ -28,6 +27,7 @@ import ru.orangesoftware.financisto.model.Account;
 import ru.orangesoftware.financisto.model.Category;
 import ru.orangesoftware.financisto.model.Transaction;
 import ru.orangesoftware.financisto.test.DateTime;
+import ru.orangesoftware.financisto.utils.CurrencyCache;
 
 /**
  * Base class for database-related tests using Robolectric.
@@ -67,6 +67,7 @@ public abstract class AbstractDbTest {
         dbHelper = new DatabaseHelper(context);
         db = new TestDatabaseAdapter(context, dbHelper);
         db.open();
+        CurrencyCache.clear();
     }
 
     protected void registerFileForContentResolver(File file) throws Exception {

@@ -11,6 +11,7 @@
 package ru.orangesoftware.financisto.activity;
 
 import static android.appwidget.AppWidgetManager.INVALID_APPWIDGET_ID;
+import static ru.orangesoftware.financisto.db.DatabaseMappersKt.toAccount;
 import static ru.orangesoftware.financisto.utils.EnumUtils.selectEnum;
 
 import android.app.PendingIntent;
@@ -41,7 +42,6 @@ import ru.orangesoftware.financisto.model.ElectronicPaymentType;
 import ru.orangesoftware.financisto.utils.Logger;
 import ru.orangesoftware.financisto.utils.MyPreferences;
 import ru.orangesoftware.financisto.utils.Utils;
-import ru.orangesoftware.orb.EntityManager;
 
 public class AccountWidget extends AppWidgetProvider {
 
@@ -228,13 +228,13 @@ public class AccountWidget extends AppWidgetProvider {
                     logger.d("buildUpdateForNextAccount " + widgetId + " -> " + accountId);
                     if (count == 1 || accountId == -1) {
                         if (c.moveToNext()) {
-                            Account a = EntityManager.loadFromCursor(c, Account.class);
+                            Account a = toAccount(c, db);
                             return updateWidgetFromAccount(context, widgetId, layoutId, providerClass, a);
                         }
                     } else {
                         boolean found = false;
                         while (c.moveToNext()) {
-                            Account a = EntityManager.loadFromCursor(c, Account.class);
+                             Account a = toAccount(c, db);
                             if (a.id == accountId) {
                                 found = true;
                                 logger.d("buildUpdateForNextAccount found -> " + accountId);
@@ -246,7 +246,7 @@ public class AccountWidget extends AppWidgetProvider {
                             }
                         }
                         c.moveToFirst();
-                        Account a = EntityManager.loadFromCursor(c, Account.class);
+                        Account a = toAccount(c, db);
                         logger.d("buildUpdateForNextAccount not found, taking the first one -> " + a.id);
                         return updateWidgetFromAccount(context, widgetId, layoutId, providerClass, a);
                     }
