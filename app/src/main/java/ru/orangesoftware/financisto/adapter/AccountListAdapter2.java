@@ -25,7 +25,9 @@ import java.text.DateFormat;
 import java.util.Date;
 
 import ru.orangesoftware.financisto.R;
+import ru.orangesoftware.financisto.app.DependenciesHolder;
 import ru.orangesoftware.financisto.datetime.DateUtils;
+import ru.orangesoftware.financisto.db.DatabaseAdapter;
 import ru.orangesoftware.financisto.model.Account;
 import ru.orangesoftware.financisto.model.AccountType;
 import ru.orangesoftware.financisto.model.CardIssuer;
@@ -35,12 +37,14 @@ import ru.orangesoftware.financisto.utils.Utils;
 
 public class AccountListAdapter2 extends ResourceCursorAdapter {
 
+    private final DatabaseAdapter db;
     private final Utils u;
     private final DateFormat df;
     private final boolean isShowAccountLastTransactionDate;
 
     public AccountListAdapter2(Context context, Cursor c) {
         super(context, R.layout.account_list_item, c);
+        this.db = new DependenciesHolder().getDatabaseAdapter();
         this.u = new Utils(context);
         this.df = DateUtils.getShortDateFormat(context);
         this.isShowAccountLastTransactionDate = MyPreferences.isShowAccountLastTransactionDate(context);
@@ -54,7 +58,7 @@ public class AccountListAdapter2 extends ResourceCursorAdapter {
 
     @Override
     public void bindView(View view, Context context, Cursor cursor) {
-        Account a = toAccount(cursor, new ru.orangesoftware.financisto.app.DependenciesHolder().getDatabaseAdapter());
+        Account a = toAccount(cursor, db);
         AccountListItemHolder v = (AccountListItemHolder) view.getTag();
 
         v.centerView.setText(a.title);

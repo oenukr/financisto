@@ -254,7 +254,11 @@ fun Cursor.toTransactionInfo(em: MyEntityManager): TransactionInfo {
     val toAccountId = getLongSafe("to_account_id", getLongSafe("e_to_account_id", 0L))
     info.toAccount = if (toAccountId > 0) em.getAccount(toAccountId) else null
     val categoryId = getLongSafe("category_id", getLongSafe("e_category_id", 0L))
-    info.category = em.getCategory(categoryId) ?: Category.noCategory()
+    info.category = when (categoryId) {
+        0L -> Category.noCategory()
+        -1L -> Category.splitCategory()
+        else -> if (categoryId > 0) em.getCategory(categoryId) ?: Category.noCategory() else Category.noCategory()
+    }
     val projectId = getLongSafe("project_id", getLongSafe("e_project_id", 0L))
     info.project = if (projectId > 0) em.getProject(projectId) else null
     val locationId = getLongSafe("location_id", getLongSafe("e_location_id", 0L))
@@ -418,9 +422,14 @@ fun MyEntityManager.queryEntitiesCursor(
         selectionArgs.add("%$titleLike%")
         selectionArgs.add("%${StringUtil.capitalize(titleLike)}%")
     }
-    
     val order = sort?.takeIf { it.isNotEmpty() }?.joinToString(", ") { s ->
-        val col = if (s.field == "sortOrder" || s.field == "sort_order") "sort_order" else s.field
+        val col = when (s.field) {
+            "sortOrder", "sort_order" -> "sort_order"
+            "totalAmount", "total_amount" -> "total_amount"
+            "creationDate", "creation_date" -> "creation_date"
+            "lastTransactionDate", "last_transaction_date" -> "last_transaction_date"
+            else -> s.field
+        }
         "$col ${if (s.asc) "ASC" else "DESC"}"
     } ?: "title ASC"
     
