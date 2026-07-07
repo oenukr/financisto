@@ -448,60 +448,114 @@ fun MyEntityManager.queryEntitiesCursor(
 
 fun MyEntityManager.getAccountsList(include0: Boolean, onlyActive: Boolean, filter: String?, sort: Array<out Sort>?): ArrayList<Account> {
     val list = ArrayList<Account>()
+    var e0: Account? = null
     queryEntitiesCursor(DatabaseHelper.ACCOUNT_TABLE, include0, onlyActive, filter, sort).use { c ->
         while (c.moveToNext()) {
-            list.add(c.toAccount(this))
+            val e = c.toAccount(this)
+            if (e.id == 0L) {
+                e0 = e
+            } else {
+                list.add(e)
+            }
         }
+    }
+    if (e0 != null) {
+        list.add(0, e0)
     }
     return list
 }
 
 fun MyEntityManager.getPayeesList(include0: Boolean, onlyActive: Boolean, filter: String?, sort: Array<out Sort>?): ArrayList<Payee> {
     val list = ArrayList<Payee>()
+    var e0: Payee? = null
     queryEntitiesCursor(DatabaseHelper.PAYEE_TABLE, include0, onlyActive, filter, sort).use { c ->
         while (c.moveToNext()) {
-            list.add(c.toPayee())
+            val e = c.toPayee()
+            if (e.id == 0L) {
+                e0 = e
+            } else {
+                list.add(e)
+            }
         }
+    }
+    if (e0 != null) {
+        list.add(0, e0)
     }
     return list
 }
 
 fun MyEntityManager.getProjectsList(include0: Boolean, onlyActive: Boolean, filter: String?, sort: Array<out Sort>?): ArrayList<Project> {
     val list = ArrayList<Project>()
+    var e0: Project? = null
     queryEntitiesCursor(DatabaseHelper.PROJECT_TABLE, include0, onlyActive, filter, sort).use { c ->
         while (c.moveToNext()) {
-            list.add(c.toProject())
+            val e = c.toProject()
+            if (e.id == 0L) {
+                e0 = e
+            } else {
+                list.add(e)
+            }
         }
+    }
+    if (e0 != null) {
+        list.add(0, e0)
     }
     return list
 }
 
 fun MyEntityManager.getLocationsList(include0: Boolean, onlyActive: Boolean, filter: String?, sort: Array<out Sort>?): ArrayList<MyLocation> {
     val list = ArrayList<MyLocation>()
+    var e0: MyLocation? = null
     queryEntitiesCursor(DatabaseHelper.LOCATIONS_TABLE, include0, onlyActive, filter, sort).use { c ->
         while (c.moveToNext()) {
-            list.add(c.toMyLocation())
+            val e = c.toMyLocation()
+            if (e.id == 0L) {
+                e0 = e
+            } else {
+                list.add(e)
+            }
         }
+    }
+    if (e0 != null) {
+        list.add(0, e0)
     }
     return list
 }
 
 fun MyEntityManager.getCategoriesList(include0: Boolean, onlyActive: Boolean, filter: String?, sort: Array<out Sort>?): ArrayList<Category> {
     val list = ArrayList<Category>()
+    var e0: Category? = null
     queryEntitiesCursor(DatabaseHelper.CATEGORY_TABLE, include0, onlyActive, filter, sort).use { c ->
         while (c.moveToNext()) {
-            list.add(Category.formCursor(c))
+            val e = Category.formCursor(c)
+            if (e.id == 0L) {
+                e0 = e
+            } else {
+                list.add(e)
+            }
         }
+    }
+    if (e0 != null) {
+        list.add(0, e0)
     }
     return list
 }
 
 fun MyEntityManager.getCurrenciesList(include0: Boolean, onlyActive: Boolean, filter: String?, sort: Array<out Sort>?): ArrayList<Currency> {
     val list = ArrayList<Currency>()
+    var e0: Currency? = null
     queryEntitiesCursor(DatabaseHelper.CURRENCY_TABLE, include0, onlyActive, filter, sort).use { c ->
         while (c.moveToNext()) {
-            list.add(c.toCurrency())
+            val e = c.toCurrency()
+            if (e.id == 0L) {
+                e0 = e
+            } else {
+                list.add(e)
+            }
         }
+    }
+    if (e0 != null) {
+        list.add(0, e0)
     }
     return list
 }

@@ -296,7 +296,7 @@ public abstract class MyEntityManager extends EntityManager {
             if (currency.isDefault) {
                 db.execSQL(UPDATE_DEFAULT_FLAG);
             }
-            long id = super.saveOrUpdate(currency);
+            long id = DatabaseMappersKt.saveCurrency(this, currency);
             db.setTransactionSuccessful();
             return id;
         } finally {
