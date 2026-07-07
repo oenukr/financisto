@@ -931,8 +931,10 @@ fun MyEntityManager.getAllAccountsCursor(isActiveOnly: Boolean, includeAccounts:
     
     val orderBy = StringBuilder("is_active DESC, ")
     val colName = when (sortOrder.property) {
-        "sortOrder" -> "sort_order"
-        "totalAmount" -> "total_amount"
+        "sortOrder", "sort_order" -> "sort_order"
+        "totalAmount", "total_amount" -> "total_amount"
+        "creationDate", "creation_date" -> "creation_date"
+        "lastTransactionDate", "last_transaction_date" -> "last_transaction_date"
         else -> sortOrder.property
     }
     orderBy.append(colName).append(if (sortOrder.asc) " ASC" else " DESC")
