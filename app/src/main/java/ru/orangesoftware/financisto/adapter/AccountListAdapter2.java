@@ -10,6 +10,8 @@
  ******************************************************************************/
 package ru.orangesoftware.financisto.adapter;
 
+import static ru.orangesoftware.financisto.db.DatabaseMappersKt.toAccount;
+
 import android.content.Context;
 import android.database.Cursor;
 import android.view.View;
@@ -30,7 +32,6 @@ import ru.orangesoftware.financisto.model.CardIssuer;
 import ru.orangesoftware.financisto.model.ElectronicPaymentType;
 import ru.orangesoftware.financisto.utils.MyPreferences;
 import ru.orangesoftware.financisto.utils.Utils;
-import ru.orangesoftware.orb.EntityManager;
 
 public class AccountListAdapter2 extends ResourceCursorAdapter {
 
@@ -53,7 +54,7 @@ public class AccountListAdapter2 extends ResourceCursorAdapter {
 
     @Override
     public void bindView(View view, Context context, Cursor cursor) {
-        Account a = EntityManager.loadFromCursor(cursor, Account.class);
+        Account a = toAccount(cursor, new ru.orangesoftware.financisto.app.DependenciesHolder().getDatabaseAdapter());
         AccountListItemHolder v = (AccountListItemHolder) view.getTag();
 
         v.centerView.setText(a.title);
@@ -137,8 +138,5 @@ public class AccountListAdapter2 extends ResourceCursorAdapter {
             view.setTag(v);
             return view;
         }
-
     }
-
-
 }

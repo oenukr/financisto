@@ -14,7 +14,6 @@ import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -31,12 +30,12 @@ import ru.orangesoftware.financisto.model.MyEntity;
 import ru.orangesoftware.financisto.model.MyLocation;
 import ru.orangesoftware.financisto.model.Payee;
 import ru.orangesoftware.financisto.model.Project;
+import ru.orangesoftware.financisto.model.SmsTemplate;
 import ru.orangesoftware.financisto.model.SystemAttribute;
 import ru.orangesoftware.financisto.model.Transaction;
 import ru.orangesoftware.financisto.model.TransactionAttributeInfo;
 import ru.orangesoftware.financisto.model.TransactionInfo;
 import ru.orangesoftware.financisto.utils.MyPreferences;
-import ru.orangesoftware.financisto.utils.MyPreferences.AccountSortOrder;
 import ru.orangesoftware.financisto.utils.MyPreferences.LocationsSortOrder;
 import ru.orangesoftware.financisto.utils.RecurUtils;
 import ru.orangesoftware.financisto.utils.RecurUtils.Recur;
@@ -57,7 +56,58 @@ public abstract class MyEntityManager extends EntityManager {
         this.context = context;
     }
 
+    @Override
+    @SuppressWarnings("unchecked")
+    public <T> T get(Class<T> clazz, Object id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Id can't be null");
+        }
+        long entityId = (Long) id;
+        if (clazz == Account.class) return (T) DatabaseMappersKt.getAccount(this, entityId);
+        if (clazz == Payee.class) return (T) DatabaseMappersKt.getPayee(this, entityId);
+        if (clazz == Project.class) return (T) DatabaseMappersKt.getProject(this, entityId);
+        if (clazz == MyLocation.class) return (T) DatabaseMappersKt.getLocation(this, entityId);
+        if (clazz == Category.class) return (T) DatabaseMappersKt.getCategory(this, entityId);
+        if (clazz == Currency.class) return (T) DatabaseMappersKt.getCurrency(this, entityId);
+        if (clazz == Budget.class) return (T) DatabaseMappersKt.getBudget(this, entityId);
+        if (clazz == SmsTemplate.class) return (T) DatabaseMappersKt.getSmsTemplate(this, entityId);
+        if (clazz == Transaction.class) return (T) DatabaseMappersKt.getTransaction(this, entityId);
+        if (clazz == TransactionInfo.class) return (T) DatabaseMappersKt.getTransactionInfo(this, entityId);
+        return super.get(clazz, id);
+    }
+
+    @Override
+    public long saveOrUpdate(Object entity) {
+        if (entity == null) {
+            throw new IllegalArgumentException("Entity is null");
+        }
+        if (entity instanceof Account) return DatabaseMappersKt.saveAccount(this, (Account) entity);
+        if (entity instanceof Payee) return DatabaseMappersKt.savePayee(this, (Payee) entity);
+        if (entity instanceof Project) return DatabaseMappersKt.saveProject(this, (Project) entity);
+        if (entity instanceof MyLocation) return DatabaseMappersKt.saveLocation(this, (MyLocation) entity);
+        if (entity instanceof Category) return DatabaseMappersKt.saveCategory(this, (Category) entity);
+        if (entity instanceof Currency) return saveOrUpdate((Currency) entity);
+        if (entity instanceof Budget) return DatabaseMappersKt.saveBudget(this, (Budget) entity);
+        if (entity instanceof SmsTemplate) return DatabaseMappersKt.saveSmsTemplate(this, (SmsTemplate) entity);
+        if (entity instanceof Transaction) return DatabaseMappersKt.insertOrUpdate(this, (Transaction) entity);
+        return super.saveOrUpdate(entity);
+    }
+
+    @Override
+    public <T> int delete(Class<T> clazz, Object id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Id can't be null");
+        }
+        String tableName = DatabaseMappersKt.getTableName(this, clazz);
+        if (tableName != null) {
+            return db().delete(tableName, "_id=?", new String[]{String.valueOf(id)});
+        }
+        return super.delete(clazz, id);
+    }
+
     public <T extends MyEntity> Cursor filterActiveEntities(Class<T> clazz, String titleLike) {
+        Cursor c = DatabaseMappersKt.filterActiveEntities(this, clazz, titleLike);
+        if (c != null) return c;
         return queryEntities(clazz, titleLike, false, true);
     }
 
@@ -88,7 +138,15 @@ public abstract class MyEntityManager extends EntityManager {
         return getAllEntitiesList(clazz, include0, onlyActive, null, sort);
     }
 
+    @SuppressWarnings("unchecked")
     public <T extends MyEntity> ArrayList<T> getAllEntitiesList(Class<T> clazz, boolean include0, boolean onlyActive, String filter, Sort... sort) {
+        if (clazz == Account.class) return (ArrayList<T>) DatabaseMappersKt.getAccountsList(this, include0, onlyActive, filter, sort);
+        if (clazz == Payee.class) return (ArrayList<T>) DatabaseMappersKt.getPayeesList(this, include0, onlyActive, filter, sort);
+        if (clazz == Project.class) return (ArrayList<T>) DatabaseMappersKt.getProjectsList(this, include0, onlyActive, filter, sort);
+        if (clazz == MyLocation.class) return (ArrayList<T>) DatabaseMappersKt.getLocationsList(this, include0, onlyActive, filter, sort);
+        if (clazz == Category.class) return (ArrayList<T>) DatabaseMappersKt.getCategoriesList(this, include0, onlyActive, filter, sort);
+        if (clazz == Currency.class) return (ArrayList<T>) DatabaseMappersKt.getCurrenciesList(this, include0, onlyActive, filter, sort);
+
         try (Cursor c = queryEntities(clazz, filter, include0, onlyActive, sort)) {
             T e0 = null;
             ArrayList<T> list = new ArrayList<>();
@@ -164,34 +222,11 @@ public abstract class MyEntityManager extends EntityManager {
     }
 
     public List<TransactionAttributeInfo> getAttributesForTransaction(long transactionId) {
-        Query<TransactionAttributeInfo> q = createQuery(TransactionAttributeInfo.class).asc("name");
-        q.where(Expressions.and(
-                Expressions.eq("transactionId", transactionId),
-                Expressions.gte("attributeId", 0)
-        ));
-        try (Cursor c = q.execute()) {
-            List<TransactionAttributeInfo> list = new LinkedList<>();
-            while (c.moveToNext()) {
-                TransactionAttributeInfo ti = loadFromCursor(c, TransactionAttributeInfo.class);
-                list.add(ti);
-            }
-            return list;
-        }
-
+        return DatabaseMappersKt.getAttributesForTransaction(this, transactionId);
     }
-
+ 
     public TransactionAttributeInfo getSystemAttributeForTransaction(SystemAttribute sa, long transactionId) {
-        Query<TransactionAttributeInfo> q = createQuery(TransactionAttributeInfo.class);
-        q.where(Expressions.and(
-                Expressions.eq("transactionId", transactionId),
-                Expressions.eq("attributeId", sa.getId())
-        ));
-        try (Cursor c = q.execute()) {
-            if (c.moveToFirst()) {
-                return loadFromCursor(c, TransactionAttributeInfo.class);
-            }
-            return null;
-        }
+        return DatabaseMappersKt.getSystemAttributeForTransaction(this, sa, transactionId);
     }
 
     /* ===============================================
@@ -221,28 +256,7 @@ public abstract class MyEntityManager extends EntityManager {
     }
 
     private Cursor getAllAccounts(boolean isActiveOnly, long... includeAccounts) {
-        AccountSortOrder sortOrder = MyPreferences.getAccountSortOrder(context);
-        Query<Account> q = createQuery(Account.class);
-        if (isActiveOnly) {
-            int count = includeAccounts.length;
-            if (count > 0) {
-                Expression[] ee = new Expression[count + 1];
-                for (int i = 0; i < count; i++) {
-                    ee[i] = Expressions.eq("id", includeAccounts[i]);
-                }
-                ee[count] = Expressions.eq("isActive", 1);
-                q.where(Expressions.or(ee));
-            } else {
-                q.where(Expressions.eq("isActive", 1));
-            }
-        }
-        q.desc("isActive");
-        if (sortOrder.asc) {
-            q.asc(sortOrder.property);
-        } else {
-            q.desc(sortOrder.property);
-        }
-        return q.asc("title").execute();
+        return DatabaseMappersKt.getAllAccountsCursor(this, isActiveOnly, includeAccounts);
     }
 
     public long saveAccount(Account account) {
@@ -253,7 +267,7 @@ public abstract class MyEntityManager extends EntityManager {
         List<Account> list = new ArrayList<>();
         try (Cursor c = getAllAccounts()) {
             while (c.moveToNext()) {
-                Account a = EntityManager.loadFromCursor(c, Account.class);
+                Account a = DatabaseMappersKt.toAccount(c, this);
                 list.add(a);
             }
         }
@@ -385,7 +399,7 @@ public abstract class MyEntityManager extends EntityManager {
                 budget.recurNum = i;
                 budget.startDate = p.getStart();
                 budget.endDate = p.getEnd();
-                long bid = super.saveOrUpdate(budget);
+                long bid = DatabaseMappersKt.saveBudget(this, budget);
                 if (i == 0) {
                     id = bid;
                 }
@@ -408,31 +422,32 @@ public abstract class MyEntityManager extends EntityManager {
     }
 
     public ArrayList<Budget> getAllBudgets(WhereFilter filter) {
-        Query<Budget> q = createQuery(Budget.class);
         Criteria c = filter.get(BlotterFilter.DATETIME);
+        String selection = null;
+        String[] selectionArgs = null;
         if (c != null) {
             long start = c.getLongValue1();
             long end = c.getLongValue2();
-            q.where(Expressions.and(Expressions.lte("startDate", end), Expressions.gte("endDate", start)));
-
-            switch (MyPreferences.getBudgetsSortOrder(context)) {
-                case DATE:
-                    q.desc("startDate");
-                    break;
-
-                case NAME:
-                    q.asc("title");
-                    break;
-
-                case AMOUNT:
-                    q.desc("amount");
-                    break;
-            }
+            selection = "start_date <= ? AND end_date >= ?";
+            selectionArgs = new String[] { String.valueOf(end), String.valueOf(start) };
         }
-        try (Cursor cursor = q.execute()) {
+        
+        String orderBy = "title ASC";
+        switch (MyPreferences.getBudgetsSortOrder(context)) {
+            case DATE:
+                orderBy = "start_date DESC";
+                break;
+            case NAME:
+                orderBy = "title ASC";
+                break;
+            case AMOUNT:
+                orderBy = "amount DESC";
+                break;
+        }
+        try (Cursor cursor = db().query(BUDGET_TABLE, null, selection, selectionArgs, null, null, orderBy)) {
             ArrayList<Budget> list = new ArrayList<>();
             while (cursor.moveToNext()) {
-                Budget b = MyEntityManager.loadFromCursor(cursor, Budget.class);
+                Budget b = DatabaseMappersKt.toBudget(cursor, this);
                 list.add(b);
             }
             return list;
@@ -454,11 +469,7 @@ public abstract class MyEntityManager extends EntityManager {
     }
 
     public ArrayList<TransactionInfo> getAllScheduledTransactions() {
-        Query<TransactionInfo> q = createQuery(TransactionInfo.class);
-        q.where(Expressions.and(
-                Expressions.eq("isTemplate", 2),
-                Expressions.eq("parentId", 0)));
-        return (ArrayList<TransactionInfo>) q.list();
+        return DatabaseMappersKt.getAllScheduledTransactionsDirect(this);
     }
 
     @Nullable
@@ -531,25 +542,15 @@ public abstract class MyEntityManager extends EntityManager {
     }
 
     public List<Transaction> getSplitsForTransaction(long transactionId) {
-        Query<Transaction> q = createQuery(Transaction.class);
-        q.where(Expressions.eq("parentId", transactionId));
-        return q.list();
+        return DatabaseMappersKt.getSplitsForTransaction(this, transactionId);
     }
 
     public List<TransactionInfo> getSplitsInfoForTransaction(long transactionId) {
-        Query<TransactionInfo> q = createQuery(TransactionInfo.class);
-        q.where(Expressions.eq("parentId", transactionId));
-        return q.list();
+        return DatabaseMappersKt.getSplitsInfoForTransaction(this, transactionId);
     }
 
     public List<TransactionInfo> getTransactionsForAccount(long accountId) {
-        Query<TransactionInfo> q = createQuery(TransactionInfo.class);
-        q.where(Expressions.and(
-                Expressions.eq("fromAccount.id", accountId),
-                Expressions.eq("parentId", 0)
-        ));
-        q.desc("dateTime");
-        return q.list();
+        return DatabaseMappersKt.getTransactionsForAccount(this, accountId);
     }
 
     void reInsertEntity(MyEntity e) {
@@ -559,13 +560,7 @@ public abstract class MyEntityManager extends EntityManager {
     }
 
     public Currency getHomeCurrency() {
-        Query<Currency> q = createQuery(Currency.class);
-        q.where(Expressions.eq("isDefault", "1")); //uh-oh
-        Currency homeCurrency = q.uniqueResult();
-        if (homeCurrency == null) {
-            homeCurrency = Currency.EMPTY;
-        }
-        return homeCurrency;
+        return DatabaseMappersKt.getHomeCurrencyDirect(this);
     }
 
     private static <T extends MyEntity> Map<String, T> entitiesAsTitleMap(List<T> entities) {

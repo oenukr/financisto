@@ -23,19 +23,28 @@ import ru.orangesoftware.financisto.model.Project;
 
 public class TransactionUtils {
 
+	private static String getColumnName(Cursor cursor, String... possibleNames) {
+		for (String name : possibleNames) {
+			if (cursor.getColumnIndex(name) != -1) {
+				return name;
+			}
+		}
+		return possibleNames[0];
+	}
+
 	public static ListAdapter createAccountAdapter(Context context, Cursor accountCursor) {
 		return new SimpleCursorAdapter(context, android.R.layout.simple_spinner_dropdown_item, accountCursor, 
-				new String[]{"e_"+AccountColumns.TITLE}, new int[]{android.R.id.text1});		
+				new String[]{getColumnName(accountCursor, AccountColumns.TITLE, "e_" + AccountColumns.TITLE)}, new int[]{android.R.id.text1});		
 	}
 
     public static ListAdapter createAccountMultiChoiceAdapter(Context context, Cursor accountCursor) {
         return new SimpleCursorAdapter(context, android.R.layout.simple_list_item_multiple_choice, accountCursor,
-                new String[]{"e_"+AccountColumns.TITLE}, new int[]{android.R.id.text1});
+                new String[]{getColumnName(accountCursor, AccountColumns.TITLE, "e_" + AccountColumns.TITLE)}, new int[]{android.R.id.text1});
     }
 
 	public static SimpleCursorAdapter createCurrencyAdapter(Context context, Cursor currencyCursor) {
 		return new SimpleCursorAdapter(context, android.R.layout.simple_spinner_dropdown_item, currencyCursor, 
-				new String[]{"e_name"}, new int[]{android.R.id.text1});		
+				new String[]{getColumnName(currencyCursor, "name", "e_name")}, new int[]{android.R.id.text1});		
 	}
 
 	public static ListAdapter createCategoryAdapter(DatabaseAdapter db, Context context, Cursor categoryCursor) {
@@ -64,7 +73,7 @@ public class TransactionUtils {
 
     public static ListAdapter createLocationAdapter(Context context, Cursor cursor) {
 		return new SimpleCursorAdapter(context, android.R.layout.simple_spinner_dropdown_item, cursor, 
-				new String[]{"e_name"}, new int[]{android.R.id.text1});
+				new String[]{getColumnName(cursor, "name", "e_name", "title", "e_title")}, new int[]{android.R.id.text1});
 	}
 
     public static SimpleCursorAdapter createPayeeAutoCompleteAdapter(Context context, final MyEntityManager db) {
