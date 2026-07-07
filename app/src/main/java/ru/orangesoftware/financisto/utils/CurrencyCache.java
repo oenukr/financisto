@@ -43,6 +43,10 @@ public class CurrencyCache {
 		return c != null ? c : Currency.EMPTY;
 	}
 
+	public static synchronized void clear() {
+		CURRENCIES.clear();
+	}
+
 	public static synchronized void initialize(EntityManager em) {
 		TLongObjectHashMap<Currency> currencies = new TLongObjectHashMap<>();
 		Query<Currency> q = em.createQuery(Currency.class);
