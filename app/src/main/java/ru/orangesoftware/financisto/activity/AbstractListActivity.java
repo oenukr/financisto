@@ -15,11 +15,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
-import android.os.Parcelable;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.View;
 import android.view.Window;
+import android.widget.CursorAdapter;
 import android.widget.ImageButton;
 import android.widget.ListAdapter;
 import android.widget.ListView;
@@ -121,10 +121,45 @@ public abstract class AbstractListActivity extends ListActivity implements Refre
         super.onDestroy();
     }
 
+    protected int savedListIndex = 0;
+    protected int savedListTop = 0;
+
+    protected void saveListScrollPosition() {
+        try {
+            ListView listView = getListView();
+            if (listView != null) {
+                View v = listView.getChildAt(0);
+                if (v != null) {
+                    savedListIndex = listView.getFirstVisiblePosition();
+                    savedListTop = v.getTop() - listView.getPaddingTop();
+                }
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
     @Override
     protected void onPause() {
+        saveListScrollPosition();
         super.onPause();
         if (enablePin) PinProtection.lock(this);
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        saveListScrollPosition();
+        outState.putInt("STATE_SAVED_LIST_INDEX", savedListIndex);
+        outState.putInt("STATE_SAVED_LIST_TOP", savedListTop);
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle state) {
+        super.onRestoreInstanceState(state);
+        if (state != null) {
+            savedListIndex = state.getInt("STATE_SAVED_LIST_INDEX", 0);
+            savedListTop = state.getInt("STATE_SAVED_LIST_TOP", 0);
+        }
     }
 
     @Override
@@ -179,19 +214,29 @@ public abstract class AbstractListActivity extends ListActivity implements Refre
 
     public void recreateCursor() {
         logger.i("Recreating cursor");
-        Parcelable state = getListView().onSaveInstanceState();
-        try {
-            if (cursor != null) {
-                stopManagingCursor(cursor);
-                cursor.close();
-            }
-            cursor = createCursor();
-            if (cursor != null) {
-                startManagingCursor(cursor);
+        ListView listView = getListView();
+        if (listView != null && listView.getChildAt(0) != null) {
+            saveListScrollPosition();
+        }
+
+        if (cursor != null) {
+            stopManagingCursor(cursor);
+            cursor.close();
+        }
+        cursor = createCursor();
+        if (cursor != null) {
+            startManagingCursor(cursor);
+            if (adapter instanceof CursorAdapter cursorAdapter) {
+                cursorAdapter.changeCursor(cursor);
+            } else {
                 recreateAdapter();
             }
-        } finally {
-            getListView().onRestoreInstanceState(state);
+        }
+        if (listView != null && listView.getAdapter() != null && listView.getAdapter().getCount() > 0) {
+            int restoreIndex = Math.min(savedListIndex, listView.getAdapter().getCount() - 1);
+            if (restoreIndex >= 0) {
+                listView.setSelectionFromTop(restoreIndex, savedListTop);
+            }
         }
     }
 
