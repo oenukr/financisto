@@ -16,8 +16,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
+import android.text.TextUtils;
+import android.view.View;
 import android.view.Window;
 import android.widget.TabHost;
+import android.widget.TabWidget;
+import android.widget.TextView;
 
 import androidx.core.content.ContextCompat;
 
@@ -53,6 +57,7 @@ public class MainActivity extends TabActivity implements TabHost.OnTabChangeList
         super.onCreate(savedInstanceState);
 
         requestWindowFeature(Window.FEATURE_NO_TITLE);
+        setContentView(R.layout.main);
 
         initialLoad();
 
@@ -68,6 +73,8 @@ public class MainActivity extends TabActivity implements TabHost.OnTabChangeList
         tabHost.setCurrentTabByTag(screen.tag);
         tabHost.setOnTabChangedListener(this);
     }
+
+
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onSwitchToMenuTab(SwitchToMenuTabEvent event) {
@@ -161,36 +168,43 @@ public class MainActivity extends TabActivity implements TabHost.OnTabChangeList
     }
 
     private void setupAccountsTab(TabHost tabHost) {
-        tabHost.addTab(tabHost.newTabSpec("accounts")
-                .setIndicator(getString(R.string.accounts), ContextCompat.getDrawable(this, R.drawable.ic_tab_accounts))
-                .setContent(new Intent(this, AccountListActivity.class)));
+        addTab(tabHost, "accounts", R.string.accounts, R.drawable.ic_tab_accounts, new Intent(this, AccountListActivity.class));
     }
 
     private void setupBlotterTab(TabHost tabHost) {
         Intent intent = new Intent(this, BlotterActivity.class);
         intent.putExtra(BlotterActivity.SAVE_FILTER, true);
         intent.putExtra(BlotterActivity.EXTRA_FILTER_ACCOUNTS, true);
-        tabHost.addTab(tabHost.newTabSpec("blotter")
-                .setIndicator(getString(R.string.blotter), ContextCompat.getDrawable(this, R.drawable.ic_tab_blotter))
-                .setContent(intent));
+        addTab(tabHost, "blotter", R.string.blotter, R.drawable.ic_tab_blotter, intent);
     }
 
     private void setupBudgetsTab(TabHost tabHost) {
-        tabHost.addTab(tabHost.newTabSpec("budgets")
-                .setIndicator(getString(R.string.budgets), ContextCompat.getDrawable(this, R.drawable.ic_tab_budgets))
-                .setContent(new Intent(this, BudgetListActivity.class)));
+        addTab(tabHost, "budgets", R.string.budgets, R.drawable.ic_tab_budgets, new Intent(this, BudgetListActivity.class));
     }
 
     private void setupReportsTab(TabHost tabHost) {
-        tabHost.addTab(tabHost.newTabSpec("reports")
-                .setIndicator(getString(R.string.reports), ContextCompat.getDrawable(this, R.drawable.ic_tab_reports))
-                .setContent(new Intent(this, ReportsListActivity.class)));
+        addTab(tabHost, "reports", R.string.reports, R.drawable.ic_tab_reports, new Intent(this, ReportsListActivity.class));
     }
 
     private void setupMenuTab(TabHost tabHost) {
-        tabHost.addTab(tabHost.newTabSpec("menu")
-                .setIndicator(getString(R.string.menu), ContextCompat.getDrawable(this, R.drawable.ic_tab_menu))
-                .setContent(new Intent(this, MenuListActivity_.class)));
+        addTab(tabHost, "menu", R.string.menu, R.drawable.ic_tab_menu, new Intent(this, MenuListActivity_.class));
+    }
+
+    private void addTab(TabHost tabHost, String tag, int titleResId, int iconResId, Intent intent) {
+        tabHost.addTab(tabHost.newTabSpec(tag)
+                .setIndicator(getString(titleResId), ContextCompat.getDrawable(this, iconResId))
+                .setContent(intent));
+        
+        TabWidget tabWidget = tabHost.getTabWidget();
+        View tabView = tabWidget.getChildTabViewAt(tabWidget.getTabCount() - 1);
+        if (tabView != null) {
+            TextView title = tabView.findViewById(android.R.id.title);
+            if (title != null) {
+                title.setSingleLine(true);
+                title.setMaxLines(1);
+                title.setEllipsize(TextUtils.TruncateAt.END);
+            }
+        }
     }
 
 }
