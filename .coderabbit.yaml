@@ -16,3 +16,18 @@ reviews:
       instructions: "Legacy XML layout. If the changes are significant, suggest migrating this component to Jetpack Compose."
     - path: "**/di/**"
       instructions: "Check for proper Koin module definitions. Ensure `includes()` is used to link shared modules into platform modules."
+
+  tools:
+    github-checks:
+      enabled: true
+
+  high_level_summary: true
+  review_status: true
+  auto_review:
+    enabled: true
+    drafts: false
+  chat:
+    auto_reply: true
+
+  # Don't automatically request changes on the PR (just leave comments)
+  request_changes_workflow: false
