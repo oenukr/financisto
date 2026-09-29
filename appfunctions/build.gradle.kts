@@ -15,6 +15,8 @@ android {
 dependencies {
     implementation(libs.appfunctions.core)
     ksp(libs.appfunctions.compiler)
+
+    implementation(libs.kotlinx.coroutines.core)
     
     val koinBom = platform(libs.koin.bom)
     implementation(koinBom)

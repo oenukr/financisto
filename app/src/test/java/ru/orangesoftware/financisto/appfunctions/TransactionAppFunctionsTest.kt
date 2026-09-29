@@ -1,6 +1,5 @@
 package ru.orangesoftware.financisto.appfunctions
 
-import androidx.appfunctions.AppFunctionContext
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -18,7 +17,6 @@ import org.mockito.kotlin.whenever
 class TransactionAppFunctionsTest {
 
     private val db: AppFunctionDatabase = mock()
-    private val context: AppFunctionContext = mock()
     private lateinit var appFunctions: TransactionAppFunctions
 
     @Before
@@ -71,7 +69,6 @@ class TransactionAppFunctionsTest {
             )).thenReturn(1000L)
 
             val result = appFunctions.addTransaction(
-                context = context,
                 amount = 15.50,
                 accountName = "Cash",
                 categoryName = "Food",
@@ -110,7 +107,6 @@ class TransactionAppFunctionsTest {
             )).thenReturn(1001L)
 
             val result = appFunctions.addTransaction(
-                context = context,
                 amount = 500.00,
                 accountName = "Card",
                 categoryName = "Rent",
@@ -139,7 +135,6 @@ class TransactionAppFunctionsTest {
             )).thenReturn(1002L)
 
             val result = appFunctions.addTransaction(
-                context = context,
                 amount = 50.00,
                 accountName = "Cash",
                 categoryName = null,
@@ -171,7 +166,6 @@ class TransactionAppFunctionsTest {
             )).thenReturn(1003L)
 
             val result = appFunctions.addTransaction(
-                context = context,
                 amount = 25.00,
                 accountName = "Cash",
                 categoryName = null,
@@ -190,7 +184,6 @@ class TransactionAppFunctionsTest {
     fun testAddTransactionAccountNotFound() {
         runBlocking {
             val result = appFunctions.addTransaction(
-                context = context,
                 amount = 25.00,
                 accountName = "UnknownAccount",
                 categoryName = null,
@@ -220,7 +213,6 @@ class TransactionAppFunctionsTest {
 
             // 1. Test "Csh!" typo for "Cash", "food" (casing) for "Food", "Starbuck" typo for "Starbucks"
             val result = appFunctions.addTransaction(
-                context = context,
                 amount = 15.50,
                 accountName = "Csh!",      // matches "Cash" (Levenshtein/Punctuation)
                 categoryName = "food",     // matches "Food" (Casing)
@@ -259,7 +251,6 @@ class TransactionAppFunctionsTest {
             )).thenReturn(1000L)
 
             val result = appFunctions.addTransaction(
-                context = context,
                 amount = -15.50, // negative amount
                 accountName = "Cash",
                 categoryName = "Food",
@@ -288,7 +279,6 @@ class TransactionAppFunctionsTest {
             )).thenReturn(1002L)
 
             val result = appFunctions.addTransaction(
-                context = context,
                 amount = -50.00, // negative amount
                 accountName = "Cash",
                 categoryName = null,
@@ -315,7 +305,6 @@ class TransactionAppFunctionsTest {
 
             // Query "B" should NOT match "C" even though Levenshtein distance is 1 (length <= 2 requires exact normalized match)
             val result = appFunctions.addTransaction(
-                context = context,
                 amount = 10.0,
                 accountName = "B",
                 categoryName = null,

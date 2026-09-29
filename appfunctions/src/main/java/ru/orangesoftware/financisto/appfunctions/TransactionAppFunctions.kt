@@ -1,7 +1,6 @@
 package ru.orangesoftware.financisto.appfunctions
 
 import androidx.appfunctions.AppFunction
-import androidx.appfunctions.AppFunctionContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
@@ -16,7 +15,6 @@ class TransactionAppFunctions : KoinComponent {
     /**
      * Creates a transaction or transfer in Financisto.
      *
-     * @param context The AppFunctionContext.
      * @param amount The transaction amount (e.g. 15.50).
      * @param accountName The name of the source account (e.g. "Cash").
      * @param categoryName The optional category of the transaction (e.g. "Food").
@@ -28,7 +26,6 @@ class TransactionAppFunctions : KoinComponent {
      */
     @AppFunction(isDescribedByKDoc = true)
     suspend fun addTransaction(
-        context: AppFunctionContext,
         amount: Double,
         accountName: String,
         categoryName: String?,
