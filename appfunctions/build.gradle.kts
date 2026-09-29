@@ -14,7 +14,6 @@ android {
 
 dependencies {
     implementation(libs.appfunctions.core)
-    implementation(libs.appfunctions.service)
     ksp(libs.appfunctions.compiler)
     
     val koinBom = platform(libs.koin.bom)

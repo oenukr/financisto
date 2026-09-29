@@ -1,32 +1,32 @@
 [versions]
 accompanist = "0.36.0"
 activity-compose = "1.13.0"
-android_tools = "9.3.2"
+android_tools = "9.4.1"
 androidannotations = "4.8.0"
 appcompat = "1.8.0"
-appfunctions = "1.0.0-alpha09"
+appfunctions = "1.0.0-alpha12"
 biometric = "1.1.0"
 collection-ktx = "1.6.0"
 commons-io = "2.22.0"
-core-ktx = "1.19.0"
+core-ktx = "1.19.1"
 datastore = "1.2.1"
 detekt = "1.23.8"
 glide = "5.0.9"
 glide-compose = "1.0.0-beta10"
-kotlin = "2.4.10"
+kotlin = "2.4.20"
 kotlinx-datetime = "0.8.0"
-kover = "0.9.9"
-ksp = "2.3.10"
-ktor = "3.5.2"
+kover = "0.9.10"
+ksp = "2.3.12"
+ktor = "3.6.0"
 lifecycle = "2.11.0"
 lib-recur = "0.17.1"
 test-core = "1.7.0"
 test-hamcrest = "3.0"
 test-junit = "4.13.2"
-test-mockito = "5.23.0"
-test-mockito-kotlin = "6.3.0"
-test-robolectric = "4.17-SNAPSHOT"
-workmanager = "2.11.2"
+test-mockito = "5.24.0"
+test-mockito-kotlin = "6.4.0"
+test-robolectric = "4.17"
+workmanager = "2.12.0"
 
 [libraries]
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanist" }
@@ -35,7 +35,6 @@ activity-compose = { module = "androidx.activity:activity-compose", version.ref 
 androidannotations-api = { module = "org.androidannotations:androidannotations-api", version.ref = "androidannotations" }
 appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
 appfunctions-core = { module = "androidx.appfunctions:appfunctions", version.ref = "appfunctions" }
-appfunctions-service = { module = "androidx.appfunctions:appfunctions-service", version.ref = "appfunctions" }
 appfunctions-compiler = { module = "androidx.appfunctions:appfunctions-compiler", version.ref = "appfunctions" }
 biometric = { module = "androidx.biometric:biometric", version.ref = "biometric" }
 collection-ktx = { module = "androidx.collection:collection-ktx", version.ref = "collection-ktx" }
@@ -47,7 +46,7 @@ detekt-formatting = { module = "io.gitlab.arturbosch.detekt:detekt-formatting", 
 eventbus = { module = "org.greenrobot:eventbus", version = "3.3.1" }
 glide = { module = "com.github.bumptech.glide:glide", version.ref = "glide" }
 glide-compose = { module = "com.github.bumptech.glide:compose", version.ref = "glide-compose" }
-google-play-base = { module = "com.google.android.gms:play-services-base", version = "18.10.1" }
+google-play-base = { module = "com.google.android.gms:play-services-base", version = "18.11.0" }
 google-play-drive = { module = "com.google.android.gms:play-services-drive", version = "17.0.0" }
 java-collections = { module = "net.sf.trove4j:core", version = "3.1.0" }
 koala-chart = { module = "io.github.koalaplot:koalaplot-core", version = "0.12.1" }
@@ -67,7 +66,7 @@ ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "k
 lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycle" }
 lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "lifecycle" }
 materialdatetimepicker = { module = "com.wdullaer:materialdatetimepicker", version = "4.2.3" }
-okio = { module = "com.squareup.okio:okio", version = "3.18.1" }
+okio = { module = "com.squareup.okio:okio", version = "3.18.2" }
 reactive-streams = { module = "org.reactivestreams:reactive-streams", version = "1.0.4" }
 rximagepicker = { module = "com.github.MLSDev:RxImagePicker", version = "master" }
 rxjava2-rxandroid = { module = "io.reactivex.rxjava2:rxandroid", version = "2.1.1"}
@@ -75,7 +74,7 @@ rxjava2-rxjava = { module = "io.reactivex.rxjava2:rxjava", version = "2.2.21"}
 rxjava3-bridge = { module = "com.github.akarnokd:rxjava3-bridge", version = "3.0.2" }
 rxjava3-rxandroid = { module = "io.reactivex.rxjava3:rxandroid", version = "3.0.2" }
 rxjava3-rxjava = { module = "io.reactivex.rxjava3:rxjava", version = "3.1.12" }
-sqlite-ktx = { module = "androidx.sqlite:sqlite-ktx", version = "2.7.0" }
+sqlite-ktx = { module = "androidx.sqlite:sqlite-ktx", version = "2.7.1" }
 test-core = { module = "androidx.test:core", version.ref = "test-core" }
 test-hamcrest = { module = "org.hamcrest:hamcrest", version.ref = "test-hamcrest" }
 test-junit = { module = "junit:junit", version.ref = "test-junit" }

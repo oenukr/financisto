@@ -1,7 +1,7 @@
 package ru.orangesoftware.financisto.appfunctions
 
+import androidx.appfunctions.AppFunction
 import androidx.appfunctions.AppFunctionContext
-import androidx.appfunctions.service.AppFunction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
