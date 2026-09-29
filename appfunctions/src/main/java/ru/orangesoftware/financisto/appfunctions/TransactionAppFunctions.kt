@@ -1,6 +1,9 @@
 package ru.orangesoftware.financisto.appfunctions
 
+import androidx.annotation.RequiresApi
 import androidx.appfunctions.AppFunction
+import androidx.appfunctions.AppFunctionService
+import androidx.appfunctions.AppFunctionServiceEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
@@ -8,7 +11,12 @@ import org.koin.core.component.inject
 import kotlin.math.abs
 import kotlin.math.round
 
-class TransactionAppFunctions : KoinComponent {
+@RequiresApi(36)
+@AppFunctionServiceEntryPoint(
+    serviceName = "TransactionAppFunctionService",
+    appFunctionXmlFileName = "financisto_app_function_service",
+)
+abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
 
     private val db: AppFunctionDatabase by inject()
 

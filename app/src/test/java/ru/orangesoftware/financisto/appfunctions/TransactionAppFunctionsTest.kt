@@ -27,7 +27,7 @@ class TransactionAppFunctionsTest {
                 single { db }
             })
         }
-        appFunctions = TransactionAppFunctions()
+        appFunctions = TransactionAppFunctionService()
 
         // Mock accounts, categories, and payees lookup
         whenever(db.getAccounts()).thenReturn(
