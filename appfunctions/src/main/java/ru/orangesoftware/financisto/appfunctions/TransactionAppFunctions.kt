@@ -1,7 +1,9 @@
 package ru.orangesoftware.financisto.appfunctions
 
-import androidx.appfunctions.AppFunctionContext
-import androidx.appfunctions.service.AppFunction
+import androidx.annotation.RequiresApi
+import androidx.appfunctions.AppFunction
+import androidx.appfunctions.AppFunctionService
+import androidx.appfunctions.AppFunctionServiceEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
@@ -9,14 +11,18 @@ import org.koin.core.component.inject
 import kotlin.math.abs
 import kotlin.math.round
 
-class TransactionAppFunctions : KoinComponent {
+@RequiresApi(36)
+@AppFunctionServiceEntryPoint(
+    serviceName = "TransactionAppFunctionService",
+    appFunctionXmlFileName = "financisto_app_function_service",
+)
+abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
 
     private val db: AppFunctionDatabase by inject()
 
     /**
      * Creates a transaction or transfer in Financisto.
      *
-     * @param context The AppFunctionContext.
      * @param amount The transaction amount (e.g. 15.50).
      * @param accountName The name of the source account (e.g. "Cash").
      * @param categoryName The optional category of the transaction (e.g. "Food").
@@ -28,7 +34,6 @@ class TransactionAppFunctions : KoinComponent {
      */
     @AppFunction(isDescribedByKDoc = true)
     suspend fun addTransaction(
-        context: AppFunctionContext,
         amount: Double,
         accountName: String,
         categoryName: String?,

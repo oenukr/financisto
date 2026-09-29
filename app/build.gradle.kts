@@ -184,7 +184,6 @@ dependencies {
 
     implementation(project(":appfunctions"))
     implementation(libs.appfunctions.core)
-    implementation(libs.appfunctions.service)
     ksp(libs.appfunctions.compiler)
 }
 
