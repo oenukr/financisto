@@ -1,52 +1,53 @@
 package ru.orangesoftware.financisto.activity
 
 import android.app.Activity
-import android.os.AsyncTask
 import android.view.View
 import android.widget.TextView
-
 import androidx.core.content.ContextCompat
-
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.app.DependenciesHolder
 import ru.orangesoftware.financisto.utils.IntegrityCheck
 import java.lang.ref.WeakReference
 
 class IntegrityCheckTask(
     activity: Activity,
-) : AsyncTask<IntegrityCheck, Void, IntegrityCheck.Result>() {
+) {
+    private val activityRef: WeakReference<Activity> = WeakReference(activity)
 
-    private val activity: WeakReference<Activity> = WeakReference(activity)
+    fun execute(vararg params: IntegrityCheck): IntegrityCheckTask {
+        if (params.isEmpty()) return this
+        val check = params[0]
+        val act = activityRef.get() ?: return this
+        val scope = (act as? LifecycleOwner)?.lifecycleScope ?: DependenciesHolder().applicationScope
 
-    @Deprecated("Deprecated in Java")
-    override fun doInBackground(vararg params: IntegrityCheck): IntegrityCheck.Result {
-        val textView = getResultView()
-        val context = activity.get()?.baseContext
-        if (textView != null && context != null) {
-            return params[0].check(context)
-        }
-        return IntegrityCheck.Result.OK
-    }
+        scope.launch {
+            val startActivity = activityRef.get() ?: return@launch
+            if (startActivity.findViewById<TextView?>(R.id.integrity_error) == null) return@launch
+            val context = startActivity.applicationContext
+            val result = withContext(Dispatchers.IO) { check.check(context) }
 
-    @Deprecated("Deprecated in Java")
-    override fun onPostExecute(result: IntegrityCheck.Result?) {
-        val textView = getResultView()
-        if (textView != null) {
-            if (result?.level == IntegrityCheck.Level.OK) {
+            val currentActivity = activityRef.get() ?: return@launch
+            val textView = currentActivity.findViewById<TextView?>(R.id.integrity_error) ?: return@launch
+
+            if (result.level == IntegrityCheck.Level.OK) {
                 textView.visibility = View.GONE
             } else {
                 textView.visibility = View.VISIBLE
-                activity.get()?.let { context ->
-                    textView.setBackgroundColor(
-                        ContextCompat.getColor(
-                            context,
-                            colorForLevel(result?.level)
-                        )
-                    )
-                    textView.text =
-                        context.getString(R.string.integrity_error_message, result?.message)
-                }
+                textView.setBackgroundColor(
+                    ContextCompat.getColor(
+                        currentActivity,
+                        colorForLevel(result.level),
+                    ),
+                )
+                textView.text = currentActivity.getString(R.string.integrity_error_message, result.message)
             }
         }
+        return this
     }
 
     private fun colorForLevel(level: IntegrityCheck.Level?): Int {
@@ -56,6 +57,4 @@ class IntegrityCheckTask(
             else -> R.color.holo_red_dark
         }
     }
-
-    private fun getResultView(): TextView? = activity.get()?.findViewById(R.id.integrity_error)
 }

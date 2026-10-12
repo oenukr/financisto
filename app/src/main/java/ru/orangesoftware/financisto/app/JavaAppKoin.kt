@@ -8,6 +8,9 @@ import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.serialization.json.Json
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
@@ -93,6 +96,10 @@ val exchangeRates = module {
     }
 }
 
+val coroutineModule = module {
+    single<CoroutineScope> { CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate) }
+}
+
 val modules = listOf(
     storage,
     eventBus,
@@ -102,6 +109,7 @@ val modules = listOf(
     timeModule,
     httpClient,
     exchangeRates,
+    coroutineModule,
 )
 
 // Start
@@ -132,4 +140,5 @@ class DependenciesHolder : KoinComponent {
     val httpClientWrapper: HttpClientWrapper by inject()
     //Inject the logger
     val logger: Logger by inject()
+    val applicationScope: CoroutineScope by inject()
 }
