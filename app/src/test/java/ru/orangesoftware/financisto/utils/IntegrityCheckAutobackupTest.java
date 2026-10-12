@@ -15,18 +15,46 @@ import android.preference.PreferenceManager;
 
 import org.junit.Test;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.concurrent.TimeUnit;
 
 import ru.orangesoftware.financisto.db.AbstractDbTest;
 
 public class IntegrityCheckAutobackupTest extends AbstractDbTest {
 
+    private long currentTime = 1000L;
+    private final Clock clock = new Clock() {
+        @Override
+        public ZoneId getZone() {
+            return ZoneOffset.UTC;
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            return this;
+        }
+
+        @Override
+        public Instant instant() {
+            return Instant.ofEpochMilli(currentTime);
+        }
+
+        @Override
+        public long millis() {
+            return currentTime;
+        }
+    };
+
     IntegrityCheckAutobackup integrity;
 
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        integrity = new IntegrityCheckAutobackup(TimeUnit.MILLISECONDS.toMillis(100));
+        currentTime = 1000L;
+        integrity = new IntegrityCheckAutobackup(TimeUnit.MILLISECONDS.toMillis(100), clock);
     }
 
     @Test
@@ -38,22 +66,22 @@ public class IntegrityCheckAutobackupTest extends AbstractDbTest {
         givenFirstRunAfterRelease();
         assertEquals(IntegrityCheck.Level.OK, integrity.check(getContext()).getLevel());
 
-        sleepMillis(50);
+        advanceTime(50);
         assertEquals(IntegrityCheck.Level.OK, integrity.check(getContext()).getLevel());
-        sleepMillis(51);
+        advanceTime(51);
         // raise the info notification
         assertEquals(IntegrityCheck.Level.INFO, integrity.check(getContext()).getLevel());
         // and reset the check at the same time
         assertEquals(IntegrityCheck.Level.OK, integrity.check(getContext()).getLevel());
 
         givenAutobackupEnabledIs(true);
-        sleepMillis(101);
+        advanceTime(101);
         assertEquals(IntegrityCheck.Level.OK, integrity.check(getContext()).getLevel());
 
         // when reminder is disabled
         givenAutobackupReminderEnabledIs(false);
         givenAutobackupEnabledIs(false);
-        sleepMillis(101);
+        advanceTime(101);
         assertEquals(IntegrityCheck.Level.OK, integrity.check(getContext()).getLevel());
     }
 
@@ -113,12 +141,8 @@ public class IntegrityCheckAutobackupTest extends AbstractDbTest {
                 .commit();
     }
 
-    private void sleepMillis(int millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+    private void advanceTime(long millis) {
+        currentTime += millis;
     }
 
 }

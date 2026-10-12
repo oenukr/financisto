@@ -675,8 +675,12 @@ public class MyPreferences {
     }
 
     public static void updateLastAutobackupCheck(Context context) {
+        updateLastAutobackupCheck(context, System.currentTimeMillis());
+    }
+
+    public static void updateLastAutobackupCheck(Context context, long timestamp) {
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
-        sharedPreferences.edit().putLong("last_autobackup_check", System.currentTimeMillis()).apply();
+        sharedPreferences.edit().putLong("last_autobackup_check", timestamp).apply();
     }
 
     public static boolean isAutoBackupReminderEnabled(Context context) {

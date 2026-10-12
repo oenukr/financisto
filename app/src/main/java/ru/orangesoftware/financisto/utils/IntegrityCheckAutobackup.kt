@@ -1,14 +1,17 @@
 package ru.orangesoftware.financisto.utils
 
 import android.content.Context
-
 import ru.orangesoftware.financisto.R
 import ru.orangesoftware.financisto.datetime.DateUtils
 import ru.orangesoftware.financisto.utils.IntegrityCheck.Level
 import ru.orangesoftware.financisto.utils.IntegrityCheck.Result
+import java.time.Clock
 import java.util.Date
 
-class IntegrityCheckAutobackup(private val threshold: Long) : IntegrityCheck {
+class IntegrityCheckAutobackup @JvmOverloads constructor(
+    private val threshold: Long,
+    private val clock: Clock = Clock.systemDefaultZone()
+) : IntegrityCheck {
 
     override fun check(context: Context): Result {
         if (MyPreferences.isAutoBackupEnabled(context)) {
@@ -30,12 +33,13 @@ class IntegrityCheckAutobackup(private val threshold: Long) : IntegrityCheck {
         } else {
             if (MyPreferences.isAutoBackupReminderEnabled(context)) {
                 val lastCheck: Long = MyPreferences.getLastAutobackupCheck(context)
+                val now = clock.millis()
                 if (lastCheck == 0L) {
-                    MyPreferences.updateLastAutobackupCheck(context)
+                    MyPreferences.updateLastAutobackupCheck(context, now)
                 } else {
-                    val delta: Long = System.currentTimeMillis() - lastCheck
+                    val delta: Long = now - lastCheck
                     if (delta > threshold) {
-                        MyPreferences.updateLastAutobackupCheck(context)
+                        MyPreferences.updateLastAutobackupCheck(context, now)
                         return Result(
                             Level.INFO,
                             context.getString(R.string.auto_backup_is_not_enabled)
