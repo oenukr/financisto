@@ -74,9 +74,14 @@ class SmsTemplateListAsyncAdapter(
                 return true
             }
             MENU_DUPLICATE -> {
-                if (db.duplicateSmsTemplateBelowOriginal(id) > 0) {
-                    Toast.makeText(activity, R.string.duplicate_sms_template, Toast.LENGTH_LONG).show()
-                    reloadAsyncSource()
+                activity.lifecycleScope.launch {
+                    val newId = withContext(Dispatchers.IO) {
+                        db.duplicateSmsTemplateBelowOriginal(id)
+                    }
+                    if (newId > 0) {
+                        Toast.makeText(activity, R.string.duplicate_sms_template, Toast.LENGTH_LONG).show()
+                        reloadAsyncSource()
+                    }
                 }
                 return true
             }

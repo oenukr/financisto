@@ -8,8 +8,6 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.ListAdapter
 import android.widget.Toast
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -273,16 +271,18 @@ enum class MenuListItem(
 
         private fun doIntegrityFix(activity: Activity) {
             val progressDialog = ProgressDialog.show(activity, null, activity.getString(R.string.integrity_fix_in_progress), true)
-            val scope = (activity as? LifecycleOwner)?.lifecycleScope ?: DependenciesHolder().applicationScope
-            scope.launch {
-                withContext(Dispatchers.IO) {
-                    val db = DatabaseAdapter(activity)
-                    IntegrityFix(db).fix()
+            val appContext = activity.applicationContext
+            DependenciesHolder().applicationScope.launch {
+                try {
+                    withContext(Dispatchers.IO) {
+                        IntegrityFix(DatabaseAdapter(appContext)).fix()
+                    }
+                    if (activity is MainActivity && !activity.isFinishing && !activity.isDestroyed) {
+                        activity.refreshCurrentTab()
+                    }
+                } finally {
+                    if (!activity.isDestroyed) progressDialog.dismiss()
                 }
-                if (activity is MainActivity) {
-                    activity.refreshCurrentTab()
-                }
-                progressDialog.dismiss()
             }
         }
     }

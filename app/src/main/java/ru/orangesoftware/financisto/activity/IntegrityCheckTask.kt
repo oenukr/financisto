@@ -26,16 +26,10 @@ class IntegrityCheckTask(
         val scope = (act as? LifecycleOwner)?.lifecycleScope ?: DependenciesHolder().applicationScope
 
         scope.launch {
-            val result = withContext(Dispatchers.IO) {
-                val currentActivity = activityRef.get() ?: return@withContext IntegrityCheck.Result.OK
-                val textView = currentActivity.findViewById<TextView?>(R.id.integrity_error)
-                val context = currentActivity.baseContext
-                if (textView != null && context != null) {
-                    check.check(context)
-                } else {
-                    IntegrityCheck.Result.OK
-                }
-            }
+            val startActivity = activityRef.get() ?: return@launch
+            if (startActivity.findViewById<TextView?>(R.id.integrity_error) == null) return@launch
+            val context = startActivity.applicationContext
+            val result = withContext(Dispatchers.IO) { check.check(context) }
 
             val currentActivity = activityRef.get() ?: return@launch
             val textView = currentActivity.findViewById<TextView?>(R.id.integrity_error) ?: return@launch
