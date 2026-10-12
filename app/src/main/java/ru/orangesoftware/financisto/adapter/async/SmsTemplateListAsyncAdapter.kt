@@ -1,249 +1,206 @@
-package ru.orangesoftware.financisto.adapter.async;
+package ru.orangesoftware.financisto.adapter.async
 
-import static androidx.recyclerview.widget.ItemTouchHelper.END;
-import static androidx.recyclerview.widget.ItemTouchHelper.START;
-import static ru.orangesoftware.financisto.activity.SmsDragListActivity.EDIT_REQUEST_CODE;
-import static ru.orangesoftware.financisto.db.DatabaseHelper.SmsTemplateColumns._id;
+import android.app.AlertDialog
+import android.content.Context
+import android.content.Intent
+import android.view.LayoutInflater
+import android.view.Menu
+import android.view.View
+import android.view.ViewGroup
+import android.widget.ImageView
+import android.widget.PopupMenu
+import android.widget.TextView
+import android.widget.Toast
+import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.ItemTouchHelper
+import androidx.recyclerview.widget.RecyclerView
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.activity.SmsDragListActivity
+import ru.orangesoftware.financisto.activity.SmsTemplateActivity
+import ru.orangesoftware.financisto.adapter.dragndrop.ItemTouchHelperAdapter
+import ru.orangesoftware.financisto.adapter.dragndrop.ItemTouchHelperViewHolder
+import ru.orangesoftware.financisto.app.DependenciesHolder
+import ru.orangesoftware.financisto.db.DatabaseAdapter
+import ru.orangesoftware.financisto.db.DatabaseHelper
+import ru.orangesoftware.financisto.model.Category
+import ru.orangesoftware.financisto.model.SmsTemplate
+import ru.orangesoftware.financisto.utils.Logger
+import ru.orangesoftware.financisto.utils.MenuItemInfo
+import java.util.concurrent.atomic.AtomicLong
 
-import android.app.AlertDialog;
-import android.content.Context;
-import android.content.Intent;
-import android.os.AsyncTask;
-import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.ImageView;
-import android.widget.PopupMenu;
-import android.widget.TextView;
-import android.widget.Toast;
+class SmsTemplateListAsyncAdapter(
+    chunkSize: Int,
+    private val db: DatabaseAdapter,
+    itemSource: SmsTemplateListSource,
+    recyclerView: RecyclerView,
+    private val activity: SmsDragListActivity,
+) : AsyncAdapter<SmsTemplate, SmsTemplateListAsyncAdapter.LocalViewHolder>(chunkSize, itemSource, recyclerView),
+    ItemTouchHelperAdapter {
 
-import androidx.annotation.NonNull;
-import androidx.recyclerview.widget.RecyclerView;
+    private val logger: Logger = DependenciesHolder().logger
+    private val context: Context = recyclerView.context
+    private val draggedItemId = AtomicLong(0)
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
-
-import ru.orangesoftware.financisto.R;
-import ru.orangesoftware.financisto.activity.SmsDragListActivity;
-import ru.orangesoftware.financisto.activity.SmsTemplateActivity;
-import ru.orangesoftware.financisto.adapter.dragndrop.ItemTouchHelperAdapter;
-import ru.orangesoftware.financisto.adapter.dragndrop.ItemTouchHelperViewHolder;
-import ru.orangesoftware.financisto.app.DependenciesHolder;
-import ru.orangesoftware.financisto.db.DatabaseAdapter;
-import ru.orangesoftware.financisto.model.Category;
-import ru.orangesoftware.financisto.model.SmsTemplate;
-import ru.orangesoftware.financisto.utils.Logger;
-import ru.orangesoftware.financisto.utils.MenuItemInfo;
-
-/**
- * Based on <a href=https://github.com/jasonwyatt/AsyncListUtil-Example>AsyncListUtil-Example</a> and 
- * <a href=https://medium.com/@ipaulpro/drag-and-swipe-with-recyclerview-b9456d2b1aaf>drag-and-swipe-with-recyclerview</a>
- */
-public class SmsTemplateListAsyncAdapter extends AsyncAdapter<SmsTemplate, SmsTemplateListAsyncAdapter.LocalViewHolder> 
-        implements ItemTouchHelperAdapter {
-
-    private final Logger logger = new DependenciesHolder().getLogger();
-
-    static final int MENU_EDIT = Menu.FIRST + 1;
-    static final int MENU_DUPLICATE = Menu.FIRST + 2;
-
-    static final int MENU_DELETE = Menu.FIRST + 3;
-    private final DatabaseAdapter db;
-    private final Context context;
-    private final SmsDragListActivity activity;
-    private final AtomicLong draggedItemId = new AtomicLong(0);
-
-    public SmsTemplateListAsyncAdapter(int chunkSize,
-        DatabaseAdapter db,
-        SmsTemplateListSource itemSource,
-        RecyclerView recyclerView,
-        SmsDragListActivity activity) {
-        super(chunkSize, itemSource, recyclerView);
-        this.context = recyclerView.getContext();
-        this.db = db;
-        this.activity = activity;
+    companion object {
+        const val MENU_EDIT: Int = Menu.FIRST + 1
+        const val MENU_DUPLICATE: Int = Menu.FIRST + 2
+        const val MENU_DELETE: Int = Menu.FIRST + 3
     }
 
-    @NonNull
-    @Override
-    public LocalViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(context).inflate(R.layout.generic_list_item, parent, false);
-        view.setOnClickListener(clickedView -> {
-            final PopupMenu popupMenu = new PopupMenu(context, clickedView);
-            int i = 0;
-            for (MenuItemInfo m : createContextMenus()) {
-                if (m.getEnabled()) {
-                    popupMenu.getMenu().add(0, m.getMenuId(), i++, m.getTitleId());
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): LocalViewHolder {
+        val view = LayoutInflater.from(context).inflate(R.layout.generic_list_item, parent, false)
+        view.setOnClickListener { clickedView ->
+            val popupMenu = PopupMenu(context, clickedView)
+            var i = 0
+            for (m in createContextMenus()) {
+                if (m.enabled) {
+                    popupMenu.menu.add(0, m.menuId, i++, m.titleId)
                 }
             }
-            popupMenu.setOnMenuItemClickListener(item -> onItemAction(item.getItemId(), clickedView));
-            popupMenu.show();
-        });
-        return new LocalViewHolder(view);
+            popupMenu.setOnMenuItemClickListener { item -> onItemAction(item.itemId, clickedView) }
+            popupMenu.show()
+        }
+        return LocalViewHolder(view)
     }
 
-    protected boolean onItemAction(int menuId, View itemView) {
-        final Long id = (Long) itemView.getTag(R.id.sms_tpl_id);
-        switch (menuId) {
-            case MENU_EDIT: {
-                editItem(id);
-                return true;
+    protected fun onItemAction(menuId: Int, itemView: View): Boolean {
+        val id = itemView.getTag(R.id.sms_tpl_id) as? Long ?: return false
+        when (menuId) {
+            MENU_EDIT -> {
+                editItem(id)
+                return true
             }
-            case MENU_DUPLICATE: {
+            MENU_DUPLICATE -> {
                 if (db.duplicateSmsTemplateBelowOriginal(id) > 0) {
-                    Toast.makeText(activity, R.string.duplicate_sms_template, Toast.LENGTH_LONG).show();
-                    reloadAsyncSource();
+                    Toast.makeText(activity, R.string.duplicate_sms_template, Toast.LENGTH_LONG).show()
+                    reloadAsyncSource()
                 }
-                return true;
+                return true
             }
-            case MENU_DELETE: {
-                deleteItem(id, -1);
-                return true;
+            MENU_DELETE -> {
+                deleteItem(id, -1)
+                return true
             }
         }
-        return false;
+        return false
     }
 
-    protected List<MenuItemInfo> createContextMenus() {
-        List<MenuItemInfo> menus = new ArrayList<>(4);
-        menus.add(new MenuItemInfo(MENU_EDIT, R.string.edit));
-        menus.add(new MenuItemInfo(MENU_DUPLICATE, R.string.duplicate));
-        menus.add(new MenuItemInfo(MENU_DELETE, R.string.delete));
-        return menus;
+    protected fun createContextMenus(): List<MenuItemInfo> {
+        return listOf(
+            MenuItemInfo(MENU_EDIT, R.string.edit),
+            MenuItemInfo(MENU_DUPLICATE, R.string.duplicate),
+            MenuItemInfo(MENU_DELETE, R.string.delete),
+        )
     }
 
-    private void editItem(long id) {
-        Intent intent = new Intent(activity, SmsTemplateActivity.class);
-        intent.putExtra(_id.name(), id);
-        activity.startActivityForResult(intent, EDIT_REQUEST_CODE);
+    private fun editItem(id: Long) {
+        val intent = Intent(activity, SmsTemplateActivity::class.java)
+        intent.putExtra(DatabaseHelper.SmsTemplateColumns._id.name, id)
+        activity.startActivityForResult(intent, SmsDragListActivity.EDIT_REQUEST_CODE)
     }
 
-    private void deleteItem(long id, int position) {
-        new AlertDialog.Builder(context)
+    private fun deleteItem(id: Long, position: Int) {
+        AlertDialog.Builder(context)
             .setTitle(R.string.delete)
             .setIcon(android.R.drawable.ic_dialog_alert)
             .setMessage(R.string.sms_delete_alert)
-            .setPositiveButton(R.string.delete, (arg0, arg1) -> new DeleteTask().execute(id))
-            .setNegativeButton(R.string.cancel, (arg0, arg1) -> revertSwipeBack())
-            .setOnCancelListener(dialog -> revertSwipeBack())
-            .show();
+            .setPositiveButton(R.string.delete) { _, _ -> deleteTemplate(id) }
+            .setNegativeButton(R.string.cancel) { _, _ -> revertSwipeBack() }
+            .setOnCancelListener { revertSwipeBack() }
+            .show()
     }
 
-    public void revertSwipeBack() {
-        notifyDataSetChanged();
-    }
-
-    @Override
-    public void onBindViewHolder(LocalViewHolder holder, int position) {
-        final SmsTemplate item = listUtil.getItem(position);
-        holder.bindView(item, position);
-    }
-
-    @Override
-    public void onItemMove(int fromPosition, int toPosition) {
-        final SmsTemplate itemSrc = listUtil.getItem(fromPosition);
-        final SmsTemplate itemTarget = listUtil.getItem(toPosition);
-        draggedItemId.set(itemTarget.getId());
-        logger.d("dragged %s item to %s item", itemSrc.getId(), itemTarget.getId());
-        notifyItemMoved(fromPosition, toPosition);
-    }
-
-    @Override
-    public void onItemDismiss(int position, int dir) {
-        logger.d("swipped %s pos to %s (%s)", position, dir == START ? "left" : dir == END ? "right" : "??", dir);
-
-        final long itemId = listUtil.getItem(position).id;
-        switch (dir) {
-            case START: // left swipe
-                editItem(itemId);
-                break;
-            case END: // right swipe
-                deleteItem(itemId, position);
-                break;
-            default:
-                logger.e("unknown move: " + dir);
-        }
-    }
-
-    public class LocalViewHolder extends RecyclerView.ViewHolder implements ItemTouchHelperViewHolder {
-        public TextView lineView;
-        public TextView labelView;
-        public TextView numberView;
-        public TextView amountView;
-        public ImageView iconView;
-
-        public LocalViewHolder(View view) {
-            super(view);
-
-            lineView = view.findViewById(R.id.line1);
-            labelView = view.findViewById(R.id.label);
-            numberView = view.findViewById(R.id.number);
-            amountView = view.findViewById(R.id.date);
-            iconView = view.findViewById(R.id.icon);
-        }
-
-        public void bindView(SmsTemplate item, Integer ignore) {
-            if (item != null) {
-                itemView.setTag(R.id.sms_tpl_id, item.getId());
-                lineView.setText(item.title);
-                numberView.setText(item.template);
-                amountView.setVisibility(View.VISIBLE);
-                amountView.setText(Category.getTitle(item.categoryName, item.categoryLevel));
+    private fun deleteTemplate(id: Long) {
+        activity.lifecycleScope.launch {
+            val res = withContext(Dispatchers.IO) {
+                db.delete(SmsTemplate::class.java, id)
             }
-        }
-
-        @Override
-        public void onItemSelected() {
-            //numberView.setTextColor(Color.RED);
-            logger.i("selected: %s", numberView.getText());
-        }
-
-        @Override
-        public void onItemClear() {
-            //numberView.setTextColor(Color.WHITE);
-            long targetId = draggedItemId.get();
-            if (targetId > 0) { // dragged up or down
-                long srcId = (long) itemView.getTag(R.id.sms_tpl_id);
-                logger.d("`%s` moving to `%s`...", numberView.getText(), targetId);
-
-                new UpdateSortOrderTask().execute(srcId, targetId);
-                draggedItemId.set(0);
-            }
-        }
-    }
-
-    class UpdateSortOrderTask extends AsyncTask<Long, Void, Boolean> {
-
-        @Override
-        protected Boolean doInBackground(Long... ids) {
-            return db.moveItemByChangingOrder(SmsTemplate.class, ids[0], ids[1]);
-        }
-
-        @Override
-        protected void onPostExecute(Boolean res) {
-            super.onPostExecute(res);
-            logger.d("moved finished: " + res);
-            if (res) {
-                reloadVisibleItems();
-            }
-        }
-    }
-
-    class DeleteTask extends AsyncTask<Long, Void, Integer> {
-
-        @Override
-        protected Integer doInBackground(Long... ids) {
-            return db.delete(SmsTemplate.class, ids[0]);
-        }
-
-        @Override
-        protected void onPostExecute(Integer res) {
-            super.onPostExecute(res);
-            logger.d("deleted: " + res);
+            logger.d("deleted: %d", res)
             if (res > 0) {
-                reloadAsyncSource();
+                reloadAsyncSource()
+            }
+        }
+    }
+
+    private fun updateSortOrder(srcId: Long, targetId: Long) {
+        activity.lifecycleScope.launch {
+            val res = withContext(Dispatchers.IO) {
+                db.moveItemByChangingOrder(SmsTemplate::class.java, srcId, targetId)
+            }
+            logger.d("moved finished: %s", res)
+            if (res) {
+                reloadVisibleItems()
+            }
+        }
+    }
+
+    fun revertSwipeBack() {
+        notifyDataSetChanged()
+    }
+
+    override fun onBindViewHolder(holder: LocalViewHolder, position: Int) {
+        val item = listUtil.getItem(position)
+        holder.bindView(item, position)
+    }
+
+    override fun onItemMove(fromPosition: Int, toPosition: Int) {
+        val itemSrc = listUtil.getItem(fromPosition)
+        val itemTarget = listUtil.getItem(toPosition)
+        if (itemSrc != null && itemTarget != null) {
+            draggedItemId.set(itemTarget.id)
+            logger.d("dragged %s item to %s item", itemSrc.id, itemTarget.id)
+        }
+        notifyItemMoved(fromPosition, toPosition)
+    }
+
+    override fun onItemDismiss(position: Int, dir: Int) {
+        logger.d(
+            "swipped %s pos to %s (%s)",
+            position,
+            if (dir == ItemTouchHelper.START) "left" else if (dir == ItemTouchHelper.END) "right" else "??",
+            dir,
+        )
+
+        val item = listUtil.getItem(position) ?: return
+        val itemId = item.id
+        when (dir) {
+            ItemTouchHelper.START -> editItem(itemId)
+            ItemTouchHelper.END -> deleteItem(itemId, position)
+            else -> logger.e("unknown move: %d", dir)
+        }
+    }
+
+    inner class LocalViewHolder(view: View) : RecyclerView.ViewHolder(view), ItemTouchHelperViewHolder {
+        val lineView: TextView = view.findViewById(R.id.line1)
+        val labelView: TextView = view.findViewById(R.id.label)
+        val numberView: TextView = view.findViewById(R.id.number)
+        val amountView: TextView = view.findViewById(R.id.date)
+        val iconView: ImageView = view.findViewById(R.id.icon)
+
+        fun bindView(item: SmsTemplate?, ignore: Int?) {
+            if (item != null) {
+                itemView.setTag(R.id.sms_tpl_id, item.id)
+                lineView.text = item.title
+                numberView.text = item.template
+                amountView.visibility = View.VISIBLE
+                amountView.text = Category.getTitle(item.categoryName, item.categoryLevel)
+            }
+        }
+
+        override fun onItemSelected() {
+            logger.i("selected: %s", numberView.text)
+        }
+
+        override fun onItemClear() {
+            val targetId = draggedItemId.get()
+            if (targetId > 0) {
+                val srcId = itemView.getTag(R.id.sms_tpl_id) as? Long ?: return
+                logger.d("`%s` moving to `%s`...", numberView.text, targetId)
+                updateSortOrder(srcId, targetId)
+                draggedItemId.set(0)
             }
         }
     }

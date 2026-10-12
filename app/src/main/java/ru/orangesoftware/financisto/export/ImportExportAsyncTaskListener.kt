@@ -1,5 +1,5 @@
 package ru.orangesoftware.financisto.export
 
-interface ImportExportAsyncTaskListener {
+fun interface ImportExportAsyncTaskListener {
 	fun onCompleted(result: Any)
 }
