@@ -9,3 +9,4 @@
 *.apk
 _prepare_dropbox_keys.sh
 firebase-debug.log
+graphify-out/
