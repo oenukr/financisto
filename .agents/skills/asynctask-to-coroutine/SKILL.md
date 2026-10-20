@@ -67,11 +67,19 @@ This skill incorporates the proven migration patterns used in Financisto (such a
 Identify all components of the target task:
 1. **Inputs & Generics**: Check `<Params, Progress, Result>` types and constructor arguments.
 2. **Context & View References**: Does the task hold direct or `WeakReference` references to `Activity`, `Context`, `TextView`, `ListView`, or `ProgressDialog`?
-3. **Execution Type**:
+3. **Activity Base Class (`LifecycleOwner` Check)**:
+   - Verify that the host `Activity` extends `FragmentActivity`, `ComponentActivity`, or `AppCompatActivity` (e.g., `AbstractActivity` or `AbstractListActivity`).
+   - If the screen extends legacy `android.app.ListActivity` or `android.app.Activity`, migrate it to `FragmentActivity` (binding `android.R.id.list` and `android.R.id.empty` manually) before using `lifecycleScope`, `repeatOnLifecycle`, or `ViewModel`.
+4. **Execution Type**:
    - Disk/Database/Network -> Needs `Dispatchers.IO`.
+   - Destructive multi-step writes (e.g., backup + purge) -> Needs `withContext(Dispatchers.IO + NonCancellable)`.
    - CPU calculation/Parsing/Geometry -> Needs `Dispatchers.Default`.
-4. **Cancellation**: Does the caller call `cancel(true)` or check `isCancelled()`?
-5. **UI Side Effects**: What views are updated in `onPreExecute()`, `onProgressUpdate()`, and `onPostExecute()`?
+5. **Cancellation**: Does the caller call `cancel(true)` or check `isCancelled()`? Wire cancellable `ProgressDialog`s to `job?.cancel()`.
+6. **UI Side Effects & Scope Isolation**:
+   - Check what views are updated in `onPreExecute()`, `onProgressUpdate()`, `onCancelled()`, and `onPostExecute()`.
+   - Move any legacy off-thread `setResult(...)` or `finish()` calls out of `doInBackground()` onto the Main thread after `ProgressDialog` dismissal (`if (!isFinishing && !isDestroyed) dialog.dismiss()`).
+   - Keep existing XML layouts and `ListAdapter`s intact during `AsyncTask` migrations unless a Compose UI rewrite is explicitly requested.
+   - Register new `ViewModel`s, repositories, and `CoroutineDispatcher`s in Koin (`JavaAppKoin.kt` via `viewModelOf` / `factoryOf` / `singleOf`).
 
 ---
 
@@ -259,6 +267,10 @@ In Financisto commit `74ccf22` (`Issue 51 replace internal chart solution (#64)`
 - **Avoid GlobalScope**: Never use `GlobalScope.launch`. Use `viewModelScope`, `lifecycleScope`, or an injected `CoroutineScope` with a supervised lifecycle.
 - **Cooperative Cancellation**: Coroutines are cooperative. In tight or long loops, call `ensureActive()` or `yield()` to allow timely cancellation.
 - **Hardcoded Dispatchers**: Avoid hardcoding `Dispatchers.IO` directly inside classes without constructor injection if unit testing is required.
+- **Java-to-Kotlin Interop Pitfalls**:
+  - **Never combine `@JvmField` with `lateinit var`**: `lateinit var` already exposes a backing field with the same visibility as its setter to Java callers; adding `@JvmField` causes `INAPPLICABLE_JVM_FIELD`.
+  - **Platform-type nullability in existing Kotlin subclasses**: When converting a Java base class (e.g., `AbstractListActivity`) to Kotlin, check all existing Kotlin subclasses for overrides of platform-typed parameters (e.g., `Cursor` vs `Cursor?`) and align their nullability.
+  - **Kotlin `interface` vs `fun interface`**: Java callers can pass lambdas to single-method Kotlin `interface`s (such as `AmountListener`), whereas Kotlin callers require `object : InterfaceName` unless the interface is marked `fun interface`.
 
 ---
 
