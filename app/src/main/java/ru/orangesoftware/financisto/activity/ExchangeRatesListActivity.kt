@@ -6,348 +6,274 @@
  * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
  */
 
-package ru.orangesoftware.financisto.activity;
+package ru.orangesoftware.financisto.activity
 
-import static ru.orangesoftware.financisto.utils.Utils.formatRateDate;
+import android.app.AlertDialog
+import android.app.ProgressDialog
+import android.content.Context
+import android.content.Intent
+import android.database.Cursor
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
+import android.widget.BaseAdapter
+import android.widget.ImageButton
+import android.widget.ListAdapter
+import android.widget.Spinner
+import android.widget.SpinnerAdapter
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.adapter.GenericViewHolder
+import ru.orangesoftware.financisto.model.Currency
+import ru.orangesoftware.financisto.rates.ExchangeRate
+import ru.orangesoftware.financisto.rates.ExchangeRateProvider
+import ru.orangesoftware.financisto.utils.CurrencyCache
+import ru.orangesoftware.financisto.utils.MyPreferences
+import ru.orangesoftware.financisto.utils.Utils.formatRateDate
+import java.text.DecimalFormat
 
-import android.app.AlertDialog;
-import android.app.ProgressDialog;
-import android.content.Context;
-import android.content.Intent;
-import android.database.Cursor;
-import android.os.AsyncTask;
-import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.BaseAdapter;
-import android.widget.ImageButton;
-import android.widget.ListAdapter;
-import android.widget.Spinner;
-import android.widget.SpinnerAdapter;
+@Suppress("TooManyFunctions")
+class ExchangeRatesListActivity : AbstractListActivity(R.layout.exchange_rate_list) {
 
-import java.text.DecimalFormat;
-import java.util.ArrayList;
-import java.util.List;
+    private val nf = DecimalFormat("0.00000")
 
-import ru.orangesoftware.financisto.R;
-import ru.orangesoftware.financisto.adapter.GenericViewHolder;
-import ru.orangesoftware.financisto.model.Currency;
-import ru.orangesoftware.financisto.rates.ExchangeRate;
-import ru.orangesoftware.financisto.rates.ExchangeRateProvider;
-import ru.orangesoftware.financisto.utils.CurrencyCache;
-import ru.orangesoftware.financisto.utils.MyPreferences;
+    private lateinit var fromCurrencySpinner: Spinner
+    private lateinit var toCurrencySpinner: Spinner
+    private var currencies: List<Currency> = emptyList()
 
-public class ExchangeRatesListActivity extends AbstractListActivity {
+    private var lastSelectedCurrencyId: Long = 0
+    private var downloadJob: Job? = null
 
-    private static final int ADD_RATE = 1;
-    private static final int EDIT_RATE = 1;
+    override fun internalOnCreate(savedInstanceState: Bundle?) {
+        super.internalOnCreate(savedInstanceState)
+        currencies = db.getAllCurrenciesList("name")
 
-    private final DecimalFormat nf = new DecimalFormat("0.00000");
+        fromCurrencySpinner = findViewById(R.id.spinnerFromCurrency)
+        fromCurrencySpinner.setPromptId(R.string.rate_from_currency)
+        toCurrencySpinner = findViewById(R.id.spinnerToCurrency)
+        toCurrencySpinner.setPromptId(R.string.rate_to_currency)
 
-    private Spinner fromCurrencySpinner;
-    private Spinner toCurrencySpinner;
-    private List<Currency> currencies;
-
-    private long lastSelectedCurrencyId;
-
-    public ExchangeRatesListActivity() {
-        super(R.layout.exchange_rate_list);
-    }
-
-    @Override
-    protected void internalOnCreate(Bundle savedInstanceState) {
-        super.internalOnCreate(savedInstanceState);
-        currencies = db.getAllCurrenciesList("name");
-
-        fromCurrencySpinner = findViewById(R.id.spinnerFromCurrency);
-        fromCurrencySpinner.setPromptId(R.string.rate_from_currency);
-        toCurrencySpinner = findViewById(R.id.spinnerToCurrency);
-        toCurrencySpinner.setPromptId(R.string.rate_to_currency);
-
-        if (!currencies.isEmpty()) {
-            toCurrencySpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                @Override
-                public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
-                    updateAdapter();
+        if (currencies.isNotEmpty()) {
+            toCurrencySpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(adapterView: AdapterView<*>?, view: View?, i: Int, l: Long) {
+                    updateAdapter()
                 }
 
-                @Override
-                public void onNothingSelected(AdapterView<?> adapterView) {
-                }
-            });
+                override fun onNothingSelected(adapterView: AdapterView<*>?) {}
+            }
 
-            fromCurrencySpinner.setAdapter(createCurrencyAdapter(currencies));
-            fromCurrencySpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                @Override
-                public void onItemSelected(AdapterView<?> adapterView, View view, int pos, long id) {
-                    List<Currency> currencies = getCurrenciesButSelected(id);
-                    if (!currencies.isEmpty()) {
-                        int position = findSelectedCurrency(currencies, lastSelectedCurrencyId);
-                        toCurrencySpinner.setAdapter(createCurrencyAdapter(currencies));
-                        toCurrencySpinner.setSelection(position);
+            fromCurrencySpinner.adapter = createCurrencyAdapter(currencies)
+            fromCurrencySpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(adapterView: AdapterView<*>?, view: View?, pos: Int, id: Long) {
+                    val filteredCurrencies = getCurrenciesButSelected(id)
+                    if (filteredCurrencies.isNotEmpty()) {
+                        val position = findSelectedCurrency(filteredCurrencies, lastSelectedCurrencyId)
+                        toCurrencySpinner.adapter = createCurrencyAdapter(filteredCurrencies)
+                        toCurrencySpinner.setSelection(position)
                     }
-                    lastSelectedCurrencyId = id;
+                    lastSelectedCurrencyId = id
                 }
 
-                @Override
-                public void onNothingSelected(AdapterView<?> adapterView) {
-                }
-            });
-            fromCurrencySpinner.setSelection(findDefaultCurrency());
+                override fun onNothingSelected(adapterView: AdapterView<*>?) {}
+            }
+            fromCurrencySpinner.setSelection(findDefaultCurrency())
 
-            ImageButton bFlip = findViewById(R.id.bFlip);
-            bFlip.setOnClickListener(arg0 -> flipCurrencies());
+            val bFlip = findViewById<ImageButton>(R.id.bFlip)
+            bFlip.setOnClickListener { flipCurrencies() }
 
-            ImageButton bRefresh = findViewById(R.id.bRefresh);
-            bRefresh.setOnClickListener(arg0 -> refreshAllRates());
+            val bRefresh = findViewById<ImageButton>(R.id.bRefresh)
+            bRefresh.setOnClickListener { refreshAllRates() }
         }
     }
 
-    private SpinnerAdapter createCurrencyAdapter(List<Currency> currencies) {
-        ArrayAdapter<Currency> a = new ArrayAdapter<Currency>(this, R.layout.themed_spinner_item, currencies) {
-            @Override
-            public long getItemId(int position) {
-                return getItem(position).id;
-            }
-        };
-        a.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        return a;
-    }
-
-    private List<Currency> getCurrenciesButSelected(long id) {
-        List<Currency> list = new ArrayList<>();
-        for (Currency currency : currencies) {
-            if (currency.id != id) {
-                list.add(currency);
+    private fun createCurrencyAdapter(currencies: List<Currency>): SpinnerAdapter {
+        val a = object : ArrayAdapter<Currency>(this, R.layout.themed_spinner_item, currencies) {
+            override fun getItemId(position: Int): Long {
+                return getItem(position)?.id ?: 0L
             }
         }
-        return list;
+        a.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        return a
     }
 
-    private int findSelectedCurrency(List<Currency> currencies, long id) {
-        int i = 0;
-        for (Currency currency : currencies) {
-            if (currency.id == id) {
-                return i;
-            }
-            ++i;
-        }
-        return 0;
+    private fun getCurrenciesButSelected(id: Long): List<Currency> =
+        currencies.filter { it.id != id }
+
+    private fun findSelectedCurrency(currencies: List<Currency>, id: Long): Int {
+        val index = currencies.indexOfFirst { it.id == id }
+        return if (index >= 0) index else 0
     }
 
-    private int findDefaultCurrency() {
-        int i = 0;
-        for (Currency currency : currencies) {
-            if (currency.isDefault) {
-                return i;
-            }
-            ++i;
-        }
-        return 0;
+    private fun findDefaultCurrency(): Int {
+        val index = currencies.indexOfFirst { it.isDefault }
+        return if (index >= 0) index else 0
     }
 
-    private void flipCurrencies() {
-        Currency toCurrency = (Currency) toCurrencySpinner.getSelectedItem();
+    private fun flipCurrencies() {
+        val toCurrency = toCurrencySpinner.selectedItem as? Currency
         if (toCurrency != null) {
-            fromCurrencySpinner.setSelection(findSelectedCurrency(currencies, toCurrency.id));
+            fromCurrencySpinner.setSelection(findSelectedCurrency(currencies, toCurrency.id))
         }
     }
 
-    private void updateAdapter() {
-        Currency fromCurrency = (Currency) fromCurrencySpinner.getSelectedItem();
-        Currency toCurrency = (Currency) toCurrencySpinner.getSelectedItem();
+    private fun updateAdapter() {
+        val fromCurrency = fromCurrencySpinner.selectedItem as? Currency
+        val toCurrency = toCurrencySpinner.selectedItem as? Currency
         if (fromCurrency != null && toCurrency != null) {
-            List<ExchangeRate> rates = db.findRates(fromCurrency, toCurrency);
-            ListAdapter adapter = new ExchangeRateListAdapter(this, rates);
-            setListAdapter(adapter);
+            val rates = db.findRates(fromCurrency, toCurrency)
+            val listAdapter: ListAdapter = ExchangeRateListAdapter(this, rates)
+            setListAdapter(listAdapter)
         }
     }
 
-    @Override
-    protected void addItem() {
-        long fromCurrencyId = fromCurrencySpinner.getSelectedItemId();
-        long toCurrencyId = toCurrencySpinner.getSelectedItemId();
+    override fun addItem() {
+        val fromCurrencyId = fromCurrencySpinner.selectedItemId
+        val toCurrencyId = toCurrencySpinner.selectedItemId
         if (fromCurrencyId > 0 && toCurrencyId > 0) {
-            Intent intent = new Intent(this, ExchangeRateActivity.class);
-            intent.putExtra(ExchangeRateActivity.FROM_CURRENCY_ID, fromCurrencyId);
-            intent.putExtra(ExchangeRateActivity.TO_CURRENCY_ID, toCurrencyId);
-            startActivityForResult(intent, ADD_RATE);
+            val intent = Intent(this, ExchangeRateActivity::class.java).apply {
+                putExtra(ExchangeRateActivity.FROM_CURRENCY_ID, fromCurrencyId)
+                putExtra(ExchangeRateActivity.TO_CURRENCY_ID, toCurrencyId)
+            }
+            startActivityForResult(intent, ADD_RATE)
         }
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
         if (resultCode == RESULT_OK) {
-            updateAdapter();
+            updateAdapter()
         }
     }
 
-    @Override
-    protected Cursor createCursor() {
-        return null;
+    override fun createCursor(): Cursor? = null
+
+    override fun createAdapter(cursor: Cursor?): ListAdapter? = null
+
+    override fun deleteItem(v: View?, position: Int, id: Long) {
+        val rate = getListAdapter()?.getItem(position) as? ExchangeRate ?: return
+        db.deleteRate(rate)
+        updateAdapter()
     }
 
-    @Override
-    protected ListAdapter createAdapter(Cursor cursor) {
-        return null;
+    override fun editItem(v: View?, position: Int, id: Long) {
+        val rate = getListAdapter()?.getItem(position) as? ExchangeRate ?: return
+        editRate(rate)
     }
 
-    @Override
-    protected void deleteItem(View v, int position, long id) {
-        ExchangeRate rate = (ExchangeRate) getListAdapter().getItem(position);
-        db.deleteRate(rate);
-        updateAdapter();
+    override fun viewItem(v: View?, position: Int, id: Long) {
+        editItem(v, position, id)
     }
 
-    @Override
-    protected void editItem(View v, int position, long id) {
-        ExchangeRate rate = (ExchangeRate) getListAdapter().getItem(position);
-        editRate(rate);
+    private fun editRate(rate: ExchangeRate) {
+        val intent = Intent(this, ExchangeRateActivity::class.java).apply {
+            putExtra(ExchangeRateActivity.FROM_CURRENCY_ID, rate.fromCurrencyId)
+            putExtra(ExchangeRateActivity.TO_CURRENCY_ID, rate.toCurrencyId)
+            putExtra(ExchangeRateActivity.RATE_DATE, rate.date)
+        }
+        startActivityForResult(intent, EDIT_RATE)
     }
 
-    @Override
-    protected void viewItem(View v, int position, long id) {
-        editItem(v, position, id);
-    }
+    private fun refreshAllRates() {
+        val currenciesSnapshot = currencies.toList()
+        val message = getString(R.string.downloading_rates, asString(currenciesSnapshot))
 
-    private void editRate(ExchangeRate rate) {
-        Intent intent = new Intent(this, ExchangeRateActivity.class);
-        intent.putExtra(ExchangeRateActivity.FROM_CURRENCY_ID, rate.fromCurrencyId);
-        intent.putExtra(ExchangeRateActivity.TO_CURRENCY_ID, rate.toCurrencyId);
-        intent.putExtra(ExchangeRateActivity.RATE_DATE, rate.date);
-        startActivityForResult(intent, EDIT_RATE);
-    }
-
-    private void refreshAllRates() {
-        new RatesDownloadTask(this).execute();
-    }
-
-    private class RatesDownloadTask extends AsyncTask<Void, Void, List<ExchangeRate>> {
-
-        private final Context context;
-        private ProgressDialog progressDialog;
-
-        private RatesDownloadTask(Context context) {
-            this.context = context;
+        downloadJob?.cancel()
+        val progressDialog = ProgressDialog.show(
+            this,
+            null,
+            message,
+            true,
+            true,
+        ) {
+            downloadJob?.cancel()
         }
 
-        @Override
-        protected List<ExchangeRate> doInBackground(Void... args) {
-            List<ExchangeRate> rates = getProvider().getRates(currencies);
-            if (isCancelled()) {
-                return null;
-            } else {
-                db.saveDownloadedRates(rates);
-                return rates;
-            }
-        }
-
-        @Override
-        protected void onPreExecute() {
-            showProgressDialog();
-        }
-
-        private void showProgressDialog() {
-            String message = context.getString(R.string.downloading_rates, asString(currencies));
-            progressDialog = ProgressDialog.show(context, null, message, true, true, dialogInterface -> cancel(true));
-        }
-
-        private String asString(List<Currency> currencies) {
-            StringBuilder sb = new StringBuilder();
-            for (Currency currency : currencies) {
-                if (sb.length() > 0) sb.append(", ");
-                sb.append(currency.name);
-            }
-            return sb.toString();
-        }
-
-        @Override
-        protected void onCancelled() {
-            super.onCancelled();
-        }
-
-        @Override
-        protected void onPostExecute(List<ExchangeRate> result) {
-            progressDialog.dismiss();
-            if (result != null) {
-                showResult(result);
-                updateAdapter();
-            }
-        }
-
-        private void showResult(List<ExchangeRate> result) {
-            StringBuilder sb = new StringBuilder();
-            for (ExchangeRate rate : result) {
-                Currency fromCurrency = CurrencyCache.getCurrency(db, rate.fromCurrencyId);
-                Currency toCurrency = CurrencyCache.getCurrency(db, rate.toCurrencyId);
-                sb.append(fromCurrency.name).append(" -> ").append(toCurrency.name);
-                if (rate.isOk()) {
-                    sb.append(" = ").append(nf.format(rate.rate));
-                } else {
-                    sb.append(" ! ").append(rate.getErrorMessage());
+        downloadJob = lifecycleScope.launch {
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    val rates = getProvider().getRates(currenciesSnapshot)
+                    ensureActive()
+                    db.saveDownloadedRates(rates)
+                    rates
                 }
-                sb.append(String.format("%n%n"));
+                showResult(result)
+                updateAdapter()
+            } finally {
+                if (!isFinishing && !isDestroyed) {
+                    progressDialog.dismiss()
+                }
             }
-            new AlertDialog.Builder(context)
-                    .setTitle(R.string.downloading_rates_result)
-                    .setMessage(sb.toString())
-                    .setNeutralButton(R.string.ok, null)
-                    .create().show();
         }
-
-
-
-        private ExchangeRateProvider getProvider() {
-            return MyPreferences.createExchangeRatesProvider(context);
-        }
-
     }
 
-    private class ExchangeRateListAdapter extends BaseAdapter {
+    private fun asString(currencies: List<Currency>): String =
+        currencies.joinToString(", ") { it.name }
 
-        private final Context context;
-        private final LayoutInflater inflater;
-        private final List<ExchangeRate> rates;
-
-        private ExchangeRateListAdapter(Context context, List<ExchangeRate> rates) {
-            this.context = context;
-            this.inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-            this.rates = rates;
-        }
-
-        @Override
-        public int getCount() {
-            return rates.size();
-        }
-
-        @Override
-        public ExchangeRate getItem(int i) {
-            return rates.get(i);
-        }
-
-        @Override
-        public long getItemId(int i) {
-            return i;
-        }
-
-        @Override
-        public View getView(int position, View convertView, ViewGroup parent) {
-            GenericViewHolder v;
-            if (convertView == null) {
-                convertView = inflater.inflate(R.layout.generic_list_item, parent, false);
-                v = GenericViewHolder.createAndTag(convertView);
+    private fun showResult(result: List<ExchangeRate>) {
+        val sb = StringBuilder()
+        for (rate in result) {
+            val fromCurrency = CurrencyCache.getCurrency(db, rate.fromCurrencyId)
+            val toCurrency = CurrencyCache.getCurrency(db, rate.toCurrencyId)
+            sb.append(fromCurrency.name).append(" -> ").append(toCurrency.name)
+            if (rate.isOk) {
+                sb.append(" = ").append(nf.format(rate.rate))
             } else {
-                v = (GenericViewHolder) convertView.getTag();
+                sb.append(" ! ").append(rate.errorMessage)
             }
-            ExchangeRate rate = getItem(position);
-            v.getLineView().setText(formatRateDate(context, rate.date));
-            v.getAmountView().setText(nf.format(rate.rate));
-            return convertView;
+            sb.append(String.format("%n%n"))
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.downloading_rates_result)
+            .setMessage(sb.toString())
+            .setNeutralButton(R.string.ok, null)
+            .create()
+            .show()
+    }
+
+    private fun getProvider(): ExchangeRateProvider =
+        MyPreferences.createExchangeRatesProvider(this)
+
+    private inner class ExchangeRateListAdapter(
+        private val context: Context,
+        private val rates: List<ExchangeRate>,
+    ) : BaseAdapter() {
+
+        private val itemInflater: LayoutInflater =
+            context.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
+
+        override fun getCount(): Int = rates.size
+
+        override fun getItem(i: Int): ExchangeRate = rates[i]
+
+        override fun getItemId(i: Int): Long = i.toLong()
+
+        override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+            val view: View
+            val v: GenericViewHolder
+            if (convertView == null) {
+                view = itemInflater.inflate(R.layout.generic_list_item, parent, false)
+                v = GenericViewHolder.createAndTag(view)
+            } else {
+                view = convertView
+                v = view.tag as GenericViewHolder
+            }
+            val rate = getItem(position)
+            v.lineView?.text = formatRateDate(context, rate.date)
+            v.amountView?.text = nf.format(rate.rate)
+            return view
         }
     }
 
+    companion object {
+        private const val ADD_RATE = 1
+        private const val EDIT_RATE = 1
+    }
 }

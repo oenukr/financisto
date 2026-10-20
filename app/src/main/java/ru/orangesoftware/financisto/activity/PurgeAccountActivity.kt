@@ -6,188 +6,194 @@
  * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
  */
 
-package ru.orangesoftware.financisto.activity;
+package ru.orangesoftware.financisto.activity
 
-import android.app.AlertDialog;
-import android.app.Dialog;
-import android.app.ProgressDialog;
-import android.content.Context;
-import android.content.Intent;
-import android.os.AsyncTask;
-import android.os.Bundle;
-import android.view.View;
-import android.widget.Button;
-import android.widget.CheckBox;
-import android.widget.LinearLayout;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.app.AlertDialog
+import android.app.Dialog
+import android.app.ProgressDialog
+import android.os.Bundle
+import android.view.View
+import android.widget.Button
+import android.widget.CheckBox
+import android.widget.LinearLayout
+import android.widget.TextView
+import android.widget.Toast
+import androidx.lifecycle.lifecycleScope
+import com.wdullaer.materialdatetimepicker.date.DatePickerDialog
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.app.DependenciesHolder
+import ru.orangesoftware.financisto.backup.DatabaseExport
+import ru.orangesoftware.financisto.datetime.DateUtils
+import ru.orangesoftware.financisto.model.Account
+import ru.orangesoftware.financisto.utils.Logger
+import java.text.DateFormat
+import java.util.Calendar
 
-import com.wdullaer.materialdatetimepicker.date.DatePickerDialog;
+class PurgeAccountActivity : AbstractActivity() {
 
-import java.text.DateFormat;
-import java.util.Calendar;
+    private val logger: Logger = DependenciesHolder().logger
 
-import ru.orangesoftware.financisto.R;
-import ru.orangesoftware.financisto.app.DependenciesHolder;
-import ru.orangesoftware.financisto.backup.DatabaseExport;
-import ru.orangesoftware.financisto.datetime.DateUtils;
-import ru.orangesoftware.financisto.model.Account;
-import ru.orangesoftware.financisto.utils.Logger;
+    private var account: Account? = null
+    private lateinit var date: Calendar
 
-/**
- * Created by IntelliJ IDEA.
- * User: denis.solonenko
- * Date: 6/12/12 11:14 PM
- */
-public class PurgeAccountActivity extends AbstractActivity {
+    private lateinit var layout: LinearLayout
+    private lateinit var databaseBackup: CheckBox
+    private lateinit var dateText: TextView
+    private lateinit var df: DateFormat
 
-    private final Logger logger = new DependenciesHolder().getLogger();
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.purge_account)
 
-    public static final String ACCOUNT_ID = "ACCOUNT_ID";
+        df = DateUtils.getLongDateFormat(this)
 
-    private Account account;
-    private Calendar date;
+        layout = findViewById(R.id.layout)
+        date = Calendar.getInstance().apply {
+            add(Calendar.YEAR, -1)
+            add(Calendar.DAY_OF_YEAR, -1)
+        }
 
-    private LinearLayout layout;
-    private CheckBox databaseBackup;
-    private TextView dateText;
-    private DateFormat df;
+        val bOk = findViewById<Button>(R.id.bOK)
+        bOk.setOnClickListener { deleteOldTransactions() }
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.purge_account);
+        val bCancel = findViewById<Button>(R.id.bCancel)
+        bCancel.setOnClickListener {
+            setResult(RESULT_CANCELED)
+            finish()
+        }
 
-        df = DateUtils.getLongDateFormat(this);
-
-        layout = findViewById(R.id.layout);
-        date = Calendar.getInstance();
-        date.add(Calendar.YEAR, -1);
-        date.add(Calendar.DAY_OF_YEAR, -1);
-
-        Button bOk = findViewById(R.id.bOK);
-        bOk.setOnClickListener(view -> deleteOldTransactions());
-
-        Button bCancel = findViewById(R.id.bCancel);
-        bCancel.setOnClickListener(view -> {
-            setResult(RESULT_CANCELED);
-            finish();
-        });
-
-        loadAccount();
-        createNodes();
-        setDateText();
+        if (loadAccount()) {
+            createNodes()
+            setDateText()
+        }
     }
 
-    private void deleteOldTransactions() {
-        new AlertDialog.Builder(this)
+    private fun deleteOldTransactions() {
+        val currentAccount = account ?: return
+        AlertDialog.Builder(this)
             .setTitle(R.string.purge_account_confirm_title)
-            .setMessage(getString(R.string.purge_account_confirm_message, account.title, getDateString()))
-            .setPositiveButton(R.string.ok, (dialogInterface, i) -> new PurgeAccountTask().execute())
+            .setMessage(getString(R.string.purge_account_confirm_message, currentAccount.title, getDateString()))
+            .setPositiveButton(R.string.ok) { _, _ -> purgeAccount() }
             .setNegativeButton(R.string.cancel, null)
-            .show();
+            .show()
     }
 
-    private void loadAccount() {
-        Intent intent = getIntent();
-        if (intent == null) {
-            Toast.makeText(this, "No account specified", Toast.LENGTH_SHORT).show();
-            finish();
-            return;
+    private fun loadAccount(): Boolean {
+        val currentIntent = intent
+        if (currentIntent == null) {
+            Toast.makeText(this, "No account specified", Toast.LENGTH_SHORT).show()
+            finish()
+            return false
         }
 
-        long accountId = intent.getLongExtra(ACCOUNT_ID, -1);
+        val accountId = currentIntent.getLongExtra(ACCOUNT_ID, -1)
         if (accountId <= 0) {
-            Toast.makeText(this, "Invalid account specified", Toast.LENGTH_SHORT).show();
-            finish();
-            return;
+            Toast.makeText(this, "Invalid account specified", Toast.LENGTH_SHORT).show()
+            finish()
+            return false
         }
 
-        account = db.getAccount(accountId);
-        if (account == null) {
-            Toast.makeText(this, "No account found", Toast.LENGTH_SHORT).show();
-            finish();
+        val loadedAccount = db.getAccount(accountId)
+        if (loadedAccount == null) {
+            Toast.makeText(this, "No account found", Toast.LENGTH_SHORT).show()
+            finish()
+            return false
         }
+        account = loadedAccount
+        return true
     }
 
-    private void createNodes() {
-        activityLayout.addInfoNode(layout, 0, R.string.account, account.title);
-        activityLayout.addInfoNode(layout, 0, R.string.warning, R.string.purge_account_date_summary);
-        dateText = activityLayout.addInfoNode(layout, R.id.date, R.string.date, "?");
-        databaseBackup = activityLayout.addCheckboxNode(layout, R.id.backup, R.string.database_backup, R.string.purge_account_backup_database, true);
+    private fun createNodes() {
+        val currentAccount = account ?: return
+        activityLayout.addInfoNode(layout, 0, R.string.account, currentAccount.title)
+        activityLayout.addInfoNode(layout, 0, R.string.warning, R.string.purge_account_date_summary)
+        dateText = activityLayout.addInfoNode(layout, R.id.date, R.string.date, "?")
+        databaseBackup = activityLayout.addCheckboxNode(
+            layout,
+            R.id.backup,
+            R.string.database_backup,
+            R.string.purge_account_backup_database,
+            true,
+        )
     }
 
-    @Override
-    protected void onClick(View v, int id) {
+    override fun onClick(v: View, id: Int) {
         if (id == R.id.date) {
-            DatePickerDialog dialog = DatePickerDialog.newInstance(
-                    (view, year, monthOfYear, dayOfMonth) -> {
-                        date.set(year, monthOfYear, dayOfMonth);
-                        setDateText();
-                    },
-                    date.get(Calendar.YEAR),
-                    date.get(Calendar.MONTH),
-                    date.get(Calendar.DAY_OF_MONTH)
-            );
-            UiUtils.INSTANCE.applyTheme(this, dialog);
-            dialog.show(getSupportFragmentManager(), "DatePickerDialog");
+            val dialog = DatePickerDialog.newInstance(
+                { _, year, monthOfYear, dayOfMonth ->
+                    date.set(year, monthOfYear, dayOfMonth)
+                    setDateText()
+                },
+                date.get(Calendar.YEAR),
+                date.get(Calendar.MONTH),
+                date.get(Calendar.DAY_OF_MONTH),
+            )
+            UiUtils.applyTheme(this, dialog)
+            dialog.show(supportFragmentManager, "DatePickerDialog")
         } else if (id == R.id.backup) {
-            databaseBackup.setChecked(!databaseBackup.isChecked());
+            databaseBackup.isChecked = !databaseBackup.isChecked
         }
     }
 
-    private void setDateText() {
-        dateText.setText(getDateString());
+    private fun setDateText() {
+        dateText.text = getDateString()
     }
 
-    private String getDateString() {
-        return df.format(date.getTime());
-    }
+    private fun getDateString(): String = df.format(date.time)
 
-    private class PurgeAccountTask extends AsyncTask<Void, Void, Exception> {
+    @Suppress("TooGenericExceptionCaught")
+    private fun purgeAccount() {
+        val currentAccount = account ?: return
+        val databaseBackupChecked = databaseBackup.isChecked
+        val targetDateMillis = date.timeInMillis
+        val appContext = applicationContext
+        val d: Dialog = ProgressDialog.show(
+            this,
+            null,
+            getString(R.string.purge_account_in_progress),
+            true,
+        )
 
-        private final Context context;
-        private final boolean databaseBackupChecked;
-
-        private Dialog d;
-
-        private PurgeAccountTask() {
-            this.context = PurgeAccountActivity.this;
-            this.databaseBackupChecked = databaseBackup.isChecked();
-        }
-
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-            d = ProgressDialog.show(context, null, getString(R.string.purge_account_in_progress), true);
-        }
-
-        @Override
-        protected void onPostExecute(Exception e) {
-            super.onPostExecute(e);
-            if (e != null) {
-                Toast.makeText(context, R.string.purge_account_unable_to_do_backup, Toast.LENGTH_LONG).show();
-            }
-            d.dismiss();
-        }
-
-        @Override
-        protected Exception doInBackground(Void... voids) {
-            if (databaseBackupChecked) {
-                DatabaseExport export = new DatabaseExport(context, db.db(), true);
-                try {
-                    export.export();
-                } catch (Exception e) {
-                    logger.e(e, "Unexpected error");
-                    return e;
+        lifecycleScope.launch {
+            val error = try {
+                withContext(Dispatchers.IO + NonCancellable) {
+                    if (databaseBackupChecked) {
+                        val export = DatabaseExport(appContext, db.db(), true)
+                        export.export()
+                    }
+                    db.purgeAccountAtDate(currentAccount, targetDateMillis)
+                    null
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logger.e(e, "Unexpected error")
+                e
+            } finally {
+                if (!isFinishing && !isDestroyed) {
+                    d.dismiss()
                 }
             }
-            db.purgeAccountAtDate(account, date.getTimeInMillis());
-            setResult(RESULT_OK);
-            finish();
-            return null;
-        }
 
+            if (error != null) {
+                Toast.makeText(
+                    this@PurgeAccountActivity,
+                    R.string.purge_account_unable_to_do_backup,
+                    Toast.LENGTH_LONG,
+                ).show()
+            } else {
+                setResult(RESULT_OK)
+                finish()
+            }
+        }
     }
 
+    companion object {
+        const val ACCOUNT_ID: String = "ACCOUNT_ID"
+    }
 }

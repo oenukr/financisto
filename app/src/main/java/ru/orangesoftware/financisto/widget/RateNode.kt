@@ -6,195 +6,201 @@
  * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
  */
 
-package ru.orangesoftware.financisto.widget;
+package ru.orangesoftware.financisto.widget
 
-import android.app.Activity;
-import android.app.ProgressDialog;
-import android.content.Context;
-import android.os.AsyncTask;
-import android.text.Editable;
-import android.text.TextWatcher;
-import android.view.View;
-import android.widget.EditText;
-import android.widget.ImageButton;
-import android.widget.LinearLayout;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.app.ProgressDialog
+import android.text.Editable
+import android.text.TextWatcher
+import android.view.View
+import android.widget.EditText
+import android.widget.ImageButton
+import android.widget.LinearLayout
+import android.widget.TextView
+import android.widget.Toast
+import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.activity.ActivityLayout
+import ru.orangesoftware.financisto.app.DependenciesHolder
+import ru.orangesoftware.financisto.model.Currency
+import ru.orangesoftware.financisto.rates.ExchangeRateProvider
+import ru.orangesoftware.financisto.utils.MyPreferences
+import ru.orangesoftware.financisto.utils.Utils
+import java.text.DecimalFormat
+import kotlin.math.abs
 
-import androidx.fragment.app.FragmentActivity;
+class RateNode(
+    private val owner: RateNodeOwner,
+    private val x: ActivityLayout,
+    private val layout: LinearLayout,
+) {
 
-import java.text.DecimalFormat;
+    private val nf = DecimalFormat("0.00000")
 
-import ru.orangesoftware.financisto.R;
-import ru.orangesoftware.financisto.activity.ActivityLayout;
-import ru.orangesoftware.financisto.model.Currency;
-import ru.orangesoftware.financisto.rates.ExchangeRate;
-import ru.orangesoftware.financisto.rates.ExchangeRateProvider;
-import ru.orangesoftware.financisto.utils.MyPreferences;
-import ru.orangesoftware.financisto.utils.Utils;
+    @JvmField
+    var rateInfoNode: View? = null
 
-public class RateNode {
+    private lateinit var rateInfo: TextView
+    private lateinit var rateView: EditText
 
-    public static final int EDIT_RATE = 112;
+    private lateinit var bCalc: ImageButton
+    private lateinit var bDownload: ImageButton
 
-    private final DecimalFormat nf = new DecimalFormat("0.00000");
+    private var downloadJob: Job? = null
 
-    private final RateNodeOwner owner;
-    private final ActivityLayout x;
-    private final LinearLayout layout;
+    private val rateWatcher: TextWatcher = object : TextWatcher {
+        override fun afterTextChanged(s: Editable?) {
+            owner.onRateChanged()
+        }
 
-    View rateInfoNode;
+        override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
 
-    private TextView rateInfo;
-    private EditText rate;
-
-    private ImageButton bCalc;
-    private ImageButton bDownload;
-
-    public RateNode(RateNodeOwner owner, ActivityLayout x, LinearLayout layout) {
-        this.owner = owner;
-        this.x = x;
-        this.layout = layout;
-        createUI();
+        override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
     }
 
-    private void createUI() {
-        rateInfoNode = x.addRateNode(layout);
-        rate = rateInfoNode.findViewById(R.id.rate);
-        rate.addTextChangedListener(rateWatcher);
-        rate.setOnFocusChangeListener((view, b) -> {
-            if (b) {
-                rate.selectAll();
+    init {
+        createUI()
+    }
+
+    @Suppress("SwallowedException")
+    private fun createUI() {
+        val node = x.addRateNode(layout)
+        rateInfoNode = node
+        rateView = node.findViewById(R.id.rate)
+        rateView.addTextChangedListener(rateWatcher)
+        rateView.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                rateView.selectAll()
             }
-        });
-        rateInfo = rateInfoNode.findViewById(R.id.data);
-        bCalc = rateInfoNode.findViewById(R.id.rateCalculator);
-        bCalc.setOnClickListener(v -> {
-            Activity activity = owner.getActivity();
-
-            CalculatorInput input = CalculatorInput_.builder().amount(String.valueOf(getRate())).build();
-            input.setListener(amount -> {
-                try {
-                    setRate(Float.parseFloat(amount));
-                    updateRateInfo();
-                    owner.onRateChanged();
-                } catch (NumberFormatException ignored) {
-                }
-            });
-            input.show(((FragmentActivity)activity).getSupportFragmentManager(), "calculator");
-        });
-        bDownload = rateInfoNode.findViewById(R.id.rateDownload);
-        bDownload.setOnClickListener(v -> new RateDownloadTask().execute());
+        }
+        rateInfo = node.findViewById(R.id.data)
+        bCalc = node.findViewById(R.id.rateCalculator)
+        bCalc.setOnClickListener {
+            val activity = owner.getActivity()
+            if (activity is FragmentActivity) {
+                val input = CalculatorInput_.builder().amount(getRate().toString()).build()
+                input.setListener(
+                    object : AmountListener {
+                        override fun onAmountChanged(amount: String) {
+                            try {
+                                setRate(amount.toFloat().toDouble())
+                                updateRateInfo()
+                                owner.onRateChanged()
+                            } catch (ignored: NumberFormatException) {
+                            }
+                        }
+                    },
+                )
+                input.show(activity.supportFragmentManager, "calculator")
+            }
+        }
+        bDownload = node.findViewById(R.id.rateDownload)
+        bDownload.setOnClickListener { downloadRate() }
     }
 
-    public void disableAll() {
-        rate.setEnabled(false);
-        bCalc.setEnabled(false);
-        bDownload.setEnabled(false);
+    fun disableAll() {
+        rateView.isEnabled = false
+        bCalc.isEnabled = false
+        bDownload.isEnabled = false
     }
 
-    public void enableAll() {
-        rate.setEnabled(true);
-        bCalc.setEnabled(true);
-        bDownload.setEnabled(true);
+    fun enableAll() {
+        rateView.isEnabled = true
+        bCalc.isEnabled = true
+        bDownload.isEnabled = true
     }
 
-    public float getRate() {
-        try {
-            String rateText = Utils.text(rate);
+    @Suppress("SwallowedException")
+    fun getRate(): Float {
+        return try {
+            val rateText = Utils.text(rateView)
             if (rateText != null) {
-                rateText = rateText.replace(',', '.');
-                return Float.parseFloat(rateText);
+                rateText.replace(',', '.').toFloat()
+            } else {
+                0f
             }
-            return 0;
-        } catch (NumberFormatException ex) {
-            return 0;
+        } catch (ex: NumberFormatException) {
+            0f
         }
     }
 
-    public void setRate(double r) {
-        rate.removeTextChangedListener(rateWatcher);
-        rate.setText(nf.format(Math.abs(r)));
-        rate.addTextChangedListener(rateWatcher);
+    fun setRate(r: Double) {
+        rateView.removeTextChangedListener(rateWatcher)
+        rateView.setText(nf.format(abs(r)))
+        rateView.addTextChangedListener(rateWatcher)
     }
 
-    public void updateRateInfo() {
-        double r = getRate();
-        StringBuilder sb = new StringBuilder();
-        Currency currencyFrom = owner.getCurrencyFrom();
-        Currency currencyTo = owner.getCurrencyTo();
+    fun updateRateInfo() {
+        val r = getRate().toDouble()
+        val sb = StringBuilder()
+        val currencyFrom: Currency? = owner.getCurrencyFrom()
+        val currencyTo: Currency? = owner.getCurrencyTo()
         if (currencyFrom != null && currencyTo != null) {
-            sb.append("1").append(currencyFrom.name).append("=").append(nf.format(r)).append(currencyTo.name).append(", ");
-            sb.append("1").append(currencyTo.name).append("=").append(nf.format(1.0 / r)).append(currencyFrom.name);
+            sb.append("1").append(currencyFrom.name).append("=").append(nf.format(r)).append(currencyTo.name).append(", ")
+            sb.append("1").append(currencyTo.name).append("=").append(nf.format(1.0 / r)).append(currencyFrom.name)
         }
-        rateInfo.setText(sb.toString());
+        rateInfo.text = sb.toString()
     }
 
-    private class RateDownloadTask extends AsyncTask<Void, Void, ExchangeRate> {
+    private fun downloadRate() {
+        val activity = owner.getActivity()
+        val fromCurrency: Currency? = owner.getCurrencyFrom()
+        val toCurrency: Currency? = owner.getCurrencyTo()
+        val message = activity.getString(R.string.downloading_rate, fromCurrency, toCurrency)
 
-        private ProgressDialog progressDialog;
+        downloadJob?.cancel()
+        val scope = (activity as? LifecycleOwner)?.lifecycleScope
+            ?: DependenciesHolder().applicationScope
 
-        @Override
-        protected ExchangeRate doInBackground(Void... args) {
-            Currency fromCurrency = owner.getCurrencyFrom();
-            Currency toCurrency = owner.getCurrencyTo();
-            if (fromCurrency != null && toCurrency != null) {
-                return getProvider().getRate(fromCurrency, toCurrency);
-            }
-            return null;
+        val progressDialog = ProgressDialog.show(
+            activity,
+            null,
+            message,
+            true,
+            true,
+        ) {
+            downloadJob?.cancel()
         }
 
-        @Override
-        protected void onPreExecute() {
-            showProgressDialog();
-            owner.onBeforeRateDownload();
-        }
-
-        private void showProgressDialog() {
-            Context context = owner.getActivity();
-            String message = context.getString(R.string.downloading_rate, owner.getCurrencyFrom(), owner.getCurrencyTo());
-            progressDialog = ProgressDialog.show(context, null, message, true, true, dialogInterface -> cancel(true));
-        }
-
-        @Override
-        protected void onCancelled() {
-            super.onCancelled();
-            owner.onAfterRateDownload();
-        }
-
-        @Override
-        protected void onPostExecute(ExchangeRate result) {
-            progressDialog.dismiss();
-            owner.onAfterRateDownload();
-            if (result != null) {
-                if (result.isOk()) {
-                    setRate(result.rate);
-                    owner.onSuccessfulRateDownload();
+        owner.onBeforeRateDownload()
+        downloadJob = scope.launch {
+            try {
+                val result = if (fromCurrency != null && toCurrency != null) {
+                    withContext(Dispatchers.IO) {
+                        val rate = getProvider().getRate(fromCurrency, toCurrency)
+                        ensureActive()
+                        rate
+                    }
                 } else {
-                    Toast.makeText(owner.getActivity(), result.getErrorMessage(), Toast.LENGTH_LONG).show();
+                    null
                 }
+                if (result != null) {
+                    if (result.isOk) {
+                        setRate(result.rate)
+                        owner.onSuccessfulRateDownload()
+                    } else {
+                        Toast.makeText(activity, result.errorMessage, Toast.LENGTH_LONG).show()
+                    }
+                }
+            } finally {
+                if (!activity.isFinishing && !activity.isDestroyed) {
+                    progressDialog.dismiss()
+                }
+                owner.onAfterRateDownload()
             }
         }
-
-        private ExchangeRateProvider getProvider() {
-            return MyPreferences.createExchangeRatesProvider(owner.getActivity());
-        }
-
     }
 
-    private final TextWatcher rateWatcher = new TextWatcher() {
-        @Override
-        public void afterTextChanged(Editable s) {
-            owner.onRateChanged();
-        }
+    private fun getProvider(): ExchangeRateProvider =
+        MyPreferences.createExchangeRatesProvider(owner.getActivity())
 
-        @Override
-        public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-        }
-
-        @Override
-        public void onTextChanged(CharSequence s, int start, int before, int count) {
-        }
-    };
-
+    companion object {
+        const val EDIT_RATE: Int = 112
+    }
 }

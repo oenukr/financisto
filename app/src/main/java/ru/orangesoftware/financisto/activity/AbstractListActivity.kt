@@ -1,254 +1,268 @@
-/*******************************************************************************
- * Copyright (c) 2010 Denis Solonenko.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the GNU Public License v2.0
- * which accompanies this distribution, and is available at
- * https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- *
- * Contributors:
- *     Denis Solonenko - initial API and implementation
- ******************************************************************************/
-package ru.orangesoftware.financisto.activity;
+package ru.orangesoftware.financisto.activity
 
-import android.app.ListActivity;
-import android.content.Context;
-import android.content.Intent;
-import android.database.Cursor;
-import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.View;
-import android.view.Window;
-import android.widget.CursorAdapter;
-import android.widget.ImageButton;
-import android.widget.ListAdapter;
-import android.widget.ListView;
-import android.widget.PopupMenu;
+import android.content.Context
+import android.content.Intent
+import android.database.Cursor
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.Menu
+import android.view.View
+import android.view.Window
+import android.widget.CursorAdapter
+import android.widget.ImageButton
+import android.widget.ListAdapter
+import android.widget.ListView
+import android.widget.PopupMenu
+import androidx.fragment.app.FragmentActivity
+import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.app.DependenciesHolder
+import ru.orangesoftware.financisto.db.DatabaseAdapter
+import ru.orangesoftware.financisto.utils.Logger
+import ru.orangesoftware.financisto.utils.MenuItemInfo
+import ru.orangesoftware.financisto.utils.MyPreferences
+import ru.orangesoftware.financisto.utils.PinProtection
+import java.util.LinkedList
 
-import androidx.annotation.Nullable;
+@Suppress("TooManyFunctions")
+abstract class AbstractListActivity protected constructor(
+    private val contentId: Int,
+) : FragmentActivity(), RefreshSupportedActivity {
 
-import java.util.LinkedList;
-import java.util.List;
+    private val logger: Logger = DependenciesHolder().logger
 
-import ru.orangesoftware.financisto.R;
-import ru.orangesoftware.financisto.app.DependenciesHolder;
-import ru.orangesoftware.financisto.db.DatabaseAdapter;
-import ru.orangesoftware.financisto.utils.Logger;
-import ru.orangesoftware.financisto.utils.MenuItemInfo;
-import ru.orangesoftware.financisto.utils.MyPreferences;
-import ru.orangesoftware.financisto.utils.PinProtection;
+    protected lateinit var inflater: LayoutInflater
 
-public abstract class AbstractListActivity extends ListActivity implements RefreshSupportedActivity {
+    @JvmField
+    protected var cursor: Cursor? = null
 
-    private final Logger logger = new DependenciesHolder().getLogger();
+    @JvmField
+    protected var adapter: ListAdapter? = null
 
-    protected static final int MENU_VIEW = Menu.FIRST + 1;
-    protected static final int MENU_EDIT = Menu.FIRST + 2;
-    protected static final int MENU_DELETE = Menu.FIRST + 3;
-    protected static final int MENU_ADD = Menu.FIRST + 4;
+    @JvmField
+    protected var db: DatabaseAdapter = DependenciesHolder().databaseAdapter
 
-    private final int contentId;
+    @JvmField
+    protected var bAdd: ImageButton? = null
 
-    protected LayoutInflater inflater;
-    protected Cursor cursor;
-    protected ListAdapter adapter;
-    protected DatabaseAdapter db = new DependenciesHolder().getDatabaseAdapter();
-    protected ImageButton bAdd;
+    @JvmField
+    protected var enablePin: Boolean = true
 
-    protected boolean enablePin = true;
+    @JvmField
+    protected var savedListIndex: Int = 0
 
-    protected AbstractListActivity(int contentId) {
-        this.contentId = contentId;
+    @JvmField
+    protected var savedListTop: Int = 0
+
+    private var listViewInternal: ListView? = null
+
+    fun getListView(): ListView =
+        requireNotNull(listViewInternal) { "ListView is not initialized yet" }
+
+    fun getListAdapter(): ListAdapter? = adapter
+
+    fun setListAdapter(adapter: ListAdapter?) {
+        this.adapter = adapter
+        listViewInternal?.adapter = adapter
     }
 
-    @Override
-    protected void attachBaseContext(Context base) {
-        super.attachBaseContext(MyPreferences.switchLocale(base));
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(MyPreferences.switchLocale(base))
     }
 
-    @Override
-    protected void onCreate(@Nullable Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
 
-        requestWindowFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
+        requestWindowFeature(Window.FEATURE_INDETERMINATE_PROGRESS)
 
-        setContentView(contentId);
+        setContentView(contentId)
 
-        db.open();
-
-        this.inflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        internalOnCreate(savedInstanceState);
-
-        cursor = createCursor();
-        if (cursor != null) {
-            startManagingCursor(cursor);
+        val lv = findViewById<ListView>(android.R.id.list)
+        listViewInternal = lv
+        findViewById<View?>(android.R.id.empty)?.let { emptyView ->
+            lv.emptyView = emptyView
+        }
+        lv.setOnItemClickListener { parent, view, position, id ->
+            onListItemClick(parent as ListView, view, position, id)
         }
 
-        recreateAdapter();
-        getListView().setOnItemLongClickListener((parent, view, position, id) -> {
-            PopupMenu popupMenu = new PopupMenu(AbstractListActivity.this, view);
-            Menu menu = popupMenu.getMenu();
-            List<MenuItemInfo> menus = createContextMenus(id);
-            int i = 0;
-            for (MenuItemInfo m : menus) {
-                if (m.getEnabled()) {
-                    menu.add(0, m.getMenuId(), i++, m.getTitleId());
+        db.open()
+
+        inflater = getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
+        internalOnCreate(savedInstanceState)
+
+        cursor = createCursor()
+        cursor?.let {
+            @Suppress("DEPRECATION")
+            startManagingCursor(it)
+        }
+
+        recreateAdapter()
+        lv.setOnItemLongClickListener { _, view, position, id ->
+            val popupMenu = PopupMenu(this@AbstractListActivity, view)
+            val menu = popupMenu.menu
+            val menus = createContextMenus(id)
+            var i = 0
+            for (m in menus) {
+                if (m.enabled) {
+                    menu.add(0, m.menuId, i++, m.titleId)
                 }
             }
-            popupMenu.setOnMenuItemClickListener(item -> onPopupItemSelected(item.getItemId(), view, position, id));
-            popupMenu.show();
-            return true;
-        });
+            popupMenu.setOnMenuItemClickListener { item ->
+                onPopupItemSelected(item.itemId, view, position, id)
+            }
+            popupMenu.show()
+            true
+        }
     }
 
-    protected void recreateAdapter() {
-        adapter = createAdapter(cursor);
-        setListAdapter(adapter);
+    protected open fun recreateAdapter() {
+        adapter = createAdapter(cursor)
+        setListAdapter(adapter)
     }
 
-    protected abstract Cursor createCursor();
+    protected abstract fun createCursor(): Cursor?
 
-    protected abstract ListAdapter createAdapter(Cursor cursor);
+    protected abstract fun createAdapter(cursor: Cursor?): ListAdapter?
 
-    protected void internalOnCreate(@Nullable Bundle savedInstanceState) {
-        bAdd = findViewById(R.id.bAdd);
-        bAdd.setOnClickListener(arg0 -> addItem());
+    protected open fun internalOnCreate(savedInstanceState: Bundle?) {
+        bAdd = findViewById(R.id.bAdd)
+        bAdd?.setOnClickListener { addItem() }
     }
 
-    @Override
-    protected void onDestroy() {
-        db.close();
-        super.onDestroy();
+    override fun onDestroy() {
+        db.close()
+        super.onDestroy()
     }
 
-    protected int savedListIndex = 0;
-    protected int savedListTop = 0;
-
-    protected void saveListScrollPosition() {
+    @Suppress("TooGenericExceptionCaught", "SwallowedException")
+    protected open fun saveListScrollPosition() {
         try {
-            ListView listView = getListView();
-            if (listView != null) {
-                View v = listView.getChildAt(0);
+            val lv = listViewInternal
+            if (lv != null) {
+                val v = lv.getChildAt(0)
                 if (v != null) {
-                    savedListIndex = listView.getFirstVisiblePosition();
-                    savedListTop = v.getTop() - listView.getPaddingTop();
+                    savedListIndex = lv.firstVisiblePosition
+                    savedListTop = v.top - lv.paddingTop
                 }
             }
-        } catch (Exception ignored) {
+        } catch (ignored: Exception) {
         }
     }
 
-    @Override
-    protected void onPause() {
-        saveListScrollPosition();
-        super.onPause();
-        if (enablePin) PinProtection.lock(this);
+    override fun onPause() {
+        saveListScrollPosition()
+        super.onPause()
+        if (enablePin) PinProtection.lock(this)
     }
 
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        saveListScrollPosition();
-        outState.putInt("STATE_SAVED_LIST_INDEX", savedListIndex);
-        outState.putInt("STATE_SAVED_LIST_TOP", savedListTop);
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        saveListScrollPosition()
+        outState.putInt(STATE_SAVED_LIST_INDEX, savedListIndex)
+        outState.putInt(STATE_SAVED_LIST_TOP, savedListTop)
     }
 
-    @Override
-    protected void onRestoreInstanceState(Bundle state) {
-        super.onRestoreInstanceState(state);
-        if (state != null) {
-            savedListIndex = state.getInt("STATE_SAVED_LIST_INDEX", 0);
-            savedListTop = state.getInt("STATE_SAVED_LIST_TOP", 0);
-        }
+    override fun onRestoreInstanceState(state: Bundle) {
+        super.onRestoreInstanceState(state)
+        savedListIndex = state.getInt(STATE_SAVED_LIST_INDEX, 0)
+        savedListTop = state.getInt(STATE_SAVED_LIST_TOP, 0)
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (enablePin) PinProtection.unlock(this);
+    override fun onResume() {
+        super.onResume()
+        if (enablePin) PinProtection.unlock(this)
     }
 
-    protected List<MenuItemInfo> createContextMenus(long id) {
-        List<MenuItemInfo> menus = new LinkedList<>();
-        menus.add(new MenuItemInfo(MENU_VIEW, R.string.view));
-        menus.add(new MenuItemInfo(MENU_EDIT, R.string.edit));
-        menus.add(new MenuItemInfo(MENU_DELETE, R.string.delete));
-        return menus;
+    protected open fun createContextMenus(id: Long): MutableList<MenuItemInfo> {
+        val menus = LinkedList<MenuItemInfo>()
+        menus.add(MenuItemInfo(MENU_VIEW, R.string.view))
+        menus.add(MenuItemInfo(MENU_EDIT, R.string.edit))
+        menus.add(MenuItemInfo(MENU_DELETE, R.string.delete))
+        return menus
     }
 
-    public boolean onPopupItemSelected(int itemId, View view, int position, long id) {
-        switch (itemId) {
-            case MENU_VIEW: {
-                viewItem(view, position, id);
-                return true;
+    open fun onPopupItemSelected(itemId: Int, view: View, position: Int, id: Long): Boolean {
+        when (itemId) {
+            MENU_VIEW -> {
+                viewItem(view, position, id)
+                return true
             }
-            case MENU_EDIT: {
-                editItem(view, position, id);
-                return true;
+            MENU_EDIT -> {
+                editItem(view, position, id)
+                return true
             }
-            case MENU_DELETE: {
-                deleteItem(view, position, id);
-                return true;
+            MENU_DELETE -> {
+                deleteItem(view, position, id)
+                return true
             }
         }
-        return false;
+        return false
     }
 
-    @Override
-    protected void onListItemClick(ListView l, View v, int position, long id) {
-        onItemClick(v, position, id);
+    protected open fun onListItemClick(l: ListView, v: View, position: Int, id: Long) {
+        onItemClick(v, position, id)
     }
 
-    protected void onItemClick(View v, int position, long id) {
-        viewItem(v, position, id);
+    protected open fun onItemClick(v: View, position: Int, id: Long) {
+        viewItem(v, position, id)
     }
 
-    protected void addItem() {
-    }
+    protected open fun addItem() {}
 
-    protected abstract void deleteItem(View v, int position, long id);
+    protected abstract fun deleteItem(v: View?, position: Int, id: Long)
 
-    protected abstract void editItem(View v, int position, long id);
+    protected abstract fun editItem(v: View?, position: Int, id: Long)
 
-    protected abstract void viewItem(View v, int position, long id);
+    protected abstract fun viewItem(v: View?, position: Int, id: Long)
 
-    public void recreateCursor() {
-        logger.i("Recreating cursor");
-        ListView listView = getListView();
-        if (listView != null && listView.getChildAt(0) != null) {
-            saveListScrollPosition();
+    override fun recreateCursor() {
+        logger.i("Recreating cursor")
+        val lv = listViewInternal
+        if (lv != null && lv.getChildAt(0) != null) {
+            saveListScrollPosition()
         }
 
-        if (cursor != null) {
-            stopManagingCursor(cursor);
-            cursor.close();
+        cursor?.let {
+            @Suppress("DEPRECATION")
+            stopManagingCursor(it)
+            it.close()
         }
-        cursor = createCursor();
-        if (cursor != null) {
-            startManagingCursor(cursor);
-            if (adapter instanceof CursorAdapter cursorAdapter) {
-                cursorAdapter.changeCursor(cursor);
+        cursor = createCursor()
+        cursor?.let { c ->
+            @Suppress("DEPRECATION")
+            startManagingCursor(c)
+            val currentAdapter = adapter
+            if (currentAdapter is CursorAdapter) {
+                currentAdapter.changeCursor(c)
             } else {
-                recreateAdapter();
+                recreateAdapter()
             }
         }
-        if (listView != null && listView.getAdapter() != null && listView.getAdapter().getCount() > 0) {
-            int restoreIndex = Math.min(savedListIndex, listView.getAdapter().getCount() - 1);
+        val currentListAdapter = lv?.adapter
+        if (lv != null && currentListAdapter != null && currentListAdapter.count > 0) {
+            val restoreIndex = savedListIndex.coerceAtMost(currentListAdapter.count - 1)
             if (restoreIndex >= 0) {
-                listView.setSelectionFromTop(restoreIndex, savedListTop);
+                lv.setSelectionFromTop(restoreIndex, savedListTop)
             }
         }
     }
 
-    @Override
-    public void integrityCheck() {
-    }
+    override fun integrityCheck() {}
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
         if (resultCode == RESULT_OK) {
-            recreateCursor();
+            recreateCursor()
         }
     }
 
+    companion object {
+        const val MENU_VIEW: Int = Menu.FIRST + 1
+        const val MENU_EDIT: Int = Menu.FIRST + 2
+        const val MENU_DELETE: Int = Menu.FIRST + 3
+        const val MENU_ADD: Int = Menu.FIRST + 4
+
+        private const val STATE_SAVED_LIST_INDEX = "STATE_SAVED_LIST_INDEX"
+        private const val STATE_SAVED_LIST_TOP = "STATE_SAVED_LIST_TOP"
+    }
 }
