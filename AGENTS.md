@@ -11,19 +11,17 @@
 - **State Management:** Use StateFlow in ViewModels to expose UI state to Compose.
 
 ## 🧠 Dynamic Agent Skills
-We maintain specific operational procedures and expert personas in the `.agent/skills/` directory. Do not load these unless relevant to the user's current request.
+We maintain specific operational procedures and expert personas in the `.agents/skills/` directory. Do not load these unless relevant to the user's current request.
 
 **Instruction:** Before executing a task or writing code, review the trigger conditions below. If your task matches a trigger, you MUST read the corresponding skill file to gather your operational directives before proceeding.
 
 ### Available Skills & Triggers:
-* **Trigger:** The user asks to upgrade the build system, modify `build.gradle.kts`, or specifically mentions AGP 9.
-    * **Action:** Read `@./.agent/skills/agp-9-upgrade/SKILL.md`
-* **Trigger:** The task requires running terminal commands, using `adb`, analyzing device logs, or executing Gradle tasks.
-    * **Action:** Read `@./.agent/skills/android-cli/SKILL.md`
-* **Trigger:** The user asks to update the UI, modernize a screen, or explicitly mentions converting legacy layouts.
-    * **Action:** Read `@./.agent/skills/migrate-xml-views-to-jetpack-compose/SKILL.md`
-* **Trigger:** The task involves fixing app crashes related to minification, modifying `proguard-rules.pro`, or analyzing APK size.
-    * **Action:** Read `@./.agent/skills/r8-analyzer/SKILL.md`
+* **Trigger:** The task involves migrating legacy `AsyncTask` implementations to Kotlin Coroutines, `ViewModel`, or `StateFlow`.
+    * **Action:** Read `@./.agents/skills/asynctask-to-coroutine/SKILL.md`
+* **Trigger:** Reviewing dependency or library updates, inspecting changelogs/release notes for breaking or behavioral changes, evaluating codebase impact, or generating migrations.
+    * **Action:** Read `@./.agents/skills/dependency-update-analyzer/SKILL.md`
+* **Trigger:** The user asks about codebase architecture, file relationships, project content, or knowledge graph queries.
+    * **Action:** Read `@./.agents/skills/graphify/SKILL.md`
 
 ---
 

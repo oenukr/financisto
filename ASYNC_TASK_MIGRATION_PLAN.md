@@ -8,10 +8,12 @@ It follows the guidelines defined in `.agents/skills/asynctask-to-coroutine/SKIL
 
 ## Architecture Principles & Patterns
 
-1. **Language**: Fully convert touched files to idiomatic Kotlin. Do not leave hybrid Java `AsyncTask` workarounds.
+1. **Language & UI Scope**:
+   * Fully convert touched files to idiomatic Kotlin. Do not leave hybrid Java `AsyncTask` workarounds.
+   * Keep existing XML layouts and `ListAdapter`s across Phases 2–5 so each phase focuses strictly on Kotlin conversion and Coroutines/`ViewModel`/`StateFlow` migration, keeping PRs small and isolated.
 2. **Structured Concurrency & Scopes**:
-   * **LifecycleOwner (Activities / Fragments)**: Use `activity.lifecycleScope` directly.
-   * **ViewModels**: Use `viewModelScope`.
+   * **LifecycleOwner (Activities / Fragments)**: Use `activity.lifecycleScope` directly. `AbstractActivity` and `AbstractListActivity` both extend `FragmentActivity` (implementing `LifecycleOwner` and `ViewModelStoreOwner`).
+   * **ViewModels**: Use `viewModelScope` and register new `ViewModel`s, repositories, and `CoroutineDispatcher`s in Koin (`JavaAppKoin.kt`) using `viewModelOf` / `factoryOf` / `singleOf`.
    * **App-level / Non-lifecycle contexts**: Use `DependenciesHolder().applicationScope` (`CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)` provided via Koin in `JavaAppKoin.kt`).
    * **Avoid**: Never use `GlobalScope` or unbounded thread creation.
 3. **Threading**:
@@ -30,9 +32,9 @@ It follows the guidelines defined in `.agents/skills/asynctask-to-coroutine/SKIL
 | Phase | Tier | Target Files / Tasks | Complexity | Rationale | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Phase 1** | Tier 1 | `SmsTemplateListAsyncAdapter` (`UpdateSortOrderTask`, `DeleteTask`)<br>`IntegrityCheckTask`<br>`MenuListItem` (`IntegrityFixTask`) | Very Low | Isolated operations, simple UI callbacks, self-contained background tasks | **COMPLETED** |
-| **Phase 2** | Tier 2 | `PurgeAccountActivity` (`PurgeAccountTask`)<br>`RateNode` (`RateDownloadTask`)<br>`ExchangeRatesListActivity` (`RatesDownloadTask`) | Low–Medium | Single-screen tasks with simple progress dialogs / loading indicators | **PLANNED** |
+| **Phase 2** | Tier 2 | `AbstractListActivity`<br>`PurgeAccountActivity` (`PurgeAccountTask`)<br>`RateNode` (`RateDownloadTask`)<br>`ExchangeRatesListActivity` (`RatesDownloadTask`) | Low–Medium | Base `ListActivity` -> `FragmentActivity` migration + single-screen tasks with progress dialogs | **COMPLETED** |
 | **Phase 3** | Tier 3 | `PlannerActivity` (`PlannerTask`)<br>`MonthlyViewActivity` (`MonthlyPreviewTask`) | Medium | Screen data-loading; benefits from ViewModel + StateFlow pattern | **PLANNED** |
-| **Phase 4** | Tier 4 | `AbstractTotalsDetailsActivity` (`CalculateAccountsTotalsTask`)<br>`BudgetListActivity` (`BudgetTotalsCalculationTask`) | Medium–High | Complex calculations, aggregation queries, and list adapters | **PLANNED** |
+| **Phase 4** | Tier 4 | `AbstractTotalsDetailsActivity` (`CalculateAccountsTotalsTask`)<br>`BudgetListActivity` (`BudgetTotalsCalculationTask`)<br>`BudgetsTotalCalculator` | Medium–High | Complex calculations, aggregation queries, and list adapters | **PLANNED** |
 | **Phase 5** | Tier 5 | `TotalCalculationTask` hierarchy (`AccountTotalCalculationTask`, `BlotterTotalCalculationTask`)<br>`ImportExportAsyncTask` hierarchy (9 concrete tasks) | High | Wide architectural impact across base classes and numerous callers/screens | **PLANNED** |
 
 ---
@@ -51,51 +53,53 @@ It follows the guidelines defined in `.agents/skills/asynctask-to-coroutine/SKIL
 
 ---
 
-### Phase 2: Tier 2 – Single Activity Background Operations (NEXT)
+### Phase 2: Tier 2 – Single Activity Background Operations (COMPLETED)
 
-* **Goal**: Migrate self-contained background tasks in single screens/widgets that display progress dialogs or UI indicators.
-* **Target Files & Conversions**:
-  1. **`PurgeAccountActivity.java` -> `PurgeAccountActivity.kt`**:
-     * Task: `PurgeAccountTask extends AsyncTask<Void, Void, Exception>` (lines 147–194).
-     * Action: Convert activity to Kotlin. Show progress dialog, execute `DatabaseExport` (if requested) and `db.purgeAccountAtDate(accountId, date)` on `withContext(Dispatchers.IO)`. Handle exceptions and update UI on Main.
-  2. **`RateNode.java` -> `RateNode.kt`**:
-     * Task: `RateDownloadTask extends AsyncTask<Currency, Void, Pair<Boolean, RateResult>>` (lines 133–180).
-     * Action: Convert widget to Kotlin. Launch download coroutine tied to View lifecycle/scope, call `RateDownloader` on `Dispatchers.IO`, update rate input view on completion, and handle cancellation.
-  3. **`ExchangeRatesListActivity.java` -> `ExchangeRatesListActivity.kt`**:
-     * Task: `RatesDownloadTask extends AsyncTask<RateNode, Void, Void>` (lines 229–285).
-     * Action: Convert activity to Kotlin. Launch download with `lifecycleScope`, show progress dialog, download latest exchange rates on `Dispatchers.IO`, and refresh list adapter on Main.
+* **Goal**: Modernize `AbstractListActivity` to `FragmentActivity` (`LifecycleOwner`) and migrate self-contained background tasks in single screens/widgets that display progress dialogs or UI indicators.
+* **Work Done**:
+  1. [x] **`AbstractListActivity.java` -> `AbstractListActivity.kt`**:
+     * Converted base class to Kotlin and migrated from legacy `android.app.ListActivity` to `androidx.fragment.app.FragmentActivity` (preserving `getListView()`, `getListAdapter()`, `setListAdapter()`, and `onListItemClick()` helpers against `android.R.id.list` and `android.R.id.empty`) so all subclasses natively support `lifecycleScope` and `ViewModel`.
+  2. [x] **`PurgeAccountActivity.java` -> `PurgeAccountActivity.kt`**:
+     * Task: `PurgeAccountTask extends AsyncTask<Void, Void, Exception>`.
+     * Action: Converted activity to Kotlin. Show progress dialog, execute `DatabaseExport` (if requested) and `db.purgeAccountAtDate(account, date)` on `withContext(Dispatchers.IO + NonCancellable)`, and handle UI completion (`setResult(RESULT_OK)`, `finish()`) and errors on Main.
+  3. [x] **`RateNode.java` -> `RateNode.kt`**:
+     * Task: `RateDownloadTask extends AsyncTask<Void, Void, ExchangeRate>`.
+     * Action: Converted widget to Kotlin. Launch cancellable download `Job` tied to owner Activity `lifecycleScope`, call `ExchangeRateProvider.getRate` on `Dispatchers.IO` with `ensureActive()`, update rate input view on completion, and handle cancellation cleanly in `finally`.
+  4. [x] **`ExchangeRatesListActivity.java` -> `ExchangeRatesListActivity.kt`**:
+     * Task: `RatesDownloadTask extends AsyncTask<Void, Void, List<ExchangeRate>>`.
+     * Action: Converted activity to Kotlin. Launch cancellable download `Job` with `lifecycleScope`, show progress dialog, download and persist latest exchange rates on `Dispatchers.IO`, and refresh list adapter on Main.
 * **Verification**:
-  * Unit tests: `./gradlew :app:testDebugUnitTest`
-  * Manual: Test account purge dialog, test currency rate download inside transaction editor (`RateNode`), test batch exchange rate download from exchange rate list.
+  * Static analysis: `./gradlew detekt`
+  * Unit tests & build: `./gradlew :app:testDebugUnitTest assembleDebug`
 
 ---
 
-### Phase 3: Tier 3 – Screen Data Loaders (ViewModel + StateFlow)
+### Phase 3: Tier 3 – Screen Data Loaders (ViewModel + StateFlow) (NEXT)
 
-* **Goal**: Modernize screen data fetching into reactive MVVM/MVI with `ViewModel` and `StateFlow`.
+* **Goal**: Modernize screen data fetching into reactive MVVM/MVI with Koin-injected `ViewModel` and `StateFlow`, while keeping existing XML layouts and `ListAdapter`s.
 * **Target Files & Conversions**:
   1. **`PlannerActivity.java` -> `PlannerActivity.kt` (+ `PlannerViewModel.kt`)**:
-     * Task: `PlannerTask extends AsyncTask<Criteria, Void, List<TransactionPlan>>` (lines 146–180).
-     * Action: Extract planning calculations into `PlannerViewModel`. Load transaction plans asynchronously using `viewModelScope` on `Dispatchers.IO`. Expose `StateFlow<PlannerUiState>` and collect with `repeatOnLifecycle` in the activity.
+     * Task: `PlannerTask extends AsyncTask<Void, Void, TransactionList>` (lines 146–168).
+     * Action: Extract planning calculations into `PlannerViewModel` (registered in `JavaAppKoin.kt`). Load transaction plans asynchronously using `viewModelScope` on `Dispatchers.IO`. Expose `StateFlow<PlannerUiState>` and collect with `repeatOnLifecycle` in the activity.
   2. **`MonthlyViewActivity.java` -> `MonthlyViewActivity.kt` (+ `MonthlyViewViewModel.kt`)**:
-     * Task: `MonthlyPreviewTask extends AsyncTask<Void, Void, MonthlyViewResult>` (lines 365–420).
-     * Action: Extract monthly aggregation queries and statement calculations into a ViewModel. Use `StateFlow` to drive calendar/monthly grid views, eliminating manual progress dialogs.
+     * Task: `MonthlyPreviewTask extends AsyncTask<Void, Void, TransactionList>` (lines 365–424).
+     * Action: Migrate `MonthlyViewActivity` from `android.app.ListActivity` to `FragmentActivity`. Extract monthly aggregation queries and statement calculations into `MonthlyViewViewModel` (registered in `JavaAppKoin.kt`). Use `StateFlow` to drive existing monthly list/views.
 * **Verification**:
   * Unit tests: `./gradlew :app:testDebugUnitTest`
-  * Manual: Verify transaction schedule projection in Planner; test monthly statement navigation and calendar rendering.
+  * Manual: Verify transaction schedule projection in Planner; test monthly statement navigation and credit card bill preview.
 
 ---
 
 ### Phase 4: Tier 4 – Complex Totals Calculations
 
-* **Goal**: Migrate multi-criteria total calculation tasks that update tab/summary counters.
+* **Goal**: Migrate multi-criteria total calculation tasks that update tab/summary counters using `lifecycleScope` and suspend functions.
 * **Target Files & Conversions**:
   1. **`AbstractTotalsDetailsActivity.java` -> `AbstractTotalsDetailsActivity.kt`**:
-     * Task: `CalculateAccountsTotalsTask extends AsyncTask<Void, Void, List<Total>>` (lines 80–135).
-     * Action: Convert activity hierarchy to Kotlin. Run database balance and currency aggregation queries on `Dispatchers.IO`. Update total header cards and account breakdown on Main.
-  2. **`BudgetListActivity.java` -> `BudgetListActivity.kt`**:
-     * Task: `BudgetTotalsCalculationTask extends AsyncTask<Void, Void, List<BudgetTotal>>` (lines 221–255).
-     * Action: Migrate background calculation to Coroutines / Flow. Eliminate legacy `Handler` communication in `BudgetsTotalCalculator`.
+     * Task: `CalculateAccountsTotalsTask extends AsyncTask<Void, Void, TotalsInfo>` (lines 80–141).
+     * Action: Convert activity to Kotlin. Run `prepareInBackground()`, `getTotals()`, `getTotalInHomeCurrency()`, and exchange rate lookups on `Dispatchers.IO` via `lifecycleScope`. Update total header cards and account breakdown on Main.
+  2. **`BudgetsTotalCalculator.java` -> `BudgetsTotalCalculator.kt` & `BudgetListActivity.java` -> `BudgetListActivity.kt`**:
+     * Task: `BudgetTotalsCalculationTask extends AsyncTask<Void, Total, Total>` (lines 221–257).
+     * Action: Convert `BudgetsTotalCalculator` and `BudgetListActivity` to Kotlin. Replace legacy `Handler` communication in `BudgetsTotalCalculator.updateBudgets` with suspend / dispatcher switches and launch total calculation in `BudgetListActivity` via `lifecycleScope`.
 * **Verification**:
   * Unit tests: `./gradlew :app:testDebugUnitTest --tests "*Budget*" --tests "*Total*"`
   * Manual: Verify Account Totals screen and Budget balances update correctly across multiple currencies.
@@ -110,10 +114,12 @@ It follows the guidelines defined in `.agents/skills/asynctask-to-coroutine/SKIL
      * Implementations:
        * `AccountTotalCalculationTask`
        * `BlotterTotalCalculationTask`
-     * Consumed by: `AccountListActivity`, `BlotterActivity`, `BudgetListActivity`, `EntityListActivity`, `ScheduledListActivity`.
-     * Migration Strategy: Replace base class with a domain use-case / repository function `CalculateTotalUseCase` emitting via `Flow<TotalResult>` or suspend function called from `ViewModel`/`lifecycleScope`.
+       * `AccountListActivity.AccountTotalsCalculationTask`
+       * `BudgetBlotterActivity` (anonymous `TotalCalculationTask`)
+     * Consumed by: `AccountListActivity`, `BlotterActivity`, `BudgetBlotterActivity`, `SplitsBlotterActivity`, `BlotterTotalsDetailsActivity`.
+     * Migration Strategy: Replace `AsyncTask` in `TotalCalculationTask` with coroutine execution (`Job` + `lifecycleScope` / `Dispatchers.IO`) or a domain calculator function, preserving clean cancellation (`stop()` / `cancel()`).
   2. **`ImportExportAsyncTask.java` Base Hierarchy**:
-     * Base class: Handles background DB transaction setup, progress dialog management, and `EventBus` posting.
+     * Base class: Handles background DB transaction setup, progress dialog management, and `EventBus` posting (`MenuListActivity` also migrated from `ListActivity` to `FragmentActivity`).
      * Concrete implementations (9 tasks):
        * `BackupExportTask`
        * `BackupImportTask`
@@ -123,8 +129,8 @@ It follows the guidelines defined in `.agents/skills/asynctask-to-coroutine/SKIL
        * `QifImportTask`
        * `DropboxBackupTask`
        * `DropboxRestoreTask`
-       * `GoogleDriveTask` / Online sync tasks
-     * Migration Strategy: Refactor into dedicated repository/service classes (`BackupRepository`, `CsvService`, `QifService`) returning `Result<T>` or emitting `Flow<ProgressUpdate>`. Update all invoking dialogs and activities.
+       * `DropboxListFilesTask`
+     * Migration Strategy: Refactor `ImportExportAsyncTask` and its 9 concrete tasks to Kotlin Coroutines (`Dispatchers.IO` with main-thread progress updates and Koin-provided scopes/services). Update all invoking dialogs and activities.
 * **Verification**:
   * Full regression test suite: `./gradlew :app:testDebugUnitTest`
   * Complete backup/restore, CSV import/export, and QIF import/export testing across local storage and cloud providers.

@@ -21,14 +21,15 @@ class AttributeListActivity : AbstractListActivity(R.layout.attributes_list) {
 		startActivityForResult(intent, 1)
 	}
 
-	override fun createAdapter(cursor: Cursor): ListAdapter = AttributeListAdapter(db, this, cursor)
+	override fun createAdapter(cursor: Cursor?): ListAdapter =
+		AttributeListAdapter(db, this, requireNotNull(cursor))
 
 	override fun createCursor(): Cursor = db.allAttributes
 
 	override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
 		super.onActivityResult(requestCode, resultCode, data)
 		if (resultCode == RESULT_OK) {
-			cursor.requery()
+			cursor?.requery()
 		}
 	}
 
@@ -39,7 +40,7 @@ class AttributeListActivity : AbstractListActivity(R.layout.attributes_list) {
 			.setMessage(R.string.attribute_delete_alert)
 			.setPositiveButton(R.string.delete) { _, _ ->
 				db.deleteAttribute(id)
-				cursor.requery()
+				cursor?.requery()
 			}
 			.setNegativeButton(R.string.cancel, null)
 			.show()
