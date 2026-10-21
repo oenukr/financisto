@@ -3,6 +3,7 @@
 package ru.orangesoftware.financisto.filter;
 
 import java.util.Calendar;
+import java.util.Objects;
 
 import ru.orangesoftware.financisto.blotter.BlotterFilter;
 import ru.orangesoftware.financisto.datetime.DateUtils;
@@ -93,6 +94,20 @@ public class DateTimeCriteria extends Criteria {
 
     public Period getPeriod() {
         return period;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        DateTimeCriteria that = (DateTimeCriteria) o;
+        return Objects.equals(period, that.period);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), period);
     }
 
 }

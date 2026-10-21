@@ -1,512 +1,403 @@
 // SPDX-License-Identifier: GPL-2.0-only
-package ru.orangesoftware.financisto.activity;
+package ru.orangesoftware.financisto.activity
 
-import android.app.ListActivity;
-import android.content.Context;
-import android.content.Intent;
-import android.graphics.Color;
-import android.os.AsyncTask;
-import android.os.Bundle;
-import android.view.MenuInflater;
-import android.view.MenuItem;
-import android.view.View;
-import android.widget.ImageButton;
-import android.widget.PopupMenu;
-import android.widget.TextView;
+import android.content.Context
+import android.content.Intent
+import android.graphics.Color
+import android.os.Bundle
+import android.view.View
+import android.widget.ImageButton
+import android.widget.ListView
+import android.widget.PopupMenu
+import android.widget.TextView
+import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.launch
+import org.koin.androidx.viewmodel.ext.android.viewModel
+import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.adapter.CreditCardStatementAdapter
+import ru.orangesoftware.financisto.model.Account
+import ru.orangesoftware.financisto.model.AccountType
+import ru.orangesoftware.financisto.model.Currency
+import ru.orangesoftware.financisto.model.TransactionInfo
+import ru.orangesoftware.financisto.utils.MyPreferences
+import ru.orangesoftware.financisto.utils.PinProtection
+import ru.orangesoftware.financisto.utils.Utils
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.GregorianCalendar
+import java.util.Locale
 
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.GregorianCalendar;
-import java.util.List;
+@Suppress("TooManyFunctions")
+class MonthlyViewActivity : FragmentActivity() {
 
-import ru.orangesoftware.financisto.R;
-import ru.orangesoftware.financisto.adapter.CreditCardStatementAdapter;
-import ru.orangesoftware.financisto.db.DatabaseAdapter;
-import ru.orangesoftware.financisto.model.Account;
-import ru.orangesoftware.financisto.model.AccountType;
-import ru.orangesoftware.financisto.model.Currency;
-import ru.orangesoftware.financisto.model.TransactionInfo;
-import ru.orangesoftware.financisto.utils.MonthlyViewPlanner;
-import ru.orangesoftware.financisto.utils.MyPreferences;
-import ru.orangesoftware.financisto.utils.PinProtection;
-import ru.orangesoftware.financisto.utils.TransactionList;
-import ru.orangesoftware.financisto.utils.Utils;
+    private val viewModel: MonthlyViewViewModel by viewModel()
 
-/**
- * Display the credit card bill, including scheduled and future transactions for a given period.
- * Display only expenses, ignoring payments (positive values) in Credit Card accounts.
- *
- * @author Abdsandryk
- */
-public class MonthlyViewActivity extends ListActivity {
+    private var accountId: Long = 0
+    private var account: Account? = null
+    private var currency: Currency? = null
+    private var isCreditCard: Boolean = false
+    private var isStatementPreview: Boolean = false
 
-    public static final String ACCOUNT_EXTRA = "account_id";
-    public static final String BILL_PREVIEW_EXTRA = "bill_preview";
+    private var title: String? = null
+    private var closingDay: Int = 0
+    private var paymentDay: Int = 0
 
-    private DatabaseAdapter db;
+    private var month: Int = 0
+    private var year: Int = 0
+    private var closingDate: Calendar? = null
 
-    private long accountId = 0;
-    private Account account;
-    private Currency currency;
-    private boolean isCreditCard = false;
-    private boolean isStatementPreview = false;
+    private lateinit var utils: Utils
+    private lateinit var listView: ListView
+    private lateinit var emptyTextView: TextView
+    private lateinit var titleTextView: TextView
+    private lateinit var resultTextView: TextView
+    private lateinit var resultLabelTextView: TextView
+    private lateinit var buttonPrevious: ImageButton
+    private lateinit var buttonNext: ImageButton
+    private lateinit var buttonPopup: ImageButton
 
-    private String title;
-    private int closingDay = 0;
-    private int paymentDay = 0;
-
-    private int month = 0;
-    private int year = 0;
-    private Calendar closingDate;
-
-    private Utils u;
-
-    private MonthlyPreviewTask currentTask;
-
-    @Override
-    protected void attachBaseContext(Context base) {
-        super.attachBaseContext(MyPreferences.switchLocale(base));
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(MyPreferences.switchLocale(base))
     }
 
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.monthly_view);
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.monthly_view)
 
-        u = new Utils(this);
+        utils = Utils(this)
+        bindViews()
 
-        Intent intent = getIntent();
-        if (intent != null) {
-            accountId = intent.getLongExtra(ACCOUNT_EXTRA, 0);
-            isStatementPreview = intent.getBooleanExtra(BILL_PREVIEW_EXTRA, false);
+        if (savedInstanceState != null) {
+            month = savedInstanceState.getInt(KEY_MONTH)
+            year = savedInstanceState.getInt(KEY_YEAR)
         }
-        initialize();
-        popupMenu();
-    }
 
-    @Override
-    public void onDestroy() {
-        cancelCurrentTask();
-        db.close();
-        super.onDestroy();
-    }
-
-    private void cancelCurrentTask() {
-        if (currentTask != null) {
-            currentTask.cancel(true);
-            currentTask = null;
+        intent?.let {
+            accountId = it.getLongExtra(ACCOUNT_EXTRA, 0L)
+            isStatementPreview = it.getBooleanExtra(BILL_PREVIEW_EXTRA, false)
         }
+
+        initializeData()
+        setupPopupMenu()
+        observeUiState()
     }
 
-    @Override
-    protected void onPause() {
-        super.onPause();
-        PinProtection.lock(this);
+    private fun bindViews() {
+        listView = findViewById(android.R.id.list)
+        emptyTextView = findViewById(android.R.id.empty)
+        listView.emptyView = emptyTextView
+        titleTextView = findViewById(R.id.monthly_view_title)
+        resultTextView = findViewById(R.id.monthly_result)
+        resultLabelTextView = findViewById(R.id.monthly_result_label)
+        buttonPrevious = findViewById(R.id.bt_month_previous)
+        buttonNext = findViewById(R.id.bt_month_next)
+        buttonPopup = findViewById(R.id.bt_popup)
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        PinProtection.unlock(this);
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putInt(KEY_MONTH, month)
+        outState.putInt(KEY_YEAR, year)
     }
 
-    /**
-     * Initialize data and GUI elements.
-     */
-    private void initialize() {
+    override fun onPause() {
+        super.onPause()
+        PinProtection.lock(this)
+    }
 
-        // get account data
-        db = new DatabaseAdapter(this);
-        db.open();
+    override fun onResume() {
+        super.onResume()
+        PinProtection.unlock(this)
+    }
 
-        // set currency based on account
-        account = db.getAccount(accountId);
+    private fun initializeData() {
+        account = viewModel.getAccount(accountId)
 
         if (month == 0 && year == 0) {
-            // get current month and year in first launch
-            Calendar cal = Calendar.getInstance();
-            month = cal.get(Calendar.MONTH) + 1;
-            year = cal.get(Calendar.YEAR);
+            val cal = Calendar.getInstance()
+            month = cal.get(Calendar.MONTH) + 1
+            year = cal.get(Calendar.YEAR)
         }
 
-        // set part of the title, based on account name: "<CCARD> Bill"
-        if (account != null) {
+        account?.let { acc ->
+            isCreditCard = AccountType.valueOf(acc.type).isCreditCard
+            currency = acc.currency
 
-            // get account type
-            isCreditCard = AccountType.valueOf(account.type).isCreditCard();
-
-            currency = account.currency;
-
-            if (isCreditCard) {
-                if (isStatementPreview) {
-                    // assuming that expensesOnly is true only if payment and closing days > 0 [BlotterActivity]
-                    title = getString(R.string.ccard_statement_title);
-                    String accountTitle = account.title;
-                    if (account.title == null || account.title.isEmpty()) {
-                        accountTitle = account.cardIssuer;
-                    }
-                    String toReplace = getString(R.string.ccard_par);
-                    title = title.replaceAll(toReplace, accountTitle);
-                    paymentDay = account.paymentDay;
-                    closingDay = account.closingDay;
-                    // set activity window title
-                    this.setTitle(R.string.ccard_statement);
-                    setCCardTitle();
-                    setCCardInterval();
-                } else {
-                    title = (account.title == null || account.title.isEmpty() ? account.cardIssuer : account.title);
-                    paymentDay = 1;
-                    closingDay = 31;
-                    setTitle();
-                    setInterval();
-
-                    // set payment date and label on total bar
-                    TextView totalLabel = findViewById(R.id.monthly_result_label);
-                    totalLabel.setText(getResources().getString(R.string.monthly_result));
-                }
+            if (isCreditCard && isStatementPreview) {
+                val rawTitle = getString(R.string.ccard_statement_title)
+                val accountTitle = acc.title.takeIf { !it.isNullOrEmpty() } ?: acc.cardIssuer.orEmpty()
+                title = rawTitle.replace(getString(R.string.ccard_par), accountTitle)
+                paymentDay = acc.paymentDay
+                closingDay = acc.closingDay
+                setTitle(R.string.ccard_statement)
+                setCCardTitle()
+                setCCardInterval()
             } else {
-                if (account.title == null || account.title.isEmpty()) {
-                    if (isCreditCard) {
-                        // title = <CARD_ISSUER>
-                        title = account.cardIssuer;
-                    } else {
-                        // title = <ACCOUNT_TYPE_TITLE>
-                        AccountType type = AccountType.valueOf(account.type);
-                        title = getString(type.getTitleId());
-                    }
-                } else {
-                    // title = <TITLE>
-                    title = account.title;
+                title = when {
+                    !acc.title.isNullOrEmpty() -> acc.title
+                    isCreditCard -> acc.cardIssuer
+                    else -> getString(AccountType.valueOf(acc.type).titleId)
                 }
-
-                paymentDay = 1;
-                closingDay = 31;
-                setTitle();
-                setInterval();
-
-                // set payment date and label on total bar
-                TextView totalLabel = findViewById(R.id.monthly_result_label);
-                totalLabel.setText(getResources().getString(R.string.monthly_result));
+                paymentDay = 1
+                closingDay = DEFAULT_CLOSING_DAY
+                setTitle()
+                setInterval()
+                resultLabelTextView.text = getString(R.string.monthly_result)
             }
 
-            ImageButton bPrevious = findViewById(R.id.bt_month_previous);
-            bPrevious.setOnClickListener(arg0 -> {
-                month--;
+            buttonPrevious.setOnClickListener {
+                month--
                 if (month < 1) {
-                    month = 12;
-                    year--;
+                    month = MONTHS_IN_YEAR
+                    year--
                 }
-                if (isCreditCard) {
-                    if (isStatementPreview) {
-                        setCCardTitle();
-                        setCCardInterval();
-                    } else {
-                        setTitle();
-                        setInterval();
-                    }
-                } else {
-                    setTitle();
-                    setInterval();
-                }
-            });
+                refreshIntervalAndView()
+            }
 
-            ImageButton bNext = findViewById(R.id.bt_month_next);
-            bNext.setOnClickListener(arg0 -> {
-                month++;
-                if (month > 12) {
-                    month = 1;
-                    year++;
+            buttonNext.setOnClickListener {
+                month++
+                if (month > MONTHS_IN_YEAR) {
+                    month = 1
+                    year++
                 }
-                if (isCreditCard) {
-                    if (isStatementPreview) {
-                        setCCardTitle();
-                        setCCardInterval();
-                    } else {
-                        setTitle();
-                        setInterval();
-                    }
-                } else {
-                    setTitle();
-                    setInterval();
-                }
-            });
-
+                refreshIntervalAndView()
+            }
         }
     }
 
-
-    /**
-     * Configure the interval based on the bill period of a credit card.
-     * Attention:
-     * Calendar.MONTH = 0 to 11
-     * integer  month = 1 to 12
-     */
-    private void setCCardInterval() {
-
-        Calendar close = getClosingDate(month, year);
-        Calendar open;
-
-        if (month > 1) {
-            // closing date from previous month
-            open = getClosingDate(month - 1, year);
+    private fun refreshIntervalAndView() {
+        if (isCreditCard && isStatementPreview) {
+            setCCardTitle()
+            setCCardInterval()
         } else {
-            open = getClosingDate(12, year - 1);
+            setTitle()
+            setInterval()
         }
-        // add one day to the closing date of previous month
-        open.add(Calendar.DAY_OF_MONTH, +1);
-
-        // adjust time for closing day
-        close.set(Calendar.HOUR_OF_DAY, 23);
-        close.set(Calendar.MINUTE, 59);
-        close.set(Calendar.SECOND, 59);
-
-        this.closingDate = new GregorianCalendar(close.get(Calendar.YEAR),
-                close.get(Calendar.MONTH),
-                close.get(Calendar.DAY_OF_MONTH));
-
-        // Verify custom closing date
-        int periodKey = Integer.parseInt(Integer.toString(close.get(Calendar.MONTH)) +
-                close.get(Calendar.YEAR));
-
-        int cd = db.getCustomClosingDay(accountId, periodKey);
-        if (cd > 0) {
-            // use custom closing day
-            close.set(Calendar.DAY_OF_MONTH, cd);
-        }
-
-        // Verify custom opening date = closing day of previous month + 1
-        periodKey = Integer.parseInt(Integer.toString(open.get(Calendar.MONTH)) +
-                open.get(Calendar.YEAR));
-
-        int od = db.getCustomClosingDay(accountId, periodKey);
-        if (od > 0) {
-            // use custom closing day
-            open.set(Calendar.DAY_OF_MONTH, od);
-            open.add(Calendar.DAY_OF_MONTH, +1);
-        }
-
-        fillData(open, close);
     }
 
-    private void popupMenu() {
-        final ImageButton bMenu = findViewById(R.id.bt_popup);
+    private fun setupPopupMenu() {
         if (isStatementPreview) {
-            bMenu.setOnClickListener(v -> {
-                PopupMenu popupMenu = new PopupMenu(MonthlyViewActivity.this, bMenu);
-                MenuInflater inflater = getMenuInflater();
-                inflater.inflate(R.menu.statement_preview_menu, popupMenu.getMenu());
-                popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
-                    @Override
-                    public boolean onMenuItemClick(MenuItem item) {
-                        onPopupMenuSelected(item.getItemId());
-                        return true;
-                    }
-                });
-                popupMenu.show();
-            });
+            buttonPopup.setOnClickListener {
+                val popupMenu = PopupMenu(this, buttonPopup)
+                menuInflater.inflate(R.menu.statement_preview_menu, popupMenu.menu)
+                popupMenu.setOnMenuItemClickListener { item ->
+                    onPopupMenuSelected(item.itemId)
+                    true
+                }
+                popupMenu.show()
+            }
         } else {
-            bMenu.setVisibility(View.GONE);
+            buttonPopup.visibility = View.GONE
         }
     }
 
-    public void onPopupMenuSelected(int id) {
-        if (id == R.id.opt_menu_closing_day) {// call credit card closing day sending period
-            Intent intent = new Intent(this, CCardStatementClosingDayActivity.class);
-            int closingDay = getClosingDate(month, year).get(Calendar.DAY_OF_MONTH);
-            intent.putExtra(CCardStatementClosingDayActivity.PERIOD_MONTH, closingDate.get(Calendar.MONTH));
-            intent.putExtra(CCardStatementClosingDayActivity.PERIOD_YEAR, closingDate.get(Calendar.YEAR));
-            intent.putExtra(CCardStatementClosingDayActivity.ACCOUNT, accountId);
-            intent.putExtra(CCardStatementClosingDayActivity.REGULAR_CLOSING_DAY, closingDay);
-            startActivityForResult(intent, 16);
+    fun onPopupMenuSelected(id: Int) {
+        if (id == R.id.opt_menu_closing_day) {
+            val intent = Intent(this, CCardStatementClosingDayActivity::class.java).apply {
+                val regularClosingDay = getClosingDate(month, year).get(Calendar.DAY_OF_MONTH)
+                closingDate?.let {
+                    putExtra(CCardStatementClosingDayActivity.PERIOD_MONTH, it.get(Calendar.MONTH))
+                    putExtra(CCardStatementClosingDayActivity.PERIOD_YEAR, it.get(Calendar.YEAR))
+                }
+                putExtra(CCardStatementClosingDayActivity.ACCOUNT, accountId)
+                putExtra(CCardStatementClosingDayActivity.REGULAR_CLOSING_DAY, regularClosingDay)
+            }
+            @Suppress("DEPRECATION")
+            startActivityForResult(intent, REQUEST_CODE_CLOSING_DAY)
         }
     }
 
-    /**
-     * Configure the interval in a monthly perspective.
-     * Attention:
-     * Calendar.MONTH = 0 to 11
-     * integer  month = 1 to 12
-     */
-    private void setInterval() {
-
-        Calendar close = new GregorianCalendar(year, month - 1, getLastDayOfMonth(month, year));
-        Calendar open = new GregorianCalendar(year, month - 1, 1);
-
-        // adjust time for closing day
-        close.set(Calendar.HOUR_OF_DAY, 23);
-        close.set(Calendar.MINUTE, 59);
-        close.set(Calendar.SECOND, 59);
-        close.set(Calendar.MILLISECOND, 999);
-
-        fillData(open, close);
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        @Suppress("DEPRECATION")
+        super.onActivityResult(requestCode, resultCode, data)
+        if (resultCode == RESULT_OK && data != null) {
+            val update = data.getIntExtra(CCardStatementClosingDayActivity.UPDATE_VIEW, 0)
+            if (update > 0) {
+                setCCardTitle()
+                setCCardInterval()
+            }
+        }
     }
 
-    // Returns the day on which the credit card bill closes for a given month/year.
-    private Calendar getClosingDate(int month, int year) {
-        int m = month;
+    private fun setCCardInterval() {
+        val close = getClosingDate(month, year).apply {
+            set(Calendar.HOUR_OF_DAY, END_OF_DAY_HOUR)
+            set(Calendar.MINUTE, END_OF_DAY_MINUTE)
+            set(Calendar.SECOND, END_OF_DAY_SECOND)
+        }
+
+        val open = if (month > 1) {
+            getClosingDate(month - 1, year)
+        } else {
+            getClosingDate(MONTHS_IN_YEAR, year - 1)
+        }.apply {
+            add(Calendar.DAY_OF_MONTH, 1)
+        }
+
+        closingDate = GregorianCalendar(
+            close.get(Calendar.YEAR),
+            close.get(Calendar.MONTH),
+            close.get(Calendar.DAY_OF_MONTH),
+        )
+
+        val closePeriodKey = "${close.get(Calendar.MONTH)}${close.get(Calendar.YEAR)}".toInt()
+        val cd = viewModel.getCustomClosingDay(accountId, closePeriodKey)
+        if (cd > 0) {
+            close.set(Calendar.DAY_OF_MONTH, cd)
+        }
+
+        val openPeriodKey = "${open.get(Calendar.MONTH)}${open.get(Calendar.YEAR)}".toInt()
+        val od = viewModel.getCustomClosingDay(accountId, openPeriodKey)
+        if (od > 0) {
+            open.set(Calendar.DAY_OF_MONTH, od)
+            open.add(Calendar.DAY_OF_MONTH, 1)
+        }
+
+        fillData(open, close)
+    }
+
+    private fun setInterval() {
+        val close = GregorianCalendar(year, month - 1, getLastDayOfMonth(month, year)).apply {
+            set(Calendar.HOUR_OF_DAY, END_OF_DAY_HOUR)
+            set(Calendar.MINUTE, END_OF_DAY_MINUTE)
+            set(Calendar.SECOND, END_OF_DAY_SECOND)
+            set(Calendar.MILLISECOND, END_OF_DAY_MILLISECOND)
+        }
+        val open = GregorianCalendar(year, month - 1, 1)
+        fillData(open, close)
+    }
+
+    private fun getClosingDate(month: Int, year: Int): Calendar {
+        var m = month
         if (closingDay > paymentDay) {
-            m--;
+            m--
         }
-        int maxDay = getLastDayOfMonth(m, year);
-        int day = closingDay;
-        if (closingDay > maxDay) {
-            day = maxDay;
-        }
-
-        return new GregorianCalendar(year, m - 1, day);
+        val maxDay = getLastDayOfMonth(m, year)
+        val day = if (closingDay > maxDay) maxDay else closingDay
+        return GregorianCalendar(year, m - 1, day)
     }
 
-    private int getLastDayOfMonth(int month, int year) {
-        Calendar calCurr = GregorianCalendar.getInstance();
-        calCurr.set(year, month - 1, 1); // Months are 0 to 11
-        return calCurr.getActualMaximum(GregorianCalendar.DAY_OF_MONTH);
+    private fun getLastDayOfMonth(month: Int, year: Int): Int {
+        val calCurr = GregorianCalendar.getInstance()
+        calCurr.set(year, month - 1, 1)
+        return calCurr.getActualMaximum(Calendar.DAY_OF_MONTH)
     }
 
-    private class MonthlyPreviewTask extends AsyncTask<Void, Void, TransactionList> {
-
-        private final Date open;
-        private final Date close;
-        private final Date now;
-
-        private MonthlyPreviewTask(Date open, Date close, Date now) {
-            this.open = open;
-            this.close = close;
-            this.now = now;
+    private fun fillData(open: Calendar, close: Calendar) {
+        account?.let { acc ->
+            viewModel.loadMonthlyPreview(
+                account = acc,
+                isStatementPreview = isStatementPreview,
+                open = open.time,
+                close = close.time,
+            )
         }
+    }
 
-        @Override
-        protected void onPreExecute() {
-            ((TextView) findViewById(android.R.id.empty)).setText(R.string.calculating);
-        }
-
-        @Override
-        protected TransactionList doInBackground(Void... voids) {
-            MonthlyViewPlanner planner = new MonthlyViewPlanner(db, account, isStatementPreview, open, close, now);
-            TransactionList transactions;
-            if (isStatementPreview) {
-                transactions = planner.getCreditCardStatement();
-            } else {
-                transactions = planner.getPlannedTransactionsWithTotals();
+    private fun observeUiState() {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.uiState.collect { state ->
+                    renderUiState(state)
+                }
             }
-            return transactions;
         }
+    }
 
-        @Override
-        protected void onPostExecute(TransactionList monthlyPreviewReport) {
-            List<TransactionInfo> transactions = monthlyPreviewReport.getTransactions();
-            long total = monthlyPreviewReport.getTotals()[0].balance;
-            if (transactions == null || transactions.isEmpty()) {
-                displayNoTransactions();
-            } else { // display data
-
-                // Mapping data to view
-                CreditCardStatementAdapter expenses = new CreditCardStatementAdapter(MonthlyViewActivity.this, R.layout.credit_card_transaction, transactions, currency, accountId);
-                expenses.setStatementPreview(isStatementPreview);
-                setListAdapter(expenses);
-
-                // calculate total
-                // display total
-                TextView totalText = findViewById(R.id.monthly_result);
-                if (isStatementPreview) {
-                    u.setAmountText(totalText, currency, (-1) * total, false);
-                    totalText.setTextColor(Color.BLACK);
+    private fun renderUiState(state: MonthlyViewUiState) {
+        when (state) {
+            is MonthlyViewUiState.Loading -> {
+                emptyTextView.setText(R.string.calculating)
+            }
+            is MonthlyViewUiState.Success -> {
+                if (state.transactions.isEmpty()) {
+                    displayNoTransactions()
                 } else {
-                    if (total < 0) {
-                        u.setAmountText(totalText, currency, (-1) * total, false);
-                        u.setNegativeColor(totalText);
-                    } else {
-                        u.setAmountText(totalText, currency, total, false);
-                        u.setPositiveColor(totalText);
-                    }
+                    displayTransactions(state.transactions, state.total, state.isStatementPreview)
                 }
+            }
+            is MonthlyViewUiState.Empty -> {
+                displayNoTransactions()
+            }
+            is MonthlyViewUiState.Error -> {
+                displayNoTransactions()
+                emptyTextView.text = state.message ?: getString(R.string.error)
             }
         }
     }
 
-    /**
-     * Get data for a given period and display the related credit card expenses.
-     *
-     * @param open  Start of period.
-     * @param close End of period.
-     */
-    private void fillData(Calendar open, Calendar close) {
-        cancelCurrentTask();
-        currentTask = new MonthlyPreviewTask(open.getTime(), close.getTime(), new Date());
-        currentTask.execute();
-    }
+    private fun displayTransactions(
+        transactions: List<TransactionInfo>,
+        total: Long,
+        statementPreview: Boolean,
+    ) {
+        val expenses = CreditCardStatementAdapter(
+            this,
+            R.layout.credit_card_transaction,
+            transactions,
+            currency,
+            accountId,
+        ).apply {
+            this.isStatementPreview = statementPreview
+        }
+        listView.adapter = expenses
 
-    private void displayNoTransactions() {
-        TextView totalText = findViewById(R.id.monthly_result);
-        // display total = 0
-        u.setAmountText(totalText, currency, 0, false);
-        totalText.setTextColor(Color.BLACK);
-        // hide list and display empty message
-        ((TextView) findViewById(android.R.id.empty)).setText(R.string.no_transactions);
-        setListAdapter(null);
-    }
-
-    /**
-     * Adjust the title based on the credit card's payment day.
-     */
-    private void setCCardTitle() {
-
-        Calendar date = new GregorianCalendar(year, month - 1, paymentDay);
-
-        String monthStr = Integer.toString(date.get(Calendar.MONTH) + 1);
-        String yearStr = Integer.toString(date.get(Calendar.YEAR));
-
-        String paymentDayStr;
-        if (paymentDay < 10) {
-            paymentDayStr = "0" + paymentDay;
+        if (statementPreview) {
+            utils.setAmountText(resultTextView, currency, -total, false)
+            resultTextView.setTextColor(Color.BLACK)
         } else {
-            paymentDayStr = Integer.toString(paymentDay);
-        }
-
-        if (monthStr.length() < 2) {
-            monthStr = "0" + monthStr;
-        }
-
-        String pd = paymentDayStr + "/" + monthStr + "/" + yearStr;
-
-        // set payment date and label on title bar
-        TextView label = findViewById(R.id.monthly_view_title);
-        label.setText(title + "\n" + pd);
-        // set payment date and label on total bar
-        TextView totalLabel = findViewById(R.id.monthly_result_label);
-        totalLabel.setText(getResources().getString(R.string.bill_on) + " " + pd);
-    }
-
-    /**
-     * Adjust the title based on the credit card's payment day.
-     */
-    private void setTitle() {
-
-        Calendar date = new GregorianCalendar(year, month - 1, 1);
-
-        SimpleDateFormat dateFormat = new SimpleDateFormat("MMMM yyyy");
-        String pd = dateFormat.format(date.getTime());
-
-        TextView label = findViewById(R.id.monthly_view_title);
-        label.setText(title + "\n" + pd);
-
-    }
-
-    // Update view
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        switch (resultCode) {
-            case RESULT_OK:
-                int update = data.getIntExtra(CCardStatementClosingDayActivity.UPDATE_VIEW, 0);
-                if (update > 0) {
-                    setCCardTitle();
-                    setCCardInterval();
-                }
-                break;
-            case RESULT_CANCELED:
-                break;
+            if (total < 0) {
+                utils.setAmountText(resultTextView, currency, -total, false)
+                utils.setNegativeColor(resultTextView)
+            } else {
+                utils.setAmountText(resultTextView, currency, total, false)
+                utils.setPositiveColor(resultTextView)
+            }
         }
     }
 
+    private fun displayNoTransactions() {
+        utils.setAmountText(resultTextView, currency, 0L, false)
+        resultTextView.setTextColor(Color.BLACK)
+        emptyTextView.setText(R.string.no_transactions)
+        listView.adapter = null
+    }
+
+    private fun setCCardTitle() {
+        val date = GregorianCalendar(year, month - 1, paymentDay)
+        val monthNum = date.get(Calendar.MONTH) + 1
+        val monthStr = if (monthNum < TWO_DIGIT_THRESHOLD) "0$monthNum" else monthNum.toString()
+        val yearStr = date.get(Calendar.YEAR).toString()
+        val paymentDayStr = if (paymentDay < TWO_DIGIT_THRESHOLD) "0$paymentDay" else paymentDay.toString()
+        val pd = "$paymentDayStr/$monthStr/$yearStr"
+
+        titleTextView.text = "$title\n$pd"
+        resultLabelTextView.text = "${getString(R.string.bill_on)} $pd"
+    }
+
+    private fun setTitle() {
+        val date = GregorianCalendar(year, month - 1, 1)
+        val dateFormat = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
+        val pd = dateFormat.format(date.time)
+        titleTextView.text = "$title\n$pd"
+    }
+
+    companion object {
+        const val ACCOUNT_EXTRA = "account_id"
+        const val BILL_PREVIEW_EXTRA = "bill_preview"
+        private const val REQUEST_CODE_CLOSING_DAY = 16
+        private const val END_OF_DAY_HOUR = 23
+        private const val END_OF_DAY_MINUTE = 59
+        private const val END_OF_DAY_SECOND = 59
+        private const val END_OF_DAY_MILLISECOND = 999
+        private const val MONTHS_IN_YEAR = 12
+        private const val DEFAULT_CLOSING_DAY = 31
+        private const val TWO_DIGIT_THRESHOLD = 10
+        private const val KEY_MONTH = "monthly_view_month"
+        private const val KEY_YEAR = "monthly_view_year"
+    }
 }

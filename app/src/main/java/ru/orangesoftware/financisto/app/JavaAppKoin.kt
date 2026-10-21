@@ -9,6 +9,7 @@ import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -20,9 +21,12 @@ import org.koin.core.component.inject
 import org.koin.core.context.startKoin
 import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.singleOf
+import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 import org.koin.dsl.onClose
 import ru.orangesoftware.financisto.BuildConfig
+import ru.orangesoftware.financisto.activity.MonthlyViewViewModel
+import ru.orangesoftware.financisto.activity.PlannerViewModel
 import ru.orangesoftware.financisto.appfunctions.AppFunctionDatabase
 import ru.orangesoftware.financisto.bus.GreenRobotBus
 import ru.orangesoftware.financisto.db.DatabaseAdapter
@@ -97,8 +101,15 @@ val exchangeRates = module {
     }
 }
 
+@Suppress("InjectDispatcher")
 val coroutineModule = module {
     single<CoroutineScope> { CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate) }
+    single<CoroutineDispatcher> { Dispatchers.IO }
+}
+
+val viewModelModule = module {
+    viewModelOf(::PlannerViewModel)
+    viewModelOf(::MonthlyViewViewModel)
 }
 
 val modules = listOf(
@@ -111,6 +122,7 @@ val modules = listOf(
     httpClient,
     exchangeRates,
     coroutineModule,
+    viewModelModule,
 )
 
 // Start

@@ -4,6 +4,9 @@ package ru.orangesoftware.financisto.filter;
 
 import android.content.Intent;
 
+import java.util.Arrays;
+import java.util.Objects;
+
 import ru.orangesoftware.financisto.blotter.BlotterFilter;
 import ru.orangesoftware.financisto.utils.ArrUtils;
 import ru.orangesoftware.financisto.utils.StringUtil;
@@ -171,6 +174,23 @@ public class Criteria {
     public void toIntent(String title, Intent intent) {
         intent.putExtra(WhereFilter.TITLE_EXTRA, title);
         intent.putExtra(WhereFilter.FILTER_EXTRA, new String[]{toStringExtra()});
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Criteria criteria = (Criteria) o;
+        return Objects.equals(columnName, criteria.columnName) &&
+                operation == criteria.operation &&
+                Arrays.equals(values, criteria.values);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = Objects.hash(columnName, operation);
+        result = 31 * result + Arrays.hashCode(values);
+        return result;
     }
     
     static class OrCriteria extends Criteria {
