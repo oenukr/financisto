@@ -1,22 +1,30 @@
+// SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.view;
+
+import static android.view.View.GONE;
+import static android.view.View.VISIBLE;
+import static ru.orangesoftware.financisto.activity.RequestPermission.isRequestingPermission;
 
 import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
-import androidx.core.content.FileProvider;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.widget.*;
+import android.widget.AutoCompleteTextView;
+import android.widget.CheckBox;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.RelativeLayout.LayoutParams;
+import android.widget.TextView;
+
+import androidx.core.content.FileProvider;
+
 import ru.orangesoftware.financisto.BuildConfig;
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.utils.PicturesUtil;
-
-import static android.view.View.GONE;
-import static android.view.View.VISIBLE;
-import static ru.orangesoftware.financisto.activity.RequestPermission.isRequestingPermission;
 
 public class NodeInflater {
 

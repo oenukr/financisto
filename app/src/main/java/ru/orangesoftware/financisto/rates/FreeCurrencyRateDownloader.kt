@@ -1,9 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.rates
 
-import kotlin.time.Clock
 import ru.orangesoftware.financisto.http.HttpClientWrapper
 import ru.orangesoftware.financisto.model.Currency
 import ru.orangesoftware.financisto.utils.Logger
+import kotlin.time.Clock
 
 class FreeCurrencyRateDownloader(
     private val httpClientWrapper: HttpClientWrapper,

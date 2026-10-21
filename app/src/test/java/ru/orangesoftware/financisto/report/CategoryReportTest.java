@@ -1,10 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.report;
 
 import org.junit.Test;
 
 import java.util.List;
 
-import ru.orangesoftware.financisto.graph.GraphStyle;
 import ru.orangesoftware.financisto.graph.GraphUnit;
 import ru.orangesoftware.financisto.test.DateTime;
 import ru.orangesoftware.financisto.test.TransactionBuilder;

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.db;
 
 import static ru.orangesoftware.financisto.db.DatabaseHelper.ACCOUNT_TABLE;

@@ -1,4 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.model;
+
+import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
@@ -9,8 +12,6 @@ import ru.orangesoftware.financisto.test.AccountBuilder;
 import ru.orangesoftware.financisto.test.CategoryBuilder;
 import ru.orangesoftware.financisto.test.DateTime;
 import ru.orangesoftware.financisto.test.TransactionBuilder;
-
-import static org.junit.Assert.*;
 
 public class BudgetTest extends AbstractDbTest {
 

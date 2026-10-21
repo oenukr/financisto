@@ -1,6 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.recur
 
-import java.text.ParseException
 import java.util.Calendar
 import java.util.Date
 import kotlin.time.Instant

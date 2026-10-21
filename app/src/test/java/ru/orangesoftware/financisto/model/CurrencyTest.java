@@ -1,4 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.model;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -6,8 +11,6 @@ import ru.orangesoftware.financisto.db.AbstractDbTest;
 import ru.orangesoftware.financisto.test.AccountBuilder;
 import ru.orangesoftware.financisto.test.CurrencyBuilder;
 import ru.orangesoftware.financisto.utils.Utils;
-
-import static org.junit.Assert.*;
 
 public class CurrencyTest extends AbstractDbTest {
 

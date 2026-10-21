@@ -1,4 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.widget;
+
+import static ru.orangesoftware.financisto.activity.AbstractActivity.setVisibility;
 
 import android.app.Activity;
 import android.view.View;
@@ -11,8 +14,6 @@ import ru.orangesoftware.financisto.activity.AbstractActivity;
 import ru.orangesoftware.financisto.activity.ActivityLayout;
 import ru.orangesoftware.financisto.model.Currency;
 import ru.orangesoftware.financisto.utils.MyPreferences;
-
-import static ru.orangesoftware.financisto.activity.AbstractActivity.setVisibility;
 
 /**
  * Created by IntelliJ IDEA.

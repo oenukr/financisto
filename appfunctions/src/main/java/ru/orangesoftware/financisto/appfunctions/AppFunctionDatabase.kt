@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.appfunctions
 
 data class AccountInfo(val id: Long, val title: String)

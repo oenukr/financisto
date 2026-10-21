@@ -1,11 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.service;
+
+import static org.junit.Assert.assertEquals;
+import static ru.orangesoftware.financisto.test.DateTime.date;
 
 import java.util.Date;
 
 import ru.orangesoftware.financisto.test.DateTime;
-
-import static ru.orangesoftware.financisto.test.DateTime.date;
-import static org.junit.Assert.*;
 
 public class AutoBackupSchedulerTest {
 

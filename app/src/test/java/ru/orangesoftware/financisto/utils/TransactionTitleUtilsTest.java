@@ -1,10 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.utils;
 
-import ru.orangesoftware.financisto.model.Category;
-
+import static org.junit.Assert.assertEquals;
 import static ru.orangesoftware.financisto.utils.TransactionTitleUtils.generateTransactionTitle;
 
-import static org.junit.Assert.*;
+import ru.orangesoftware.financisto.model.Category;
 
 public class TransactionTitleUtilsTest {
 

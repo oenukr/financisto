@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.service;
 
 import static ru.orangesoftware.financisto.service.FinancistoSmsWorkManager.ACTION_NEW_TRANSACTION_SMS;
