@@ -1,12 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.export;
+
+import static org.junit.Assert.assertNotNull;
 
 import ru.orangesoftware.financisto.db.AbstractDbTest;
 import ru.orangesoftware.financisto.model.Account;
 import ru.orangesoftware.financisto.model.AccountType;
 import ru.orangesoftware.financisto.model.Currency;
 import ru.orangesoftware.financisto.test.CurrencyBuilder;
-
-import static org.junit.Assert.assertNotNull;
 
 public abstract class AbstractImportExportTest extends AbstractDbTest {
 

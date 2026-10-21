@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.report
 
 import ru.orangesoftware.financisto.activity.BlotterActivity
@@ -7,7 +8,6 @@ import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.db.DatabaseHelper.V_REPORT_PROJECTS
 import ru.orangesoftware.financisto.filter.Criteria
 import ru.orangesoftware.financisto.filter.WhereFilter
-import ru.orangesoftware.financisto.graph.GraphStyle
 import ru.orangesoftware.financisto.model.Currency
 
 class ProjectsReport(

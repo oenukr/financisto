@@ -1,12 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.service;
+
+import static org.junit.Assert.assertEquals;
 
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 
 import ru.orangesoftware.financisto.model.TransactionInfo;
-
-import static org.junit.Assert.*;
 
 public class RecurrenceComparatorTest {
 

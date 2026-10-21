@@ -1,9 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.report;
 
 import androidx.annotation.NonNull;
 
 import ru.orangesoftware.financisto.R;
-import ru.orangesoftware.financisto.graph.GraphStyle;
 import ru.orangesoftware.financisto.model.Currency;
 import ru.orangesoftware.financisto.utils.SummaryEntityEnum;
 

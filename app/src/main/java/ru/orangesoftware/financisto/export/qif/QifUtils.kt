@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.export.qif
 
 import ru.orangesoftware.financisto.app.DependenciesHolder
@@ -6,10 +7,8 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.NumberFormat
 import java.time.LocalDate
-import java.time.Year
 import java.time.ZoneId
 import java.time.format.DateTimeFormatterBuilder
-import java.time.temporal.ChronoField
 import java.util.Date
 import java.util.Locale
 

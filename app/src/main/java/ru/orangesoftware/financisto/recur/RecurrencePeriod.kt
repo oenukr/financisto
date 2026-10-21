@@ -1,9 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.recur
 
 import ru.orangesoftware.financisto.datetime.DateUtils
 import java.util.Calendar
-import java.util.Date
-import java.util.GregorianCalendar
 
 class RecurrencePeriod(@JvmField val until: RecurrenceUntil, @JvmField val params: String?) {
 

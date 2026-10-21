@@ -1,7 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.rates;
 
 import static org.junit.Assert.assertEquals;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.runner.RunWith;
 import org.mockito.MockitoAnnotations;
 import org.robolectric.RobolectricTestRunner;
@@ -13,11 +16,8 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import ru.orangesoftware.financisto.http.FakeHttpClientWrapper;
-import ru.orangesoftware.financisto.model.Currency;
 import ru.orangesoftware.financisto.http.TestKoinHelper;
-
-import org.junit.After;
-import org.junit.Before;
+import ru.orangesoftware.financisto.model.Currency;
 
 @RunWith(RobolectricTestRunner.class)
 public abstract class AbstractRatesDownloaderTest {

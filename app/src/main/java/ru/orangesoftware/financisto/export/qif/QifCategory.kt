@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.export.qif
 
 import ru.orangesoftware.financisto.export.CategoryInfo

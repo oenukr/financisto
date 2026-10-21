@@ -1,5 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.report
 
+import android.database.Cursor
+import ru.orangesoftware.financisto.datetime.Period
+import ru.orangesoftware.financisto.datetime.PeriodType
 import ru.orangesoftware.financisto.datetime.PeriodType.LAST_MONTH
 import ru.orangesoftware.financisto.datetime.PeriodType.LAST_WEEK
 import ru.orangesoftware.financisto.datetime.PeriodType.THIS_AND_LAST_MONTH
@@ -8,18 +12,12 @@ import ru.orangesoftware.financisto.datetime.PeriodType.THIS_MONTH
 import ru.orangesoftware.financisto.datetime.PeriodType.THIS_WEEK
 import ru.orangesoftware.financisto.datetime.PeriodType.TODAY
 import ru.orangesoftware.financisto.datetime.PeriodType.YESTERDAY
-import ru.orangesoftware.financisto.db.DatabaseHelper.V_REPORT_PERIOD
-
-import android.database.Cursor
-
-import ru.orangesoftware.financisto.datetime.Period
-import ru.orangesoftware.financisto.datetime.PeriodType
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.db.DatabaseHelper.ReportColumns
+import ru.orangesoftware.financisto.db.DatabaseHelper.V_REPORT_PERIOD
 import ru.orangesoftware.financisto.filter.Criteria
 import ru.orangesoftware.financisto.filter.DateTimeCriteria
 import ru.orangesoftware.financisto.filter.WhereFilter
-import ru.orangesoftware.financisto.graph.GraphStyle
 import ru.orangesoftware.financisto.graph.GraphUnit
 import ru.orangesoftware.financisto.model.Currency
 

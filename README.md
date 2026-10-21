@@ -21,7 +21,6 @@ Financisto is an open-source personal finance tracker for Android platform.
 - Automatic daily backups
 - QIF/CSV import/export
 
-## License
+## Licensing
 
-GNU General Public License v2.0
-See [License](license.txt)
+This project is licensed under the GNU General Public License v2.0 only - see the [LICENSE](LICENSE) file for details.

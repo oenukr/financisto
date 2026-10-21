@@ -1,9 +1,14 @@
+// SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.recur;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static ru.orangesoftware.financisto.test.DateTime.date;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -14,9 +19,6 @@ import java.util.TimeZone;
 
 import ru.orangesoftware.financisto.test.DateTime;
 import timber.log.Timber;
-import org.junit.Test;
-import org.junit.Before;
-import org.junit.After;
 
 public class RecurrenceTest {
 

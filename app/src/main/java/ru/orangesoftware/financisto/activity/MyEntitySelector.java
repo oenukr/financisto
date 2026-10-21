@@ -1,4 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.activity;
+
+import static ru.orangesoftware.financisto.activity.AbstractActivity.setVisibility;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -22,8 +25,6 @@ import ru.orangesoftware.financisto.model.MultiChoiceItem;
 import ru.orangesoftware.financisto.model.MyEntity;
 import ru.orangesoftware.financisto.utils.ArrUtils;
 import ru.orangesoftware.financisto.utils.Utils;
-
-import static ru.orangesoftware.financisto.activity.AbstractActivity.setVisibility;
 
 public abstract class MyEntitySelector<T extends MyEntity, A extends AbstractActivity> {
 

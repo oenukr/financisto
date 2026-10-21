@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.model;
 
 import static ru.orangesoftware.financisto.db.DatabaseHelper.TRANSACTION_TABLE;

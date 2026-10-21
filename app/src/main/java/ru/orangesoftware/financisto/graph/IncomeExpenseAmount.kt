@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.graph
 
 import ru.orangesoftware.financisto.report.IncomeExpense

@@ -1,13 +1,15 @@
+// SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.adapter;
 
 import android.content.Context;
-import androidx.core.content.ContextCompat;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
+
+import androidx.core.content.ContextCompat;
 
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.utils.EntityEnum;

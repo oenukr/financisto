@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.export.drive;
 
 import com.google.android.gms.common.ConnectionResult;
