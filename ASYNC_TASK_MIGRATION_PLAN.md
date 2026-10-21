@@ -33,7 +33,7 @@ It follows the guidelines defined in `.agents/skills/asynctask-to-coroutine/SKIL
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Phase 1** | Tier 1 | `SmsTemplateListAsyncAdapter` (`UpdateSortOrderTask`, `DeleteTask`)<br>`IntegrityCheckTask`<br>`MenuListItem` (`IntegrityFixTask`) | Very Low | Isolated operations, simple UI callbacks, self-contained background tasks | **COMPLETED** |
 | **Phase 2** | Tier 2 | `AbstractListActivity`<br>`PurgeAccountActivity` (`PurgeAccountTask`)<br>`RateNode` (`RateDownloadTask`)<br>`ExchangeRatesListActivity` (`RatesDownloadTask`) | Low–Medium | Base `ListActivity` -> `FragmentActivity` migration + single-screen tasks with progress dialogs | **COMPLETED** |
-| **Phase 3** | Tier 3 | `PlannerActivity` (`PlannerTask`)<br>`MonthlyViewActivity` (`MonthlyPreviewTask`) | Medium | Screen data-loading; benefits from ViewModel + StateFlow pattern | **PLANNED** |
+| **Phase 3** | Tier 3 | `PlannerActivity` (`PlannerTask`)<br>`MonthlyViewActivity` (`MonthlyPreviewTask`) | Medium | Screen data-loading; benefits from ViewModel + StateFlow pattern | **COMPLETED** |
 | **Phase 4** | Tier 4 | `AbstractTotalsDetailsActivity` (`CalculateAccountsTotalsTask`)<br>`BudgetListActivity` (`BudgetTotalsCalculationTask`)<br>`BudgetsTotalCalculator` | Medium–High | Complex calculations, aggregation queries, and list adapters | **PLANNED** |
 | **Phase 5** | Tier 5 | `TotalCalculationTask` hierarchy (`AccountTotalCalculationTask`, `BlotterTotalCalculationTask`)<br>`ImportExportAsyncTask` hierarchy (9 concrete tasks) | High | Wide architectural impact across base classes and numerous callers/screens | **PLANNED** |
 
@@ -74,23 +74,27 @@ It follows the guidelines defined in `.agents/skills/asynctask-to-coroutine/SKIL
 
 ---
 
-### Phase 3: Tier 3 – Screen Data Loaders (ViewModel + StateFlow) (NEXT)
+### Phase 3: Tier 3 – Screen Data Loaders (ViewModel + StateFlow) (COMPLETED)
 
 * **Goal**: Modernize screen data fetching into reactive MVVM/MVI with Koin-injected `ViewModel` and `StateFlow`, while keeping existing XML layouts and `ListAdapter`s.
-* **Target Files & Conversions**:
-  1. **`PlannerActivity.java` -> `PlannerActivity.kt` (+ `PlannerViewModel.kt`)**:
+* **Work Done**:
+  1. [x] **`PlannerActivity.java` -> `PlannerActivity.kt` (+ `PlannerViewModel.kt`)**:
      * Task: `PlannerTask extends AsyncTask<Void, Void, TransactionList>` (lines 146–168).
-     * Action: Extract planning calculations into `PlannerViewModel` (registered in `JavaAppKoin.kt`). Load transaction plans asynchronously using `viewModelScope` on `Dispatchers.IO`. Expose `StateFlow<PlannerUiState>` and collect with `repeatOnLifecycle` in the activity.
-  2. **`MonthlyViewActivity.java` -> `MonthlyViewActivity.kt` (+ `MonthlyViewViewModel.kt`)**:
+     * Action: Converted `PlannerActivity` to Kotlin and deleted `PlannerActivity.java`. Extracted planning calculations (`FuturePlanner.getPlannedTransactionsWithTotals()`) into `PlannerViewModel` constructor-injecting `DatabaseAdapter` and `CoroutineDispatcher` (defaulting to `Dispatchers.IO`). Emits `StateFlow<PlannerUiState>` (`Loading`, `Success`, `Empty`, `Error`) collected via `repeatOnLifecycle(Lifecycle.State.STARTED)` in `PlannerActivity.kt`. Cancels prior in-flight jobs on filter reload. Registered in `JavaAppKoin.kt` via `viewModelOf(::PlannerViewModel)`.
+  2. [x] **`MonthlyViewActivity.java` -> `MonthlyViewActivity.kt` (+ `MonthlyViewViewModel.kt`)**:
      * Task: `MonthlyPreviewTask extends AsyncTask<Void, Void, TransactionList>` (lines 365–424).
-     * Action: Migrate `MonthlyViewActivity` from `android.app.ListActivity` to `FragmentActivity`. Extract monthly aggregation queries and statement calculations into `MonthlyViewViewModel` (registered in `JavaAppKoin.kt`). Use `StateFlow` to drive existing monthly list/views.
+     * Action: Converted `MonthlyViewActivity` to Kotlin and deleted `MonthlyViewActivity.java`. Migrated base class from `android.app.ListActivity` to `androidx.fragment.app.FragmentActivity`, manually binding `android.R.id.list` and `android.R.id.empty`. Extracted monthly aggregation queries and statement calculations (`MonthlyViewPlanner`) into `MonthlyViewViewModel` constructor-injecting `DatabaseAdapter` and `CoroutineDispatcher` (defaulting to `Dispatchers.IO`). Emits `StateFlow<MonthlyViewUiState>` (`Loading`, `Success`, `Empty`, `Error`) collected via `repeatOnLifecycle(Lifecycle.State.STARTED)`. Registered in `JavaAppKoin.kt` via `viewModelOf(::MonthlyViewViewModel)`.
+  3. [x] **Koin Dependency Injection**:
+     * Registered `CoroutineDispatcher` (`Dispatchers.IO`) in `coroutineModule` and `viewModelModule` (`PlannerViewModel`, `MonthlyViewViewModel`) in `modules` list.
+  4. [x] **Robolectric Unit Testing**:
+     * Added comprehensive unit test suites in `PlannerViewModelTest.kt` and `MonthlyViewViewModelTest.kt` verifying state transitions, recurrence projection, credit card statement preview, error propagation, and job cancellation.
 * **Verification**:
-  * Unit tests: `./gradlew :app:testDebugUnitTest`
-  * Manual: Verify transaction schedule projection in Planner; test monthly statement navigation and credit card bill preview.
+  * Static analysis: `./gradlew detekt` (0 findings)
+  * Unit tests & build: `./gradlew :app:testDebugUnitTest assembleDebug`
 
 ---
 
-### Phase 4: Tier 4 – Complex Totals Calculations
+### Phase 4: Tier 4 – Complex Totals Calculations (NEXT)
 
 * **Goal**: Migrate multi-criteria total calculation tasks that update tab/summary counters using `lifecycleScope` and suspend functions.
 * **Target Files & Conversions**:

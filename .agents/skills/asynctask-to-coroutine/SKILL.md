@@ -79,7 +79,8 @@ Identify all components of the target task:
    - Check what views are updated in `onPreExecute()`, `onProgressUpdate()`, `onCancelled()`, and `onPostExecute()`.
    - Move any legacy off-thread `setResult(...)` or `finish()` calls out of `doInBackground()` onto the Main thread after `ProgressDialog` dismissal (`if (!isFinishing && !isDestroyed) dialog.dismiss()`).
    - Keep existing XML layouts and `ListAdapter`s intact during `AsyncTask` migrations unless a Compose UI rewrite is explicitly requested.
-   - Register new `ViewModel`s, repositories, and `CoroutineDispatcher`s in Koin (`JavaAppKoin.kt` via `viewModelOf` / `factoryOf` / `singleOf`).
+   - Inject `CoroutineDispatcher` via constructor (required by Detekt's `InjectDispatcher` rule) and register `single<CoroutineDispatcher> { Dispatchers.IO }` plus new `ViewModel`s (`viewModelOf`) in `JavaAppKoin.kt` so `KoinInjectionTest.checkKoinModule()` passes.
+   - **Legacy Java Models in `UiState`**: Check whether domain/filter objects held in `UiState` (e.g., `WhereFilter`, `Criteria`, `Array<Total>`) are legacy Java classes lacking `equals`/`hashCode`. Per `AGENTS.md` (*"Do not write new Java code"*), never silently add Java `equals`/`hashCode` boilerplate to `.java` files—either propose converting those classes to Kotlin during planning, or avoid relying on their structural equality if out of scope.
 
 ---
 
@@ -148,12 +149,25 @@ class DataReportViewModel(
                     processReport(rawData)
                 }
 
+                // Guard against cancelled blocking calls overwriting newer state
+                coroutineContext.ensureActive()
                 _uiState.value = UiState.Success(processedData)
             } catch (e: CancellationException) {
                 // Must rethrow CancellationException for structured concurrency
                 throw e
             } catch (e: Exception) {
+                coroutineContext.ensureActive()
                 _uiState.value = UiState.Error(e.localizedMessage ?: "Unknown error occurred", e)
+            }
+        }
+    }
+
+    fun onErrorShown() {
+        _uiState.update { currentState ->
+            if (currentState is UiState.Error) {
+                UiState.Idle // Or Empty state preserving current filter/context
+            } else {
+                currentState
             }
         }
     }
@@ -219,7 +233,10 @@ class ReportActivity : AppCompatActivity() {
                     progressBar.isVisible = state is UiState.Loading
                     when (state) {
                         is UiState.Success -> adapter.submitList(state.data.items)
-                        is UiState.Error -> showErrorDialog(state.message)
+                        is UiState.Error -> {
+                            showErrorToastOrDialog(state.message)
+                            viewModel.onErrorShown() // Consume one-shot error so StateFlow replay on restart does not re-trigger it
+                        }
                         else -> Unit
                     }
                 }
@@ -265,8 +282,10 @@ In Financisto commit `74ccf22` (`Issue 51 replace internal chart solution (#64)`
 - **Never Leak Context or Views**: Never pass an `Activity`, `View`, or `Dialog` into a `ViewModel` or `suspend` function.
 - **Never Swallow `CancellationException`**: If catching `Exception`, always rethrow `CancellationException` to allow coroutine cancellation to propagate.
 - **Avoid GlobalScope**: Never use `GlobalScope.launch`. Use `viewModelScope`, `lifecycleScope`, or an injected `CoroutineScope` with a supervised lifecycle.
-- **Cooperative Cancellation**: Coroutines are cooperative. In tight or long loops, call `ensureActive()` or `yield()` to allow timely cancellation.
-- **Hardcoded Dispatchers**: Avoid hardcoding `Dispatchers.IO` directly inside classes without constructor injection if unit testing is required.
+- **Cooperative Cancellation Before State Assignment**: Blocking legacy Java helpers (e.g., `FuturePlanner`, `MonthlyViewPlanner`, `DatabaseAdapter`) do not suspend. Always call `coroutineContext.ensureActive()` immediately before assigning `_uiState.value` in `try` and `catch` blocks so a cancelled in-flight job cannot overwrite a newer job's state.
+- **One-Shot Errors in `StateFlow`**: `StateFlow` replays its latest value whenever `repeatOnLifecycle(Lifecycle.State.STARTED)` restarts collection (e.g., returning from another Activity or background). Never trigger a `Toast`, `Snackbar`, or `Dialog` from `UiState.Error` without either rendering into an idempotent view or immediately consuming the error via `viewModel.onErrorShown()` (preserving active filter/screen state).
+- **Hardcoded Dispatchers & Koin Verification**: Detekt enforces `InjectDispatcher` (`IO`, `Default`, `Unconfined`) and `KoinInjectionTest` verifies all constructor parameters of Koin definitions. Always inject `CoroutineDispatcher` in `ViewModel` constructors and ensure `CoroutineDispatcher` is registered in `JavaAppKoin.kt`.
+- **No New Java Boilerplate in Legacy Classes**: Do not add new Java methods (such as `equals`/`hashCode`) to legacy `.java` files just to support `UiState` data class equality. Offer to convert touched legacy Java classes to Kotlin during planning, or keep them untouched if out of scope.
 - **Java-to-Kotlin Interop Pitfalls**:
   - **Never combine `@JvmField` with `lateinit var`**: `lateinit var` already exposes a backing field with the same visibility as its setter to Java callers; adding `@JvmField` causes `INAPPLICABLE_JVM_FIELD`.
   - **Platform-type nullability in existing Kotlin subclasses**: When converting a Java base class (e.g., `AbstractListActivity`) to Kotlin, check all existing Kotlin subclasses for overrides of platform-typed parameters (e.g., `Cursor` vs `Cursor?`) and align their nullability.

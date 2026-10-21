@@ -2,6 +2,8 @@
 
 package ru.orangesoftware.financisto.filter;
 
+import java.util.Objects;
+
 import ru.orangesoftware.financisto.blotter.BlotterFilter;
 
 /**
@@ -30,6 +32,20 @@ public class SingleCategoryCriteria extends Criteria {
 
     public long getCategoryId() {
         return categoryId;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        SingleCategoryCriteria that = (SingleCategoryCriteria) o;
+        return categoryId == that.categoryId;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), categoryId);
     }
 
 }

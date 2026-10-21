@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 
 import ru.orangesoftware.financisto.activity.DateFilterActivity;
 import ru.orangesoftware.financisto.blotter.BlotterFilter;
@@ -358,6 +359,21 @@ public class WhereFilter {
 			return new DateTimeCriteria(p);
 		}
 		
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		WhereFilter that = (WhereFilter) o;
+		return Objects.equals(title, that.title) &&
+				Objects.equals(criterias, that.criterias) &&
+				Objects.equals(sorts, that.sorts);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(title, criterias, sorts);
 	}
 
 }
