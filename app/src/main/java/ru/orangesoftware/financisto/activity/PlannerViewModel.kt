@@ -64,6 +64,7 @@ sealed interface PlannerUiState {
     data class Error(
         val message: String?,
         val cause: Throwable? = null,
+        val filter: WhereFilter = WhereFilter.empty(),
     ) : PlannerUiState
 }
 
@@ -77,6 +78,13 @@ class PlannerViewModel(
     val uiState: StateFlow<PlannerUiState> = _uiState.asStateFlow()
 
     private var loadJob: Job? = null
+
+    fun onErrorShown() {
+        val currentState = _uiState.value
+        if (currentState is PlannerUiState.Error) {
+            _uiState.value = PlannerUiState.Empty(filter = currentState.filter)
+        }
+    }
 
     @Suppress("TooGenericExceptionCaught")
     fun loadPlannedTransactions(filter: WhereFilter, now: Date = Date()) {
@@ -107,6 +115,7 @@ class PlannerViewModel(
                 _uiState.value = PlannerUiState.Error(
                     message = e.localizedMessage ?: "Failed to calculate planned transactions",
                     cause = e,
+                    filter = filterCopy,
                 )
             }
         }

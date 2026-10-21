@@ -73,6 +73,7 @@ class PlannerActivity : AbstractListActivity(R.layout.planner) {
             }
             is PlannerUiState.Error -> {
                 Toast.makeText(this, state.message ?: getString(R.string.error), Toast.LENGTH_SHORT).show()
+                viewModel.onErrorShown()
             }
         }
     }

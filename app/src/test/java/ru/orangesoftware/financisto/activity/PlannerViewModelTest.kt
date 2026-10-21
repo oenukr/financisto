@@ -135,6 +135,12 @@ class PlannerViewModelTest : AbstractDbTest() {
         val errorState = state as PlannerUiState.Error
         assertEquals("Database query failed", errorState.message)
         assertNotNull(errorState.cause)
+        assertEquals(filter, errorState.filter)
+
+        viewModel.onErrorShown()
+        val consumedState = viewModel.uiState.value
+        assertTrue("Expected Empty state after onErrorShown, got $consumedState", consumedState is PlannerUiState.Empty)
+        assertEquals(filter, (consumedState as PlannerUiState.Empty).filter)
     }
 
     @Test
