@@ -163,8 +163,12 @@ class DataReportViewModel(
     }
 
     fun onErrorShown() {
-        if (_uiState.value is UiState.Error) {
-            _uiState.value = UiState.Idle // Or Empty state preserving current filter/context
+        _uiState.update { currentState ->
+            if (currentState is UiState.Error) {
+                UiState.Idle // Or Empty state preserving current filter/context
+            } else {
+                currentState
+            }
         }
     }
 }

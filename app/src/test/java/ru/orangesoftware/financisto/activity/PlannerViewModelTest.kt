@@ -140,7 +140,10 @@ class PlannerViewModelTest : AbstractDbTest() {
         viewModel.onErrorShown()
         val consumedState = viewModel.uiState.value
         assertTrue("Expected Empty state after onErrorShown, got $consumedState", consumedState is PlannerUiState.Empty)
-        assertEquals(filter, (consumedState as PlannerUiState.Empty).filter)
+        val emptyState = consumedState as PlannerUiState.Empty
+        assertEquals(filter, emptyState.filter)
+        assertEquals(1, emptyState.totals.size)
+        assertEquals(Total.ZERO, emptyState.totals[0])
     }
 
     @Test

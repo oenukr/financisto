@@ -170,10 +170,8 @@ class PlannerActivity : AbstractListActivity(R.layout.planner) {
     }
 
     private fun setTotals(totals: Array<Total>) {
-        if (totals.isNotEmpty()) {
-            val u = Utils(this)
-            u.setTotal(totalText, totals[0])
-        }
+        val u = Utils(this)
+        u.setTotal(totalText, totals.firstOrNull() ?: Total.ZERO)
     }
 
     companion object {

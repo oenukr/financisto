@@ -11,6 +11,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.filter.WhereFilter
@@ -80,9 +81,15 @@ class PlannerViewModel(
     private var loadJob: Job? = null
 
     fun onErrorShown() {
-        val currentState = _uiState.value
-        if (currentState is PlannerUiState.Error) {
-            _uiState.value = PlannerUiState.Empty(filter = currentState.filter)
+        _uiState.update { currentState ->
+            if (currentState is PlannerUiState.Error) {
+                PlannerUiState.Empty(
+                    totals = arrayOf(Total.ZERO),
+                    filter = currentState.filter,
+                )
+            } else {
+                currentState
+            }
         }
     }
 
