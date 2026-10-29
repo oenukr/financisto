@@ -96,6 +96,8 @@ class BudgetListActivity : AbstractListActivity(R.layout.budget_list) {
 
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        @Suppress("DEPRECATION")
+        super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == FILTER_BUDGET_REQUEST) {
             if (resultCode == RESULT_FIRST_USER) {
                 filter.clear()
