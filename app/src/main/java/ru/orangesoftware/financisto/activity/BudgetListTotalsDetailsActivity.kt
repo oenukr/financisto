@@ -19,8 +19,8 @@ class BudgetListTotalsDetailsActivity : AbstractTotalsDetailsActivity(
         filter = WhereFilter.fromIntent(intent)
     }
 
-    override fun prepareInBackground() {
-        calculator.updateBudgets(null)
+    override suspend fun prepareInBackground() {
+        calculator.updateBudgets()
     }
 
     override fun getTotalInHomeCurrency(): Total = calculator.calculateTotalInHomeCurrency()

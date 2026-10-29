@@ -1,147 +1,116 @@
 // SPDX-License-Identifier: GPL-2.0-only
+package ru.orangesoftware.financisto.db
 
-package ru.orangesoftware.financisto.db;
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
+import ru.orangesoftware.financisto.app.DependenciesHolder
+import ru.orangesoftware.financisto.model.Budget
+import ru.orangesoftware.financisto.model.Category
+import ru.orangesoftware.financisto.model.Currency
+import ru.orangesoftware.financisto.model.MyEntity
+import ru.orangesoftware.financisto.model.Project
+import ru.orangesoftware.financisto.model.Total
+import ru.orangesoftware.financisto.model.TotalError
+import ru.orangesoftware.financisto.rates.ExchangeRate
+import ru.orangesoftware.financisto.utils.Logger
+import java.math.BigDecimal
 
-import android.os.Handler;
+class BudgetsTotalCalculator(
+    private val db: DatabaseAdapter,
+    private val budgets: List<Budget>,
+) {
 
-import java.math.BigDecimal;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+    private val logger: Logger = DependenciesHolder().logger
 
-import ru.orangesoftware.financisto.app.DependenciesHolder;
-import ru.orangesoftware.financisto.model.Budget;
-import ru.orangesoftware.financisto.model.Category;
-import ru.orangesoftware.financisto.model.Currency;
-import ru.orangesoftware.financisto.model.MyEntity;
-import ru.orangesoftware.financisto.model.Project;
-import ru.orangesoftware.financisto.model.Total;
-import ru.orangesoftware.financisto.model.TotalError;
-import ru.orangesoftware.financisto.rates.ExchangeRate;
-import ru.orangesoftware.financisto.rates.ExchangeRateProvider;
-import ru.orangesoftware.financisto.utils.Logger;
-
-/**
- * Created by IntelliJ IDEA.
- * User: solomonk
- * Date: 4/28/12
- * Time: 2:33 AM
- */
-public class BudgetsTotalCalculator {
-
-    private final Logger logger = new DependenciesHolder().getLogger();
-
-    private final DatabaseAdapter db;
-    private final List<Budget> budgets;
-
-    public BudgetsTotalCalculator(DatabaseAdapter db, List<Budget> budgets) {
-        this.db = db;
-        this.budgets = budgets;
-    }
-
-    public void updateBudgets(Handler handler) {
-        long t0 = System.currentTimeMillis();
+    suspend fun updateBudgets(mainDispatcher: CoroutineDispatcher? = null) {
+        val t0 = System.currentTimeMillis()
         try {
-            Map<Long, Category> categories = MyEntity.asMap(db.getCategoriesList(true));
-            Map<Long, Project> projects = MyEntity.asMap(db.getAllProjectsList(true));
-            for (final Budget b : budgets) {
-                final long spent = db.fetchBudgetBalance(categories, projects, b);
-                final String categoriesText = getChecked(categories, b.categories);
-                final String projectsText = getChecked(projects, b.projects);
-                b.spent = spent;
-                if (handler != null) {
-                    handler.post(() -> {
-                        b.updated = true;
-                        b.spent = spent;
-                        b.categoriesText = categoriesText;
-                        b.projectsText = projectsText;
-                    });
-                }
-            }
-        } finally {
-            long t1 = System.currentTimeMillis();
-            logger.d("BUDGET UPDATE", (t1 - t0) + "ms");
-        }
-    }
-    
-    public Total[] calculateTotals() {
-        Map<Currency, Total> totals = new HashMap<>();
-        for (Budget b : budgets) {
-            Currency c = b.getBudgetCurrency();
-            Total total = totals.get(c);
-            if (total == null) {
-                total = new Total(c, true);
-                totals.put(c, total);
-            }
-            total.amount += b.spent;
-            total.balance += b.amount+b.spent;
-        }
-        Collection<Total> values = totals.values();
-        return values.toArray(new Total[0]);
-    }
-
-    public Total calculateTotalInHomeCurrency() {
-        long t0 = System.currentTimeMillis();
-        try {
-            BigDecimal amount = BigDecimal.ZERO;
-            BigDecimal balance = BigDecimal.ZERO;
-            ExchangeRateProvider rates = db.getLatestRates();
-            Currency homeCurrency = db.getHomeCurrency();
-            for (Budget b : budgets) {
-                Currency currency = b.getBudgetCurrency();
-                ExchangeRate r = rates.getRate(currency, homeCurrency);
-                if (r == ExchangeRate.NA) {
-                    return new Total(homeCurrency, TotalError.lastRateError(currency));
-                } else {
-                    amount = amount.add(convert(r, b.spent));
-                    balance = balance.add(convert(r, b.amount+b.spent));
-                }
-            }
-            Total total = new Total(homeCurrency, true);
-            total.amount = amount.longValue();
-            total.balance = balance.longValue();
-            return total;
-        } finally {
-            long t1 = System.currentTimeMillis();
-            logger.d("BUDGET TOTALS", (t1 - t0) + "ms");
-        }
-    }
-
-    private BigDecimal convert(ExchangeRate r, long spent) {
-        return BigDecimal.valueOf(r.rate*spent);
-    }
-
-    private <T extends MyEntity> String getChecked(Map<Long, T> entities, String s) {
-        long[] ids = MyEntity.splitIds(s);
-        if (ids == null) {
-            return null;
-        }
-        if (ids.length == 1) {
-            MyEntity e = entities.get(ids[0]);
-            if (e == null) {
-                return null;
-            } else {
-                return e.title;
-            }
-        } else {
-            StringBuilder sb = new StringBuilder();
-            for (long id : ids) {
-                MyEntity e = entities.get(id);
-                if (e != null) {
-                    if (sb.length() > 0) {
-                        sb.append(",");
+            val categories: Map<Long, Category> = MyEntity.asMap(db.getCategoriesList(true))
+            val projects: Map<Long, Project> = MyEntity.asMap(db.getAllProjectsList(true))
+            for (b in budgets) {
+                currentCoroutineContext().ensureActive()
+                val spent = db.fetchBudgetBalance(categories, projects, b)
+                val categoriesText = getChecked(categories, b.categories)
+                val projectsText = getChecked(projects, b.projects)
+                if (mainDispatcher != null) {
+                    withContext(mainDispatcher) {
+                        b.updated = true
+                        b.spent = spent
+                        b.categoriesText = categoriesText
+                        b.projectsText = projectsText
                     }
-                    sb.append(e.title);
+                } else {
+                    b.updated = true
+                    b.spent = spent
+                    b.categoriesText = categoriesText
+                    b.projectsText = projectsText
                 }
             }
-            if (sb.length() == 0) {
-                return null;
-            } else {
-                return sb.toString();
-            }
+        } finally {
+            val t1 = System.currentTimeMillis()
+            logger.d("BUDGET UPDATE", "${t1 - t0}ms")
         }
     }
 
+    fun calculateTotals(): Array<Total> {
+        val totals = HashMap<Currency, Total>()
+        for (b in budgets) {
+            val c = b.budgetCurrency
+            val total = totals.getOrPut(c) { Total(c, true) }
+            total.amount += b.spent
+            total.balance += b.amount + b.spent
+        }
+        return totals.values.toTypedArray()
+    }
 
+    fun calculateTotalInHomeCurrency(): Total {
+        val t0 = System.currentTimeMillis()
+        try {
+            var amount = BigDecimal.ZERO
+            var balance = BigDecimal.ZERO
+            val rates = db.latestRates
+            val homeCurrency = db.homeCurrency
+            for (b in budgets) {
+                val currency = b.budgetCurrency
+                val r = rates.getRate(currency, homeCurrency)
+                if (r == ExchangeRate.NA) {
+                    return Total(homeCurrency, TotalError.lastRateError(currency))
+                } else {
+                    amount = amount.add(convert(r, b.spent))
+                    balance = balance.add(convert(r, b.amount + b.spent))
+                }
+            }
+            val total = Total(homeCurrency, true)
+            total.amount = amount.toLong()
+            total.balance = balance.toLong()
+            return total
+        } finally {
+            val t1 = System.currentTimeMillis()
+            logger.d("BUDGET TOTALS", "${t1 - t0}ms")
+        }
+    }
+
+    private fun convert(r: ExchangeRate, spent: Long): BigDecimal =
+        BigDecimal.valueOf(r.rate * spent)
+
+    private fun <T : MyEntity> getChecked(entities: Map<Long, T>, s: String?): String? {
+        val ids = MyEntity.splitIds(s) ?: return null
+        return if (ids.size == 1) {
+            entities[ids[0]]?.title
+        } else {
+            val sb = StringBuilder()
+            for (id in ids) {
+                val e = entities[id]
+                if (e != null) {
+                    if (sb.isNotEmpty()) {
+                        sb.append(",")
+                    }
+                    sb.append(e.title)
+                }
+            }
+            sb.toString().takeIf { it.isNotEmpty() }
+        }
+    }
 }
