@@ -86,7 +86,7 @@ abstract class AbstractTotalsDetailsActivity protected constructor(
             } catch (ex: Exception) {
                 logger.e(ex, "Unexpected error")
                 calculatingNode.visibility = View.GONE
-                addAmountAndErrorNode(Total.ZERO)
+                addAmountAndErrorNode(Total(Currency()))
             }
         }
     }
