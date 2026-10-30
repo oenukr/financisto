@@ -26,6 +26,7 @@ This skill incorporates the proven migration patterns used in Financisto (such a
 | :--- | :--- | :--- |
 | `Params` | Function parameters or ViewModel properties | Arguments required to execute the task |
 | `Progress` | `Flow<T>` or `MutableStateFlow<Progress>` | Streaming intermediate progress updates to UI |
+| `Handler.post { ... }` | `withContext(mainDispatcher) { ... }` in `suspend fun` | Synchronously mutates UI-shared model fields on Main thread without data races |
 | `Result` | Return value of `suspend` function / `StateFlow<UiState<T>>` | Final outcome produced by the background operation |
 | `onPreExecute()` | Setting initial loading state (`_uiState.value = UiState.Loading`) | Runs on Main thread before initiating work |
 | `doInBackground(vararg params)` | `withContext(Dispatchers.IO)` / `withContext(Dispatchers.Default)` | Executes heavy I/O or CPU work off the Main thread |
@@ -75,6 +76,7 @@ Identify all components of the target task:
    - Destructive multi-step writes (e.g., backup + purge) -> Needs `withContext(Dispatchers.IO + NonCancellable)`.
    - CPU calculation/Parsing/Geometry -> Needs `Dispatchers.Default`.
 5. **Cancellation**: Does the caller call `cancel(true)` or check `isCancelled()`? Wire cancellable `ProgressDialog`s to `job?.cancel()`.
+   - In `AbstractActivity` and `AbstractListActivity` subclasses, `onDestroy()` calls `db.close()` *before* `super.onDestroy()` (which cancels `lifecycleScope`). Always cancel tracked calculation `Job`s in `onDestroy()` before `super.onDestroy()`, and pass an immutable snapshot (`list.toList()`) of adapter-backed lists into `withContext(Dispatchers.IO)`.
 6. **UI Side Effects & Scope Isolation**:
    - Check what views are updated in `onPreExecute()`, `onProgressUpdate()`, `onCancelled()`, and `onPostExecute()`.
    - Move any legacy off-thread `setResult(...)` or `finish()` calls out of `doInBackground()` onto the Main thread after `ProgressDialog` dismissal (`if (!isFinishing && !isDestroyed) dialog.dismiss()`).
@@ -285,11 +287,16 @@ In Financisto commit `74ccf22` (`Issue 51 replace internal chart solution (#64)`
 - **Cooperative Cancellation Before State Assignment**: Blocking legacy Java helpers (e.g., `FuturePlanner`, `MonthlyViewPlanner`, `DatabaseAdapter`) do not suspend. Always call `coroutineContext.ensureActive()` immediately before assigning `_uiState.value` in `try` and `catch` blocks so a cancelled in-flight job cannot overwrite a newer job's state.
 - **One-Shot Errors in `StateFlow`**: `StateFlow` replays its latest value whenever `repeatOnLifecycle(Lifecycle.State.STARTED)` restarts collection (e.g., returning from another Activity or background). Never trigger a `Toast`, `Snackbar`, or `Dialog` from `UiState.Error` without either rendering into an idempotent view or immediately consuming the error via `viewModel.onErrorShown()` (preserving active filter/screen state).
 - **Hardcoded Dispatchers & Koin Verification**: Detekt enforces `InjectDispatcher` (`IO`, `Default`, `Unconfined`) and `KoinInjectionTest` verifies all constructor parameters of Koin definitions. Always inject `CoroutineDispatcher` in `ViewModel` constructors and ensure `CoroutineDispatcher` is registered in `JavaAppKoin.kt`.
+- **Detekt Rules (`ReturnCount`, `RedundantSuspendModifier`) & Root Task**:
+  - `config/detekt.yml` enforces `ReturnCount` (`max: 2`, `excludeGuardClauses: false`). Collapse legacy Java methods with 3+ `return` statements into a single `return if (...) ... else ...` expression.
+  - Empty-body `protected open suspend fun` hooks in abstract base classes trigger `RedundantSuspendModifier` unless annotated with `@Suppress("RedundantSuspendModifier")`.
+  - Run Detekt via `./gradlew detekt` (root task), not `:app:detekt` (which is not registered on `:app`).
 - **No New Java Boilerplate in Legacy Classes**: Do not add new Java methods (such as `equals`/`hashCode`) to legacy `.java` files just to support `UiState` data class equality. Offer to convert touched legacy Java classes to Kotlin during planning, or keep them untouched if out of scope.
 - **Java-to-Kotlin Interop Pitfalls**:
   - **Never combine `@JvmField` with `lateinit var`**: `lateinit var` already exposes a backing field with the same visibility as its setter to Java callers; adding `@JvmField` causes `INAPPLICABLE_JVM_FIELD`.
   - **Platform-type nullability in existing Kotlin subclasses**: When converting a Java base class (e.g., `AbstractListActivity`) to Kotlin, check all existing Kotlin subclasses for overrides of platform-typed parameters (e.g., `Cursor` vs `Cursor?`) and align their nullability.
   - **Kotlin `interface` vs `fun interface`**: Java callers can pass lambdas to single-method Kotlin `interface`s (such as `AmountListener`), whereas Kotlin callers require `object : InterfaceName` unless the interface is marked `fun interface`.
+  - **Primitive Arrays (`LongArray`, `IntArray`) vs `Iterable` Extensions**: Legacy helpers like `MyEntity.splitIds(s)` return primitive `LongArray?`, which does not have `mapNotNull` in the Kotlin stdlib. Iterate with a `for` loop and `StringBuilder` rather than calling `.mapNotNull` on `LongArray`.
 
 ---
 

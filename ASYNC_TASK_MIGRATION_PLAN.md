@@ -34,7 +34,7 @@ It follows the guidelines defined in `.agents/skills/asynctask-to-coroutine/SKIL
 | **Phase 1** | Tier 1 | `SmsTemplateListAsyncAdapter` (`UpdateSortOrderTask`, `DeleteTask`)<br>`IntegrityCheckTask`<br>`MenuListItem` (`IntegrityFixTask`) | Very Low | Isolated operations, simple UI callbacks, self-contained background tasks | **COMPLETED** |
 | **Phase 2** | Tier 2 | `AbstractListActivity`<br>`PurgeAccountActivity` (`PurgeAccountTask`)<br>`RateNode` (`RateDownloadTask`)<br>`ExchangeRatesListActivity` (`RatesDownloadTask`) | Low–Medium | Base `ListActivity` -> `FragmentActivity` migration + single-screen tasks with progress dialogs | **COMPLETED** |
 | **Phase 3** | Tier 3 | `PlannerActivity` (`PlannerTask`)<br>`MonthlyViewActivity` (`MonthlyPreviewTask`) | Medium | Screen data-loading; benefits from ViewModel + StateFlow pattern | **COMPLETED** |
-| **Phase 4** | Tier 4 | `AbstractTotalsDetailsActivity` (`CalculateAccountsTotalsTask`)<br>`BudgetListActivity` (`BudgetTotalsCalculationTask`)<br>`BudgetsTotalCalculator` | Medium–High | Complex calculations, aggregation queries, and list adapters | **PLANNED** |
+| **Phase 4** | Tier 4 | `AbstractTotalsDetailsActivity` (`CalculateAccountsTotalsTask`)<br>`BudgetListActivity` (`BudgetTotalsCalculationTask`)<br>`BudgetsTotalCalculator` | Medium–High | Complex calculations, aggregation queries, and list adapters | **COMPLETED** |
 | **Phase 5** | Tier 5 | `TotalCalculationTask` hierarchy (`AccountTotalCalculationTask`, `BlotterTotalCalculationTask`)<br>`ImportExportAsyncTask` hierarchy (9 concrete tasks) | High | Wide architectural impact across base classes and numerous callers/screens | **PLANNED** |
 
 ---
@@ -94,23 +94,25 @@ It follows the guidelines defined in `.agents/skills/asynctask-to-coroutine/SKIL
 
 ---
 
-### Phase 4: Tier 4 – Complex Totals Calculations (NEXT)
+### Phase 4: Tier 4 – Complex Totals Calculations (COMPLETED)
 
 * **Goal**: Migrate multi-criteria total calculation tasks that update tab/summary counters using `lifecycleScope` and suspend functions.
-* **Target Files & Conversions**:
-  1. **`AbstractTotalsDetailsActivity.java` -> `AbstractTotalsDetailsActivity.kt`**:
+* **Work Done**:
+  1. [x] **`AbstractTotalsDetailsActivity.java` -> `AbstractTotalsDetailsActivity.kt`**:
      * Task: `CalculateAccountsTotalsTask extends AsyncTask<Void, Void, TotalsInfo>` (lines 80–141).
-     * Action: Convert activity to Kotlin. Run `prepareInBackground()`, `getTotals()`, `getTotalInHomeCurrency()`, and exchange rate lookups on `Dispatchers.IO` via `lifecycleScope`. Update total header cards and account breakdown on Main.
-  2. **`BudgetsTotalCalculator.java` -> `BudgetsTotalCalculator.kt` & `BudgetListActivity.java` -> `BudgetListActivity.kt`**:
+     * Action: Converted activity to Kotlin and deleted `AbstractTotalsDetailsActivity.java`. Replaced `CalculateAccountsTotalsTask` with a cancellable coroutine `Job` on `lifecycleScope`, running `prepareInBackground()`, `getTotals()`, `getTotalInHomeCurrency()`, and exchange rate lookups on `Dispatchers.IO` with `ensureActive()`, and updating total header cards and account breakdown on Main.
+  2. [x] **`BudgetsTotalCalculator.java` -> `BudgetsTotalCalculator.kt` & `BudgetListActivity.java` -> `BudgetListActivity.kt`**:
      * Task: `BudgetTotalsCalculationTask extends AsyncTask<Void, Total, Total>` (lines 221–257).
-     * Action: Convert `BudgetsTotalCalculator` and `BudgetListActivity` to Kotlin. Replace legacy `Handler` communication in `BudgetsTotalCalculator.updateBudgets` with suspend / dispatcher switches and launch total calculation in `BudgetListActivity` via `lifecycleScope`.
+     * Action: Converted `BudgetsTotalCalculator` and `BudgetListActivity` to Kotlin. Replaced legacy `Handler` communication in `BudgetsTotalCalculator.updateBudgets` with `suspend fun updateBudgets(mainDispatcher: CoroutineDispatcher? = null)` and launched total calculation in `BudgetListActivity` via `lifecycleScope` over an immutable snapshot of budgets. Updated `BudgetListTotalsDetailsActivity.prepareInBackground()` to `suspend`.
+  3. [x] **Robolectric Unit Testing**:
+     * Added `BudgetsTotalCalculatorTest.kt` covering budget balance updates, main-dispatcher switching, multi-category/project formatting, cooperative cancellation, currency total aggregation, and home-currency conversion.
 * **Verification**:
-  * Unit tests: `./gradlew :app:testDebugUnitTest --tests "*Budget*" --tests "*Total*"`
-  * Manual: Verify Account Totals screen and Budget balances update correctly across multiple currencies.
+  * Static analysis: `./gradlew detekt`
+  * Unit tests & build: `./gradlew :app:testDebugUnitTest assembleDebug`
 
 ---
 
-### Phase 5: Tier 5 – Core Base Class Hierarchies (Highest Complexity)
+### Phase 5: Tier 5 – Core Base Class Hierarchies (Highest Complexity) (NEXT)
 
 * **Goal**: Refactor project-wide base `AsyncTask` hierarchies and all derivative implementations across the app.
 * **Target Hierarchies**:
