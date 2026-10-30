@@ -98,14 +98,6 @@ class BudgetsTotalCalculatorTest : AbstractDbTest() {
 
     @Test
     fun updateBudgets_populatesSpentAndLabelsOnProvidedMainDispatcher() = runBlocking {
-        var mainDispatcherCalls = 0
-        val trackingDispatcher = object : CoroutineDispatcher() {
-            override fun dispatch(context: CoroutineContext, block: Runnable) {
-                mainDispatcherCalls++
-                block.run()
-            }
-        }
-
         val catA = requireNotNull(categoriesMap["A"])
         val catB = requireNotNull(categoriesMap["B"])
         val budget = createBudget(
@@ -114,6 +106,22 @@ class BudgetsTotalCalculatorTest : AbstractDbTest() {
             categories = "${catA.id},${catB.id}",
             projects = "${project1.id},${project2.id}",
         )
+
+        var mainDispatcherCalls = 0
+        val trackingDispatcher = object : CoroutineDispatcher() {
+            override fun dispatch(context: CoroutineContext, block: Runnable) {
+                mainDispatcherCalls++
+                assertFalse(budget.updated)
+                assertEquals(0L, budget.spent)
+                assertEquals("", budget.categoriesText)
+                assertEquals("", budget.projectsText)
+                block.run()
+                assertTrue(budget.updated)
+                assertEquals(-400L, budget.spent)
+                assertEquals("A,B", budget.categoriesText)
+                assertEquals("P1,P2", budget.projectsText)
+            }
+        }
 
         TransactionBuilder.withDb(db)
             .account(homeAccount)
@@ -152,22 +160,48 @@ class BudgetsTotalCalculatorTest : AbstractDbTest() {
     @Test
     fun updateBudgets_whenCancelled_throwsCancellationException() = runBlocking {
         val catA = requireNotNull(categoriesMap["A"])
-        val budget = createBudget(
+        val budget1 = createBudget(
             currency = homeCurrency,
             amount = 1000L,
             categories = catA.id.toString(),
             projects = null,
         )
-        val calculator = BudgetsTotalCalculator(db, listOf(budget))
+        val budget2 = createBudget(
+            currency = homeCurrency,
+            amount = 2000L,
+            categories = catA.id.toString(),
+            projects = null,
+        )
+        val job = Job()
+        val cancellingDb = object : DatabaseAdapter(context) {
+            override fun getCategoriesList(includeNoCategory: Boolean): List<Category> =
+                db.getCategoriesList(includeNoCategory)
 
-        val cancelledJob = Job().apply { cancel() }
+            override fun getAllProjectsList(includeNoProject: Boolean): ArrayList<Project> =
+                db.getAllProjectsList(includeNoProject)
+
+            override fun fetchBudgetBalance(
+                categories: Map<Long, Category>?,
+                projects: Map<Long, Project>?,
+                b: Budget?,
+            ): Long {
+                val balance = db.fetchBudgetBalance(categories, projects, b)
+                if (b === budget1) {
+                    job.cancel()
+                }
+                return balance
+            }
+        }
+        val calculator = BudgetsTotalCalculator(cancellingDb, listOf(budget1, budget2))
+
         try {
-            withContext(cancelledJob + Dispatchers.Unconfined) {
+            withContext(job + Dispatchers.Unconfined) {
                 calculator.updateBudgets()
             }
             fail("Expected CancellationException to be thrown")
         } catch (expected: CancellationException) {
-            assertFalse(budget.updated)
+            assertTrue(budget1.updated)
+            assertFalse(budget2.updated)
         }
     }
 

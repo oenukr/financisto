@@ -9,20 +9,25 @@ import android.widget.Button
 import android.widget.LinearLayout
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.app.DependenciesHolder
 import ru.orangesoftware.financisto.model.Currency
 import ru.orangesoftware.financisto.model.Total
 import ru.orangesoftware.financisto.rates.ExchangeRate
+import ru.orangesoftware.financisto.utils.Logger
 import ru.orangesoftware.financisto.utils.Utils
 
 abstract class AbstractTotalsDetailsActivity protected constructor(
     private val titleNodeResId: Int,
 ) : AbstractActivity() {
+
+    private val logger: Logger = DependenciesHolder().logger
 
     private lateinit var layout: LinearLayout
     private lateinit var calculatingNode: View
@@ -49,30 +54,39 @@ abstract class AbstractTotalsDetailsActivity protected constructor(
 
     protected open fun internalOnCreate() {}
 
+    @Suppress("TooGenericExceptionCaught")
     private fun calculateTotals() {
         calculateTotalsJob?.cancel()
         calculateTotalsJob = lifecycleScope.launch {
-            val totals = withContext(Dispatchers.IO) {
-                prepareInBackground()
-                ensureActive()
-                val totalsArray = getTotals()
-                val totalInHomeCurrency = getTotalInHomeCurrency()
-                val homeCurrency = totalInHomeCurrency.currency
-                val rates = db.latestRates
-                val result = totalsArray.map { total ->
-                    val rate = rates.getRate(total.currency, homeCurrency)
-                    TotalInfo(total, rate)
-                }.sortedBy { it.total.currency.name }
-                ensureActive()
-                TotalsInfo(result, totalInHomeCurrency)
-            }
-            calculatingNode.visibility = View.GONE
-            for (total in totals.totals) {
-                val title = getString(titleNodeResId, total.total.currency.name)
-                addAmountNode(total.total, title)
-            }
-            if (shouldShowHomeCurrencyTotal) {
-                addAmountNode(totals.totalInHomeCurrency, getString(R.string.home_currency_total))
+            try {
+                val totals = withContext(Dispatchers.IO) {
+                    prepareInBackground()
+                    ensureActive()
+                    val totalsArray = getTotals()
+                    val totalInHomeCurrency = getTotalInHomeCurrency()
+                    val homeCurrency = totalInHomeCurrency.currency
+                    val rates = db.latestRates
+                    val result = totalsArray.map { total ->
+                        val rate = rates.getRate(total.currency, homeCurrency)
+                        TotalInfo(total, rate)
+                    }.sortedBy { it.total.currency.name }
+                    ensureActive()
+                    TotalsInfo(result, totalInHomeCurrency)
+                }
+                calculatingNode.visibility = View.GONE
+                for (total in totals.totals) {
+                    val title = getString(titleNodeResId, total.total.currency.name)
+                    addAmountNode(total.total, title)
+                }
+                if (shouldShowHomeCurrencyTotal) {
+                    addAmountNode(totals.totalInHomeCurrency, getString(R.string.home_currency_total))
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (ex: Exception) {
+                logger.e(ex, "Unexpected error")
+                calculatingNode.visibility = View.GONE
+                addAmountAndErrorNode(Total.ZERO)
             }
         }
     }
