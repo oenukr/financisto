@@ -1,358 +1,306 @@
 // SPDX-License-Identifier: GPL-2.0-only
-package ru.orangesoftware.financisto.activity;
+package ru.orangesoftware.financisto.activity
 
-import static ru.orangesoftware.financisto.utils.MyPreferences.isQuickMenuEnabledForAccount;
+import android.app.AlertDialog
+import android.content.Context
+import android.content.Intent
+import android.database.Cursor
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.widget.ImageButton
+import android.widget.ListAdapter
+import android.widget.PopupMenu
+import android.widget.TextView
+import androidx.lifecycle.lifecycleScope
+import greendroid.widget.QuickActionGrid
+import greendroid.widget.QuickActionWidget
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.adapter.AccountListAdapter2
+import ru.orangesoftware.financisto.app.DependenciesHolder
+import ru.orangesoftware.financisto.blotter.BlotterFilter
+import ru.orangesoftware.financisto.blotter.TotalCalculationTask
+import ru.orangesoftware.financisto.bus.SwitchToMenuTabEvent
+import ru.orangesoftware.financisto.db.DatabaseAdapter
+import ru.orangesoftware.financisto.dialog.AccountInfoDialog
+import ru.orangesoftware.financisto.filter.Criteria
+import ru.orangesoftware.financisto.model.Account
+import ru.orangesoftware.financisto.model.Total
+import ru.orangesoftware.financisto.utils.IntegrityCheckAutobackup
+import ru.orangesoftware.financisto.utils.MenuItemInfo
+import ru.orangesoftware.financisto.utils.MyPreferences
+import ru.orangesoftware.financisto.utils.MyPreferences.isQuickMenuEnabledForAccount
+import ru.orangesoftware.financisto.view.NodeInflater
+import java.util.concurrent.TimeUnit
 
-import android.app.AlertDialog;
-import android.content.Context;
-import android.content.Intent;
-import android.database.Cursor;
-import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.view.MenuInflater;
-import android.view.View;
-import android.widget.ImageButton;
-import android.widget.ListAdapter;
-import android.widget.PopupMenu;
-import android.widget.TextView;
+@Suppress("TooManyFunctions")
+class AccountListActivity : AbstractListActivity(R.layout.account_list) {
 
-import androidx.annotation.Nullable;
+    private var accountActionGrid: QuickActionWidget? = null
+    private var selectedId: Long = -1L
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
+    internal var totalCalculationTask: AccountTotalsCalculationTask? = null
+        private set
 
-import greendroid.widget.QuickActionGrid;
-import greendroid.widget.QuickActionWidget;
-import ru.orangesoftware.financisto.R;
-import ru.orangesoftware.financisto.adapter.AccountListAdapter2;
-import ru.orangesoftware.financisto.app.DependenciesHolder;
-import ru.orangesoftware.financisto.blotter.BlotterFilter;
-import ru.orangesoftware.financisto.blotter.TotalCalculationTask;
-import ru.orangesoftware.financisto.bus.SwitchToMenuTabEvent;
-import ru.orangesoftware.financisto.db.DatabaseAdapter;
-import ru.orangesoftware.financisto.dialog.AccountInfoDialog;
-import ru.orangesoftware.financisto.filter.Criteria;
-import ru.orangesoftware.financisto.model.Account;
-import ru.orangesoftware.financisto.model.Total;
-import ru.orangesoftware.financisto.utils.IntegrityCheckAutobackup;
-import ru.orangesoftware.financisto.utils.MenuItemInfo;
-import ru.orangesoftware.financisto.utils.MyPreferences;
-import ru.orangesoftware.financisto.view.NodeInflater;
-
-public class AccountListActivity extends AbstractListActivity {
-
-    private static final int NEW_ACCOUNT_REQUEST = 1;
-
-    public static final int EDIT_ACCOUNT_REQUEST = 2;
-    private static final int VIEW_ACCOUNT_REQUEST = 3;
-    private static final int PURGE_ACCOUNT_REQUEST = 4;
-
-    private QuickActionWidget accountActionGrid;
-
-    public AccountListActivity() {
-        super(R.layout.account_list);
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setupUi()
+        setupMenuButton()
+        calculateTotals()
+        integrityCheck()
     }
 
-    @Override
-    protected void onCreate(@Nullable Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setupUi();
-        setupMenuButton();
-        calculateTotals();
-        integrityCheck();
+    override fun onDestroy() {
+        totalCalculationTask?.cancel()
+        super.onDestroy()
     }
 
-    private void setupUi() {
-        findViewById(R.id.integrity_error).setOnClickListener(v -> v.setVisibility(View.GONE));
-        getListView().setOnItemLongClickListener((parent, view, position, id) -> {
-            selectedId = id;
-            prepareAccountActionGrid();
-            accountActionGrid.show(view);
-            return true;
-        });
+    private fun setupUi() {
+        findViewById<View>(R.id.integrity_error).setOnClickListener { v -> v.visibility = View.GONE }
+        getListView().setOnItemLongClickListener { _, view, _, id ->
+            selectedId = id
+            prepareAccountActionGrid()
+            accountActionGrid?.show(view)
+            true
+        }
     }
 
-    private void setupMenuButton() {
-        final ImageButton bMenu = findViewById(R.id.bMenu);
+    private fun setupMenuButton() {
+        val bMenu = findViewById<ImageButton>(R.id.bMenu)
         if (MyPreferences.isShowMenuButtonOnAccountsScreen(this)) {
-            bMenu.setOnClickListener(v -> {
-                PopupMenu popupMenu = new PopupMenu(AccountListActivity.this, bMenu);
-                MenuInflater inflater = getMenuInflater();
-                inflater.inflate(R.menu.account_list_menu, popupMenu.getMenu());
-                popupMenu.setOnMenuItemClickListener(item -> {
-                    handlePopupMenu(item.getItemId());
-                    return true;
-                });
-                popupMenu.show();
-            });
-        } else {
-            bMenu.setVisibility(View.GONE);
-        }
-    }
-
-    private void handlePopupMenu(int id) {
-        if (id == R.id.backup) {
-            MenuListItem.MENU_BACKUP.call(this);
-        } else if (id == R.id.go_to_menu) {
-            new DependenciesHolder().getGreenRobotBus().post(new SwitchToMenuTabEvent());
-        }
-    }
-
-    protected void prepareAccountActionGrid() {
-        Account a = db.getAccount(selectedId);
-        accountActionGrid = new QuickActionGrid(this);
-        accountActionGrid.addQuickAction(new MyQuickAction(this, R.drawable.ic_action_info, R.string.info));
-        accountActionGrid.addQuickAction(new MyQuickAction(this, R.drawable.ic_action_list, R.string.blotter));
-        accountActionGrid.addQuickAction(new MyQuickAction(this, R.drawable.ic_action_edit, R.string.edit));
-        accountActionGrid.addQuickAction(new MyQuickAction(this, R.drawable.ic_action_add, R.string.transaction));
-        accountActionGrid.addQuickAction(new MyQuickAction(this, R.drawable.ic_action_transfer, R.string.transfer));
-        accountActionGrid.addQuickAction(new MyQuickAction(this, R.drawable.ic_action_tick, R.string.balance));
-        accountActionGrid.addQuickAction(new MyQuickAction(this, R.drawable.ic_action_flash, R.string.delete_old_transactions));
-        if (a.isActive) {
-            accountActionGrid.addQuickAction(new MyQuickAction(this, R.drawable.ic_action_lock_closed, R.string.close_account));
-        } else {
-            accountActionGrid.addQuickAction(new MyQuickAction(this, R.drawable.ic_action_lock_open, R.string.reopen_account));
-        }
-        accountActionGrid.addQuickAction(new MyQuickAction(this, R.drawable.ic_action_trash, R.string.delete_account));
-        accountActionGrid.setOnQuickActionClickListener(accountActionListener);
-    }
-
-    private final QuickActionWidget.OnQuickActionClickListener accountActionListener = new QuickActionWidget.OnQuickActionClickListener() {
-        public void onQuickActionClicked(QuickActionWidget widget, int position) {
-            switch (position) {
-                case 0:
-                    showAccountInfo(selectedId);
-                    break;
-                case 1:
-                    showAccountTransactions(selectedId);
-                    break;
-                case 2:
-                    editAccount(selectedId);
-                    break;
-                case 3:
-                    addTransaction(selectedId, TransactionActivity.class);
-                    break;
-                case 4:
-                    addTransaction(selectedId, TransferActivity.class);
-                    break;
-                case 5:
-                    updateAccountBalance(selectedId);
-                    break;
-                case 6:
-                    purgeAccount();
-                    break;
-                case 7:
-                    closeOrOpenAccount();
-                    break;
-                case 8:
-                    deleteAccount();
-                    break;
+            bMenu.setOnClickListener {
+                val popupMenu = PopupMenu(this@AccountListActivity, bMenu)
+                val inflater = menuInflater
+                inflater.inflate(R.menu.account_list_menu, popupMenu.menu)
+                popupMenu.setOnMenuItemClickListener { item ->
+                    handlePopupMenu(item.itemId)
+                    true
+                }
+                popupMenu.show()
             }
-        }
-
-    };
-
-    private void addTransaction(long accountId, Class<? extends AbstractTransactionActivity> clazz) {
-        Intent intent = new Intent(this, clazz);
-        intent.putExtra(TransactionActivity.ACCOUNT_ID_EXTRA, accountId);
-        startActivityForResult(intent, VIEW_ACCOUNT_REQUEST);
-    }
-
-    @Override
-    public void recreateCursor() {
-        super.recreateCursor();
-        calculateTotals();
-    }
-
-    private AccountTotalsCalculationTask totalCalculationTask;
-
-    private void calculateTotals() {
-        if (totalCalculationTask != null) {
-            totalCalculationTask.stop();
-            totalCalculationTask.cancel(true);
-        }
-        TextView totalText = findViewById(R.id.total);
-        totalText.setOnClickListener(view -> showTotals());
-        totalCalculationTask = new AccountTotalsCalculationTask(this, db, totalText);
-        totalCalculationTask.execute();
-    }
-
-    private void showTotals() {
-        Intent intent = new Intent(this, AccountListTotalsDetailsActivity.class);
-        startActivityForResult(intent, -1);
-    }
-
-    public static class AccountTotalsCalculationTask extends TotalCalculationTask {
-
-        private final DatabaseAdapter db;
-
-        AccountTotalsCalculationTask(Context context, DatabaseAdapter db, TextView totalText) {
-            super(context, totalText);
-            this.db = db;
-        }
-
-        @Override
-        public Total getTotalInHomeCurrency() {
-            return db.getAccountsTotalInHomeCurrency();
-        }
-
-        @Override
-        public Total[] getTotals() {
-            return new Total[0];
-        }
-
-    }
-
-    @Override
-    protected ListAdapter createAdapter(Cursor cursor) {
-        return new AccountListAdapter2(this, cursor);
-    }
-
-    @Override
-    protected Cursor createCursor() {
-        if (MyPreferences.isHideClosedAccounts(this)) {
-            return db.getAllActiveAccounts();
         } else {
-            return db.getAllAccounts();
+            bMenu.visibility = View.GONE
         }
     }
 
-    protected List<MenuItemInfo> createContextMenus(long id) {
-        return new ArrayList<>();
-    }
-
-    @Override
-    public boolean onPopupItemSelected(int itemId, View view, int position, long id) {
-        // do nothing
-        return true;
-    }
-
-    private boolean updateAccountBalance(long id) {
-        Account a = db.getAccount(id);
-        if (a != null) {
-            Intent intent = new Intent(this, TransactionActivity.class);
-            intent.putExtra(TransactionActivity.ACCOUNT_ID_EXTRA, a.id);
-            intent.putExtra(TransactionActivity.CURRENT_BALANCE_EXTRA, a.totalAmount);
-            startActivityForResult(intent, 0);
-            return true;
+    private fun handlePopupMenu(id: Int) {
+        if (id == R.id.backup) {
+            MenuListItem.MENU_BACKUP.call(this)
+        } else if (id == R.id.go_to_menu) {
+            DependenciesHolder().greenRobotBus.post(SwitchToMenuTabEvent())
         }
-        return false;
     }
 
-    @Override
-    protected void addItem() {
-        Intent intent = new Intent(AccountListActivity.this, AccountActivity.class);
-        startActivityForResult(intent, NEW_ACCOUNT_REQUEST);
+    protected open fun prepareAccountActionGrid() {
+        val a = db.getAccount(selectedId)
+        val grid = QuickActionGrid(this)
+        grid.addQuickAction(MyQuickAction(this, R.drawable.ic_action_info, R.string.info))
+        grid.addQuickAction(MyQuickAction(this, R.drawable.ic_action_list, R.string.blotter))
+        grid.addQuickAction(MyQuickAction(this, R.drawable.ic_action_edit, R.string.edit))
+        grid.addQuickAction(MyQuickAction(this, R.drawable.ic_action_add, R.string.transaction))
+        grid.addQuickAction(MyQuickAction(this, R.drawable.ic_action_transfer, R.string.transfer))
+        grid.addQuickAction(MyQuickAction(this, R.drawable.ic_action_tick, R.string.balance))
+        grid.addQuickAction(MyQuickAction(this, R.drawable.ic_action_flash, R.string.delete_old_transactions))
+        if (a != null && a.isActive) {
+            grid.addQuickAction(MyQuickAction(this, R.drawable.ic_action_lock_closed, R.string.close_account))
+        } else {
+            grid.addQuickAction(MyQuickAction(this, R.drawable.ic_action_lock_open, R.string.reopen_account))
+        }
+        grid.addQuickAction(MyQuickAction(this, R.drawable.ic_action_trash, R.string.delete_account))
+        grid.setOnQuickActionClickListener(accountActionListener)
+        accountActionGrid = grid
     }
 
-    @Override
-    protected void deleteItem(View v, int position, final long id) {
-        new AlertDialog.Builder(this)
-                .setMessage(R.string.delete_account_confirm)
-                .setPositiveButton(R.string.yes, (arg0, arg1) -> {
-                    db.deleteAccount(id);
-                    recreateCursor();
-                })
-                .setNegativeButton(R.string.no, null)
-                .show();
+    private val accountActionListener = QuickActionWidget.OnQuickActionClickListener { _, position ->
+        when (position) {
+            0 -> showAccountInfo(selectedId)
+            1 -> showAccountTransactions(selectedId)
+            2 -> editAccount(selectedId)
+            3 -> addTransaction(selectedId, TransactionActivity::class.java)
+            4 -> addTransaction(selectedId, TransferActivity::class.java)
+            5 -> updateAccountBalance(selectedId)
+            6 -> purgeAccount()
+            7 -> closeOrOpenAccount()
+            8 -> deleteAccount()
+        }
     }
 
-    @Override
-    public void editItem(View v, int position, long id) {
-        editAccount(id);
+    private fun addTransaction(accountId: Long, clazz: Class<out AbstractTransactionActivity>) {
+        val intent = Intent(this, clazz)
+        intent.putExtra(TransactionActivity.ACCOUNT_ID_EXTRA, accountId)
+        startActivityForResult(intent, VIEW_ACCOUNT_REQUEST)
     }
 
-    private void editAccount(long id) {
-        Intent intent = new Intent(AccountListActivity.this, AccountActivity.class);
-        intent.putExtra(AccountActivity.ACCOUNT_ID_EXTRA, id);
-        startActivityForResult(intent, EDIT_ACCOUNT_REQUEST);
+    override fun recreateCursor() {
+        super.recreateCursor()
+        calculateTotals()
     }
 
-    private long selectedId = -1;
-
-    private void showAccountInfo(long id) {
-        LayoutInflater layoutInflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        NodeInflater inflater = new NodeInflater(layoutInflater);
-        AccountInfoDialog accountInfoDialog = new AccountInfoDialog(this, id, db, inflater);
-        accountInfoDialog.show();
+    private fun calculateTotals() {
+        totalCalculationTask?.cancel()
+        val totalText = findViewById<TextView?>(R.id.total)
+        totalText?.setOnClickListener { showTotals() }
+        val task = AccountTotalsCalculationTask(this, db, totalText)
+        totalCalculationTask = task
+        task.execute(lifecycleScope)
     }
 
+    private fun showTotals() {
+        val intent = Intent(this, AccountListTotalsDetailsActivity::class.java)
+        startActivityForResult(intent, -1)
+    }
 
-    @Override
-    protected void onItemClick(View v, int position, long id) {
+    class AccountTotalsCalculationTask @JvmOverloads constructor(
+        context: Context?,
+        private val db: DatabaseAdapter,
+        totalText: TextView?,
+        ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    ) : TotalCalculationTask(context, totalText, ioDispatcher) {
+
+        override fun getTotalInHomeCurrency(): Total =
+            db.accountsTotalInHomeCurrency
+
+        override fun getTotals(): Array<Total> =
+            emptyArray()
+    }
+
+    override fun createAdapter(cursor: Cursor?): ListAdapter? =
+        AccountListAdapter2(this, cursor)
+
+    override fun createCursor(): Cursor? {
+        return if (MyPreferences.isHideClosedAccounts(this)) {
+            db.allActiveAccounts
+        } else {
+            db.allAccounts
+        }
+    }
+
+    override fun createContextMenus(id: Long): MutableList<MenuItemInfo> =
+        ArrayList()
+
+    override fun onPopupItemSelected(itemId: Int, view: View, position: Int, id: Long): Boolean =
+        true
+
+    private fun updateAccountBalance(id: Long): Boolean {
+        val a = db.getAccount(id) ?: return false
+        val intent = Intent(this, TransactionActivity::class.java)
+        intent.putExtra(TransactionActivity.ACCOUNT_ID_EXTRA, a.id)
+        intent.putExtra(TransactionActivity.CURRENT_BALANCE_EXTRA, a.totalAmount)
+        startActivityForResult(intent, 0)
+        return true
+    }
+
+    override fun addItem() {
+        val intent = Intent(this@AccountListActivity, AccountActivity::class.java)
+        startActivityForResult(intent, NEW_ACCOUNT_REQUEST)
+    }
+
+    override fun deleteItem(v: View?, position: Int, id: Long) {
+        AlertDialog.Builder(this)
+            .setMessage(R.string.delete_account_confirm)
+            .setPositiveButton(R.string.yes) { _, _ ->
+                db.deleteAccount(id)
+                recreateCursor()
+            }
+            .setNegativeButton(R.string.no, null)
+            .show()
+    }
+
+    override fun editItem(v: View?, position: Int, id: Long) {
+        editAccount(id)
+    }
+
+    private fun editAccount(id: Long) {
+        val intent = Intent(this@AccountListActivity, AccountActivity::class.java)
+        intent.putExtra(AccountActivity.ACCOUNT_ID_EXTRA, id)
+        startActivityForResult(intent, EDIT_ACCOUNT_REQUEST)
+    }
+
+    private fun showAccountInfo(id: Long) {
+        val layoutInflater = getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
+        val nodeInflater = NodeInflater(layoutInflater)
+        val accountInfoDialog = AccountInfoDialog(this, id, db, nodeInflater)
+        accountInfoDialog.show()
+    }
+
+    override fun onItemClick(v: View, position: Int, id: Long) {
         if (isQuickMenuEnabledForAccount(this)) {
-            selectedId = id;
-            prepareAccountActionGrid();
-            accountActionGrid.show(v);
+            selectedId = id
+            prepareAccountActionGrid()
+            accountActionGrid?.show(v)
         } else {
-            showAccountTransactions(id);
+            showAccountTransactions(id)
         }
     }
 
-    @Override
-    protected void viewItem(View v, int position, long id) {
-        showAccountTransactions(id);
+    override fun viewItem(v: View?, position: Int, id: Long) {
+        showAccountTransactions(id)
     }
 
-    private void showAccountTransactions(long id) {
-        Account account = db.getAccount(id);
+    private fun showAccountTransactions(id: Long) {
+        val account = db.getAccount(id)
         if (account != null) {
-            Intent intent = new Intent(AccountListActivity.this, BlotterActivity.class);
-            Criteria.eq(BlotterFilter.FROM_ACCOUNT_ID, String.valueOf(id))
-                    .toIntent(account.title, intent);
-            intent.putExtra(BlotterFilterActivity.IS_ACCOUNT_FILTER, true);
-            startActivityForResult(intent, VIEW_ACCOUNT_REQUEST);
+            val intent = Intent(this@AccountListActivity, BlotterActivity::class.java)
+            Criteria.eq(BlotterFilter.FROM_ACCOUNT_ID, id.toString())
+                .toIntent(account.title, intent)
+            intent.putExtra(BlotterFilterActivity.IS_ACCOUNT_FILTER, true)
+            startActivityForResult(intent, VIEW_ACCOUNT_REQUEST)
         }
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == VIEW_ACCOUNT_REQUEST || requestCode == PURGE_ACCOUNT_REQUEST) {
-            recreateCursor();
+            recreateCursor()
         }
     }
 
-    private void purgeAccount() {
-        Intent intent = new Intent(this, PurgeAccountActivity.class);
-        intent.putExtra(PurgeAccountActivity.ACCOUNT_ID, selectedId);
-        startActivityForResult(intent, PURGE_ACCOUNT_REQUEST);
+    private fun purgeAccount() {
+        val intent = Intent(this, PurgeAccountActivity::class.java)
+        intent.putExtra(PurgeAccountActivity.ACCOUNT_ID, selectedId)
+        startActivityForResult(intent, PURGE_ACCOUNT_REQUEST)
     }
 
-    private void closeOrOpenAccount() {
-        Account a = db.getAccount(selectedId);
+    private fun closeOrOpenAccount() {
+        val a = db.getAccount(selectedId) ?: return
         if (a.isActive) {
-            new AlertDialog.Builder(this)
-                    .setMessage(R.string.close_account_confirm)
-                    .setPositiveButton(R.string.yes, (arg0, arg1) -> flipAccountActive(a))
-                    .setNegativeButton(R.string.no, null)
-                    .show();
+            AlertDialog.Builder(this)
+                .setMessage(R.string.close_account_confirm)
+                .setPositiveButton(R.string.yes) { _, _ -> flipAccountActive(a) }
+                .setNegativeButton(R.string.no, null)
+                .show()
         } else {
-            flipAccountActive(a);
+            flipAccountActive(a)
         }
     }
 
-    private void flipAccountActive(Account a) {
-        a.isActive = !a.isActive;
-        db.saveAccount(a);
-        recreateCursor();
+    private fun flipAccountActive(a: Account) {
+        a.isActive = !a.isActive
+        db.saveAccount(a)
+        recreateCursor()
     }
 
-    private void deleteAccount() {
-        new AlertDialog.Builder(this)
-                .setMessage(R.string.delete_account_confirm)
-                .setPositiveButton(R.string.yes, (arg0, arg1) -> {
-                    db.deleteAccount(selectedId);
-                    recreateCursor();
-                })
-                .setNegativeButton(R.string.no, null)
-                .show();
+    private fun deleteAccount() {
+        AlertDialog.Builder(this)
+            .setMessage(R.string.delete_account_confirm)
+            .setPositiveButton(R.string.yes) { _, _ ->
+                db.deleteAccount(selectedId)
+                recreateCursor()
+            }
+            .setNegativeButton(R.string.no, null)
+            .show()
     }
 
-    @Override
-    public void integrityCheck() {
-        new IntegrityCheckTask(this).execute(new IntegrityCheckAutobackup(TimeUnit.DAYS.toMillis(7)));
+    override fun integrityCheck() {
+        IntegrityCheckTask(this).execute(IntegrityCheckAutobackup(TimeUnit.DAYS.toMillis(7)))
     }
 
+    companion object {
+        private const val NEW_ACCOUNT_REQUEST = 1
+        const val EDIT_ACCOUNT_REQUEST = 2
+        private const val VIEW_ACCOUNT_REQUEST = 3
+        private const val PURGE_ACCOUNT_REQUEST = 4
+    }
 }

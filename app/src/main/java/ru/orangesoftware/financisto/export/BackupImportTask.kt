@@ -4,18 +4,27 @@ package ru.orangesoftware.financisto.export
 import android.app.Activity
 import android.app.ProgressDialog
 import android.content.Context
-
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import ru.orangesoftware.financisto.R
 import ru.orangesoftware.financisto.backup.DatabaseImport
 import ru.orangesoftware.financisto.db.DatabaseAdapter
+import kotlin.coroutines.coroutineContext
 
-class BackupImportTask(
+class BackupImportTask @JvmOverloads constructor(
     activity: Activity,
-    dialog: ProgressDialog,
-) : ImportExportAsyncTask(activity, dialog) {
+    dialog: ProgressDialog?,
+    coroutineScope: CoroutineScope? = null,
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    mainDispatcher: CoroutineDispatcher = Dispatchers.Main,
+) : ImportExportAsyncTask(activity, dialog, coroutineScope, ioDispatcher, mainDispatcher) {
 
-    override fun work(context: Context, db: DatabaseAdapter, vararg params: String?): Any {
-        DatabaseImport.createFromFileBackup(context, db, params[0]).importDatabase()
+    override suspend fun work(context: Context, db: DatabaseAdapter, vararg params: String?): Any {
+        coroutineContext.ensureActive()
+        val filename = params.getOrNull(0) ?: throw IllegalArgumentException("Backup file path required")
+        DatabaseImport.createFromFileBackup(context, db, filename).importDatabase()
         return true
     }
 

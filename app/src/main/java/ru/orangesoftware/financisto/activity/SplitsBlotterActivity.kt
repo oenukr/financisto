@@ -11,16 +11,16 @@ import ru.orangesoftware.financisto.blotter.TotalCalculationTask
 
 class SplitsBlotterActivity : BlotterActivity() {
 
-	override fun internalOnCreate(savedInstanceState: Bundle?) {
-		super.internalOnCreate(savedInstanceState)
-		bFilter.isVisible = false
-	}
+    override fun internalOnCreate(savedInstanceState: Bundle?) {
+        super.internalOnCreate(savedInstanceState)
+        bFilter?.isVisible = false
+    }
 
-	override fun createCursor(): Cursor = db.getBlotterForAccountWithSplits(blotterFilter)
+    override fun createCursor(): Cursor? = db.getBlotterForAccountWithSplits(blotterFilter)
 
-	override fun createAdapter(cursor: Cursor?): ListAdapter =
-		TransactionsListAdapter(this, db, cursor)
+    override fun createAdapter(cursor: Cursor?): ListAdapter? =
+        TransactionsListAdapter(this, db, cursor)
 
-	override fun createTotalCalculationTask(): TotalCalculationTask =
-		BlotterTotalCalculationTask(this, db, blotterFilter, totalText)
+    override fun createTotalCalculationTask(): TotalCalculationTask =
+        BlotterTotalCalculationTask(this, db, blotterFilter, totalText)
 }

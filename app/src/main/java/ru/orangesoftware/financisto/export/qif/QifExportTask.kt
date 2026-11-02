@@ -1,37 +1,36 @@
 // SPDX-License-Identifier: GPL-2.0-only
-package ru.orangesoftware.financisto.export.qif;
+package ru.orangesoftware.financisto.export.qif
 
-import android.app.Activity;
-import android.app.ProgressDialog;
-import android.content.Context;
+import android.app.Activity
+import android.app.ProgressDialog
+import android.content.Context
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
+import ru.orangesoftware.financisto.db.DatabaseAdapter
+import ru.orangesoftware.financisto.export.ImportExportAsyncTask
+import kotlin.coroutines.coroutineContext
 
-import androidx.annotation.NonNull;
+class QifExportTask @JvmOverloads constructor(
+    context: Activity,
+    dialog: ProgressDialog?,
+    private val options: QifExportOptions,
+    coroutineScope: CoroutineScope? = null,
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    mainDispatcher: CoroutineDispatcher = Dispatchers.Main,
+) : ImportExportAsyncTask(context, dialog, coroutineScope, ioDispatcher, mainDispatcher) {
 
-import ru.orangesoftware.financisto.db.DatabaseAdapter;
-import ru.orangesoftware.financisto.export.ImportExportAsyncTask;
-
-public class QifExportTask extends ImportExportAsyncTask {
-
-	private final QifExportOptions options;
-
-	public QifExportTask(Activity context, ProgressDialog dialog, QifExportOptions options) {
-		super(context, dialog);
-        this.options = options;
-	}
-	
-	@Override
-	protected Object work(@NonNull Context context, @NonNull DatabaseAdapter db, String...params) throws Exception {
-        QifExport qifExport = new QifExport(context, db, options);
-        String backupFileName = qifExport.export();
-        if (options.getUploadToDropbox()) {
-            doUploadToDropbox(context, backupFileName);
+    override suspend fun work(context: Context, db: DatabaseAdapter, vararg params: String?): Any? {
+        coroutineContext.ensureActive()
+        val qifExport = QifExport(context, db, options)
+        val backupFileName = qifExport.export()
+        coroutineContext.ensureActive()
+        if (options.uploadToDropbox) {
+            doUploadToDropbox(context, backupFileName)
         }
-        return backupFileName;
-	}
+        return backupFileName
+    }
 
-	@Override
-	protected String getSuccessMessage(Object result) {
-		return String.valueOf(result);
-	}
-
+    override fun getSuccessMessage(result: Any?): String? = result?.toString()
 }

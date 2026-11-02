@@ -4,49 +4,64 @@ package ru.orangesoftware.financisto.export.csv
 import android.app.Activity
 import android.app.ProgressDialog
 import android.content.Context
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import ru.orangesoftware.financisto.R
 import ru.orangesoftware.financisto.app.DependenciesHolder
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.export.ImportExportAsyncTask
 import ru.orangesoftware.financisto.export.ImportExportException
+import kotlin.coroutines.coroutineContext
 
-class CsvImportTask(
+class CsvImportTask @JvmOverloads constructor(
     activity: Activity,
-    dialog: ProgressDialog,
+    dialog: ProgressDialog?,
     private val options: CsvImportOptions,
-) : ImportExportAsyncTask(activity, dialog) {
+    coroutineScope: CoroutineScope? = null,
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    mainDispatcher: CoroutineDispatcher = Dispatchers.Main,
+) : ImportExportAsyncTask(activity, dialog, coroutineScope, ioDispatcher, mainDispatcher) {
 
     private val logger = DependenciesHolder().logger
 
-    @Throws(ImportExportException::class)
-    override fun work(context: Context, db: DatabaseAdapter, vararg params: String?): Any {
-        try {
+    override suspend fun work(context: Context, db: DatabaseAdapter, vararg params: String?): Any {
+        val exToThrow = try {
+            coroutineContext.ensureActive()
             val csvimport = CsvImport(context, db, options)
             csvimport.setProgressListener { percentage ->
                 publishProgress(percentage.toString())
             }
-            return csvimport.doImport()
+            val result = csvimport.doImport()
+            coroutineContext.ensureActive()
+            return result
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             logger.e(e, "Csv import error")
             if (e is ImportExportException) {
-                throw e
-            }
-            val message: String? = e.message
-            when (message) {
-                "Import file not found" -> throw ImportExportException(R.string.import_file_not_found)
-                "Unknown category in import line" -> throw ImportExportException(R.string.import_unknown_category)
-                "Unknown project in import line" -> throw ImportExportException(R.string.import_unknown_project)
-                "Wrong currency in import line" -> throw ImportExportException(R.string.import_wrong_currency)
-                "IllegalArgumentException" -> throw ImportExportException(R.string.import_illegal_argument_exception)
-                "ParseException" -> throw ImportExportException(R.string.import_parse_error)
-                else -> throw ImportExportException(R.string.csv_import_error)
+                e
+            } else {
+                val resId = when (e.message) {
+                    "Import file not found" -> R.string.import_file_not_found
+                    "Unknown category in import line" -> R.string.import_unknown_category
+                    "Unknown project in import line" -> R.string.import_unknown_project
+                    "Wrong currency in import line" -> R.string.import_wrong_currency
+                    "IllegalArgumentException" -> R.string.import_illegal_argument_exception
+                    "ParseException" -> R.string.import_parse_error
+                    else -> R.string.csv_import_error
+                }
+                ImportExportException(resId)
             }
         }
+        throw exToThrow
     }
 
     override fun onProgressUpdate(vararg values: String?) {
         super.onProgressUpdate(*values)
-        dialog.setMessage(context.getString(R.string.csv_import_inprogress_update, values[0]))
+        dialog?.setMessage(context.getString(R.string.csv_import_inprogress_update, values.firstOrNull()))
     }
 
     override fun getSuccessMessage(result: Any?): String = result.toString()

@@ -1,42 +1,35 @@
 // SPDX-License-Identifier: GPL-2.0-only
+package ru.orangesoftware.financisto.export.dropbox
 
-package ru.orangesoftware.financisto.export.dropbox;
+import android.app.Activity
+import android.app.ProgressDialog
+import android.content.Context
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
+import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.backup.DatabaseImport
+import ru.orangesoftware.financisto.db.DatabaseAdapter
+import ru.orangesoftware.financisto.export.ImportExportAsyncTask
+import kotlin.coroutines.coroutineContext
 
-import android.app.Activity;
-import android.app.ProgressDialog;
-import android.content.Context;
+class DropboxRestoreTask @JvmOverloads constructor(
+    activity: Activity,
+    dialog: ProgressDialog?,
+    private val backupFile: String,
+    coroutineScope: CoroutineScope? = null,
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    mainDispatcher: CoroutineDispatcher = Dispatchers.Main,
+) : ImportExportAsyncTask(activity, dialog, coroutineScope, ioDispatcher, mainDispatcher) {
 
-import androidx.annotation.NonNull;
-
-import ru.orangesoftware.financisto.R;
-import ru.orangesoftware.financisto.backup.DatabaseImport;
-import ru.orangesoftware.financisto.db.DatabaseAdapter;
-import ru.orangesoftware.financisto.export.ImportExportAsyncTask;
-
-/**
- * Created by IntelliJ IDEA.
- * User: Denis Solonenko
- * Date: 11/9/11 2:16 AM
- */
-public class DropboxRestoreTask extends ImportExportAsyncTask {
-
-    private final String backupFile;
-
-    public DropboxRestoreTask(final Activity activity, ProgressDialog dialog, String backupFile) {
-        super(activity, dialog);
-        this.backupFile = backupFile;
+    override suspend fun work(context: Context, db: DatabaseAdapter, vararg params: String?): Any? {
+        coroutineContext.ensureActive()
+        val dropbox = Dropbox(context)
+        DatabaseImport.createFromDropboxBackup(context, db, dropbox, backupFile).importDatabase()
+        return true
     }
 
-    @Override
-    protected Object work(@NonNull Context context, @NonNull DatabaseAdapter db, String... params) throws Exception {
-        Dropbox dropbox = new Dropbox(context);
-        DatabaseImport.createFromDropboxBackup(context, db, dropbox, backupFile).importDatabase();
-        return true;
-    }
-
-    @Override
-    protected String getSuccessMessage(Object result) {
-        return context.getString(R.string.restore_database_success);
-    }
-
+    override fun getSuccessMessage(result: Any?): String =
+        context.getString(R.string.restore_database_success)
 }

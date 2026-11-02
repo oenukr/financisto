@@ -1,43 +1,34 @@
 // SPDX-License-Identifier: GPL-2.0-only
+package ru.orangesoftware.financisto.export.dropbox
 
-package ru.orangesoftware.financisto.export.dropbox;
+import android.app.Activity
+import android.app.ProgressDialog
+import android.content.Context
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
+import ru.orangesoftware.financisto.backup.DatabaseExport
+import ru.orangesoftware.financisto.db.DatabaseAdapter
+import ru.orangesoftware.financisto.export.ImportExportAsyncTask
+import kotlin.coroutines.coroutineContext
 
-import android.app.Activity;
-import android.app.ProgressDialog;
-import android.content.Context;
-import android.content.pm.PackageManager;
+class DropboxBackupTask @JvmOverloads constructor(
+    mainActivity: Activity,
+    dialog: ProgressDialog?,
+    coroutineScope: CoroutineScope? = null,
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    mainDispatcher: CoroutineDispatcher = Dispatchers.Main,
+) : ImportExportAsyncTask(mainActivity, dialog, coroutineScope, ioDispatcher, mainDispatcher) {
 
-import androidx.annotation.NonNull;
-
-import java.io.IOException;
-
-import ru.orangesoftware.financisto.backup.DatabaseExport;
-import ru.orangesoftware.financisto.db.DatabaseAdapter;
-import ru.orangesoftware.financisto.export.ImportExportAsyncTask;
-import ru.orangesoftware.financisto.export.ImportExportException;
-
-/**
- * Created by IntelliJ IDEA.
- * User: Denis Solonenko
- * Date: 11/9/11 2:23 AM
- */
-public class DropboxBackupTask extends ImportExportAsyncTask {
-
-    public DropboxBackupTask(Activity mainActivity, ProgressDialog dialog) {
-        super(mainActivity, dialog);
+    override suspend fun work(context: Context, db: DatabaseAdapter, vararg params: String?): Any? {
+        coroutineContext.ensureActive()
+        val export = DatabaseExport(context, db.db(), true)
+        val backupFileName = export.export()
+        coroutineContext.ensureActive()
+        doForceUploadToDropbox(context, backupFileName)
+        return backupFileName
     }
 
-    @Override
-    protected Object work(@NonNull Context context, @NonNull DatabaseAdapter db, String... params) throws ImportExportException, IOException, PackageManager.NameNotFoundException {
-        DatabaseExport export = new DatabaseExport(context, db.db(), true);
-        String backupFileName = export.export();
-        doForceUploadToDropbox(context, backupFileName);
-        return backupFileName;
-    }
-
-    @Override
-    protected String getSuccessMessage(Object result) {
-        return String.valueOf(result);
-    }
-
+    override fun getSuccessMessage(result: Any?): String? = result?.toString()
 }

@@ -1,586 +1,560 @@
 // SPDX-License-Identifier: GPL-2.0-only
-package ru.orangesoftware.financisto.activity;
+package ru.orangesoftware.financisto.activity
 
-import static ru.orangesoftware.financisto.utils.MyPreferences.isQuickMenuEnabledForTransaction;
+import android.app.AlertDialog
+import android.content.Context
+import android.content.Intent
+import android.database.Cursor
+import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
+import android.view.LayoutInflater
+import android.view.View
+import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
+import android.widget.FrameLayout
+import android.widget.ImageButton
+import android.widget.ListAdapter
+import android.widget.PopupMenu
+import android.widget.TextView
+import android.widget.Toast
+import androidx.lifecycle.lifecycleScope
+import greendroid.widget.QuickActionGrid
+import greendroid.widget.QuickActionWidget
+import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.adapter.BlotterListAdapter
+import ru.orangesoftware.financisto.adapter.TransactionsListAdapter
+import ru.orangesoftware.financisto.blotter.AccountTotalCalculationTask
+import ru.orangesoftware.financisto.blotter.BlotterFilter
+import ru.orangesoftware.financisto.blotter.BlotterTotalCalculationTask
+import ru.orangesoftware.financisto.blotter.TotalCalculationTask
+import ru.orangesoftware.financisto.dialog.TransactionInfoDialog
+import ru.orangesoftware.financisto.filter.WhereFilter
+import ru.orangesoftware.financisto.model.AccountType
+import ru.orangesoftware.financisto.utils.IntegrityCheckRunningBalance
+import ru.orangesoftware.financisto.utils.MenuItemInfo
+import ru.orangesoftware.financisto.utils.MyPreferences
+import ru.orangesoftware.financisto.utils.MyPreferences.isQuickMenuEnabledForTransaction
+import ru.orangesoftware.financisto.view.NodeInflater
 
-import android.app.AlertDialog;
-import android.content.Context;
-import android.content.Intent;
-import android.content.SharedPreferences;
-import android.database.Cursor;
-import android.os.Bundle;
-import android.text.Editable;
-import android.text.TextWatcher;
-import android.view.LayoutInflater;
-import android.view.MenuInflater;
-import android.view.View;
-import android.view.inputmethod.InputMethodManager;
-import android.widget.EditText;
-import android.widget.FrameLayout;
-import android.widget.ImageButton;
-import android.widget.ListAdapter;
-import android.widget.PopupMenu;
-import android.widget.TextView;
-import android.widget.Toast;
+@Suppress("TooManyFunctions")
+open class BlotterActivity : AbstractListActivity {
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
+    @JvmField
+    protected var totalText: TextView? = null
 
-import java.util.List;
+    @JvmField
+    protected var bFilter: ImageButton? = null
 
-import greendroid.widget.QuickActionGrid;
-import greendroid.widget.QuickActionWidget;
-import ru.orangesoftware.financisto.R;
-import ru.orangesoftware.financisto.adapter.BlotterListAdapter;
-import ru.orangesoftware.financisto.adapter.TransactionsListAdapter;
-import ru.orangesoftware.financisto.blotter.AccountTotalCalculationTask;
-import ru.orangesoftware.financisto.blotter.BlotterFilter;
-import ru.orangesoftware.financisto.blotter.BlotterTotalCalculationTask;
-import ru.orangesoftware.financisto.blotter.TotalCalculationTask;
-import ru.orangesoftware.financisto.dialog.TransactionInfoDialog;
-import ru.orangesoftware.financisto.filter.WhereFilter;
-import ru.orangesoftware.financisto.model.Account;
-import ru.orangesoftware.financisto.model.AccountType;
-import ru.orangesoftware.financisto.model.Transaction;
-import ru.orangesoftware.financisto.utils.IntegrityCheckRunningBalance;
-import ru.orangesoftware.financisto.utils.MenuItemInfo;
-import ru.orangesoftware.financisto.utils.MyPreferences;
-import ru.orangesoftware.financisto.view.NodeInflater;
+    @JvmField
+    protected var bTransfer: ImageButton? = null
 
-public class BlotterActivity extends AbstractListActivity {
+    @JvmField
+    protected var bTemplate: ImageButton? = null
 
-    public static final String SAVE_FILTER = "saveFilter";
-    public static final String EXTRA_FILTER_ACCOUNTS = "filterAccounts";
+    @JvmField
+    protected var bSearch: ImageButton? = null
 
-    private static final int NEW_TRANSACTION_REQUEST = 1;
-    private static final int NEW_TRANSFER_REQUEST = 3;
-    private static final int NEW_TRANSACTION_FROM_TEMPLATE_REQUEST = 5;
-    private static final int MONTHLY_VIEW_REQUEST = 6;
-    private static final int BILL_PREVIEW_REQUEST = 7;
+    @JvmField
+    protected var bMenu: ImageButton? = null
 
-    protected static final int FILTER_REQUEST = 6;
-    private static final int MENU_DUPLICATE = MENU_ADD + 1;
-    private static final int MENU_SAVE_AS_TEMPLATE = MENU_ADD + 2;
+    @JvmField
+    protected var transactionActionGrid: QuickActionGrid? = null
 
-    protected TextView totalText;
-    protected ImageButton bFilter;
-    protected ImageButton bTransfer;
-    protected ImageButton bTemplate;
-    protected ImageButton bSearch;
-    protected ImageButton bMenu;
+    @JvmField
+    protected var addButtonActionGrid: QuickActionGrid? = null
 
-    protected QuickActionGrid transactionActionGrid;
-    protected QuickActionGrid addButtonActionGrid;
+    internal var calculationTask: TotalCalculationTask? = null
+        private set
 
-    private TotalCalculationTask calculationTask;
+    @JvmField
+    protected var saveFilter: Boolean = false
 
-    protected boolean saveFilter;
-    protected WhereFilter blotterFilter = WhereFilter.empty();
+    @JvmField
+    protected var blotterFilter: WhereFilter = WhereFilter.empty()
 
-    protected boolean isAccountBlotter = false;
-    protected boolean showAllBlotterButtons = true;
+    @JvmField
+    protected var isAccountBlotter: Boolean = false
 
-    public BlotterActivity(int layoutId) {
-        super(layoutId);
+    @JvmField
+    protected var showAllBlotterButtons: Boolean = true
+
+    private var nodeInflater: NodeInflater? = null
+    private var selectedId: Long = -1L
+
+    constructor(layoutId: Int) : super(layoutId)
+
+    constructor() : super(R.layout.blotter)
+
+    protected open fun calculateTotals() {
+        calculationTask?.cancel()
+        val task = createTotalCalculationTask()
+        calculationTask = task
+        task.execute(lifecycleScope)
     }
 
-    public BlotterActivity() {
-        super(R.layout.blotter);
-    }
-
-    protected void calculateTotals() {
-        if (calculationTask != null) {
-            calculationTask.stop();
-            calculationTask.cancel(true);
-        }
-        calculationTask = createTotalCalculationTask();
-        calculationTask.execute();
-    }
-
-    protected TotalCalculationTask createTotalCalculationTask() {
-        WhereFilter filter = WhereFilter.copyOf(blotterFilter);
-        if (filter.getAccountId() > 0) {
-            return new AccountTotalCalculationTask(this, db, filter, totalText);
+    protected open fun createTotalCalculationTask(): TotalCalculationTask {
+        val filter = WhereFilter.copyOf(blotterFilter)
+        return if (filter.accountId > 0) {
+            AccountTotalCalculationTask(this, db, filter, totalText)
         } else {
-            return new BlotterTotalCalculationTask(this, db, filter, totalText);
+            BlotterTotalCalculationTask(this, db, filter, totalText)
         }
     }
 
-    @Override
-    public void recreateCursor() {
-        super.recreateCursor();
-        calculateTotals();
+    override fun recreateCursor() {
+        super.recreateCursor()
+        calculateTotals()
     }
 
-    @Override
-    protected void onCreate(@Nullable Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        LayoutInflater layoutInflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        inflater = new NodeInflater(layoutInflater);
-        integrityCheck();
+    override fun onDestroy() {
+        calculationTask?.cancel()
+        super.onDestroy()
     }
 
-    @Override
-    protected void internalOnCreate(@Nullable Bundle savedInstanceState) {
-        super.internalOnCreate(savedInstanceState);
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        val layoutInflater = getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
+        nodeInflater = NodeInflater(layoutInflater)
+        integrityCheck()
+    }
 
-        bFilter = findViewById(R.id.bFilter);
-        bFilter.setOnClickListener(v -> {
-            Intent intent = new Intent(BlotterActivity.this, BlotterFilterActivity.class);
-            blotterFilter.toIntent(intent);
-            intent.putExtra(BlotterFilterActivity.IS_ACCOUNT_FILTER, isAccountBlotter && blotterFilter.getAccountId() > 0);
-            startActivityForResult(intent, FILTER_REQUEST);
-        });
+    override fun internalOnCreate(savedInstanceState: Bundle?) {
+        super.internalOnCreate(savedInstanceState)
 
-        totalText = findViewById(R.id.total);
-        totalText.setOnClickListener(view -> showTotals());
+        bFilter = findViewById(R.id.bFilter)
+        bFilter?.setOnClickListener {
+            val intent = Intent(this@BlotterActivity, BlotterFilterActivity::class.java)
+            blotterFilter.toIntent(intent)
+            intent.putExtra(BlotterFilterActivity.IS_ACCOUNT_FILTER, isAccountBlotter && blotterFilter.accountId > 0)
+            startActivityForResult(intent, FILTER_REQUEST)
+        }
 
-        Intent intent = getIntent();
-        if (intent != null) {
-            blotterFilter = WhereFilter.fromIntent(intent);
-            saveFilter = intent.getBooleanExtra(SAVE_FILTER, false);
-            isAccountBlotter = intent.getBooleanExtra(BlotterFilterActivity.IS_ACCOUNT_FILTER, false);
+        totalText = findViewById(R.id.total)
+        totalText?.setOnClickListener { showTotals() }
+
+        val incomingIntent = intent
+        if (incomingIntent != null) {
+            blotterFilter = WhereFilter.fromIntent(incomingIntent)
+            saveFilter = incomingIntent.getBooleanExtra(SAVE_FILTER, false)
+            isAccountBlotter = incomingIntent.getBooleanExtra(BlotterFilterActivity.IS_ACCOUNT_FILTER, false)
         }
         if (savedInstanceState != null) {
-            blotterFilter = WhereFilter.fromBundle(savedInstanceState);
+            blotterFilter = WhereFilter.fromBundle(savedInstanceState)
         }
-        if (saveFilter && blotterFilter.isEmpty()) {
-            blotterFilter = WhereFilter.fromSharedPreferences(getPreferences(0));
+        if (saveFilter && blotterFilter.isEmpty) {
+            blotterFilter = WhereFilter.fromSharedPreferences(getPreferences(0))
         }
 
-        showAllBlotterButtons = !isAccountBlotter && !MyPreferences.isCollapseBlotterButtons(this);
+        showAllBlotterButtons = !isAccountBlotter && !MyPreferences.isCollapseBlotterButtons(this)
 
         if (showAllBlotterButtons) {
-            bTransfer = findViewById(R.id.bTransfer);
-            bTransfer.setVisibility(View.VISIBLE);
-            bTransfer.setOnClickListener(arg0 -> addItem(NEW_TRANSFER_REQUEST, TransferActivity.class));
+            bTransfer = findViewById(R.id.bTransfer)
+            bTransfer?.visibility = View.VISIBLE
+            bTransfer?.setOnClickListener { addItem(NEW_TRANSFER_REQUEST, TransferActivity::class.java) }
 
-            bTemplate = findViewById(R.id.bTemplate);
-            bTemplate.setVisibility(View.VISIBLE);
-            bTemplate.setOnClickListener(v -> createFromTemplate());
+            bTemplate = findViewById(R.id.bTemplate)
+            bTemplate?.visibility = View.VISIBLE
+            bTemplate?.setOnClickListener { createFromTemplate() }
         }
 
-        bSearch = findViewById(R.id.bSearch);
-        bSearch.setOnClickListener(method -> {
-            EditText searchText = findViewById(R.id.search_text);
-            FrameLayout searchLayout = findViewById(R.id.search_text_frame);
-            ImageButton searchTextClearButton = findViewById(R.id.search_text_clear);
-            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        bSearch = findViewById(R.id.bSearch)
+        bSearch?.setOnClickListener { setupSearch() }
 
-            searchText.setOnFocusChangeListener((view, b) -> {
-                if (!view.hasFocus()) {
-                    imm.hideSoftInputFromWindow(searchLayout.getWindowToken(), 0);
-                }
-            });
-
-            searchTextClearButton.setOnClickListener(view -> searchText.setText(""));
-
-            if (searchLayout.getVisibility() == View.VISIBLE) {
-                imm.hideSoftInputFromWindow(searchLayout.getWindowToken(), 0);
-                searchLayout.setVisibility(View.GONE);
-                return;
-            }
-
-            searchLayout.setVisibility(View.VISIBLE);
-            searchText.requestFocusFromTouch();
-            imm.showSoftInput(searchText, InputMethodManager.SHOW_IMPLICIT);
-
-            searchText.addTextChangedListener(new TextWatcher() {
-                @Override
-                public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {}
-
-                @Override
-                public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {}
-
-                @Override
-                public void afterTextChanged(Editable editable) {
-                    ImageButton clearButton = findViewById(R.id.search_text_clear);
-                    String text = editable.toString();
-                    blotterFilter.remove(BlotterFilter.NOTE);
-
-                    if (!text.isEmpty()) {
-                        blotterFilter.contains(BlotterFilter.NOTE, text);
-                        clearButton.setVisibility(View.VISIBLE);
-                    } else {
-                        clearButton.setVisibility(View.GONE);
-                    }
-
-                    recreateCursor();
-                    applyFilter();
-                    saveFilter();
-                }
-            });
-
-            if (blotterFilter.get(BlotterFilter.NOTE) != null) {
-                String searchFilterText = blotterFilter.get(BlotterFilter.NOTE).getStringValue();
-                if (!searchFilterText.isEmpty()) {
-                    searchFilterText = searchFilterText.substring(1, searchFilterText.length() - 1);
-                    searchText.setText(searchFilterText);
-                }
-            }
-        });
-
-        applyFilter();
-        applyPopupMenu();
-        calculateTotals();
-        prepareTransactionActionGrid();
-        prepareAddButtonActionGrid();
+        applyFilter()
+        applyPopupMenu()
+        calculateTotals()
+        prepareTransactionActionGrid()
+        prepareAddButtonActionGrid()
     }
 
-    private void applyPopupMenu() {
-        bMenu = findViewById(R.id.bMenu);
+    private fun setupSearch() {
+        val searchText = findViewById<EditText>(R.id.search_text)
+        val searchLayout = findViewById<FrameLayout>(R.id.search_text_frame)
+        val searchTextClearButton = findViewById<ImageButton>(R.id.search_text_clear)
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+
+        searchText.setOnFocusChangeListener { _, _ ->
+            if (!searchText.hasFocus()) {
+                imm.hideSoftInputFromWindow(searchLayout.windowToken, 0)
+            }
+        }
+
+        searchTextClearButton.setOnClickListener { searchText.setText("") }
+
+        if (searchLayout.visibility == View.VISIBLE) {
+            imm.hideSoftInputFromWindow(searchLayout.windowToken, 0)
+            searchLayout.visibility = View.GONE
+            return
+        }
+
+        searchLayout.visibility = View.VISIBLE
+        searchText.requestFocusFromTouch()
+        imm.showSoftInput(searchText, InputMethodManager.SHOW_IMPLICIT)
+
+        searchText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(charSequence: CharSequence, i: Int, i1: Int, i2: Int) {}
+
+            override fun onTextChanged(charSequence: CharSequence, i: Int, i1: Int, i2: Int) {}
+
+            override fun afterTextChanged(editable: Editable) {
+                val clearButton = findViewById<ImageButton>(R.id.search_text_clear)
+                val text = editable.toString()
+                blotterFilter.remove(BlotterFilter.NOTE)
+
+                if (text.isNotEmpty()) {
+                    blotterFilter.contains(BlotterFilter.NOTE, text)
+                    clearButton.visibility = View.VISIBLE
+                } else {
+                    clearButton.visibility = View.GONE
+                }
+
+                recreateCursor()
+                applyFilter()
+                saveFilter()
+            }
+        })
+
+        val noteCriteria = blotterFilter.get(BlotterFilter.NOTE)
+        if (noteCriteria != null) {
+            var searchFilterText = noteCriteria.stringValue
+            if (searchFilterText.isNotEmpty()) {
+                searchFilterText = searchFilterText.substring(1, searchFilterText.length - 1)
+                searchText.setText(searchFilterText)
+            }
+        }
+    }
+
+    private fun applyPopupMenu() {
+        bMenu = findViewById(R.id.bMenu)
         if (isAccountBlotter) {
-            bMenu.setOnClickListener(v -> {
-                PopupMenu popupMenu = new PopupMenu(BlotterActivity.this, bMenu);
-                long accountId = blotterFilter.getAccountId();
-                if (accountId != -1) {
-                    // get account type
-                    Account account = db.getAccount(accountId);
-                    AccountType type = AccountType.valueOf(account.type);
-                    if (type.isCreditCard()) {
-                        // Show menu for Credit Cards - bill
-                        MenuInflater inflater = getMenuInflater();
-                        inflater.inflate(R.menu.ccard_blotter_menu, popupMenu.getMenu());
-                    } else {
-                        // Show menu for other accounts - monthly view
-                        MenuInflater inflater = getMenuInflater();
-                        inflater.inflate(R.menu.blotter_menu, popupMenu.getMenu());
+            bMenu?.setOnClickListener {
+                val menuButton = bMenu ?: return@setOnClickListener
+                val popupMenu = PopupMenu(this@BlotterActivity, menuButton)
+                val accountId = blotterFilter.accountId
+                if (accountId != -1L) {
+                    val account = db.getAccount(accountId)
+                    if (account != null) {
+                        val type = AccountType.valueOf(account.type)
+                        val menuInflater = menuInflater
+                        if (type.isCreditCard) {
+                            menuInflater.inflate(R.menu.ccard_blotter_menu, popupMenu.menu)
+                        } else {
+                            menuInflater.inflate(R.menu.blotter_menu, popupMenu.menu)
+                        }
+                        popupMenu.setOnMenuItemClickListener { item ->
+                            onPopupMenuSelected(item.itemId)
+                            true
+                        }
+                        popupMenu.show()
                     }
-                    popupMenu.setOnMenuItemClickListener(item -> {
-                        onPopupMenuSelected(item.getItemId());
-                        return true;
-                    });
-                    popupMenu.show();
                 }
-            });
+            }
         } else {
-            bMenu.setVisibility(View.GONE);
+            bMenu?.visibility = View.GONE
         }
     }
 
-    public void onPopupMenuSelected(int id) {
-
-        long accountId = blotterFilter.getAccountId();
-
-        Intent intent = new Intent(this, MonthlyViewActivity.class);
-        intent.putExtra(MonthlyViewActivity.ACCOUNT_EXTRA, accountId);
+    open fun onPopupMenuSelected(id: Int) {
+        val accountId = blotterFilter.accountId
+        val intent = Intent(this, MonthlyViewActivity::class.java)
+        intent.putExtra(MonthlyViewActivity.ACCOUNT_EXTRA, accountId)
 
         if (id == R.id.opt_menu_month) {
-            // call credit card bill activity sending account id
-            intent.putExtra(MonthlyViewActivity.BILL_PREVIEW_EXTRA, false);
-            startActivityForResult(intent, MONTHLY_VIEW_REQUEST);
+            intent.putExtra(MonthlyViewActivity.BILL_PREVIEW_EXTRA, false)
+            startActivityForResult(intent, MONTHLY_VIEW_REQUEST)
         } else if (id == R.id.opt_menu_bill) {
-            if (accountId != -1) {
-                Account account = db.getAccount(accountId);
-
-                // call credit card bill activity sending account id
+            if (accountId != -1L) {
+                val account = db.getAccount(accountId)
                 if (account != null && account.paymentDay > 0 && account.closingDay > 0) {
-                    intent.putExtra(MonthlyViewActivity.BILL_PREVIEW_EXTRA, true);
-                    startActivityForResult(intent, BILL_PREVIEW_REQUEST);
+                    intent.putExtra(MonthlyViewActivity.BILL_PREVIEW_EXTRA, true)
+                    startActivityForResult(intent, BILL_PREVIEW_REQUEST)
                 } else {
-                    // display message: need payment and closing day
-                    AlertDialog.Builder dlgAlert = new AlertDialog.Builder(this);
-                    dlgAlert.setMessage(R.string.statement_error);
-                    dlgAlert.setTitle(R.string.ccard_statement);
-                    dlgAlert.setPositiveButton(R.string.ok, null);
-                    dlgAlert.setCancelable(true);
-                    dlgAlert.create().show();
+                    AlertDialog.Builder(this)
+                        .setMessage(R.string.statement_error)
+                        .setTitle(R.string.ccard_statement)
+                        .setPositiveButton(R.string.ok, null)
+                        .setCancelable(true)
+                        .create()
+                        .show()
                 }
             }
         }
     }
 
-    private void showTotals() {
-        Intent intent = new Intent(this, BlotterTotalsDetailsActivity.class);
-        blotterFilter.toIntent(intent);
-        startActivityForResult(intent, -1);
+    private fun showTotals() {
+        val intent = Intent(this, BlotterTotalsDetailsActivity::class.java)
+        blotterFilter.toIntent(intent)
+        startActivityForResult(intent, -1)
     }
 
-    protected void prepareTransactionActionGrid() {
-        transactionActionGrid = new QuickActionGrid(this);
-        transactionActionGrid.addQuickAction(new MyQuickAction(this, R.drawable.ic_action_info, R.string.info));
-        transactionActionGrid.addQuickAction(new MyQuickAction(this, R.drawable.ic_action_edit, R.string.edit));
-        transactionActionGrid.addQuickAction(new MyQuickAction(this, R.drawable.ic_action_trash, R.string.delete));
-        transactionActionGrid.addQuickAction(new MyQuickAction(this, R.drawable.ic_action_copy, R.string.duplicate));
-        transactionActionGrid.addQuickAction(new MyQuickAction(this, R.drawable.ic_action_tick, R.string.clear));
-        transactionActionGrid.addQuickAction(new MyQuickAction(this, R.drawable.ic_action_double_tick, R.string.reconcile));
-        transactionActionGrid.setOnQuickActionClickListener(transactionActionListener);
+    protected open fun prepareTransactionActionGrid() {
+        val grid = QuickActionGrid(this)
+        grid.addQuickAction(MyQuickAction(this, R.drawable.ic_action_info, R.string.info))
+        grid.addQuickAction(MyQuickAction(this, R.drawable.ic_action_edit, R.string.edit))
+        grid.addQuickAction(MyQuickAction(this, R.drawable.ic_action_trash, R.string.delete))
+        grid.addQuickAction(MyQuickAction(this, R.drawable.ic_action_copy, R.string.duplicate))
+        grid.addQuickAction(MyQuickAction(this, R.drawable.ic_action_tick, R.string.clear))
+        grid.addQuickAction(MyQuickAction(this, R.drawable.ic_action_double_tick, R.string.reconcile))
+        grid.setOnQuickActionClickListener(transactionActionListener)
+        transactionActionGrid = grid
     }
 
-    private final QuickActionWidget.OnQuickActionClickListener transactionActionListener = new QuickActionWidget.OnQuickActionClickListener() {
-        public void onQuickActionClicked(QuickActionWidget widget, int position) {
-            switch (position) {
-                case 0:
-                    showTransactionInfo(selectedId);
-                    break;
-                case 1:
-                    editTransaction(selectedId);
-                    break;
-                case 2:
-                    deleteTransaction(selectedId);
-                    break;
-                case 3:
-                    duplicateTransaction(selectedId, 1);
-                    break;
-                case 4:
-                    clearTransaction(selectedId);
-                    break;
-                case 5:
-                    reconcileTransaction(selectedId);
-                    break;
-            }
+    private val transactionActionListener = QuickActionWidget.OnQuickActionClickListener { _, position ->
+        when (position) {
+            0 -> showTransactionInfo(selectedId)
+            1 -> editTransaction(selectedId)
+            2 -> deleteTransaction(selectedId)
+            3 -> duplicateTransaction(selectedId, 1)
+            4 -> clearTransaction(selectedId)
+            5 -> reconcileTransaction(selectedId)
         }
+    }
 
-    };
-
-    private void prepareAddButtonActionGrid() {
-        addButtonActionGrid = new QuickActionGrid(this);
-        addButtonActionGrid.addQuickAction(new MyQuickAction(this, R.drawable.actionbar_add_big, R.string.transaction));
-        addButtonActionGrid.addQuickAction(new MyQuickAction(this, R.drawable.ic_action_transfer, R.string.transfer));
+    private fun prepareAddButtonActionGrid() {
+        val grid = QuickActionGrid(this)
+        grid.addQuickAction(MyQuickAction(this, R.drawable.actionbar_add_big, R.string.transaction))
+        grid.addQuickAction(MyQuickAction(this, R.drawable.ic_action_transfer, R.string.transfer))
         if (addTemplateToAddButton()) {
-            addButtonActionGrid.addQuickAction(new MyQuickAction(this, R.drawable.actionbar_tiles_large, R.string.template));
+            grid.addQuickAction(MyQuickAction(this, R.drawable.actionbar_tiles_large, R.string.template))
         } else {
-            addButtonActionGrid.setNumColumns(2);
+            grid.setNumColumns(2)
         }
-        addButtonActionGrid.setOnQuickActionClickListener(addButtonActionListener);
+        grid.setOnQuickActionClickListener(addButtonActionListener)
+        addButtonActionGrid = grid
     }
 
-    protected boolean addTemplateToAddButton() {
-        return true;
-    }
+    protected open fun addTemplateToAddButton(): Boolean = true
 
-    private final QuickActionWidget.OnQuickActionClickListener addButtonActionListener = (widget, position) -> {
-        switch (position) {
-            case 0:
-                addItem(NEW_TRANSACTION_REQUEST, TransactionActivity.class);
-                break;
-            case 1:
-                addItem(NEW_TRANSFER_REQUEST, TransferActivity.class);
-                break;
-            case 2:
-                createFromTemplate();
-                break;
+    private val addButtonActionListener = QuickActionWidget.OnQuickActionClickListener { _, position ->
+        when (position) {
+            0 -> addItem(NEW_TRANSACTION_REQUEST, TransactionActivity::class.java)
+            1 -> addItem(NEW_TRANSFER_REQUEST, TransferActivity::class.java)
+            2 -> createFromTemplate()
         }
-    };
-
-    private void clearTransaction(long selectedId) {
-        new BlotterOperations(this, db, selectedId).clearTransaction();
-        recreateCursor();
     }
 
-    private void reconcileTransaction(long selectedId) {
-        new BlotterOperations(this, db, selectedId).reconcileTransaction();
-        recreateCursor();
+    private fun clearTransaction(selectedId: Long) {
+        BlotterOperations(this, db, selectedId).clearTransaction()
+        recreateCursor()
     }
 
-    @Override
-    protected void onSaveInstanceState(@NonNull Bundle outState) {
-        super.onSaveInstanceState(outState);
-        blotterFilter.toBundle(outState);
+    private fun reconcileTransaction(selectedId: Long) {
+        BlotterOperations(this, db, selectedId).reconcileTransaction()
+        recreateCursor()
     }
 
-    protected void createFromTemplate() {
-        Intent intent = new Intent(this, SelectTemplateActivity.class);
-        startActivityForResult(intent, NEW_TRANSACTION_FROM_TEMPLATE_REQUEST);
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        blotterFilter.toBundle(outState)
     }
 
-    @Override
-    protected List<MenuItemInfo> createContextMenus(long id) {
-        if (blotterFilter.isTemplate() || blotterFilter.isSchedule()) {
-            return super.createContextMenus(id);
+    protected open fun createFromTemplate() {
+        val intent = Intent(this, SelectTemplateActivity::class.java)
+        startActivityForResult(intent, NEW_TRANSACTION_FROM_TEMPLATE_REQUEST)
+    }
+
+    override fun createContextMenus(id: Long): MutableList<MenuItemInfo> {
+        return if (blotterFilter.isTemplate() || blotterFilter.isSchedule()) {
+            super.createContextMenus(id)
         } else {
-            List<MenuItemInfo> menus = super.createContextMenus(id);
-            menus.add(new MenuItemInfo(MENU_DUPLICATE, R.string.duplicate));
-            menus.add(new MenuItemInfo(MENU_SAVE_AS_TEMPLATE, R.string.save_as_template));
-            return menus;
+            val menus = super.createContextMenus(id)
+            menus.add(MenuItemInfo(MENU_DUPLICATE, R.string.duplicate))
+            menus.add(MenuItemInfo(MENU_SAVE_AS_TEMPLATE, R.string.save_as_template))
+            menus
         }
     }
 
-    @Override
-    public boolean onPopupItemSelected(int itemId, View view, int position, long id) {
+    override fun onPopupItemSelected(itemId: Int, view: View, position: Int, id: Long): Boolean {
         if (!super.onPopupItemSelected(itemId, view, position, id)) {
-            switch (itemId) {
-                case MENU_DUPLICATE:
-                    duplicateTransaction(id, 1);
-                    return true;
-                case MENU_SAVE_AS_TEMPLATE:
-                    new BlotterOperations(this, db, id).duplicateAsTemplate();
-                    Toast.makeText(this, R.string.save_as_template_success, Toast.LENGTH_SHORT).show();
-                    return true;
+            when (itemId) {
+                MENU_DUPLICATE -> {
+                    duplicateTransaction(id, 1)
+                    return true
+                }
+                MENU_SAVE_AS_TEMPLATE -> {
+                    BlotterOperations(this, db, id).duplicateAsTemplate()
+                    Toast.makeText(this, R.string.save_as_template_success, Toast.LENGTH_SHORT).show()
+                    return true
+                }
             }
         }
-        return false;
+        return false
     }
 
-    private long duplicateTransaction(long id, int multiplier) {
-        long newId = new BlotterOperations(this, db, id).duplicateTransaction(multiplier);
-        String toastText;
-        if (multiplier > 1) {
-            toastText = getString(R.string.duplicate_success_with_multiplier, multiplier);
+    private fun duplicateTransaction(id: Long, multiplier: Int): Long {
+        val newId = BlotterOperations(this, db, id).duplicateTransaction(multiplier)
+        val toastText = if (multiplier > 1) {
+            getString(R.string.duplicate_success_with_multiplier, multiplier)
         } else {
-            toastText = getString(R.string.duplicate_success);
+            getString(R.string.duplicate_success)
         }
-        Toast.makeText(this, toastText, Toast.LENGTH_LONG).show();
-        recreateCursor();
-        AccountWidget.updateWidgets(BlotterActivity.this);
-        return newId;
+        Toast.makeText(this, toastText, Toast.LENGTH_LONG).show()
+        recreateCursor()
+        AccountWidget.updateWidgets(this@BlotterActivity)
+        return newId
     }
 
-    @Override
-    protected void addItem() {
+    override fun addItem() {
         if (showAllBlotterButtons) {
-            addItem(NEW_TRANSACTION_REQUEST, TransactionActivity.class);
+            addItem(NEW_TRANSACTION_REQUEST, TransactionActivity::class.java)
         } else {
-            addButtonActionGrid.show(bAdd);
+            val addBtn = bAdd ?: return
+            addButtonActionGrid?.show(addBtn)
         }
     }
 
-    protected void addItem(int requestId, Class<? extends AbstractTransactionActivity> clazz) {
-        Intent intent = new Intent(BlotterActivity.this, clazz);
-        long accountId = blotterFilter.getAccountId();
-        if (accountId != -1) {
-            intent.putExtra(TransactionActivity.ACCOUNT_ID_EXTRA, accountId);
+    protected open fun addItem(requestId: Int, clazz: Class<out AbstractTransactionActivity>) {
+        val intent = Intent(this@BlotterActivity, clazz)
+        val accountId = blotterFilter.accountId
+        if (accountId != -1L) {
+            intent.putExtra(TransactionActivity.ACCOUNT_ID_EXTRA, accountId)
         }
-        intent.putExtra(TransactionActivity.TEMPLATE_EXTRA, blotterFilter.getIsTemplate());
-        startActivityForResult(intent, requestId);
+        intent.putExtra(TransactionActivity.TEMPLATE_EXTRA, blotterFilter.getIsTemplate())
+        startActivityForResult(intent, requestId)
     }
 
-    @Override
-    protected Cursor createCursor() {
-        if (isAccountBlotter) {
-            return db.getBlotterForAccount(blotterFilter);
+    override fun createCursor(): Cursor? {
+        return if (isAccountBlotter) {
+            db.getBlotterForAccount(blotterFilter)
         } else {
-            return db.getBlotter(blotterFilter);
+            db.getBlotter(blotterFilter)
         }
     }
 
-    @Override
-    protected ListAdapter createAdapter(Cursor cursor) {
-        if (isAccountBlotter) {
-            return new TransactionsListAdapter(this, db, cursor);
+    override fun createAdapter(cursor: Cursor?): ListAdapter? {
+        return if (isAccountBlotter) {
+            TransactionsListAdapter(this, db, cursor)
         } else {
-            return new BlotterListAdapter(this, db, cursor);
+            BlotterListAdapter(this, db, cursor)
         }
     }
 
-    @Override
-    protected void deleteItem(View v, int position, final long id) {
-        deleteTransaction(id);
+    override fun deleteItem(v: View?, position: Int, id: Long) {
+        deleteTransaction(id)
     }
 
-    private void deleteTransaction(long id) {
-        new BlotterOperations(this, db, id).deleteTransaction();
+    private fun deleteTransaction(id: Long) {
+        BlotterOperations(this, db, id).deleteTransaction()
     }
 
-    protected void afterDeletingTransaction(long id) {
-        recreateCursor();
-        AccountWidget.updateWidgets(this);
+    open fun afterDeletingTransaction(id: Long) {
+        recreateCursor()
+        AccountWidget.updateWidgets(this)
     }
 
-    @Override
-    public void editItem(View v, int position, long id) {
-        editTransaction(id);
+    override fun editItem(v: View?, position: Int, id: Long) {
+        editTransaction(id)
     }
 
-    private void editTransaction(long id) {
-        new BlotterOperations(this, db, id).editTransaction();
+    private fun editTransaction(id: Long) {
+        BlotterOperations(this, db, id).editTransaction()
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (requestCode == FILTER_REQUEST) {
             if (resultCode == RESULT_FIRST_USER) {
-                blotterFilter.clear();
-            } else if (resultCode == RESULT_OK) {
-                blotterFilter = WhereFilter.fromIntent(data);
+                blotterFilter.clear()
+            } else if (resultCode == RESULT_OK && data != null) {
+                blotterFilter = WhereFilter.fromIntent(data)
             }
             if (saveFilter) {
-                saveFilter();
+                saveFilter()
             }
-            applyFilter();
-            recreateCursor();
+            applyFilter()
+            recreateCursor()
         } else if (resultCode == RESULT_OK && requestCode == NEW_TRANSACTION_FROM_TEMPLATE_REQUEST) {
-            createTransactionFromTemplate(data);
+            if (data != null) {
+                createTransactionFromTemplate(data)
+            }
         }
         if (resultCode == RESULT_OK || resultCode == RESULT_FIRST_USER) {
-            calculateTotals();
+            calculateTotals()
         }
     }
 
-    private void createTransactionFromTemplate(Intent data) {
-        long templateId = data.getLongExtra(SelectTemplateActivity.TEMPATE_ID, -1);
-        int multiplier = data.getIntExtra(SelectTemplateActivity.MULTIPLIER, 1);
-        boolean edit = data.getBooleanExtra(SelectTemplateActivity.EDIT_AFTER_CREATION, false);
+    private fun createTransactionFromTemplate(data: Intent) {
+        val templateId = data.getLongExtra(SelectTemplateActivity.TEMPATE_ID, -1L)
+        val multiplier = data.getIntExtra(SelectTemplateActivity.MULTIPLIER, 1)
+        val edit = data.getBooleanExtra(SelectTemplateActivity.EDIT_AFTER_CREATION, false)
         if (templateId > 0) {
-            long id = duplicateTransaction(templateId, multiplier);
-            Transaction t = db.getTransaction(id);
-            if (t.fromAmount == 0 || edit) {
-                new BlotterOperations(this, db, id).asNewFromTemplate().editTransaction();
+            val id = duplicateTransaction(templateId, multiplier)
+            val t = db.getTransaction(id)
+            if (t.fromAmount == 0L || edit) {
+                BlotterOperations(this, db, id).asNewFromTemplate().editTransaction()
             }
         }
     }
 
-    private void saveFilter() {
-        SharedPreferences preferences = getPreferences(0);
-        blotterFilter.toSharedPreferences(preferences);
+    private fun saveFilter() {
+        val preferences = getPreferences(0)
+        blotterFilter.toSharedPreferences(preferences)
     }
 
-    protected void applyFilter() {
-        long accountId = blotterFilter.getAccountId();
-        if (accountId != -1) {
-            Account a = db.getAccount(accountId);
-            bAdd.setVisibility(a != null && a.isActive ? View.VISIBLE : View.GONE);
+    protected open fun applyFilter() {
+        val accountId = blotterFilter.accountId
+        if (accountId != -1L) {
+            val a = db.getAccount(accountId)
+            bAdd?.visibility = if (a != null && a.isActive) View.VISIBLE else View.GONE
             if (showAllBlotterButtons) {
-                bTransfer.setVisibility(a != null && a.isActive ? View.VISIBLE : View.GONE);
+                bTransfer?.visibility = if (a != null && a.isActive) View.VISIBLE else View.GONE
             }
         }
-        String title = blotterFilter.getTitle();
+        val title = blotterFilter.title
         if (title != null) {
-            setTitle(getString(R.string.blotter) + " : " + title);
+            setTitle(getString(R.string.blotter) + " : " + title)
         }
-        updateFilterImage();
+        updateFilterImage()
     }
 
-    protected void updateFilterImage() {
-        FilterState.updateFilterColor(this, blotterFilter, bFilter);
+    protected open fun updateFilterImage() {
+        bFilter?.let { FilterState.updateFilterColor(this, blotterFilter, it) }
     }
 
-    private NodeInflater inflater;
-    private long selectedId = -1;
-
-    @Override
-    protected void onItemClick(View v, int position, long id) {
+    override fun onItemClick(v: View, position: Int, id: Long) {
         if (isQuickMenuEnabledForTransaction(this)) {
-            selectedId = id;
-            transactionActionGrid.show(v);
+            selectedId = id
+            transactionActionGrid?.show(v)
         } else {
-            showTransactionInfo(id);
+            showTransactionInfo(id)
         }
     }
 
-    @Override
-    protected void viewItem(View v, int position, long id) {
-        showTransactionInfo(id);
+    override fun viewItem(v: View?, position: Int, id: Long) {
+        showTransactionInfo(id)
     }
 
-    private void showTransactionInfo(long id) {
-        TransactionInfoDialog transactionInfoView = new TransactionInfoDialog(this, db, inflater);
-        transactionInfoView.show(this, id);
+    private fun showTransactionInfo(id: Long) {
+        val transactionInfoView = TransactionInfoDialog(this, db, nodeInflater)
+        transactionInfoView.show(this, id)
     }
 
-    @Override
-    public void integrityCheck() {
-        new IntegrityCheckTask(this).execute(new IntegrityCheckRunningBalance(db));
+    override fun integrityCheck() {
+        IntegrityCheckTask(this).execute(IntegrityCheckRunningBalance(db))
     }
 
-    @Override
-    public void onBackPressed()
-    {
-        FrameLayout searchLayout = findViewById(R.id.search_text_frame);
-        if (searchLayout != null && searchLayout.getVisibility() == View.VISIBLE) {
-            searchLayout.setVisibility(View.GONE);
+    @Suppress("DEPRECATION")
+    override fun onBackPressed() {
+        val searchLayout = findViewById<FrameLayout?>(R.id.search_text_frame)
+        if (searchLayout != null && searchLayout.visibility == View.VISIBLE) {
+            searchLayout.visibility = View.GONE
         } else {
-            super.onBackPressed();
+            super.onBackPressed()
         }
+    }
+
+    companion object {
+        const val SAVE_FILTER: String = "saveFilter"
+        const val EXTRA_FILTER_ACCOUNTS: String = "filterAccounts"
+
+        private const val NEW_TRANSACTION_REQUEST: Int = 1
+        private const val NEW_TRANSFER_REQUEST: Int = 3
+        private const val NEW_TRANSACTION_FROM_TEMPLATE_REQUEST: Int = 5
+        private const val MONTHLY_VIEW_REQUEST: Int = 6
+        private const val BILL_PREVIEW_REQUEST: Int = 7
+
+        const val FILTER_REQUEST: Int = 6
+        private const val MENU_DUPLICATE: Int = MENU_ADD + 1
+        private const val MENU_SAVE_AS_TEMPLATE: Int = MENU_ADD + 2
     }
 }
