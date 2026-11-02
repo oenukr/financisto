@@ -39,7 +39,6 @@ import ru.orangesoftware.financisto.export.qif.QifImportOptions
 import ru.orangesoftware.financisto.service.DailyAutoBackupScheduler.Companion.scheduleNextAutoBackup
 import ru.orangesoftware.financisto.utils.MyPreferences
 import ru.orangesoftware.financisto.utils.PinProtection
-
 import ru.orangesoftware.financisto.utils.SummaryEntityEnum
 
 @Suppress("TooManyFunctions", "DEPRECATION", "UNUSED_PARAMETER")
@@ -92,12 +91,12 @@ open class MenuListActivity : FragmentActivity() {
     }
 
     open fun init() {
-        val items = Array<SummaryEntityEnum>(MenuListItem.values().size) { i -> MenuListItem.values()[i] }
+        val items = MenuListItem.entries.toTypedArray<SummaryEntityEnum>()
         setListAdapter(SummaryEntityListAdapter(this, items))
     }
 
     protected open fun onListItemClick(l: ListView, v: View?, position: Int, id: Long) {
-        MenuListItem.values()[position].call(this)
+        MenuListItem.entries[position].call(this)
     }
 
     open fun onCsvExportResult(resultCode: Int, data: Intent?) {
@@ -235,7 +234,11 @@ open class MenuListActivity : FragmentActivity() {
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun onDriveBackupSuccess(event: DriveBackupSuccess) {
         dismissProgressDialog()
-        Toast.makeText(this, getString(R.string.google_drive_backup_success, event.fileName), Toast.LENGTH_LONG).show()
+        Toast.makeText(
+            this,
+            getString(R.string.google_drive_backup_success, event.fileName),
+            Toast.LENGTH_LONG,
+        ).show()
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -247,7 +250,11 @@ open class MenuListActivity : FragmentActivity() {
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun onDriveBackupError(event: DriveBackupError) {
         dismissProgressDialog()
-        Toast.makeText(this, getString(R.string.google_drive_connection_failed, event.message), Toast.LENGTH_LONG).show()
+        Toast.makeText(
+            this,
+            getString(R.string.google_drive_connection_failed, event.message),
+            Toast.LENGTH_LONG,
+        ).show()
     }
 
     open fun onConnectionRequest(resultCode: Int) {

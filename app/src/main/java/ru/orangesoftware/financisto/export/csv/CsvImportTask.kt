@@ -16,6 +16,7 @@ import ru.orangesoftware.financisto.export.ImportExportAsyncTask
 import ru.orangesoftware.financisto.export.ImportExportException
 import kotlin.coroutines.coroutineContext
 
+@Suppress("DEPRECATION", "SpreadOperator")
 class CsvImportTask @JvmOverloads constructor(
     activity: Activity,
     dialog: ProgressDialog?,
@@ -27,6 +28,7 @@ class CsvImportTask @JvmOverloads constructor(
 
     private val logger = DependenciesHolder().logger
 
+    @Suppress("TooGenericExceptionCaught")
     override suspend fun work(context: Context, db: DatabaseAdapter, vararg params: String?): Any {
         val exToThrow = try {
             coroutineContext.ensureActive()
@@ -39,22 +41,21 @@ class CsvImportTask @JvmOverloads constructor(
             return result
         } catch (e: CancellationException) {
             throw e
+        } catch (e: ImportExportException) {
+            logger.e(e, "Csv import error")
+            e
         } catch (e: Exception) {
             logger.e(e, "Csv import error")
-            if (e is ImportExportException) {
-                e
-            } else {
-                val resId = when (e.message) {
-                    "Import file not found" -> R.string.import_file_not_found
-                    "Unknown category in import line" -> R.string.import_unknown_category
-                    "Unknown project in import line" -> R.string.import_unknown_project
-                    "Wrong currency in import line" -> R.string.import_wrong_currency
-                    "IllegalArgumentException" -> R.string.import_illegal_argument_exception
-                    "ParseException" -> R.string.import_parse_error
-                    else -> R.string.csv_import_error
-                }
-                ImportExportException(resId)
+            val resId = when (e.message) {
+                "Import file not found" -> R.string.import_file_not_found
+                "Unknown category in import line" -> R.string.import_unknown_category
+                "Unknown project in import line" -> R.string.import_unknown_project
+                "Wrong currency in import line" -> R.string.import_wrong_currency
+                "IllegalArgumentException" -> R.string.import_illegal_argument_exception
+                "ParseException" -> R.string.import_parse_error
+                else -> R.string.csv_import_error
             }
+            ImportExportException(resId)
         }
         throw exToThrow
     }

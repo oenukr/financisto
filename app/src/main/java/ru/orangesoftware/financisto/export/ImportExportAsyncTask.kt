@@ -25,15 +25,15 @@ import ru.orangesoftware.financisto.utils.Logger
 import ru.orangesoftware.financisto.utils.MyPreferences
 import java.io.FileNotFoundException
 
-@Suppress("TooManyFunctions")
+@Suppress("TooManyFunctions", "DEPRECATION", "SpreadOperator")
 abstract class ImportExportAsyncTask @JvmOverloads constructor(
     protected val context: Activity,
     protected val dialog: ProgressDialog?,
     coroutineScope: CoroutineScope? = null,
-    protected val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-    protected val mainDispatcher: CoroutineDispatcher = Dispatchers.Main,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main,
 ) {
-    protected val coroutineScope: CoroutineScope = coroutineScope ?: DependenciesHolder().applicationScope
+    private val coroutineScope: CoroutineScope = coroutineScope ?: DependenciesHolder().applicationScope
     private val logger: Logger = DependenciesHolder().logger
 
     private var showResultMessage: Boolean = true
@@ -59,6 +59,7 @@ abstract class ImportExportAsyncTask @JvmOverloads constructor(
         this.showResultMessage = showResultMessage
     }
 
+    @Suppress("TooGenericExceptionCaught")
     open fun execute(vararg params: String?): Job {
         job?.cancel()
         val deferred = CompletableDeferred<Any?>()
@@ -100,7 +101,7 @@ abstract class ImportExportAsyncTask @JvmOverloads constructor(
         resultDeferred.await()
     }
 
-    fun cancel(mayInterruptIfRunning: Boolean = true): Boolean {
+    fun cancel(): Boolean {
         val currentJob = job
         currentJob?.cancel()
         return currentJob != null

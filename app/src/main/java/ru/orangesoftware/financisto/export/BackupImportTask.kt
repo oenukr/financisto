@@ -13,6 +13,7 @@ import ru.orangesoftware.financisto.backup.DatabaseImport
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import kotlin.coroutines.coroutineContext
 
+@Suppress("DEPRECATION")
 class BackupImportTask @JvmOverloads constructor(
     activity: Activity,
     dialog: ProgressDialog?,

@@ -20,9 +20,9 @@ import ru.orangesoftware.financisto.utils.Logger
 import ru.orangesoftware.financisto.utils.Utils
 
 abstract class TotalCalculationTask(
-    protected val context: Context?,
-    protected val totalText: TextView?,
-    protected val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val context: Context?,
+    private val totalText: TextView?,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     private val logger: Logger = DependenciesHolder().logger
 
@@ -42,6 +42,7 @@ abstract class TotalCalculationTask(
     abstract fun getTotalInHomeCurrency(): Total
     abstract fun getTotals(): Array<Total>
 
+    @Suppress("TooGenericExceptionCaught")
     open fun execute(scope: CoroutineScope): Job {
         val currentJob = job
         currentJob?.cancel()
@@ -81,7 +82,7 @@ abstract class TotalCalculationTask(
         cancel()
     }
 
-    fun cancel(mayInterruptIfRunning: Boolean = true): Boolean {
+    fun cancel(): Boolean {
         isRunning = false
         val currentJob = job
         currentJob?.cancel()

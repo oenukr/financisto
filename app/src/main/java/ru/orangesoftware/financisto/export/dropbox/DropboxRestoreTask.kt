@@ -14,6 +14,7 @@ import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.export.ImportExportAsyncTask
 import kotlin.coroutines.coroutineContext
 
+@Suppress("DEPRECATION")
 class DropboxRestoreTask @JvmOverloads constructor(
     activity: Activity,
     dialog: ProgressDialog?,

@@ -17,6 +17,7 @@ import ru.orangesoftware.financisto.export.ImportExportException
 import ru.orangesoftware.financisto.utils.Logger
 import kotlin.coroutines.coroutineContext
 
+@Suppress("DEPRECATION")
 class QifImportTask @JvmOverloads constructor(
     activity: Activity,
     dialog: ProgressDialog?,
@@ -28,6 +29,7 @@ class QifImportTask @JvmOverloads constructor(
 
     private val logger: Logger = DependenciesHolder().logger
 
+    @Suppress("TooGenericExceptionCaught")
     override suspend fun work(context: Context, db: DatabaseAdapter, vararg params: String?): Any? {
         return try {
             coroutineContext.ensureActive()

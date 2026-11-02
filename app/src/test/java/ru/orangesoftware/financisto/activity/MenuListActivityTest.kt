@@ -36,6 +36,7 @@ import ru.orangesoftware.financisto.test.CurrencyBuilder
 import ru.orangesoftware.financisto.utils.CurrencyCache
 import java.util.Date
 
+@Suppress("DEPRECATION")
 class MenuListActivityTest : AbstractDbTest() {
 
     private lateinit var homeCurrency: Currency
@@ -64,7 +65,7 @@ class MenuListActivityTest : AbstractDbTest() {
 
         val listView = activity.listView
         assertNotNull(listView)
-        assertEquals(MenuListItem.values().size, listView.count)
+        assertEquals(MenuListItem.entries.size, listView.count)
 
         controller.destroy()
     }
@@ -75,7 +76,7 @@ class MenuListActivityTest : AbstractDbTest() {
         val activity = controller.get()
         ShadowLooper.idleMainLooper()
 
-        val preferencesIndex = MenuListItem.values().indexOf(MenuListItem.MENU_PREFERENCES)
+        val preferencesIndex = MenuListItem.entries.indexOf(MenuListItem.MENU_PREFERENCES)
         assertTrue(preferencesIndex >= 0)
 
         activity.listView.performItemClick(null, preferencesIndex, preferencesIndex.toLong())
@@ -110,15 +111,21 @@ class MenuListActivityTest : AbstractDbTest() {
         activity.onCsvExportResult(Activity.RESULT_OK, intent)
 
         var toastText: String? = null
-        for (i in 0 until 50) {
-            ShadowLooper.idleMainLooper()
-            toastText = ShadowToast.getTextOfLatestToast()
-            if (toastText != null) break
-            Thread.sleep(50)
+        repeat(50) {
+            if (toastText == null) {
+                ShadowLooper.idleMainLooper()
+                toastText = ShadowToast.getTextOfLatestToast()
+                if (toastText == null) {
+                    Thread.sleep(50)
+                }
+            }
         }
 
         assertNotNull("Expected CSV export success toast", toastText)
-        assertTrue("Expected toast to contain CSV success message, got: $toastText", toastText!!.contains(".csv"))
+        assertTrue(
+            "Expected toast to contain CSV success message, got: $toastText",
+            requireNotNull(toastText).contains(".csv"),
+        )
 
         controller.destroy()
     }
@@ -186,12 +193,12 @@ class MenuListActivityTest : AbstractDbTest() {
 
         val subscriber = object {
             @Subscribe
-            fun onDriveBackup(e: DoDriveBackup) {
+            fun onDriveBackup(ignored: DoDriveBackup) {
                 driveBackupReceived = true
             }
 
             @Subscribe
-            fun onDriveListFiles(e: DoDriveListFiles) {
+            fun onDriveListFiles(ignored: DoDriveListFiles) {
                 driveRestoreReceived = true
             }
         }
@@ -262,7 +269,7 @@ class MenuListActivityTest : AbstractDbTest() {
         activity.onDriveBackupSuccess(DriveBackupSuccess("my_backup_123.backup"))
         var toast = ShadowToast.getTextOfLatestToast()
         assertNotNull(toast)
-        assertTrue(toast!!.contains("my_backup_123.backup"))
+        assertTrue(requireNotNull(toast).contains("my_backup_123.backup"))
 
         activity.onDriveRestoreSuccess(DriveRestoreSuccess())
         toast = ShadowToast.getTextOfLatestToast()
@@ -272,7 +279,7 @@ class MenuListActivityTest : AbstractDbTest() {
         activity.onDriveBackupError(DriveBackupError("network_timeout"))
         toast = ShadowToast.getTextOfLatestToast()
         assertNotNull(toast)
-        assertTrue(toast!!.contains("network_timeout"))
+        assertTrue(requireNotNull(toast).contains("network_timeout"))
 
         activity.onConnectionRequest(Activity.RESULT_OK)
         toast = ShadowToast.getTextOfLatestToast()

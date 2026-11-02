@@ -17,6 +17,7 @@ import ru.orangesoftware.financisto.export.ImportExportException
 import ru.orangesoftware.financisto.export.drive.DropboxFileList
 import kotlin.coroutines.coroutineContext
 
+@Suppress("DEPRECATION")
 class DropboxListFilesTask @JvmOverloads constructor(
     context: Activity,
     dialog: ProgressDialog?,
@@ -44,7 +45,7 @@ class DropboxListFilesTask @JvmOverloads constructor(
             files.toTypedArray()
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
+        } catch (ignored: Exception) {
             throw ImportExportException(R.string.dropbox_error)
         }
     }

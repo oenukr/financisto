@@ -35,7 +35,7 @@ import ru.orangesoftware.financisto.utils.MyPreferences.isQuickMenuEnabledForAcc
 import ru.orangesoftware.financisto.view.NodeInflater
 import java.util.concurrent.TimeUnit
 
-@Suppress("TooManyFunctions")
+@Suppress("TooManyFunctions", "DEPRECATION")
 class AccountListActivity : AbstractListActivity(R.layout.account_list) {
 
     private var accountActionGrid: QuickActionWidget? = null
@@ -86,14 +86,13 @@ class AccountListActivity : AbstractListActivity(R.layout.account_list) {
     }
 
     private fun handlePopupMenu(id: Int) {
-        if (id == R.id.backup) {
-            MenuListItem.MENU_BACKUP.call(this)
-        } else if (id == R.id.go_to_menu) {
-            DependenciesHolder().greenRobotBus.post(SwitchToMenuTabEvent())
+        when (id) {
+            R.id.backup -> MenuListItem.MENU_BACKUP.call(this)
+            R.id.go_to_menu -> DependenciesHolder().greenRobotBus.post(SwitchToMenuTabEvent())
         }
     }
 
-    protected open fun prepareAccountActionGrid() {
+    private fun prepareAccountActionGrid() {
         val a = db.getAccount(selectedId)
         val grid = QuickActionGrid(this)
         grid.addQuickAction(MyQuickAction(this, R.drawable.ic_action_info, R.string.info))
@@ -250,6 +249,7 @@ class AccountListActivity : AbstractListActivity(R.layout.account_list) {
         }
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == VIEW_ACCOUNT_REQUEST || requestCode == PURGE_ACCOUNT_REQUEST) {
@@ -294,10 +294,11 @@ class AccountListActivity : AbstractListActivity(R.layout.account_list) {
     }
 
     override fun integrityCheck() {
-        IntegrityCheckTask(this).execute(IntegrityCheckAutobackup(TimeUnit.DAYS.toMillis(7)))
+        IntegrityCheckTask(this).execute(IntegrityCheckAutobackup(TimeUnit.DAYS.toMillis(AUTOBACKUP_CHECK_DAYS)))
     }
 
     companion object {
+        private const val AUTOBACKUP_CHECK_DAYS = 7L
         private const val NEW_ACCOUNT_REQUEST = 1
         const val EDIT_ACCOUNT_REQUEST = 2
         private const val VIEW_ACCOUNT_REQUEST = 3

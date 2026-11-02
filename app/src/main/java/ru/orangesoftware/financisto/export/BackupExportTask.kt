@@ -12,6 +12,7 @@ import ru.orangesoftware.financisto.backup.DatabaseExport
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import kotlin.coroutines.coroutineContext
 
+@Suppress("DEPRECATION")
 class BackupExportTask @JvmOverloads constructor(
     context: Activity,
     dialog: ProgressDialog?,
@@ -30,7 +31,7 @@ class BackupExportTask @JvmOverloads constructor(
         val name = export.export()
         backupFileName = name
         coroutineContext.ensureActive()
-        if (uploadOnline && name != null) {
+        if (uploadOnline) {
             doUploadToDropbox(context, name)
         }
         return name

@@ -26,6 +26,7 @@ import ru.orangesoftware.financisto.test.DateTime
 import ru.orangesoftware.financisto.test.TransactionBuilder
 import ru.orangesoftware.financisto.utils.CurrencyCache
 
+@Suppress("DEPRECATION")
 class AccountListActivityTest : AbstractDbTest() {
 
     private lateinit var homeCurrency: Currency
@@ -122,7 +123,7 @@ class AccountListActivityTest : AbstractDbTest() {
         val bus = DependenciesHolder().greenRobotBus
         val subscriber = object {
             @Subscribe
-            fun onSwitchToMenu(e: SwitchToMenuTabEvent) {
+            fun onSwitchToMenu(ignored: SwitchToMenuTabEvent) {
                 eventReceived = true
             }
         }
@@ -136,7 +137,10 @@ class AccountListActivityTest : AbstractDbTest() {
             val bMenu = activity.findViewById<ImageButton>(R.id.bMenu)
             assertEquals(View.VISIBLE, bMenu.visibility)
 
-            val method = AccountListActivity::class.java.getDeclaredMethod("handlePopupMenu", Int::class.javaPrimitiveType)
+            val method = AccountListActivity::class.java.getDeclaredMethod(
+                "handlePopupMenu",
+                Int::class.javaPrimitiveType,
+            )
             method.isAccessible = true
             method.invoke(activity, R.id.go_to_menu)
 

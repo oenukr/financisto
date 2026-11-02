@@ -151,7 +151,10 @@ class ImportExportTasksAdversarialTest : AbstractDbTest() {
 
         assertTrue("Job should be marked cancelled", job.isCancelled)
         assertTrue("Task should report isCancelled", task.isCancelled)
-        assertNull("Error dialog should not be shown for CancellationException", ShadowAlertDialog.getLatestAlertDialog())
+        assertNull(
+            "Error dialog should not be shown for CancellationException",
+            ShadowAlertDialog.getLatestAlertDialog(),
+        )
         assertNull("Toast should not be shown for CancellationException", ShadowToast.getTextOfLatestToast())
 
         try {
@@ -363,6 +366,4 @@ class ImportExportTasksAdversarialTest : AbstractDbTest() {
         method.invoke(task, arrayOf("50"))
         ShadowLooper.idleMainLooper()
     }
-
-
 }

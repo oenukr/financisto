@@ -48,6 +48,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
 
+@Suppress("DEPRECATION")
 class ImportExportTasksTest : AbstractDbTest() {
 
     private lateinit var activity: Activity
@@ -126,7 +127,7 @@ class ImportExportTasksTest : AbstractDbTest() {
         val bus = DependenciesHolder().greenRobotBus
         val subscriber = object {
             @Subscribe
-            fun onRefresh(event: RefreshCurrentTab) {
+            fun onRefresh(ignored: RefreshCurrentTab) {
                 refreshEventReceived = true
             }
         }
@@ -373,7 +374,7 @@ class ImportExportTasksTest : AbstractDbTest() {
         val tmp = File.createTempFile("test_import", ".csv")
         tmp.writeText(
             "date,time,account,amount,currency,category,parent,payee,location,project,note\n" +
-            "10.07.2026,07:13:17,Dollar,-10.50,USD,,,,,,note\n"
+                "10.07.2026,07:13:17,Dollar,-10.50,USD,,,,,,note\n"
         )
         registerFileForContentResolver(tmp)
 

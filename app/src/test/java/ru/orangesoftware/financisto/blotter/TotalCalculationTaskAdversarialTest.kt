@@ -528,4 +528,3 @@ class TotalCalculationTaskAdversarialTest : AbstractDbTest() {
         assertNull(task.lastResult)
     }
 }
-

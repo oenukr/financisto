@@ -160,12 +160,7 @@ class TotalCalculationTaskTest : AbstractDbTest() {
             .amount(1500L)
             .create()
 
-        val constructor = AccountListActivity.AccountTotalsCalculationTask::class.java.getDeclaredConstructor(
-            android.content.Context::class.java,
-            ru.orangesoftware.financisto.db.DatabaseAdapter::class.java,
-            TextView::class.java
-        ).apply { isAccessible = true }
-        val task = constructor.newInstance(context, db, null)
+        val task = AccountListActivity.AccountTotalsCalculationTask(context, db, null)
         val homeTotal = task.getTotalInHomeCurrency()
         val expectedTotal = db.accountsTotalInHomeCurrency
 
@@ -280,7 +275,7 @@ class TotalCalculationTaskTest : AbstractDbTest() {
         val textView = TextView(context)
         val task = object : TotalCalculationTask(context, textView) {
             override fun getTotalInHomeCurrency(): Total {
-                throw IllegalStateException("Simulated query failure")
+                error("Simulated query failure")
             }
 
             override fun getTotals(): Array<Total> = emptyArray()

@@ -49,6 +49,7 @@ class BudgetBlotterActivity : BlotterActivity() {
 
     override fun createTotalCalculationTask(): TotalCalculationTask {
         return object : TotalCalculationTask(this, totalText) {
+            @Suppress("TooGenericExceptionCaught")
             override fun getTotalInHomeCurrency(): Total {
                 return try {
                     val (total, duration) = measureTimedValue {

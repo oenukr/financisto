@@ -12,6 +12,7 @@ import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.export.ImportExportAsyncTask
 import kotlin.coroutines.coroutineContext
 
+@Suppress("DEPRECATION")
 class QifExportTask @JvmOverloads constructor(
     context: Activity,
     dialog: ProgressDialog?,

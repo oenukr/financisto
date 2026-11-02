@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.activity
 
+import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
@@ -18,6 +19,7 @@ import android.widget.ListAdapter
 import android.widget.PopupMenu
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import greendroid.widget.QuickActionGrid
 import greendroid.widget.QuickActionWidget
@@ -37,7 +39,7 @@ import ru.orangesoftware.financisto.utils.MyPreferences
 import ru.orangesoftware.financisto.utils.MyPreferences.isQuickMenuEnabledForTransaction
 import ru.orangesoftware.financisto.view.NodeInflater
 
-@Suppress("TooManyFunctions")
+@Suppress("TooManyFunctions", "DEPRECATION")
 open class BlotterActivity : AbstractListActivity {
 
     @JvmField
@@ -182,7 +184,7 @@ open class BlotterActivity : AbstractListActivity {
 
         searchTextClearButton.setOnClickListener { searchText.setText("") }
 
-        if (searchLayout.visibility == View.VISIBLE) {
+        if (searchLayout.isVisible) {
             imm.hideSoftInputFromWindow(searchLayout.windowToken, 0)
             searchLayout.visibility = View.GONE
             return
@@ -193,9 +195,13 @@ open class BlotterActivity : AbstractListActivity {
         imm.showSoftInput(searchText, InputMethodManager.SHOW_IMPLICIT)
 
         searchText.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(charSequence: CharSequence, i: Int, i1: Int, i2: Int) {}
+            override fun beforeTextChanged(charSequence: CharSequence, i: Int, i1: Int, i2: Int) {
+                // do nothing
+            }
 
-            override fun onTextChanged(charSequence: CharSequence, i: Int, i1: Int, i2: Int) {}
+            override fun onTextChanged(charSequence: CharSequence, i: Int, i1: Int, i2: Int) {
+                // do nothing
+            }
 
             override fun afterTextChanged(editable: Editable) {
                 val clearButton = findViewById<ImageButton>(R.id.search_text_clear)
@@ -355,7 +361,7 @@ open class BlotterActivity : AbstractListActivity {
     }
 
     override fun createContextMenus(id: Long): MutableList<MenuItemInfo> {
-        return if (blotterFilter.isTemplate() || blotterFilter.isSchedule()) {
+        return if (blotterFilter.isTemplate() || blotterFilter.isSchedule) {
             super.createContextMenus(id)
         } else {
             val menus = super.createContextMenus(id)
@@ -366,20 +372,22 @@ open class BlotterActivity : AbstractListActivity {
     }
 
     override fun onPopupItemSelected(itemId: Int, view: View, position: Int, id: Long): Boolean {
-        if (!super.onPopupItemSelected(itemId, view, position, id)) {
+        return if (super.onPopupItemSelected(itemId, view, position, id)) {
+            true
+        } else {
             when (itemId) {
                 MENU_DUPLICATE -> {
                     duplicateTransaction(id, 1)
-                    return true
+                    true
                 }
                 MENU_SAVE_AS_TEMPLATE -> {
                     BlotterOperations(this, db, id).duplicateAsTemplate()
                     Toast.makeText(this, R.string.save_as_template_success, Toast.LENGTH_SHORT).show()
-                    return true
+                    true
                 }
+                else -> false
             }
         }
-        return false
     }
 
     private fun duplicateTransaction(id: Long, multiplier: Int): Long {
@@ -451,7 +459,9 @@ open class BlotterActivity : AbstractListActivity {
         BlotterOperations(this, db, id).editTransaction()
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == FILTER_REQUEST) {
             if (resultCode == RESULT_FIRST_USER) {
                 blotterFilter.clear()
@@ -502,7 +512,7 @@ open class BlotterActivity : AbstractListActivity {
         }
         val title = blotterFilter.title
         if (title != null) {
-            setTitle(getString(R.string.blotter) + " : " + title)
+            this.title = "${getString(R.string.blotter)} : $title"
         }
         updateFilterImage()
     }
@@ -533,10 +543,11 @@ open class BlotterActivity : AbstractListActivity {
         IntegrityCheckTask(this).execute(IntegrityCheckRunningBalance(db))
     }
 
-    @Suppress("DEPRECATION")
+    @SuppressLint("GestureBackNavigation")
+    @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
         val searchLayout = findViewById<FrameLayout?>(R.id.search_text_frame)
-        if (searchLayout != null && searchLayout.visibility == View.VISIBLE) {
+        if (searchLayout != null && searchLayout.isVisible) {
             searchLayout.visibility = View.GONE
         } else {
             super.onBackPressed()
