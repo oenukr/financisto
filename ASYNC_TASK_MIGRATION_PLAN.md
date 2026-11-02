@@ -149,5 +149,5 @@ All 5 tiers of the `AsyncTask` to Kotlin Coroutines migration have been **100% C
 - **Phase 4 (Tier 4)**: Complex multi-criteria totals calculations (`AbstractTotalsDetailsActivity`, `BudgetListActivity`, `BudgetsTotalCalculator`).
 - **Phase 5 (Tier 5)**: Core base class hierarchies (`TotalCalculationTask` and `ImportExportAsyncTask` hierarchies, 9 concrete tasks, `AccountListActivity`, `BlotterActivity`, `MenuListActivity`).
 
-**Outcome**: Exactly **0 occurrences** of `android.os.AsyncTask` remain across Financisto. All asynchronous operations now utilize Kotlin Coroutines with structured concurrency, lifecycle-aware scopes, and injected dispatchers.
+**Outcome**: Exactly **0 occurrences** of `android.os.AsyncTask` remain across Financisto. All asynchronous operations now utilize Kotlin Coroutines with structured concurrency and injected dispatchers: UI and total-calculation tasks run in explicitly passed lifecycle-aware scopes (`lifecycleScope` / `viewModelScope`), while `ImportExportAsyncTask` subclasses default to `DependenciesHolder().applicationScope` when no scope is passed (including `MenuListActivity`'s Dropbox backup, restore, and file-listing tasks, which guard UI updates against finishing/destroyed activities).
 

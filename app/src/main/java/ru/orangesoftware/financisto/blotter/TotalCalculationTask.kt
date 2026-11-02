@@ -19,12 +19,20 @@ import ru.orangesoftware.financisto.model.Total
 import ru.orangesoftware.financisto.utils.Logger
 import ru.orangesoftware.financisto.utils.Utils
 
+private val defaultSerialIoDispatcher: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1)
+
 abstract class TotalCalculationTask(
     private val context: Context?,
     private val totalText: TextView?,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    ioDispatcher: CoroutineDispatcher = defaultSerialIoDispatcher,
 ) {
     private val logger: Logger = DependenciesHolder().logger
+    private val ioDispatcher: CoroutineDispatcher =
+        if (ioDispatcher === Dispatchers.IO || ioDispatcher === defaultSerialIoDispatcher) {
+            defaultSerialIoDispatcher
+        } else {
+            ioDispatcher.limitedParallelism(1)
+        }
 
     @Volatile
     private var isRunning: Boolean = true
@@ -50,7 +58,7 @@ abstract class TotalCalculationTask(
             if (!isRunning) return@launch
             val result = try {
                 withContext(ioDispatcher) {
-                    coroutineContext.ensureActive()
+                    ensureActive()
                     getTotalInHomeCurrency()
                 }
             } catch (e: CancellationException) {
@@ -59,7 +67,7 @@ abstract class TotalCalculationTask(
                 logger.e(ex, "Unexpected error")
                 Total.ZERO
             }
-            coroutineContext.ensureActive()
+            ensureActive()
             lastResult = result
             if (isRunning) {
                 onPostExecute(result)

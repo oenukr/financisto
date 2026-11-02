@@ -8,6 +8,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import ru.orangesoftware.financisto.R
 import ru.orangesoftware.financisto.app.DependenciesHolder
@@ -15,7 +16,6 @@ import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.export.ImportExportAsyncTask
 import ru.orangesoftware.financisto.export.ImportExportException
 import ru.orangesoftware.financisto.export.drive.DropboxFileList
-import kotlin.coroutines.coroutineContext
 
 @Suppress("DEPRECATION")
 class DropboxListFilesTask @JvmOverloads constructor(
@@ -39,7 +39,7 @@ class DropboxListFilesTask @JvmOverloads constructor(
 
     override suspend fun work(context: Context, db: DatabaseAdapter, vararg params: String?): Any? {
         return try {
-            coroutineContext.ensureActive()
+            currentCoroutineContext().ensureActive()
             val dropbox = Dropbox(context)
             val files = dropbox.listFiles()
             files.toTypedArray()

@@ -68,7 +68,7 @@ class BlotterActivityTest : AbstractDbTest() {
 
         val controller = Robolectric.buildActivity(BlotterActivity::class.java, intent).setup()
         val activity = controller.get()
-        ShadowLooper.idleMainLooper()
+        waitForTotalCalculation(activity)
 
         val listView = activity.findViewById<ListView>(android.R.id.list)
         assertNotNull(listView)
@@ -99,7 +99,7 @@ class BlotterActivityTest : AbstractDbTest() {
 
         val controller = Robolectric.buildActivity(BlotterActivity::class.java).setup()
         val activity = controller.get()
-        ShadowLooper.idleMainLooper()
+        waitForTotalCalculation(activity)
 
         val listView = activity.findViewById<ListView>(android.R.id.list)
         assertNotNull(listView)
@@ -135,7 +135,7 @@ class BlotterActivityTest : AbstractDbTest() {
     fun blotterActivity_recreateCursor_recalculatesTotals() {
         val controller = Robolectric.buildActivity(BlotterActivity::class.java).setup()
         val activity = controller.get()
-        ShadowLooper.idleMainLooper()
+        waitForTotalCalculation(activity)
 
         TransactionBuilder.withDb(db)
             .account(account1)
@@ -144,7 +144,7 @@ class BlotterActivityTest : AbstractDbTest() {
             .create()
 
         activity.recreateCursor()
-        ShadowLooper.idleMainLooper()
+        waitForTotalCalculation(activity)
 
         val totalView = activity.findViewById<TextView>(R.id.total)
         val text = totalView.text.toString()
@@ -171,7 +171,7 @@ class BlotterActivityTest : AbstractDbTest() {
 
         val controller = Robolectric.buildActivity(BlotterActivity::class.java).setup()
         val activity = controller.get()
-        ShadowLooper.idleMainLooper()
+        waitForTotalCalculation(activity)
 
         val searchButton = activity.findViewById<View>(R.id.bSearch)
         searchButton.performClick()
@@ -181,7 +181,7 @@ class BlotterActivityTest : AbstractDbTest() {
 
         val searchText = activity.findViewById<EditText>(R.id.search_text)
         searchText.setText("Groceries")
-        ShadowLooper.idleMainLooper()
+        waitForTotalCalculation(activity)
 
         val listView = activity.findViewById<ListView>(android.R.id.list)
         assertEquals(1, listView.count)
@@ -207,7 +207,7 @@ class BlotterActivityTest : AbstractDbTest() {
 
         val controller = Robolectric.buildActivity(SplitsBlotterActivity::class.java, intent).setup()
         val activity = controller.get()
-        ShadowLooper.idleMainLooper()
+        waitForTotalCalculation(activity)
 
         val filterButton = activity.findViewById<View>(R.id.bFilter)
         assertEquals(View.GONE, filterButton.visibility)
@@ -252,7 +252,7 @@ class BlotterActivityTest : AbstractDbTest() {
 
         val controller = Robolectric.buildActivity(BudgetBlotterActivity::class.java, intent).setup()
         val activity = controller.get()
-        ShadowLooper.idleMainLooper()
+        waitForTotalCalculation(activity)
 
         val filterButton = activity.findViewById<View>(R.id.bFilter)
         assertEquals(View.GONE, filterButton.visibility)
@@ -263,5 +263,20 @@ class BlotterActivityTest : AbstractDbTest() {
         assertTrue("Expected budget balance total to contain 15.00, got: $text", text.contains("15.00"))
 
         controller.destroy()
+    }
+
+    private fun waitForTotalCalculation(activity: BlotterActivity) {
+        var attempts = 0
+        while (activity.calculationTask?.job?.isCompleted == false && attempts < MAX_WAIT_ATTEMPTS) {
+            ShadowLooper.idleMainLooper()
+            Thread.sleep(POLL_INTERVAL_MS)
+            attempts++
+        }
+        ShadowLooper.idleMainLooper()
+    }
+
+    companion object {
+        private const val MAX_WAIT_ATTEMPTS = 100
+        private const val POLL_INTERVAL_MS = 10L
     }
 }

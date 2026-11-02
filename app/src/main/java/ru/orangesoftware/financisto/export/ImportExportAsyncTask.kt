@@ -15,6 +15,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import ru.orangesoftware.financisto.R
 import ru.orangesoftware.financisto.app.DependenciesHolder
@@ -67,14 +69,17 @@ abstract class ImportExportAsyncTask @JvmOverloads constructor(
 
         val newJob = coroutineScope.launch(ioDispatcher) {
             val result = try {
-                coroutineContext.ensureActive()
-                val db = DatabaseAdapter(context)
-                db.open()
-                try {
-                    coroutineContext.ensureActive()
-                    work(context, db, *params)
-                } finally {
-                    db.close()
+                ensureActive()
+                dbMutex.withLock {
+                    ensureActive()
+                    val db = DatabaseAdapter(context)
+                    db.open()
+                    try {
+                        ensureActive()
+                        work(context, db, *params)
+                    } finally {
+                        db.close()
+                    }
                 }
             } catch (e: CancellationException) {
                 deferred.cancel(e)
@@ -84,7 +89,7 @@ abstract class ImportExportAsyncTask @JvmOverloads constructor(
                 ex
             }
 
-            coroutineContext.ensureActive()
+            ensureActive()
             lastResult = result
             deferred.complete(result)
 
@@ -188,5 +193,9 @@ abstract class ImportExportAsyncTask @JvmOverloads constructor(
         if (showResultMessage && !context.isFinishing && !context.isDestroyed) {
             Toast.makeText(context, context.getString(R.string.success, message), Toast.LENGTH_LONG).show()
         }
+    }
+
+    companion object {
+        private val dbMutex = Mutex()
     }
 }

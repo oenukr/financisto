@@ -8,13 +8,13 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import ru.orangesoftware.financisto.R
 import ru.orangesoftware.financisto.app.DependenciesHolder
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.export.ImportExportAsyncTask
 import ru.orangesoftware.financisto.export.ImportExportException
-import kotlin.coroutines.coroutineContext
 
 @Suppress("DEPRECATION", "SpreadOperator")
 class CsvImportTask @JvmOverloads constructor(
@@ -31,13 +31,13 @@ class CsvImportTask @JvmOverloads constructor(
     @Suppress("TooGenericExceptionCaught")
     override suspend fun work(context: Context, db: DatabaseAdapter, vararg params: String?): Any {
         val exToThrow = try {
-            coroutineContext.ensureActive()
+            currentCoroutineContext().ensureActive()
             val csvimport = CsvImport(context, db, options)
             csvimport.setProgressListener { percentage ->
                 publishProgress(percentage.toString())
             }
             val result = csvimport.doImport()
-            coroutineContext.ensureActive()
+            currentCoroutineContext().ensureActive()
             return result
         } catch (e: CancellationException) {
             throw e
@@ -62,6 +62,7 @@ class CsvImportTask @JvmOverloads constructor(
 
     override fun onProgressUpdate(vararg values: String?) {
         super.onProgressUpdate(*values)
+        if (context.isFinishing || context.isDestroyed) return
         dialog?.setMessage(context.getString(R.string.csv_import_inprogress_update, values.firstOrNull()))
     }
 

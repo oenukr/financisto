@@ -59,7 +59,7 @@ class AccountListActivityTest : AbstractDbTest() {
 
         val controller = Robolectric.buildActivity(AccountListActivity::class.java).setup()
         val activity = controller.get()
-        ShadowLooper.idleMainLooper()
+        waitForTotalCalculation(activity)
 
         val listView = activity.findViewById<ListView>(android.R.id.list)
         assertNotNull(listView)
@@ -94,7 +94,7 @@ class AccountListActivityTest : AbstractDbTest() {
     fun recreateCursor_recalculatesTotals() {
         val controller = Robolectric.buildActivity(AccountListActivity::class.java).setup()
         val activity = controller.get()
-        ShadowLooper.idleMainLooper()
+        waitForTotalCalculation(activity)
 
         TransactionBuilder.withDb(db)
             .account(account1)
@@ -103,7 +103,7 @@ class AccountListActivityTest : AbstractDbTest() {
             .create()
 
         activity.recreateCursor()
-        ShadowLooper.idleMainLooper()
+        waitForTotalCalculation(activity)
 
         val totalView = activity.findViewById<TextView>(R.id.total)
         val text = totalView.text.toString()
@@ -149,5 +149,20 @@ class AccountListActivityTest : AbstractDbTest() {
             bus.unregister(subscriber)
             controller.destroy()
         }
+    }
+
+    private fun waitForTotalCalculation(activity: AccountListActivity) {
+        var attempts = 0
+        while (activity.totalCalculationTask?.job?.isCompleted == false && attempts < MAX_WAIT_ATTEMPTS) {
+            ShadowLooper.idleMainLooper()
+            Thread.sleep(POLL_INTERVAL_MS)
+            attempts++
+        }
+        ShadowLooper.idleMainLooper()
+    }
+
+    companion object {
+        private const val MAX_WAIT_ATTEMPTS = 100
+        private const val POLL_INTERVAL_MS = 10L
     }
 }

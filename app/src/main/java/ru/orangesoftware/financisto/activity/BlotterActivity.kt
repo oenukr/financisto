@@ -217,7 +217,9 @@ open class BlotterActivity : AbstractListActivity {
 
                 recreateCursor()
                 applyFilter()
-                saveFilter()
+                if (saveFilter) {
+                    saveFilter()
+                }
             }
         })
 

@@ -7,10 +7,10 @@ import android.content.Context
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import ru.orangesoftware.financisto.backup.DatabaseExport
 import ru.orangesoftware.financisto.db.DatabaseAdapter
-import kotlin.coroutines.coroutineContext
 
 @Suppress("DEPRECATION")
 class BackupExportTask @JvmOverloads constructor(
@@ -26,11 +26,11 @@ class BackupExportTask @JvmOverloads constructor(
     var backupFileName: String? = null
 
     override suspend fun work(context: Context, db: DatabaseAdapter, vararg params: String?): Any? {
-        coroutineContext.ensureActive()
+        currentCoroutineContext().ensureActive()
         val export = DatabaseExport(context, db.db(), true)
         val name = export.export()
         backupFileName = name
-        coroutineContext.ensureActive()
+        currentCoroutineContext().ensureActive()
         if (uploadOnline) {
             doUploadToDropbox(context, name)
         }

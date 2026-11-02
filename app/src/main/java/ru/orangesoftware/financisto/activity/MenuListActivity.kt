@@ -295,12 +295,14 @@ open class MenuListActivity : FragmentActivity() {
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun doDropboxBackup(e: StartDropboxBackup) {
         val d = ProgressDialog.show(this, null, getString(R.string.backup_database_dropbox_inprogress), true)
+        progressDialog = d
         DropboxBackupTask(this, d).execute()
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun doDropboxRestore(e: StartDropboxRestore) {
         val d = ProgressDialog.show(this, null, getString(R.string.dropbox_loading_files), true)
+        progressDialog = d
         DropboxListFilesTask(this, d).execute()
     }
 

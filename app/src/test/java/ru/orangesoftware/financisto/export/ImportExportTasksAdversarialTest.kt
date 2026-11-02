@@ -357,13 +357,17 @@ class ImportExportTasksAdversarialTest : AbstractDbTest() {
         )
         val task = CsvImportTask(activity, progressDialog, options)
 
+        progressDialog.show()
         activityController.destroy()
         assertTrue(activity.isDestroyed)
 
         // Publish progress on destroyed activity via reflection
         val method = CsvImportTask::class.java.getDeclaredMethod("onProgressUpdate", Array<String>::class.java)
         method.isAccessible = true
+        val initialMessage = org.robolectric.Shadows.shadowOf(progressDialog).message?.toString() ?: ""
         method.invoke(task, arrayOf("50"))
         ShadowLooper.idleMainLooper()
+        val afterMessage = org.robolectric.Shadows.shadowOf(progressDialog).message?.toString() ?: ""
+        assertEquals(initialMessage, afterMessage)
     }
 }

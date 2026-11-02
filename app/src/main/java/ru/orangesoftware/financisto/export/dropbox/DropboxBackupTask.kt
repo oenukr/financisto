@@ -7,11 +7,11 @@ import android.content.Context
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import ru.orangesoftware.financisto.backup.DatabaseExport
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.export.ImportExportAsyncTask
-import kotlin.coroutines.coroutineContext
 
 @Suppress("DEPRECATION")
 class DropboxBackupTask @JvmOverloads constructor(
@@ -23,10 +23,10 @@ class DropboxBackupTask @JvmOverloads constructor(
 ) : ImportExportAsyncTask(mainActivity, dialog, coroutineScope, ioDispatcher, mainDispatcher) {
 
     override suspend fun work(context: Context, db: DatabaseAdapter, vararg params: String?): Any? {
-        coroutineContext.ensureActive()
+        currentCoroutineContext().ensureActive()
         val export = DatabaseExport(context, db.db(), true)
         val backupFileName = export.export()
-        coroutineContext.ensureActive()
+        currentCoroutineContext().ensureActive()
         doForceUploadToDropbox(context, backupFileName)
         return backupFileName
     }

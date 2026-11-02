@@ -7,10 +7,10 @@ import android.content.Context
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.export.ImportExportAsyncTask
-import kotlin.coroutines.coroutineContext
 
 @Suppress("DEPRECATION")
 class QifExportTask @JvmOverloads constructor(
@@ -23,10 +23,10 @@ class QifExportTask @JvmOverloads constructor(
 ) : ImportExportAsyncTask(context, dialog, coroutineScope, ioDispatcher, mainDispatcher) {
 
     override suspend fun work(context: Context, db: DatabaseAdapter, vararg params: String?): Any? {
-        coroutineContext.ensureActive()
+        currentCoroutineContext().ensureActive()
         val qifExport = QifExport(context, db, options)
         val backupFileName = qifExport.export()
-        coroutineContext.ensureActive()
+        currentCoroutineContext().ensureActive()
         if (options.uploadToDropbox) {
             doUploadToDropbox(context, backupFileName)
         }
