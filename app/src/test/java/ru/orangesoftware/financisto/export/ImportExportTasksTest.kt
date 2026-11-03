@@ -249,10 +249,18 @@ class ImportExportTasksTest : AbstractDbTest() {
     @Test
     fun backupImportTask_importsDatabaseFromFile() {
         progressDialog.show()
+        val exportedTitle = "ExportedAccountTitle"
+        defaultAccount.title = exportedTitle
+        db.saveOrUpdate(defaultAccount)
+
         val exportTask = BackupExportTask(activity, progressDialog, false)
         exportTask.execute()
         val backupFile = exportTask.get() as String
         ShadowLooper.idleMainLooper()
+
+        defaultAccount.title = "ModifiedAfterExportTitle"
+        db.saveOrUpdate(defaultAccount)
+        assertEquals("ModifiedAfterExportTitle", db.getAccount(defaultAccount.id)?.title)
 
         val backupOnDisk = File(Export.DEFAULT_EXPORT_PATH, backupFile)
         registerFileForContentResolver(backupOnDisk)
@@ -264,6 +272,7 @@ class ImportExportTasksTest : AbstractDbTest() {
 
         assertEquals(true, result)
         assertEquals(activity.getString(R.string.restore_database_success), importTask.callGetSuccessMessage(result))
+        assertEquals(exportedTitle, db.getAccount(defaultAccount.id)?.title)
     }
 
     @Test
@@ -395,6 +404,10 @@ class ImportExportTasksTest : AbstractDbTest() {
         assertNotNull(result)
         assertTrue(result.toString().contains("imported!"))
         assertEquals(result.toString(), task.callGetSuccessMessage(result))
+
+        val transactions = db.getTransactionsForAccount(defaultAccount.id)
+        assertEquals(1, transactions.size)
+        assertEquals(-1050L, transactions[0].fromAmount)
     }
 
     @Test

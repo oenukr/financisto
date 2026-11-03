@@ -47,7 +47,7 @@ class BudgetBlotterActivity : BlotterActivity() {
         return db.getBlotterWithSplits(where)
     }
 
-    override fun createTotalCalculationTask(): TotalCalculationTask {
+    public override fun createTotalCalculationTask(): TotalCalculationTask {
         return object : TotalCalculationTask(this, totalText) {
             @Suppress("TooGenericExceptionCaught")
             override fun getTotalInHomeCurrency(): Total {

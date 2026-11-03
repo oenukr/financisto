@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.blotter
 
+import android.content.Intent
 import android.widget.TextView
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -8,10 +9,12 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.robolectric.Robolectric
 import org.robolectric.shadows.ShadowLooper
 import org.robolectric.shadows.ShadowToast
 import ru.orangesoftware.financisto.R
 import ru.orangesoftware.financisto.activity.AccountListActivity
+import ru.orangesoftware.financisto.activity.BudgetBlotterActivity
 import ru.orangesoftware.financisto.db.AbstractDbTest
 import ru.orangesoftware.financisto.filter.WhereFilter
 import ru.orangesoftware.financisto.model.Account
@@ -174,18 +177,24 @@ class TotalCalculationTaskTest : AbstractDbTest() {
     @Test
     fun budgetBlotterCalculationTask_calculatesBudgetBalanceWithFilters() {
         val catA = requireNotNull(categoriesMap["A"])
-        val project = Project().apply {
+        val selectedProject = Project().apply {
             title = "TestProj"
             isActive = true
         }
-        db.saveOrUpdate(project)
+        db.saveOrUpdate(selectedProject)
+
+        val competingProject = Project().apply {
+            title = "CompetingProj"
+            isActive = true
+        }
+        db.saveOrUpdate(competingProject)
 
         val budget = Budget().apply {
             currency = homeCurrency
             amount = 5000L
             categories = catA.id.toString()
-            projects = project.id.toString()
-            expanded = true
+            projects = selectedProject.id.toString()
+            expanded = false
             includeSubcategories = true
             startDate = DateTime.date(2026, 1, 1).atMidnight().asLong()
             endDate = DateTime.date(2026, 1, 31).at(23, 59, 59, 999).asLong()
@@ -197,27 +206,32 @@ class TotalCalculationTaskTest : AbstractDbTest() {
             .dateTime(DateTime.date(2026, 1, 15).atNoon())
             .amount(-1200L)
             .category(catA)
-            .project(project.title)
+            .project(selectedProject.title)
             .create()
 
-        val categories = mapOf(catA.id to catA)
-        val projects = mapOf(project.id to project)
+        TransactionBuilder.withDb(db)
+            .account(homeAccount)
+            .dateTime(DateTime.date(2026, 1, 16).atNoon())
+            .amount(-800L)
+            .category(catA)
+            .project(competingProject.title)
+            .create()
 
-        val budgetTask = object : TotalCalculationTask(context, null) {
-            override fun getTotalInHomeCurrency(): Total {
-                val b = db.load(Budget::class.java, budget.id)
-                val total = Total(b.budgetCurrency)
-                total.balance = db.fetchBudgetBalance(categories, projects, b)
-                return total
-            }
+        val intent = Intent()
+        WhereFilter.empty().eq(BlotterFilter.BUDGET_ID, budget.id.toString()).toIntent(intent)
 
-            override fun getTotals(): Array<Total> = emptyArray()
+        val controller = Robolectric.buildActivity(BudgetBlotterActivity::class.java, intent).setup()
+        try {
+            val activity = controller.get()
+            val budgetTask = activity.createTotalCalculationTask()
+            val budgetTotal = budgetTask.getTotalInHomeCurrency()
+
+            assertEquals(homeCurrency.id, budgetTotal.currency.id)
+            assertEquals(-1200L, budgetTotal.balance)
+            assertEquals(0, budgetTask.getTotals().size)
+        } finally {
+            controller.destroy()
         }
-
-        val budgetTotal = budgetTask.getTotalInHomeCurrency()
-        assertEquals(homeCurrency.id, budgetTotal.currency.id)
-        assertEquals(-1200L, budgetTotal.balance)
-        assertEquals(0, budgetTask.getTotals().size)
     }
 
     @Test

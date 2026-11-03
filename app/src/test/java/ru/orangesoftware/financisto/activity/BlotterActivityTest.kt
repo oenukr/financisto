@@ -259,8 +259,8 @@ class BlotterActivityTest : AbstractDbTest() {
 
         val totalView = activity.findViewById<TextView>(R.id.total)
         val text = totalView.text.toString()
-        // Budget balance computed by BudgetBlotterActivity is the total spent: -15.00
-        assertTrue("Expected budget balance total to contain 15.00, got: $text", text.contains("15.00"))
+        val expectedNegativeAmount = CurrencyCache.createCurrencyFormat(homeCurrency).format(-15L)
+        assertEquals("$expectedNegativeAmount $", text)
 
         controller.destroy()
     }

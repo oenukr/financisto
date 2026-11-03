@@ -2,6 +2,8 @@
 package ru.orangesoftware.financisto.activity
 
 import android.app.Activity
+import android.app.AlarmManager
+import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
 import android.preference.PreferenceManager
@@ -144,6 +146,21 @@ class MenuListActivityTest : AbstractDbTest() {
 
         activity.onChangePreferences()
         ShadowLooper.idleMainLooper()
+
+        val alarmManager = activity.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val shadowAlarmManager = shadowOf(alarmManager)
+        val matchingAlarm = shadowAlarmManager.scheduledAlarms.firstOrNull { alarm ->
+            val operation = alarm.operation ?: return@firstOrNull false
+            val shadowPendingIntent = shadowOf(operation)
+            val savedIntent = shadowPendingIntent.savedIntent
+            shadowPendingIntent.requestCode == -100 &&
+                savedIntent.action == "ru.orangesoftware.financisto.SCHEDULED_BACKUP" &&
+                savedIntent.component?.className == ScheduledAlarmReceiver::class.java.name
+        }
+        assertNotNull(
+            "Expected scheduled auto-backup alarm targeting ScheduledAlarmReceiver",
+            matchingAlarm,
+        )
 
         controller.destroy()
     }

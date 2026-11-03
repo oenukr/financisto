@@ -6,7 +6,9 @@ import android.app.ProgressDialog
 import android.content.Context
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -231,13 +233,24 @@ class ImportExportTasksAdversarialTest : AbstractDbTest() {
 
     @Test
     fun workThrowsAssertionError_terminatesJobAbruptlyWithoutCrashing() {
-        val task = AdversarialTestTask(activity, progressDialog) { _, _ ->
+        var uncaughtThrowable: Throwable? = null
+        val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+            uncaughtThrowable = throwable
+        }
+        val customScope = CoroutineScope(SupervisorJob() + exceptionHandler)
+
+        val task = AdversarialTestTask(activity, progressDialog, customScope) { _, _ ->
             throw AssertionError("Assertion failure in background thread")
         }
 
         val job = task.execute()
         runBlocking { job.join() }
         assertTrue("Job terminates on error", job.isCompleted)
+        assertTrue("Uncaught failure should be AssertionError", uncaughtThrowable is AssertionError)
+        assertEquals(
+            "Assertion failure in background thread",
+            (uncaughtThrowable as AssertionError).message,
+        )
     }
 
     // =========================================================================
