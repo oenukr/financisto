@@ -38,7 +38,7 @@ class DropboxListFilesTask @JvmOverloads constructor(
     }
 
     override suspend fun executeWork(vararg params: String?): Any? =
-        listFiles(context)
+        listFiles(appContext)
 
     override suspend fun work(context: Context, db: DatabaseAdapter, vararg params: String?): Any? =
         listFiles(context)

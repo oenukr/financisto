@@ -147,6 +147,7 @@ open class MenuListActivity : FragmentActivity() {
     override fun onDestroy() {
         dismissProgressDialog()
         dismissDropboxProgressDialogs()
+        dismissDropboxSelectionDialog()
         super.onDestroy()
     }
 
@@ -158,6 +159,8 @@ open class MenuListActivity : FragmentActivity() {
         }
         progressDialog = null
     }
+
+    private var dropboxSelectionDialog: AlertDialog? = null
 
     private fun trackDropboxDialog(dialog: ProgressDialog): ProgressDialog {
         dropboxProgressDialogs.add(dialog)
@@ -171,10 +174,20 @@ open class MenuListActivity : FragmentActivity() {
         val dialogs = dropboxProgressDialogs.toList()
         dropboxProgressDialogs.clear()
         dialogs.forEach { dialog ->
+            dialog.setOnDismissListener(null)
             if (dialog.isShowing) {
                 dialog.dismiss()
             }
         }
+    }
+
+    private fun dismissDropboxSelectionDialog() {
+        dropboxSelectionDialog?.let { dialog ->
+            if (dialog.isShowing) {
+                dialog.dismiss()
+            }
+        }
+        dropboxSelectionDialog = null
     }
 
     // google drive
@@ -290,7 +303,7 @@ open class MenuListActivity : FragmentActivity() {
         val backupFiles = event.files ?: return
         val items: Array<CharSequence?> = Array(backupFiles.size) { i -> backupFiles[i] }
         var selectedDropboxFile: String? = null
-        AlertDialog.Builder(this)
+        dropboxSelectionDialog = AlertDialog.Builder(this)
             .setTitle(R.string.restore_database_online_dropbox)
             .setPositiveButton(R.string.restore) { _, _ ->
                 val file = selectedDropboxFile

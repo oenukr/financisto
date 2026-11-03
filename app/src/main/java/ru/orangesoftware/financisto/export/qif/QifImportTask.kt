@@ -45,5 +45,5 @@ class QifImportTask @JvmOverloads constructor(
     }
 
     override fun getSuccessMessage(result: Any?): String =
-        context.getString(R.string.qif_import_success)
+        appContext.getString(R.string.qif_import_success)
 }

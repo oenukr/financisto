@@ -27,20 +27,33 @@ import ru.orangesoftware.financisto.export.Export.uploadBackupFileToDropbox
 import ru.orangesoftware.financisto.utils.Logger
 import ru.orangesoftware.financisto.utils.MyPreferences
 import java.io.FileNotFoundException
+import java.lang.ref.WeakReference
 
 @Suppress("TooManyFunctions", "DEPRECATION", "SpreadOperator")
 abstract class ImportExportAsyncTask @JvmOverloads constructor(
-    protected val context: Activity,
-    protected val dialog: ProgressDialog?,
+    context: Activity,
+    dialog: ProgressDialog?,
     coroutineScope: CoroutineScope? = null,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main,
 ) {
+    protected val appContext: Context = context.applicationContext ?: context
+    private val activityRef: WeakReference<Activity> = WeakReference(context)
+    private val dialogRef: WeakReference<ProgressDialog> = WeakReference(dialog)
+
+    protected val context: Activity?
+        get() = activityRef.get()
+
+    protected val dialog: ProgressDialog?
+        get() = dialogRef.get()
+
     private val coroutineScope: CoroutineScope = coroutineScope ?: DependenciesHolder().applicationScope
     private val logger: Logger = DependenciesHolder().logger
 
     private var showResultMessage: Boolean = true
     private var listener: ImportExportAsyncTaskListener? = null
+    private var deferDropboxUpload: Boolean = false
+    private val pendingDropboxUploads: MutableList<() -> Unit> = mutableListOf()
 
     var job: Job? = null
         private set
@@ -96,18 +109,30 @@ abstract class ImportExportAsyncTask @JvmOverloads constructor(
         return newJob
     }
 
-    protected open suspend fun executeWork(vararg params: String?): Any? =
-        dbMutex.withLock {
+    protected open suspend fun executeWork(vararg params: String?): Any? {
+        val uploadActions = mutableListOf<() -> Unit>()
+        val result = dbMutex.withLock {
             currentCoroutineContext().ensureActive()
-            val db = DatabaseAdapter(context)
+            val db = DatabaseAdapter(appContext)
             db.open()
+            pendingDropboxUploads.clear()
+            deferDropboxUpload = true
             try {
                 currentCoroutineContext().ensureActive()
-                work(context, db, *params)
+                work(appContext, db, *params)
             } finally {
+                deferDropboxUpload = false
+                uploadActions.addAll(pendingDropboxUploads)
+                pendingDropboxUploads.clear()
                 db.close()
             }
         }
+        for (uploadAction in uploadActions) {
+            currentCoroutineContext().ensureActive()
+            uploadAction()
+        }
+        return result
+    }
 
     fun get(): Any? = runBlocking {
         resultDeferred.await()
@@ -125,6 +150,10 @@ abstract class ImportExportAsyncTask @JvmOverloads constructor(
 
     @Throws(FileNotFoundException::class, ImportExportException::class)
     protected open fun doUploadToDropbox(context: Context, backupFileName: String) {
+        if (deferDropboxUpload) {
+            pendingDropboxUploads.add { doUploadToDropbox(context, backupFileName) }
+            return
+        }
         if (MyPreferences.isDropboxUploadBackups(context)) {
             doForceUploadToDropbox(context, backupFileName)
         }
@@ -132,7 +161,16 @@ abstract class ImportExportAsyncTask @JvmOverloads constructor(
 
     @Throws(FileNotFoundException::class, ImportExportException::class)
     protected open fun doForceUploadToDropbox(context: Context, backupFileName: String) {
+        if (deferDropboxUpload) {
+            pendingDropboxUploads.add { doForceUploadToDropbox(context, backupFileName) }
+            return
+        }
         publishProgress(context.getString(R.string.dropbox_uploading_file))
+        uploadBackupToDropbox(context, backupFileName)
+    }
+
+    @Throws(FileNotFoundException::class, ImportExportException::class)
+    internal open fun uploadBackupToDropbox(context: Context, backupFileName: String) {
         uploadBackupFileToDropbox(context, backupFileName)
     }
 
@@ -143,9 +181,11 @@ abstract class ImportExportAsyncTask @JvmOverloads constructor(
     }
 
     protected open fun onProgressUpdate(vararg values: String?) {
-        if (!context.isFinishing && !context.isDestroyed && dialog != null) {
+        val activity = context
+        val currentDialog = dialog
+        if (activity != null && !activity.isFinishing && !activity.isDestroyed && currentDialog != null) {
             val message = values.firstOrNull() ?: return
-            dialog.setMessage(message)
+            currentDialog.setMessage(message)
         }
     }
 
@@ -160,9 +200,11 @@ abstract class ImportExportAsyncTask @JvmOverloads constructor(
     }
 
     private fun dismissDialogSafely() {
-        if (dialog != null && !context.isFinishing && !context.isDestroyed) {
+        val activity = context
+        val currentDialog = dialog
+        if (currentDialog != null && activity != null && !activity.isFinishing && !activity.isDestroyed) {
             try {
-                dialog.dismiss()
+                currentDialog.dismiss()
             } catch (e: IllegalArgumentException) {
                 logger.e(e, "Error dismissing progress dialog")
             }
@@ -170,21 +212,22 @@ abstract class ImportExportAsyncTask @JvmOverloads constructor(
     }
 
     private fun showErrorDialog(exception: ImportExportException) {
-        if (context.isFinishing || context.isDestroyed) return
+        val activity = context
+        if (activity == null || activity.isFinishing || activity.isDestroyed) return
 
         val sb = StringBuilder()
         val formatArgs = exception.formatArgs
         if (formatArgs.isNotEmpty()) {
-            sb.append(context.getString(exception.errorResId, *formatArgs))
+            sb.append(activity.getString(exception.errorResId, *formatArgs))
         } else {
-            sb.append(context.getString(exception.errorResId))
+            sb.append(activity.getString(exception.errorResId))
         }
 
         if (exception.cause != null) {
             sb.append(" : ").append(exception.cause)
         }
 
-        AlertDialog.Builder(context)
+        AlertDialog.Builder(activity)
             .setTitle(R.string.fail)
             .setMessage(sb.toString())
             .setPositiveButton(R.string.ok, null)
@@ -192,13 +235,13 @@ abstract class ImportExportAsyncTask @JvmOverloads constructor(
     }
 
     private fun handleSuccess(result: Any?) {
-        val message = getSuccessMessage(result)
-
         DependenciesHolder().greenRobotBus.post(RefreshCurrentTab())
         listener?.onCompleted(result)
 
-        if (showResultMessage && !context.isFinishing && !context.isDestroyed) {
-            Toast.makeText(context, context.getString(R.string.success, message), Toast.LENGTH_LONG).show()
+        val activity = context
+        if (showResultMessage && activity != null && !activity.isFinishing && !activity.isDestroyed) {
+            val message = getSuccessMessage(result)
+            Toast.makeText(activity, activity.getString(R.string.success, message), Toast.LENGTH_LONG).show()
         }
     }
 

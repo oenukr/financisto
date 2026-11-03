@@ -32,5 +32,5 @@ class DropboxRestoreTask @JvmOverloads constructor(
     }
 
     override fun getSuccessMessage(result: Any?): String =
-        context.getString(R.string.restore_database_success)
+        appContext.getString(R.string.restore_database_success)
 }

@@ -8,10 +8,9 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -27,6 +26,7 @@ import org.robolectric.shadows.ShadowAlertDialog
 import org.robolectric.shadows.ShadowLooper
 import org.robolectric.shadows.ShadowToast
 import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.backup.DatabaseExport
 import ru.orangesoftware.financisto.db.AbstractDbTest
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.export.csv.CsvImportOptions
@@ -37,8 +37,10 @@ import ru.orangesoftware.financisto.model.Currency
 import ru.orangesoftware.financisto.test.AccountBuilder
 import ru.orangesoftware.financisto.test.CurrencyBuilder
 import ru.orangesoftware.financisto.utils.CurrencyCache
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
+import kotlin.concurrent.thread
 import kotlin.time.Duration.Companion.milliseconds
 
 @Suppress("MagicNumber", "TooManyFunctions", "DEPRECATION")
@@ -197,6 +199,55 @@ class ImportExportTasksAdversarialTest : AbstractDbTest() {
         assertEquals(listOf("Done"), completionResults)
     }
 
+    @Test
+    fun executeWork_dropboxUploadRunsOutsideDbMutex_doesNotBlockConcurrentDbLock() {
+        val uploadStarted = CompletableDeferred<Unit>()
+        val allowUploadFinish = CompletableDeferred<Unit>()
+        var mutexLockedDuringUpload = true
+        var uploadedFileName: String? = null
+
+        val task = object : ImportExportAsyncTask(activity, progressDialog) {
+            override suspend fun work(context: Context, db: DatabaseAdapter, vararg params: String?): Any? {
+                val export = DatabaseExport(context, db.db(), true)
+                val backupFileName = export.export()
+                doForceUploadToDropbox(context, backupFileName)
+                return backupFileName
+            }
+
+            override fun uploadBackupToDropbox(context: Context, backupFileName: String) {
+                mutexLockedDuringUpload = dbMutex.isLocked
+                uploadedFileName = backupFileName
+                uploadStarted.complete(Unit)
+                runBlocking { allowUploadFinish.await() }
+            }
+
+            override fun getSuccessMessage(result: Any?): String? = result?.toString()
+        }
+
+        task.execute()
+        runBlocking {
+            withTimeout(5_000L.milliseconds) {
+                uploadStarted.await()
+            }
+            assertFalse("dbMutex must be released before Dropbox upload starts", mutexLockedDuringUpload)
+
+            var concurrentDbOperationCompleted = false
+            withTimeout(1_000L.milliseconds) {
+                ImportExportAsyncTask.dbMutex.withLock {
+                    concurrentDbOperationCompleted = true
+                }
+            }
+            assertTrue("Concurrent dbMutex consumer (e.g. purge/auto-backup) must not be blocked", concurrentDbOperationCompleted)
+        }
+
+        allowUploadFinish.complete(Unit)
+        val result = task.get()
+        ShadowLooper.idleMainLooper()
+
+        assertNotNull(uploadedFileName)
+        assertEquals(uploadedFileName, result)
+    }
+
     // =========================================================================
     // 2. EXCEPTION HANDLING TESTS
     // =========================================================================
@@ -256,18 +307,12 @@ class ImportExportTasksAdversarialTest : AbstractDbTest() {
             (uncaughtThrowable as AssertionError).message,
         )
 
-        val getError = runBlocking {
-            withTimeout(1_000L.milliseconds) {
-                withContext(Dispatchers.Default) {
-                    try {
-                        task.get()
-                        null
-                    } catch (err: AssertionError) {
-                        err
-                    }
-                }
-            }
+        var getError: Throwable? = null
+        val getWorker = thread(isDaemon = true) {
+            getError = runCatching { task.get() }.exceptionOrNull()
         }
+        getWorker.join(1_000L)
+        assertTrue("task.get() must return within 1 second", !getWorker.isAlive)
         assertNotNull("Expected task.get() to complete with AssertionError rather than hanging", getError)
         assertEquals("Assertion failure in background thread", getError?.message)
     }
@@ -377,7 +422,38 @@ class ImportExportTasksAdversarialTest : AbstractDbTest() {
     }
 
     @Test
-    fun csvImportTask_publishProgress_withLiveActivity_showsFormattedPercentage() {
+    fun csvImportTask_execute_with100Rows_updatesProgressDialogMessage() {
+        progressDialog.show()
+        val tmp = File.createTempFile("test_import_100", ".csv")
+        val csvContent = buildString {
+            append("date,time,account,amount,currency,category,parent,payee,location,project,note\n")
+            repeat(100) { index ->
+                append("10.07.2026,07:13:17,Dollar,-10.00,USD,,,,,,note_$index\n")
+            }
+        }
+        tmp.writeText(csvContent)
+        registerFileForContentResolver(tmp)
+
+        val options = CsvImportOptions(
+            defaultCurrency,
+            SimpleDateFormat("dd.MM.yyyy", Locale.US),
+            defaultAccount.id,
+            WhereFilter.empty(),
+            android.net.Uri.fromFile(tmp).toString(),
+            ',',
+            true,
+        )
+        val task = CsvImportTask(activity, progressDialog, options)
+        task.execute()
+        task.get()
+        ShadowLooper.idleMainLooper()
+
+        val message = org.robolectric.Shadows.shadowOf(progressDialog).message?.toString()
+        assertEquals(activity.getString(R.string.csv_import_inprogress_update, "100"), message)
+    }
+
+    @Test
+    fun csvImportTask_onProgressUpdate_viaReflection_withLiveActivity_showsFormattedPercentage() {
         val options = CsvImportOptions(
             defaultCurrency,
             SimpleDateFormat("dd.MM.yyyy", Locale.US),
@@ -400,7 +476,7 @@ class ImportExportTasksAdversarialTest : AbstractDbTest() {
     }
 
     @Test
-    fun csvImportTask_publishProgress_withDestroyedActivity_doesNotThrow() {
+    fun csvImportTask_onProgressUpdate_viaReflection_withDestroyedActivity_doesNotThrow() {
         val options = CsvImportOptions(
             defaultCurrency,
             SimpleDateFormat("dd.MM.yyyy", Locale.US),

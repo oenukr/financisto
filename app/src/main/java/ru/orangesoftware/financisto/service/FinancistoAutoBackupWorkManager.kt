@@ -36,9 +36,13 @@ class FinancistoAutoBackupWorkManager(
                 val duration = measureTime {
                     val fileName = runBlocking {
                         ImportExportAsyncTask.dbMutex.withLock {
-                            DatabaseExport(applicationContext, db.db(), true).export()
+                            if (isStopped) {
+                                null
+                            } else {
+                                DatabaseExport(applicationContext, db.db(), true).export()
+                            }
                         }
-                    }
+                    } ?: return Result.failure()
                     if (MyPreferences.isDropboxUploadAutoBackups(applicationContext)) {
                         successful = uploadToDropbox(fileName)
                     }

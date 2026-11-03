@@ -62,8 +62,9 @@ class CsvImportTask @JvmOverloads constructor(
 
     override fun onProgressUpdate(vararg values: String?) {
         super.onProgressUpdate(*values)
-        if (context.isFinishing || context.isDestroyed) return
-        dialog?.setMessage(context.getString(R.string.csv_import_inprogress_update, values.firstOrNull()))
+        val activity = context ?: return
+        if (activity.isFinishing || activity.isDestroyed) return
+        dialog?.setMessage(activity.getString(R.string.csv_import_inprogress_update, values.firstOrNull()))
     }
 
     override fun getSuccessMessage(result: Any?): String = result.toString()

@@ -33,8 +33,10 @@ import ru.orangesoftware.financisto.export.drive.DriveRestoreSuccess
 import ru.orangesoftware.financisto.export.drive.DropboxFileList
 import ru.orangesoftware.financisto.model.Account
 import ru.orangesoftware.financisto.model.Currency
+import ru.orangesoftware.financisto.service.DailyAutoBackupScheduler
 import ru.orangesoftware.financisto.test.AccountBuilder
 import ru.orangesoftware.financisto.test.CurrencyBuilder
+import ru.orangesoftware.financisto.test.DateTime
 import ru.orangesoftware.financisto.utils.CurrencyCache
 import java.util.Calendar
 import java.util.Date
@@ -145,8 +147,14 @@ class MenuListActivityTest : AbstractDbTest() {
         val activity = controller.get()
         ShadowLooper.idleMainLooper()
 
-        activity.onChangePreferences()
-        ShadowLooper.idleMainLooper()
+        val fixedNow = DateTime.date(2026, 1, 15).at(15, 0, 0, 0).asLong()
+        DailyAutoBackupScheduler.nowProvider = { fixedNow }
+        try {
+            activity.onChangePreferences()
+            ShadowLooper.idleMainLooper()
+        } finally {
+            DailyAutoBackupScheduler.nowProvider = { System.currentTimeMillis() }
+        }
 
         val alarmManager = activity.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val shadowAlarmManager = shadowOf(alarmManager)
@@ -162,8 +170,13 @@ class MenuListActivityTest : AbstractDbTest() {
             "Expected scheduled auto-backup alarm targeting ScheduledAlarmReceiver",
             matchingAlarm,
         )
+        val triggerAtMs = requireNotNull(matchingAlarm).triggerAtMs
+        assertTrue(
+            "Expected triggerAtMs ($triggerAtMs) to be rolled over past fixedNow ($fixedNow)",
+            triggerAtMs > fixedNow,
+        )
         val calendar = Calendar.getInstance().apply {
-            timeInMillis = requireNotNull(matchingAlarm).triggerAtMs
+            timeInMillis = triggerAtMs
         }
         assertEquals(14, calendar.get(Calendar.HOUR_OF_DAY))
         assertEquals(30, calendar.get(Calendar.MINUTE))
