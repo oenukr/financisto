@@ -333,13 +333,17 @@ class ImportExportTasksAdversarialTest : AbstractDbTest() {
         val downloadStarted = CompletableDeferred<Unit>()
         val allowDownloadFinish = CompletableDeferred<Unit>()
         var mutexLockedDuringDownload = true
+        var createdTempFile: File? = null
 
         val task = object : DropboxRestoreTask(activity, progressDialog, "remote.backup") {
-            override fun downloadBackupFile(context: Context, backupFile: String): ByteArray {
+            override fun downloadBackupFile(context: Context, backupFile: String): File {
                 mutexLockedDuringDownload = dbMutex.isLocked
                 downloadStarted.complete(Unit)
                 runBlocking { allowDownloadFinish.await() }
-                return backupBytes
+                val tempFile = File.createTempFile("test_dropbox_restore_", ".backup", context.cacheDir)
+                tempFile.writeBytes(backupBytes)
+                createdTempFile = tempFile
+                return tempFile
             }
         }
 
@@ -368,6 +372,8 @@ class ImportExportTasksAdversarialTest : AbstractDbTest() {
 
         assertEquals(true, result)
         assertEquals("BackedUpDropboxAccount", db.getAccount(defaultAccount.id)?.title)
+        assertNotNull(createdTempFile)
+        assertFalse("Temporary backup file should be deleted after restore", requireNotNull(createdTempFile).exists())
     }
 
     // =========================================================================

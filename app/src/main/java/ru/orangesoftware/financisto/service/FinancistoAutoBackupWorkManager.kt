@@ -12,6 +12,7 @@ import ru.orangesoftware.financisto.backup.DatabaseExport
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.export.Export
 import ru.orangesoftware.financisto.export.ImportExportAsyncTask
+import ru.orangesoftware.financisto.export.dropbox.Dropbox
 import ru.orangesoftware.financisto.service.DailyAutoBackupScheduler.Companion.scheduleNextAutoBackup
 import ru.orangesoftware.financisto.utils.MyPreferences
 import kotlin.time.Duration.Companion.milliseconds
@@ -24,10 +25,14 @@ class FinancistoAutoBackupWorkManager(
     private val logger = DependenciesHolder().logger
     private val stopSignal = CompletableDeferred<Unit>()
 
+    @Volatile
+    private var activeDropbox: Dropbox? = null
+
     private val db = DatabaseAdapter(context).also { it.open() }
 
     override fun onStopped() {
         stopSignal.complete(Unit)
+        activeDropbox?.cancelUpload()
         db.close()
         super.onStopped()
     }
@@ -41,9 +46,10 @@ class FinancistoAutoBackupWorkManager(
                     val fileName = runBlocking {
                         exportDatabaseWhenLocked()
                     } ?: return Result.failure()
-                    if (isStopped) return Result.failure()
+                    if (isStopped || stopSignal.isCompleted) return Result.failure()
                     if (MyPreferences.isDropboxUploadAutoBackups(applicationContext)) {
                         successful = uploadToDropbox(fileName)
+                        if (isStopped || stopSignal.isCompleted) return Result.failure()
                     }
                     if (MyPreferences.isGoogleDriveUploadAutoBackups(applicationContext)) {
                         successful = uploadToGoogleDrive(fileName)
@@ -100,12 +106,20 @@ class FinancistoAutoBackupWorkManager(
 
     private fun uploadToDropbox(fileName: String): Boolean {
         var successful: Boolean
+        val dropbox = Dropbox(applicationContext)
+        activeDropbox = dropbox
         try {
-            successful = Export.uploadBackupFileToDropbox(applicationContext, fileName)
+            successful = Export.uploadBackupFileToDropbox(
+                applicationContext,
+                dropbox,
+                fileName,
+            ) { isStopped || stopSignal.isCompleted }
         } catch (e: Exception) {
             logger.e(e, "Unable to upload auto-backup to Dropbox")
             MyPreferences.notifyAutobackupFailed(applicationContext, e)
             successful = false
+        } finally {
+            activeDropbox = null
         }
         return successful
     }

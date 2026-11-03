@@ -23,6 +23,7 @@ import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.function.BooleanSupplier;
 import java.util.zip.GZIPOutputStream;
 
 import ru.orangesoftware.financisto.R;
@@ -123,16 +124,24 @@ public abstract class Export {
     }
 
     public static boolean uploadBackupFileToDropbox(Context context, String backupFileName) throws FileNotFoundException, ImportExportException {
+        return uploadBackupFileToDropbox(context, new Dropbox(context), backupFileName, () -> false);
+    }
+
+    public static boolean uploadBackupFileToDropbox(
+            Context context,
+            Dropbox dropbox,
+            String backupFileName,
+            BooleanSupplier isCancelled
+    ) throws FileNotFoundException, ImportExportException {
         DocumentFile file = getBackupFile(context, backupFileName);
-        Dropbox dropbox = new Dropbox(context);
         try {
-            dropbox.uploadFile(new File(file.getUri().toString()));
+            dropbox.uploadFile(new File(file.getUri().toString()), isCancelled);
         } catch (FileNotFoundException e) {
             throw new FileNotFoundException(e.getMessage());
         } catch (ImportExportException e) {
             throw new ImportExportException(R.string.dropbox_error, e);
         }
-        return true;
+        return !isCancelled.getAsBoolean();
     }
 
     public static boolean uploadBackupFileToGoogleDrive(Context context, String backupFileName) throws FileNotFoundException {
