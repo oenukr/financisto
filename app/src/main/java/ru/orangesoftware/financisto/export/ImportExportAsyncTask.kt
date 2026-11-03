@@ -12,6 +12,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -70,20 +71,13 @@ abstract class ImportExportAsyncTask @JvmOverloads constructor(
         val newJob = coroutineScope.launch(ioDispatcher) {
             val result = try {
                 ensureActive()
-                dbMutex.withLock {
-                    ensureActive()
-                    val db = DatabaseAdapter(context)
-                    db.open()
-                    try {
-                        ensureActive()
-                        work(context, db, *params)
-                    } finally {
-                        db.close()
-                    }
-                }
+                executeWork(*params)
             } catch (e: CancellationException) {
                 deferred.cancel(e)
                 throw e
+            } catch (err: Error) {
+                deferred.completeExceptionally(err)
+                throw err
             } catch (ex: Exception) {
                 logger.e(ex, "Unable to do import/export")
                 ex
@@ -101,6 +95,19 @@ abstract class ImportExportAsyncTask @JvmOverloads constructor(
         job = newJob
         return newJob
     }
+
+    protected open suspend fun executeWork(vararg params: String?): Any? =
+        dbMutex.withLock {
+            currentCoroutineContext().ensureActive()
+            val db = DatabaseAdapter(context)
+            db.open()
+            try {
+                currentCoroutineContext().ensureActive()
+                work(context, db, *params)
+            } finally {
+                db.close()
+            }
+        }
 
     fun get(): Any? = runBlocking {
         resultDeferred.await()
@@ -196,6 +203,6 @@ abstract class ImportExportAsyncTask @JvmOverloads constructor(
     }
 
     companion object {
-        private val dbMutex = Mutex()
+        internal val dbMutex = Mutex()
     }
 }

@@ -4,10 +4,13 @@ package ru.orangesoftware.financisto.service
 import android.content.Context
 import androidx.work.Worker
 import androidx.work.WorkerParameters
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.withLock
 import ru.orangesoftware.financisto.app.DependenciesHolder
 import ru.orangesoftware.financisto.backup.DatabaseExport
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.export.Export
+import ru.orangesoftware.financisto.export.ImportExportAsyncTask
 import ru.orangesoftware.financisto.service.DailyAutoBackupScheduler.Companion.scheduleNextAutoBackup
 import ru.orangesoftware.financisto.utils.MyPreferences
 import kotlin.time.measureTime
@@ -31,7 +34,11 @@ class FinancistoAutoBackupWorkManager(
             try {
                 logger.e("Auto-backup started at ${System.currentTimeMillis()}")
                 val duration = measureTime {
-                    val fileName = DatabaseExport(applicationContext, db.db(), true).export()
+                    val fileName = runBlocking {
+                        ImportExportAsyncTask.dbMutex.withLock {
+                            DatabaseExport(applicationContext, db.db(), true).export()
+                        }
+                    }
                     if (MyPreferences.isDropboxUploadAutoBackups(applicationContext)) {
                         successful = uploadToDropbox(fileName)
                     }

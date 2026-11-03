@@ -8,8 +8,11 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -251,6 +254,21 @@ class ImportExportTasksAdversarialTest : AbstractDbTest() {
             "Assertion failure in background thread",
             (uncaughtThrowable as AssertionError).message,
         )
+
+        val getError = runBlocking {
+            withTimeout(1_000L) {
+                withContext(Dispatchers.Default) {
+                    try {
+                        task.get()
+                        null
+                    } catch (err: AssertionError) {
+                        err
+                    }
+                }
+            }
+        }
+        assertNotNull("Expected task.get() to complete with AssertionError rather than hanging", getError)
+        assertEquals("Assertion failure in background thread", getError?.message)
     }
 
     // =========================================================================
@@ -355,6 +373,29 @@ class ImportExportTasksAdversarialTest : AbstractDbTest() {
 
         val afterMessage = org.robolectric.Shadows.shadowOf(progressDialog).message?.toString() ?: ""
         assertEquals(initialMessage, afterMessage)
+    }
+
+    @Test
+    fun csvImportTask_publishProgress_withLiveActivity_showsFormattedPercentage() {
+        val options = CsvImportOptions(
+            defaultCurrency,
+            SimpleDateFormat("dd.MM.yyyy", Locale.US),
+            defaultAccount.id,
+            WhereFilter.empty(),
+            "dummy.csv",
+            ',',
+            true
+        )
+        val task = CsvImportTask(activity, progressDialog, options)
+
+        progressDialog.show()
+        val method = CsvImportTask::class.java.getDeclaredMethod("onProgressUpdate", Array<String>::class.java)
+        method.isAccessible = true
+        method.invoke(task, arrayOf("50"))
+        ShadowLooper.idleMainLooper()
+
+        val message = org.robolectric.Shadows.shadowOf(progressDialog).message?.toString()
+        assertEquals(activity.getString(R.string.csv_import_inprogress_update, "50"), message)
     }
 
     @Test

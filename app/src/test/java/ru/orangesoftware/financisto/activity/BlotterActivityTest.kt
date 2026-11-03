@@ -273,6 +273,7 @@ class BlotterActivityTest : AbstractDbTest() {
             attempts++
         }
         ShadowLooper.idleMainLooper()
+        assertTrue("Total calculation did not complete", activity.calculationTask?.job?.isCompleted == true)
     }
 
     companion object {

@@ -36,6 +36,7 @@ import ru.orangesoftware.financisto.model.Currency
 import ru.orangesoftware.financisto.test.AccountBuilder
 import ru.orangesoftware.financisto.test.CurrencyBuilder
 import ru.orangesoftware.financisto.utils.CurrencyCache
+import java.util.Calendar
 import java.util.Date
 
 @Suppress("DEPRECATION")
@@ -161,6 +162,11 @@ class MenuListActivityTest : AbstractDbTest() {
             "Expected scheduled auto-backup alarm targeting ScheduledAlarmReceiver",
             matchingAlarm,
         )
+        val calendar = Calendar.getInstance().apply {
+            timeInMillis = requireNotNull(matchingAlarm).triggerAtMs
+        }
+        assertEquals(14, calendar.get(Calendar.HOUR_OF_DAY))
+        assertEquals(30, calendar.get(Calendar.MINUTE))
 
         controller.destroy()
     }

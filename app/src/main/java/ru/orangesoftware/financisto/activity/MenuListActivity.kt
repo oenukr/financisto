@@ -46,6 +46,7 @@ open class MenuListActivity : FragmentActivity() {
 
     private val bus: GreenRobotBus = DependenciesHolder().greenRobotBus
     private var progressDialog: ProgressDialog? = null
+    private val dropboxProgressDialogs: MutableList<ProgressDialog> = mutableListOf()
 
     private var listViewInternal: ListView? = null
     private var listAdapterInternal: ListAdapter? = null
@@ -145,6 +146,7 @@ open class MenuListActivity : FragmentActivity() {
 
     override fun onDestroy() {
         dismissProgressDialog()
+        dismissDropboxProgressDialogs()
         super.onDestroy()
     }
 
@@ -155,6 +157,24 @@ open class MenuListActivity : FragmentActivity() {
             }
         }
         progressDialog = null
+    }
+
+    private fun trackDropboxDialog(dialog: ProgressDialog): ProgressDialog {
+        dropboxProgressDialogs.add(dialog)
+        dialog.setOnDismissListener {
+            dropboxProgressDialogs.remove(dialog)
+        }
+        return dialog
+    }
+
+    private fun dismissDropboxProgressDialogs() {
+        val dialogs = dropboxProgressDialogs.toList()
+        dropboxProgressDialogs.clear()
+        dialogs.forEach { dialog ->
+            if (dialog.isShowing) {
+                dialog.dismiss()
+            }
+        }
     }
 
     // google drive
@@ -275,11 +295,13 @@ open class MenuListActivity : FragmentActivity() {
             .setPositiveButton(R.string.restore) { _, _ ->
                 val file = selectedDropboxFile
                 if (file != null) {
-                    val d = ProgressDialog.show(
-                        this,
-                        null,
-                        getString(R.string.restore_database_inprogress_dropbox),
-                        true,
+                    val d = trackDropboxDialog(
+                        ProgressDialog.show(
+                            this,
+                            null,
+                            getString(R.string.restore_database_inprogress_dropbox),
+                            true,
+                        ),
                     )
                     DropboxRestoreTask(this, d, file).execute()
                 }
@@ -294,15 +316,17 @@ open class MenuListActivity : FragmentActivity() {
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun doDropboxBackup(e: StartDropboxBackup) {
-        val d = ProgressDialog.show(this, null, getString(R.string.backup_database_dropbox_inprogress), true)
-        progressDialog = d
+        val d = trackDropboxDialog(
+            ProgressDialog.show(this, null, getString(R.string.backup_database_dropbox_inprogress), true),
+        )
         DropboxBackupTask(this, d).execute()
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun doDropboxRestore(e: StartDropboxRestore) {
-        val d = ProgressDialog.show(this, null, getString(R.string.dropbox_loading_files), true)
-        progressDialog = d
+        val d = trackDropboxDialog(
+            ProgressDialog.show(this, null, getString(R.string.dropbox_loading_files), true),
+        )
         DropboxListFilesTask(this, d).execute()
     }
 

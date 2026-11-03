@@ -159,6 +159,9 @@ class AccountListActivityTest : AbstractDbTest() {
             attempts++
         }
         ShadowLooper.idleMainLooper()
+        check(activity.totalCalculationTask?.job?.isCompleted != false) {
+            "Total calculation did not finish within the wait window"
+        }
     }
 
     companion object {

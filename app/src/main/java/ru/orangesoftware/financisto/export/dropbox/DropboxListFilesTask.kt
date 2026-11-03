@@ -37,8 +37,14 @@ class DropboxListFilesTask @JvmOverloads constructor(
         }
     }
 
-    override suspend fun work(context: Context, db: DatabaseAdapter, vararg params: String?): Any? {
-        return try {
+    override suspend fun executeWork(vararg params: String?): Any? =
+        listFiles(context)
+
+    override suspend fun work(context: Context, db: DatabaseAdapter, vararg params: String?): Any? =
+        listFiles(context)
+
+    private suspend fun listFiles(context: Context): Array<String> =
+        try {
             currentCoroutineContext().ensureActive()
             val dropbox = Dropbox(context)
             val files = dropbox.listFiles()
@@ -48,7 +54,6 @@ class DropboxListFilesTask @JvmOverloads constructor(
         } catch (ignored: Exception) {
             throw ImportExportException(R.string.dropbox_error)
         }
-    }
 
     override fun getSuccessMessage(result: Any?): String? = null
 }

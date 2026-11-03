@@ -17,11 +17,13 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import ru.orangesoftware.financisto.R
 import ru.orangesoftware.financisto.app.DependenciesHolder
 import ru.orangesoftware.financisto.backup.DatabaseExport
 import ru.orangesoftware.financisto.datetime.DateUtils
+import ru.orangesoftware.financisto.export.ImportExportAsyncTask
 import ru.orangesoftware.financisto.model.Account
 import ru.orangesoftware.financisto.utils.Logger
 import java.text.DateFormat
@@ -155,12 +157,14 @@ class PurgeAccountActivity : AbstractActivity() {
         lifecycleScope.launch {
             val error = try {
                 withContext(Dispatchers.IO + NonCancellable) {
-                    if (databaseBackupChecked) {
-                        val export = DatabaseExport(appContext, db.db(), true)
-                        export.export()
+                    ImportExportAsyncTask.dbMutex.withLock {
+                        if (databaseBackupChecked) {
+                            val export = DatabaseExport(appContext, db.db(), true)
+                            export.export()
+                        }
+                        db.purgeAccountAtDate(currentAccount, targetDateMillis)
+                        null
                     }
-                    db.purgeAccountAtDate(currentAccount, targetDateMillis)
-                    null
                 }
             } catch (e: CancellationException) {
                 throw e
