@@ -39,6 +39,7 @@ import ru.orangesoftware.financisto.test.CurrencyBuilder
 import ru.orangesoftware.financisto.utils.CurrencyCache
 import java.text.SimpleDateFormat
 import java.util.Locale
+import kotlin.time.Duration.Companion.milliseconds
 
 @Suppress("MagicNumber", "TooManyFunctions", "DEPRECATION")
 class ImportExportTasksAdversarialTest : AbstractDbTest() {
@@ -256,7 +257,7 @@ class ImportExportTasksAdversarialTest : AbstractDbTest() {
         )
 
         val getError = runBlocking {
-            withTimeout(1_000L) {
+            withTimeout(1_000L.milliseconds) {
                 withContext(Dispatchers.Default) {
                     try {
                         task.get()
