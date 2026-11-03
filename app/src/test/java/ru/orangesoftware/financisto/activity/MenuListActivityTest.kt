@@ -180,6 +180,7 @@ class MenuListActivityTest : AbstractDbTest() {
         }
         assertEquals(14, calendar.get(Calendar.HOUR_OF_DAY))
         assertEquals(30, calendar.get(Calendar.MINUTE))
+        assertEquals(16, calendar.get(Calendar.DAY_OF_MONTH))
 
         controller.destroy()
     }

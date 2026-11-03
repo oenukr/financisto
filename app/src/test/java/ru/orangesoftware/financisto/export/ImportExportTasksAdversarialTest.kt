@@ -4,6 +4,7 @@ package ru.orangesoftware.financisto.export
 import android.app.Activity
 import android.app.ProgressDialog
 import android.content.Context
+import android.preference.PreferenceManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -31,12 +32,14 @@ import ru.orangesoftware.financisto.db.AbstractDbTest
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.export.csv.CsvImportOptions
 import ru.orangesoftware.financisto.export.csv.CsvImportTask
+import ru.orangesoftware.financisto.export.dropbox.DropboxRestoreTask
 import ru.orangesoftware.financisto.filter.WhereFilter
 import ru.orangesoftware.financisto.model.Account
 import ru.orangesoftware.financisto.model.Currency
 import ru.orangesoftware.financisto.test.AccountBuilder
 import ru.orangesoftware.financisto.test.CurrencyBuilder
 import ru.orangesoftware.financisto.utils.CurrencyCache
+import ru.orangesoftware.financisto.utils.MyPreferences
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -237,7 +240,10 @@ class ImportExportTasksAdversarialTest : AbstractDbTest() {
                     concurrentDbOperationCompleted = true
                 }
             }
-            assertTrue("Concurrent dbMutex consumer (e.g. purge/auto-backup) must not be blocked", concurrentDbOperationCompleted)
+            assertTrue(
+                "Concurrent dbMutex consumer (e.g. purge/auto-backup) must not be blocked",
+                concurrentDbOperationCompleted,
+            )
         }
 
         allowUploadFinish.complete(Unit)
@@ -246,6 +252,122 @@ class ImportExportTasksAdversarialTest : AbstractDbTest() {
 
         assertNotNull(uploadedFileName)
         assertEquals(uploadedFileName, result)
+    }
+
+    @Test
+    fun executeWork_doUploadToDropbox_runsOutsideDbMutex_doesNotBlockConcurrentDbLock() {
+        MyPreferences.storeDropboxKeys(activity, "test_token")
+        PreferenceManager.getDefaultSharedPreferences(activity)
+            .edit()
+            .putBoolean("dropbox_upload_backup", true)
+            .commit()
+
+        try {
+            val uploadStarted = CompletableDeferred<Unit>()
+            val allowUploadFinish = CompletableDeferred<Unit>()
+            var mutexLockedDuringUpload = true
+            var uploadedFileName: String? = null
+
+            val task = object : ImportExportAsyncTask(activity, progressDialog) {
+                override suspend fun work(context: Context, db: DatabaseAdapter, vararg params: String?): Any? {
+                    val export = DatabaseExport(context, db.db(), true)
+                    val backupFileName = export.export()
+                    doUploadToDropbox(context, backupFileName)
+                    return backupFileName
+                }
+
+                override fun uploadBackupToDropbox(context: Context, backupFileName: String) {
+                    mutexLockedDuringUpload = dbMutex.isLocked
+                    uploadedFileName = backupFileName
+                    uploadStarted.complete(Unit)
+                    runBlocking { allowUploadFinish.await() }
+                }
+
+                override fun getSuccessMessage(result: Any?): String? = result?.toString()
+            }
+
+            task.execute()
+            runBlocking {
+                withTimeout(5_000L.milliseconds) {
+                    uploadStarted.await()
+                }
+                assertFalse("dbMutex must be released before doUploadToDropbox runs", mutexLockedDuringUpload)
+
+                var concurrentDbOperationCompleted = false
+                withTimeout(1_000L.milliseconds) {
+                    ImportExportAsyncTask.dbMutex.withLock {
+                        concurrentDbOperationCompleted = true
+                    }
+                }
+                assertTrue(
+                    "Concurrent dbMutex consumer (e.g. purge/auto-backup) must not be blocked",
+                    concurrentDbOperationCompleted,
+                )
+            }
+
+            allowUploadFinish.complete(Unit)
+            val result = task.get()
+            ShadowLooper.idleMainLooper()
+
+            assertNotNull(uploadedFileName)
+            assertEquals(uploadedFileName, result)
+        } finally {
+            MyPreferences.removeDropboxKeys(activity)
+            PreferenceManager.getDefaultSharedPreferences(activity)
+                .edit()
+                .remove("dropbox_upload_backup")
+                .commit()
+        }
+    }
+
+    @Test
+    fun dropboxRestoreTask_downloadRunsOutsideDbMutex_doesNotBlockConcurrentDbLock() {
+        defaultAccount.title = "BackedUpDropboxAccount"
+        db.saveOrUpdate(defaultAccount)
+        val backupBytes = DatabaseExport(activity, db.db(), true).generateBackupBytes()
+
+        defaultAccount.title = "MutatedAccountBeforeRestore"
+        db.saveOrUpdate(defaultAccount)
+        assertEquals("MutatedAccountBeforeRestore", db.getAccount(defaultAccount.id)?.title)
+
+        val downloadStarted = CompletableDeferred<Unit>()
+        val allowDownloadFinish = CompletableDeferred<Unit>()
+        var mutexLockedDuringDownload = true
+
+        val task = object : DropboxRestoreTask(activity, progressDialog, "remote.backup") {
+            override fun downloadBackupFile(context: Context, backupFile: String): ByteArray {
+                mutexLockedDuringDownload = dbMutex.isLocked
+                downloadStarted.complete(Unit)
+                runBlocking { allowDownloadFinish.await() }
+                return backupBytes
+            }
+        }
+
+        task.execute()
+        runBlocking {
+            withTimeout(5_000L.milliseconds) {
+                downloadStarted.await()
+            }
+            assertFalse("dbMutex must not be held during Dropbox backup download", mutexLockedDuringDownload)
+
+            var concurrentDbOperationCompleted = false
+            withTimeout(1_000L.milliseconds) {
+                ImportExportAsyncTask.dbMutex.withLock {
+                    concurrentDbOperationCompleted = true
+                }
+            }
+            assertTrue(
+                "Concurrent dbMutex consumer (e.g. PurgeAccountActivity) must not be blocked",
+                concurrentDbOperationCompleted,
+            )
+        }
+
+        allowDownloadFinish.complete(Unit)
+        val result = task.get()
+        ShadowLooper.idleMainLooper()
+
+        assertEquals(true, result)
+        assertEquals("BackedUpDropboxAccount", db.getAccount(defaultAccount.id)?.title)
     }
 
     // =========================================================================

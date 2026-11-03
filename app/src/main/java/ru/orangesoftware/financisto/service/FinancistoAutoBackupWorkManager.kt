@@ -4,8 +4,9 @@ package ru.orangesoftware.financisto.service
 import android.content.Context
 import androidx.work.Worker
 import androidx.work.WorkerParameters
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 import ru.orangesoftware.financisto.app.DependenciesHolder
 import ru.orangesoftware.financisto.backup.DatabaseExport
 import ru.orangesoftware.financisto.db.DatabaseAdapter
@@ -13,17 +14,20 @@ import ru.orangesoftware.financisto.export.Export
 import ru.orangesoftware.financisto.export.ImportExportAsyncTask
 import ru.orangesoftware.financisto.service.DailyAutoBackupScheduler.Companion.scheduleNextAutoBackup
 import ru.orangesoftware.financisto.utils.MyPreferences
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.measureTime
 
 class FinancistoAutoBackupWorkManager(
     context: Context,
     workerParams: WorkerParameters,
-): Worker(context, workerParams), NotificationPresentation {
+) : Worker(context, workerParams), NotificationPresentation {
     private val logger = DependenciesHolder().logger
+    private val stopSignal = CompletableDeferred<Unit>()
 
     private val db = DatabaseAdapter(context).also { it.open() }
 
     override fun onStopped() {
+        stopSignal.complete(Unit)
         db.close()
         super.onStopped()
     }
@@ -35,14 +39,9 @@ class FinancistoAutoBackupWorkManager(
                 logger.e("Auto-backup started at ${System.currentTimeMillis()}")
                 val duration = measureTime {
                     val fileName = runBlocking {
-                        ImportExportAsyncTask.dbMutex.withLock {
-                            if (isStopped) {
-                                null
-                            } else {
-                                DatabaseExport(applicationContext, db.db(), true).export()
-                            }
-                        }
+                        exportDatabaseWhenLocked()
                     } ?: return Result.failure()
+                    if (isStopped) return Result.failure()
                     if (MyPreferences.isDropboxUploadAutoBackups(applicationContext)) {
                         successful = uploadToDropbox(fileName)
                     }
@@ -64,6 +63,27 @@ class FinancistoAutoBackupWorkManager(
         }
 
         return if (successful) Result.success() else Result.failure()
+    }
+
+    private suspend fun exportDatabaseWhenLocked(): String? {
+        val mutex = ImportExportAsyncTask.dbMutex
+        while (!isStopped && !stopSignal.isCompleted) {
+            if (mutex.tryLock()) {
+                return try {
+                    if (isStopped || stopSignal.isCompleted) {
+                        null
+                    } else {
+                        DatabaseExport(applicationContext, db.db(), true).export()
+                    }
+                } finally {
+                    mutex.unlock()
+                }
+            }
+            withTimeoutOrNull(LOCK_POLL_INTERVAL_MS.milliseconds) {
+                stopSignal.await()
+            }
+        }
+        return null
     }
 
     private fun uploadToGoogleDrive(fileName: String): Boolean {
@@ -88,5 +108,9 @@ class FinancistoAutoBackupWorkManager(
             successful = false
         }
         return successful
+    }
+
+    companion object {
+        private const val LOCK_POLL_INTERVAL_MS = 50L
     }
 }

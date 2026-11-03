@@ -303,6 +303,7 @@ open class MenuListActivity : FragmentActivity() {
         val backupFiles = event.files ?: return
         val items: Array<CharSequence?> = Array(backupFiles.size) { i -> backupFiles[i] }
         var selectedDropboxFile: String? = null
+        dismissDropboxSelectionDialog()
         dropboxSelectionDialog = AlertDialog.Builder(this)
             .setTitle(R.string.restore_database_online_dropbox)
             .setPositiveButton(R.string.restore) { _, _ ->

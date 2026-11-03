@@ -13,9 +13,11 @@ import ru.orangesoftware.financisto.R
 import ru.orangesoftware.financisto.backup.DatabaseImport
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.export.ImportExportAsyncTask
+import java.io.ByteArrayInputStream
+import java.io.InputStream
 
 @Suppress("DEPRECATION")
-class DropboxRestoreTask @JvmOverloads constructor(
+open class DropboxRestoreTask @JvmOverloads constructor(
     activity: Activity,
     dialog: ProgressDialog?,
     private val backupFile: String,
@@ -24,12 +26,31 @@ class DropboxRestoreTask @JvmOverloads constructor(
     mainDispatcher: CoroutineDispatcher = Dispatchers.Main,
 ) : ImportExportAsyncTask(activity, dialog, coroutineScope, ioDispatcher, mainDispatcher) {
 
+    @Volatile
+    private var downloadedBackupBytes: ByteArray? = null
+
+    override suspend fun prepareWork(vararg params: String?) {
+        currentCoroutineContext().ensureActive()
+        downloadedBackupBytes = downloadBackupFile(appContext, backupFile)
+    }
+
     override suspend fun work(context: Context, db: DatabaseAdapter, vararg params: String?): Any? {
         currentCoroutineContext().ensureActive()
-        val dropbox = Dropbox(context)
+        val bytes = try {
+            downloadedBackupBytes ?: downloadBackupFile(context, backupFile)
+        } finally {
+            downloadedBackupBytes = null
+        }
+        currentCoroutineContext().ensureActive()
+        val dropbox = object : Dropbox(context) {
+            override fun getFileAsStream(file: String): InputStream = ByteArrayInputStream(bytes)
+        }
         DatabaseImport.createFromDropboxBackup(context, db, dropbox, backupFile).importDatabase()
         return true
     }
+
+    internal open fun downloadBackupFile(context: Context, backupFile: String): ByteArray =
+        Dropbox(context).getFileAsStream(backupFile).use { it.readBytes() }
 
     override fun getSuccessMessage(result: Any?): String =
         appContext.getString(R.string.restore_database_success)

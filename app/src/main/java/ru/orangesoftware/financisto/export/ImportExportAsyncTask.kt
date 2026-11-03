@@ -109,7 +109,11 @@ abstract class ImportExportAsyncTask @JvmOverloads constructor(
         return newJob
     }
 
+    protected open suspend fun prepareWork(vararg params: String?) = Unit
+
     protected open suspend fun executeWork(vararg params: String?): Any? {
+        currentCoroutineContext().ensureActive()
+        prepareWork(*params)
         val uploadActions = mutableListOf<() -> Unit>()
         val result = dbMutex.withLock {
             currentCoroutineContext().ensureActive()
