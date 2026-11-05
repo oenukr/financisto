@@ -73,10 +73,13 @@ Identify all components of the target task:
    - If the screen extends legacy `android.app.ListActivity` or `android.app.Activity`, migrate it to `FragmentActivity` (binding `android.R.id.list` and `android.R.id.empty` manually) before using `lifecycleScope`, `repeatOnLifecycle`, or `ViewModel`.
 4. **Execution Type**:
    - Disk/Database/Network -> Needs `Dispatchers.IO`.
+   - Legacy tasks relying on `AsyncTask.SERIAL_EXECUTOR` to serialize access to non-thread-safe shared helpers (e.g., `DatabaseAdapter.getTotalInHomeCurrency()`) -> Default to a shared `Dispatchers.IO.limitedParallelism(1)` dispatcher or `Mutex`, because `Job.cancel()` does not wait for the cancelled coroutine to finish before a replacement task starts.
+   - Shared database mutex (`dbMutex`) -> Lock *only* around local SQLite operations (`db.open()`, `work()`, `db.close()`). Run network downloads before acquiring `dbMutex` (streaming large payloads to temp files in `context.cacheDir` with `finally` cleanup rather than `readBytes()`), and run remote uploads after releasing `dbMutex`.
    - Destructive multi-step writes (e.g., backup + purge) -> Needs `withContext(Dispatchers.IO + NonCancellable)`.
    - CPU calculation/Parsing/Geometry -> Needs `Dispatchers.Default`.
 5. **Cancellation**: Does the caller call `cancel(true)` or check `isCancelled()`? Wire cancellable `ProgressDialog`s to `job?.cancel()`.
    - In `AbstractActivity` and `AbstractListActivity` subclasses, `onDestroy()` calls `db.close()` *before* `super.onDestroy()` (which cancels `lifecycleScope`). Always cancel tracked calculation `Job`s in `onDestroy()` before `super.onDestroy()`, and pass an immutable snapshot (`list.toList()`) of adapter-backed lists into `withContext(Dispatchers.IO)`.
+   - In `CoroutineWorker.doWork()`, use stop-aware mutex acquisition, check `isStopped` immediately after acquiring `dbMutex`, and propagate stop signals to abort active network transfers (e.g., `UploadUploader.abort()`).
 6. **UI Side Effects & Scope Isolation**:
    - Check what views are updated in `onPreExecute()`, `onProgressUpdate()`, `onCancelled()`, and `onPostExecute()`.
    - Move any legacy off-thread `setResult(...)` or `finish()` calls out of `doInBackground()` onto the Main thread after `ProgressDialog` dismissal (`if (!isFinishing && !isDestroyed) dialog.dismiss()`).
@@ -282,7 +285,10 @@ In Financisto commit `74ccf22` (`Issue 51 replace internal chart solution (#64)`
 ## Pitfalls to Avoid
 
 - **Never Leak Context or Views**: Never pass an `Activity`, `View`, or `Dialog` into a `ViewModel` or `suspend` function.
+  - When a legacy task class must run on an application-scoped `CoroutineScope` to survive `Activity.onDestroy()` (e.g., Dropbox restore/backup), store `appContext = context.applicationContext ?: context` for background work and `Toast`s, retain `Activity` and `ProgressDialog` via `WeakReference`, guard completion callbacks with `!activity.isFinishing && !activity.isDestroyed`, and track all active `ProgressDialog`s in a list on the host `Activity` so `onDestroy()` dismisses every dialog.
 - **Never Swallow `CancellationException`**: If catching `Exception`, always rethrow `CancellationException` to allow coroutine cancellation to propagate.
+- **Complete `CompletableDeferred` on `java.lang.Error` in `get()` Bridges**: When bridging legacy blocking `get()` with `CompletableDeferred`, catch `Error` (in addition to `CancellationException` and `Exception`), call `deferred.completeExceptionally(err)`, and rethrow `err` so `get()` never hangs on `AssertionError` or `OutOfMemoryError`.
+- **Never Hold `dbMutex` Across Network I/O or Buffer Full Backups in Memory**: Keep network downloads (`prepareWork`) and uploads outside `dbMutex.withLock` so slow transfers cannot block database purge or auto-backup, and stream remote backups through temporary files in `context.cacheDir` (deleted in `finally`) instead of `readBytes()`.
 - **Avoid GlobalScope**: Never use `GlobalScope.launch`. Use `viewModelScope`, `lifecycleScope`, or an injected `CoroutineScope` with a supervised lifecycle.
 - **Cooperative Cancellation Before State Assignment**: Blocking legacy Java helpers (e.g., `FuturePlanner`, `MonthlyViewPlanner`, `DatabaseAdapter`) do not suspend. Always call `coroutineContext.ensureActive()` immediately before assigning `_uiState.value` in `try` and `catch` blocks so a cancelled in-flight job cannot overwrite a newer job's state.
 - **One-Shot Errors in `StateFlow`**: `StateFlow` replays its latest value whenever `repeatOnLifecycle(Lifecycle.State.STARTED)` restarts collection (e.g., returning from another Activity or background). Never trigger a `Toast`, `Snackbar`, or `Dialog` from `UiState.Error` without either rendering into an idempotent view or immediately consuming the error via `viewModel.onErrorShown()` (preserving active filter/screen state).
