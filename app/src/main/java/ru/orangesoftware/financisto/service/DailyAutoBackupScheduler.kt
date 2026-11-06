@@ -20,13 +20,15 @@ class DailyAutoBackupScheduler(
     private val logger = DependenciesHolder().logger
 
     companion object {
+        internal var nowProvider: () -> Long = { System.currentTimeMillis() }
+
         @JvmStatic
         fun scheduleNextAutoBackup(context: Context) {
             if (MyPreferences.isAutoBackupEnabled(context)) {
                 val hhmm: Int = MyPreferences.getAutoBackupTime(context)
                 val hh: Int = hhmm / 100
                 val mm: Int = hhmm - 100 * hh
-                DailyAutoBackupScheduler(hh, mm, System.currentTimeMillis()).scheduleBackup(context)
+                DailyAutoBackupScheduler(hh, mm, nowProvider()).scheduleBackup(context)
             }
         }
     }

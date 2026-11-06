@@ -13,16 +13,19 @@ import com.dropbox.core.v2.DbxClientV2;
 import com.dropbox.core.v2.files.FileMetadata;
 import com.dropbox.core.v2.files.ListFolderResult;
 import com.dropbox.core.v2.files.Metadata;
+import com.dropbox.core.v2.files.UploadUploader;
 import com.dropbox.core.v2.files.WriteMode;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.BooleanSupplier;
 
 import ru.orangesoftware.financisto.R;
 import ru.orangesoftware.financisto.app.DependenciesHolder;
@@ -40,6 +43,8 @@ public class Dropbox {
 
     private boolean startedAuth = false;
     private DbxClientV2 dropboxClient;
+    private volatile UploadUploader activeUploader;
+    private volatile InputStream activeUploadStream;
 
     public Dropbox(Context context) {
         this.context = context;
@@ -91,15 +96,75 @@ public class Dropbox {
         return false;
     }
 
+    public void cancelUpload() {
+        UploadUploader uploader = activeUploader;
+        if (uploader != null) {
+            uploader.abort();
+            uploader.close();
+        }
+        InputStream stream = activeUploadStream;
+        if (stream != null) {
+            IOUtil.closeInput(stream);
+        }
+    }
+
     public FileMetadata uploadFile(File file) throws ImportExportException, FileNotFoundException {
+        return uploadFile(file, () -> false);
+    }
+
+    public FileMetadata uploadFile(File file, BooleanSupplier isCancelled) throws ImportExportException, FileNotFoundException {
         if (authSession()) {
+            if (isCancelled.getAsBoolean()) {
+                throw new ImportExportException(R.string.dropbox_error, new IOException("Dropbox upload cancelled"));
+            }
             try {
                 InputStream is = new FileInputStream(file);
+                activeUploadStream = is;
+                UploadUploader uploader = null;
                 try {
-                    FileMetadata fileMetadata = dropboxClient.files().uploadBuilder("/" + file.getName()).withMode(WriteMode.ADD).uploadAndFinish(is);
+                    if (isCancelled.getAsBoolean()) {
+                        throw new IOException("Dropbox upload cancelled");
+                    }
+                    uploader = dropboxClient.files().uploadBuilder("/" + file.getName()).withMode(WriteMode.ADD).start();
+                    activeUploader = uploader;
+                    final UploadUploader currentUploader = uploader;
+                    InputStream cancellableStream = new FilterInputStream(is) {
+                        @Override
+                        public int read() throws IOException {
+                            checkNotCancelled();
+                            return super.read();
+                        }
+
+                        @Override
+                        public int read(byte[] b, int off, int len) throws IOException {
+                            checkNotCancelled();
+                            return super.read(b, off, len);
+                        }
+
+                        private void checkNotCancelled() throws IOException {
+                            if (isCancelled.getAsBoolean()) {
+                                currentUploader.abort();
+                                throw new IOException("Dropbox upload cancelled");
+                            }
+                        }
+                    };
+                    FileMetadata fileMetadata = uploader.uploadAndFinish(cancellableStream, bytesWritten -> {
+                        if (isCancelled.getAsBoolean()) {
+                            currentUploader.abort();
+                        }
+                    });
+                    if (isCancelled.getAsBoolean()) {
+                        uploader.abort();
+                        throw new IOException("Dropbox upload cancelled");
+                    }
                     logger.i("Dropbox: The uploaded file's rev is: %s", fileMetadata.getRev());
                     return fileMetadata;
                 } finally {
+                    activeUploader = null;
+                    activeUploadStream = null;
+                    if (uploader != null) {
+                        uploader.close();
+                    }
                     IOUtil.closeInput(is);
                 }
             } catch (IllegalArgumentException | DbxException | IOException e) {

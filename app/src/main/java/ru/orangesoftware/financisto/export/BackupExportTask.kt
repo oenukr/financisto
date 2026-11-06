@@ -4,27 +4,38 @@ package ru.orangesoftware.financisto.export
 import android.app.Activity
 import android.app.ProgressDialog
 import android.content.Context
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import ru.orangesoftware.financisto.backup.DatabaseExport
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 
-class BackupExportTask(
-	context: Activity,
-	dialog: ProgressDialog,
-	private val uploadOnline: Boolean
-) : ImportExportAsyncTask(context, dialog) {
+@Suppress("DEPRECATION")
+class BackupExportTask @JvmOverloads constructor(
+    context: Activity,
+    dialog: ProgressDialog?,
+    private val uploadOnline: Boolean,
+    coroutineScope: CoroutineScope? = null,
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    mainDispatcher: CoroutineDispatcher = Dispatchers.Main,
+) : ImportExportAsyncTask(context, dialog, coroutineScope, ioDispatcher, mainDispatcher) {
 
-	@Volatile
+    @Volatile
     var backupFileName: String? = null
 
-	override fun work(context: Context, db: DatabaseAdapter, vararg params: String?): Any? {
-		val export = DatabaseExport(context, db.db(), true)
-		backupFileName = export.export()
-		if (uploadOnline) {
-			doUploadToDropbox(context, backupFileName)
-//			doUploadToGoogleDrive(context, backupFileName)
-		}
-		return backupFileName
-	}
+    override suspend fun work(context: Context, db: DatabaseAdapter, vararg params: String?): Any? {
+        currentCoroutineContext().ensureActive()
+        val export = DatabaseExport(context, db.db(), true)
+        val name = export.export()
+        backupFileName = name
+        currentCoroutineContext().ensureActive()
+        if (uploadOnline) {
+            doUploadToDropbox(context, name)
+        }
+        return name
+    }
 
-	override fun getSuccessMessage(result: Any?): String = result.toString()
+    override fun getSuccessMessage(result: Any?): String = result?.toString() ?: ""
 }

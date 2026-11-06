@@ -11,6 +11,7 @@ import ru.orangesoftware.financisto.service.FinancistoAutoBackupWorkManager
 import ru.orangesoftware.financisto.service.FinancistoScheduleOneWorkManager
 import ru.orangesoftware.financisto.service.RecurrenceScheduler
 import ru.orangesoftware.financisto.utils.Logger
+import ru.orangesoftware.financisto.utils.MyPreferences
 
 private const val BOOT_COMPLETED = "android.intent.action.BOOT_COMPLETED"
 private const val SCHEDULED_BACKUP = "ru.orangesoftware.financisto.SCHEDULED_BACKUP"
@@ -31,7 +32,9 @@ class ScheduledAlarmReceiver : PackageReplaceReceiver() {
                 requestScheduleAutoBackup(context)
             }
             SCHEDULED_BACKUP -> {
-                requestAutoBackup(context)
+                if (MyPreferences.isAutoBackupEnabled(context)) {
+                    requestAutoBackup(context)
+                }
             }
             else -> {
                 requestScheduleOne(context, intent)

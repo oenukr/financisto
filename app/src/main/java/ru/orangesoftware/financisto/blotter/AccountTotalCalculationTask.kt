@@ -3,6 +3,8 @@ package ru.orangesoftware.financisto.blotter
 
 import android.content.Context
 import android.widget.TextView
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.db.DatabaseAdapter.enhanceFilterForAccountBlotter
 import ru.orangesoftware.financisto.db.TransactionsTotalCalculator
@@ -10,11 +12,12 @@ import ru.orangesoftware.financisto.filter.WhereFilter
 import ru.orangesoftware.financisto.model.Total
 
 class AccountTotalCalculationTask(
-    context: Context,
+    context: Context?,
     private val db: DatabaseAdapter,
     whereFilter: WhereFilter,
     totalText: TextView?,
-) : TotalCalculationTask(context, totalText) {
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+) : TotalCalculationTask(context, totalText, ioDispatcher) {
 
     private val filter: WhereFilter = enhanceFilterForAccountBlotter(whereFilter)
 
