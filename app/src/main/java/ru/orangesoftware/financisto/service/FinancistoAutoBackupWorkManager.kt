@@ -116,7 +116,9 @@ class FinancistoAutoBackupWorkManager(
             ) { isStopped || stopSignal.isCompleted }
         } catch (e: Exception) {
             logger.e(e, "Unable to upload auto-backup to Dropbox")
-            MyPreferences.notifyAutobackupFailed(applicationContext, e)
+            if (!isStopped && !stopSignal.isCompleted) {
+                MyPreferences.notifyAutobackupFailed(applicationContext, e)
+            }
             successful = false
         } finally {
             activeDropbox = null
