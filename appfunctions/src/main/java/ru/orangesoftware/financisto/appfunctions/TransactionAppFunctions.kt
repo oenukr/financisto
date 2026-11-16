@@ -61,6 +61,9 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
         receiptImageUri: Uri? = null,
         isIncome: Boolean? = null,
     ): ReceiptTransactionPreparation = executeOnIo("Failed to prepare receipt transaction.") {
+        lineItems.forEachIndexed { index, item ->
+            item.amount?.let { toValidatedMinorUnits(it, "Line item #${index + 1} amount", allowNegative = false) }
+        }
         val accounts = db.getAccounts()
         val catalog = ClassificationCatalog(db.getCategories(), db.getPayees(), db.getCategoryHistory())
         val matchedAccount = resolveCandidateAccount(accounts, accountQuery)
@@ -105,7 +108,7 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
      * If [splits] is non-empty, records a split transaction across multiple existing categories.
      * Otherwise, records a single-category expense or income transaction.
      *
-     * @param amount Non-zero transaction amount (e.g. 15.50).
+     * @param amount Non-zero transaction amount with at most 2 decimal places (e.g. 15.50).
      * @param accountName Name of an existing active source account (e.g. "Cash").
      * @param categoryName Optional name or full path of an existing category (e.g. "Food > Groceries",
      * "Їжа > Продукти"). Categories may be user-defined in any language. Ignored for transfers or split
@@ -248,10 +251,7 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
         accountName: String,
         accounts: List<AccountInfo>,
     ): Pair<Long, AccountInfo> {
-        val amountInCents = if (amount.isFinite()) round(abs(amount) * CENTS_PER_UNIT).toLong() else 0L
-        if (amountInCents <= 0L) {
-            throw AppFunctionInvalidArgumentException("Transaction amount must be non-zero.")
-        }
+        val amountInCents = toValidatedMinorUnits(amount, "Transaction amount", allowNegative = true)
         return amountInCents to resolveUniqueAccount(accounts, accountName, "Account")
     }
 
@@ -315,8 +315,7 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
         isIncome: Boolean,
     ): List<Pair<TransactionSplit, CategoryInfo>> {
         if (splits.isEmpty()) return emptyList()
-        val rawCents = validateSplitAmounts(splits, totalCents)
-        val sumSplitCents = rawCents.sum()
+        val adjustedCentsList = validateSplitAmounts(splits, totalCents)
         val signMultiplier = if (isIncome) 1L else -1L
         val availableCategories = catalog.categories.joinToString(", ") { it.fullPath }.ifEmpty { "none" }
 
@@ -338,34 +337,35 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
                 "Split category '${split.categoryName ?: split.note.orEmpty()}' not found. " +
                     "Available categories: $availableCategories."
             )
-            val adjustedCents = if (index == splits.lastIndex) {
-                rawCents[index] + (totalCents - sumSplitCents)
-            } else {
-                rawCents[index]
-            }
             TransactionSplit(
                 categoryId = resolvedCategory.id,
-                amount = signMultiplier * adjustedCents,
+                amount = signMultiplier * adjustedCentsList[index],
                 note = split.note.orEmpty(),
             ) to resolvedCategory
         }
     }
 
     private fun validateSplitAmounts(splits: List<TransactionSplitInput>, totalCents: Long): List<Long> {
-        val rawCents = splits.map { split ->
-            if (!split.amount.isFinite() || split.amount <= 0.0) {
-                throw AppFunctionInvalidArgumentException("Each split amount must be greater than 0.0.")
-            }
-            round(split.amount * CENTS_PER_UNIT).toLong()
+        val rawCents = splits.mapIndexed { index, split ->
+            toValidatedMinorUnits(split.amount, "Split #${index + 1} amount", allowNegative = false)
         }
         val sumSplitCents = rawCents.sum()
-        if (abs(sumSplitCents - totalCents) > 1L) {
+        val remainder = totalCents - sumSplitCents
+        if (abs(remainder) > 1L) {
             throw AppFunctionInvalidArgumentException(
-                "Sum of split amounts (${sumSplitCents / CENTS_PER_UNIT}) does not equal " +
-                    "total transaction amount (${totalCents / CENTS_PER_UNIT})."
+                "Sum of split amounts (${sumSplitCents / AmountPrecision.CENTS_PER_UNIT}) does not equal " +
+                    "total transaction amount (${totalCents / AmountPrecision.CENTS_PER_UNIT})."
             )
         }
-        return rawCents
+        if (remainder == 0L) return rawCents
+        val adjustedIndex = rawCents.indices.lastOrNull { rawCents[it] + remainder > 0L }
+            ?: throw AppFunctionInvalidArgumentException(
+                "Sum of split amounts (${sumSplitCents / AmountPrecision.CENTS_PER_UNIT}) does not equal " +
+                    "total transaction amount (${totalCents / AmountPrecision.CENTS_PER_UNIT})."
+            )
+        return rawCents.mapIndexed { index, cents ->
+            if (index == adjustedIndex) cents + remainder else cents
+        }
     }
 
     private fun resolveOrCreatePayee(
@@ -383,7 +383,6 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
     }
 
     private companion object {
-        private const val CENTS_PER_UNIT = 100.0
         private const val SPLIT_CATEGORY_ID = -1L
         private const val SPLIT_CATEGORY_PATH = "<SPLIT_CATEGORY>"
     }
@@ -433,7 +432,7 @@ data class CategoryOption(
 data class ReceiptLineItem(
     /** Description of the purchased item or group of items (e.g. "Milk and bread", "Birthday gift"). */
     val description: String,
-    /** Optional positive amount for this item or group (e.g. 25.00). */
+    /** Optional positive amount with at most 2 decimal places for this item or group (e.g. 25.00). */
     val amount: Double? = null,
     /**
      * Optional category name or path hint in the user's category language (e.g. "Groceries", "Продукти", "Gifts").
@@ -465,7 +464,7 @@ data class SuggestedSplit(
 /** Input for a single split part when creating a split transaction across multiple categories. */
 @AppFunctionSerializable(isDescribedByKDoc = true)
 data class TransactionSplitInput(
-    /** Positive amount allocated to this split category (must be greater than 0.0). */
+    /** Positive amount with at most 2 decimal places allocated to this split category (must be at least 0.01). */
     val amount: Double,
     /** Existing category name or full path for this split (e.g. "Food > Groceries", "Gifts"). */
     val categoryName: String? = null,
@@ -554,4 +553,33 @@ private fun resolveUniqueAccount(
         "$roleLabel '$accountName' not found. Available accounts: " +
             "${accounts.joinToString(", ") { it.title }.ifEmpty { "none" }}."
     )
+}
+
+private object AmountPrecision {
+    const val CENTS_PER_UNIT = 100.0
+    const val EPSILON = 1e-4
+    const val MAX_STORED_CENTS = 1e14
+}
+
+private fun toValidatedMinorUnits(
+    amount: Double,
+    label: String,
+    allowNegative: Boolean,
+): Long {
+    val scaled = if (amount.isFinite()) abs(amount) * AmountPrecision.CENTS_PER_UNIT else 0.0
+    val rounded = round(scaled)
+    val cents = rounded.toLong()
+    val invalidReason = when {
+        !amount.isFinite() -> "$label must be a finite number."
+        !allowNegative && amount <= 0.0 -> "$label must be greater than 0.0."
+        scaled > AmountPrecision.MAX_STORED_CENTS -> "$label exceeds the maximum supported amount."
+        abs(scaled - rounded) > AmountPrecision.EPSILON ->
+            "$label ($amount) supports at most 2 decimal places for stored amounts."
+        cents <= 0L -> "$label must be at least 0.01."
+        else -> null
+    }
+    if (invalidReason != null) {
+        throw AppFunctionInvalidArgumentException(invalidReason)
+    }
+    return cents
 }

@@ -329,11 +329,13 @@ private class HistoryScoreAccumulator(
             val representative = entries.first().second.category
             val confidence = entries.minOf { it.second.confidence }
             val amounts = entries.mapNotNull { it.first.amount }
-            val summedAmount = if (amounts.isNotEmpty()) {
-                round(amounts.sum() * centsScale) / centsScale
+            val validPositiveAmounts = amounts.isNotEmpty() && amounts.all { it.isFinite() && it > 0.0 }
+            val summedCents = if (validPositiveAmounts) {
+                amounts.sumOf { round(it * centsScale).toLong() }
             } else {
-                null
+                0L
             }
+            val summedAmount = if (summedCents > 0L) summedCents / centsScale else null
             val combinedNote = entries
                 .map { it.first.description.trim() }
                 .filter { it.isNotEmpty() }

@@ -806,6 +806,100 @@ class CategoryClassifierAndDatabaseAdapterTest {
             stopKoin()
         }
     }
+
+    @Test
+    fun testStoragePrecisionValidationRejectsSubCentAmounts() {
+        val db: AppFunctionDatabase = mock()
+        setupDefaultFixtures(db)
+        ensureBundleEmptyInitialized()
+        stopKoin()
+        startKoin { modules(module { single { db } }) }
+        try {
+            val service = TransactionAppFunctionService()
+            assertThrows(AppFunctionInvalidArgumentException::class.java) {
+                runBlocking { service.addTransaction(amount = 10.125, accountName = "Cash") }
+            }
+            assertThrows(AppFunctionInvalidArgumentException::class.java) {
+                runBlocking {
+                    service.addTransaction(
+                        amount = 10.01,
+                        accountName = "Cash",
+                        splits = listOf(
+                            TransactionSplitInput(amount = 10.004, categoryName = "Food"),
+                            TransactionSplitInput(amount = 0.004, categoryName = "Gifts"),
+                        ),
+                    )
+                }
+            }
+            assertThrows(AppFunctionInvalidArgumentException::class.java) {
+                runBlocking {
+                    service.prepareReceiptTransaction(
+                        lineItems = listOf(ReceiptLineItem(description = "Weighted", amount = 2.345)),
+                    )
+                }
+            }
+            assertThrows(AppFunctionInvalidArgumentException::class.java) {
+                runBlocking {
+                    service.prepareReceiptTransaction(
+                        lineItems = listOf(ReceiptLineItem(description = "Free", amount = 0.0)),
+                    )
+                }
+            }
+        } finally {
+            stopKoin()
+        }
+    }
+
+    @Test
+    fun testSplitRemainderAdjustmentNeverCreatesZeroOrNegativeSplit() {
+        val db: AppFunctionDatabase = mock()
+        setupDefaultFixtures(db)
+        ensureBundleEmptyInitialized()
+        stopKoin()
+        startKoin { modules(module { single { db } }) }
+        try {
+            val service = TransactionAppFunctionService()
+            assertThrows(AppFunctionInvalidArgumentException::class.java) {
+                runBlocking {
+                    service.addTransaction(
+                        amount = 0.01,
+                        accountName = "Cash",
+                        splits = listOf(
+                            TransactionSplitInput(amount = 0.01, categoryName = "Food"),
+                            TransactionSplitInput(amount = 0.01, categoryName = "Gifts"),
+                        ),
+                    )
+                }
+            }
+            val expectedSplits = listOf(
+                TransactionSplit(categoryId = 10L, amount = -99L, note = "Lunch"),
+                TransactionSplit(categoryId = 30L, amount = -1L, note = "Bag"),
+            )
+            stubInsert(
+                db = db,
+                txId = 5002L,
+                fromAccountId = 1L,
+                categoryId = -1L,
+                payeeId = 0L,
+                amount = -100L,
+                note = "",
+                splits = expectedSplits,
+            )
+            val adjustedResult = runBlocking {
+                service.addTransaction(
+                    amount = 1.00,
+                    accountName = "Cash",
+                    splits = listOf(
+                        TransactionSplitInput(amount = 1.00, categoryName = "Food", note = "Lunch"),
+                        TransactionSplitInput(amount = 0.01, categoryName = "Gifts", note = "Bag"),
+                    ),
+                )
+            }
+            assertEquals(5002L, adjustedResult.transactionId)
+        } finally {
+            stopKoin()
+        }
+    }
 }
 
 private fun setupDefaultFixtures(db: AppFunctionDatabase) {
