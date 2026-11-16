@@ -11,6 +11,7 @@ import androidx.appfunctions.AppFunctionInvalidArgumentException
 import androidx.appfunctions.AppFunctionSerializable
 import androidx.appfunctions.AppFunctionService
 import androidx.appfunctions.AppFunctionServiceEntryPoint
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
@@ -21,7 +22,6 @@ import kotlin.math.abs
 import kotlin.math.round
 
 @RequiresApi(value = 36)
-@Suppress("InjectDispatcher")
 @AppFunctionServiceEntryPoint(
     serviceName = "TransactionAppFunctionService",
     appFunctionXmlFileName = "financisto_app_function_service",
@@ -60,46 +60,41 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
         receiptDateTime: LocalDateTime? = null,
         receiptImageUri: Uri? = null,
         isIncome: Boolean? = null,
-    ): ReceiptTransactionPreparation = withContext(Dispatchers.IO) {
-        runCatching {
-            val accounts = db.getAccounts()
-            val catalog = ClassificationCatalog(db.getCategories(), db.getPayees(), db.getCategoryHistory())
-            val matchedAccount = resolveCandidateAccount(accounts, accountQuery)
-            val matchedPayee =
-                merchantName?.let { CategoryClassifier.findBestMatch(catalog.payees, it) { p -> p.title } }
-            val resolvedPayeeName = matchedPayee?.title ?: merchantName?.trim()?.takeIf { it.isNotEmpty() }
-            val resolvedDateTime = receiptDateTime ?: receiptImageUri?.let(db::extractReceiptImageDateTime)
-            val candidateCategories = catalog.categories
-                .filter { it.isIncome == (isIncome == true) }
-                .ifEmpty { catalog.categories }
-                .map { CategoryOption(it.id, it.title, it.fullPath, it.isIncome) }
-            val resolution = resolveReceiptCategories(
-                catalog = catalog,
-                lineItems = lineItems,
-                categoryQuery = categoryQuery,
-                merchantName = merchantName,
-                receiptItems = receiptItems,
-                matchedAccount = matchedAccount,
-                isIncome = isIncome,
-            )
-            ReceiptTransactionPreparation(
-                matchedAccount = matchedAccount?.let { AccountOption(it.id, it.title, it.currencyCode, it.type) },
-                candidateAccounts = accounts.map { AccountOption(it.id, it.title, it.currencyCode, it.type) },
-                suggestedCategory = resolution.suggestedCategory,
-                categoryConfidence = resolution.confidence.name,
-                isSplitTransaction = resolution.isSplit,
-                suggestedSplits = resolution.suggestedSplits,
-                candidateCategories = candidateCategories,
-                resolvedPayeeName = resolvedPayeeName,
-                resolvedDateTime = resolvedDateTime,
-                requiresAccountSelection = matchedAccount == null,
-                requiresCategoryConfirmation = resolution.isSplit ||
-                    resolution.confidence.ordinal <= CategoryMatchConfidence.LOW.ordinal,
-            )
-        }.getOrElse { error ->
-            throw (error as? AppFunctionException)
-                ?: AppFunctionAppUnknownException(error.message ?: "Failed to prepare receipt transaction.")
-        }
+    ): ReceiptTransactionPreparation = executeOnIo("Failed to prepare receipt transaction.") {
+        val accounts = db.getAccounts()
+        val catalog = ClassificationCatalog(db.getCategories(), db.getPayees(), db.getCategoryHistory())
+        val matchedAccount = resolveCandidateAccount(accounts, accountQuery)
+        val matchedPayee =
+            merchantName?.let { CategoryClassifier.findBestMatch(catalog.payees, it) { p -> p.title } }
+        val resolvedPayeeName = matchedPayee?.title ?: merchantName?.trim()?.takeIf { it.isNotEmpty() }
+        val resolvedDateTime = receiptDateTime ?: receiptImageUri?.let(db::extractReceiptImageDateTime)
+        val candidateCategories = catalog.categories
+            .filter { it.isIncome == (isIncome == true) }
+            .ifEmpty { catalog.categories }
+            .map { CategoryOption(it.id, it.title, it.fullPath, it.isIncome) }
+        val resolution = resolveReceiptCategories(
+            catalog = catalog,
+            lineItems = lineItems,
+            categoryQuery = categoryQuery,
+            merchantName = merchantName,
+            receiptItems = receiptItems,
+            matchedAccount = matchedAccount,
+            isIncome = isIncome,
+        )
+        ReceiptTransactionPreparation(
+            matchedAccount = matchedAccount?.let { AccountOption(it.id, it.title, it.currencyCode, it.type) },
+            candidateAccounts = accounts.map { AccountOption(it.id, it.title, it.currencyCode, it.type) },
+            suggestedCategory = resolution.suggestedCategory,
+            categoryConfidence = resolution.confidence.name,
+            isSplitTransaction = resolution.isSplit,
+            suggestedSplits = resolution.suggestedSplits,
+            candidateCategories = candidateCategories,
+            resolvedPayeeName = resolvedPayeeName,
+            resolvedDateTime = resolvedDateTime,
+            requiresAccountSelection = matchedAccount == null,
+            requiresCategoryConfirmation = resolution.isSplit ||
+                resolution.confidence.ordinal <= CategoryMatchConfidence.LOW.ordinal,
+        )
     }
 
     /**
@@ -135,62 +130,57 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
         transactionDateTime: LocalDateTime? = null,
         receiptImageUri: Uri? = null,
         splits: List<TransactionSplitInput> = emptyList(),
-    ): TransactionResult = withContext(Dispatchers.IO) {
-        runCatching {
-            val accounts = db.getAccounts()
-            val catalog = ClassificationCatalog(db.getCategories(), db.getPayees(), db.getCategoryHistory())
-            val (amountInCents, account) = validateAmountAndResolveAccount(amount, accountName, accounts)
-            val toAccount = resolveDestinationAccount(toAccountName, account, accounts, splits.isNotEmpty())
-            val resolvedCategory = resolveSingleCategory(
-                categoryName = categoryName,
-                catalog = catalog,
-                payeeName = payeeName,
-                note = note,
-                account = account,
-                isIncome = isIncome,
-                hasSplits = splits.isNotEmpty(),
-                isTransfer = toAccount != null,
-            )
-            val resolvedSplits = resolveSplits(
-                splits = splits,
-                totalCents = amountInCents,
-                catalog = catalog,
-                payeeName = payeeName,
-                account = account,
-                isIncome = isIncome,
-            )
-            val (payeeId, resolvedPayeeName) = resolveOrCreatePayee(payeeName, catalog.payees)
-            val attachedPictureFileName = receiptImageUri?.let(db::saveReceiptPicture)
-            val resolvedDateTime =
-                transactionDateTime ?: receiptImageUri?.let(db::extractReceiptImageDateTime) ?: LocalDateTime.now()
-            val epochMillis = resolvedDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-            val signMultiplier = if (toAccount == null && isIncome == true) 1L else -1L
-            val isSplit = resolvedSplits.isNotEmpty()
-            val txId = db.insertOrUpdateTransaction(
-                fromAccountId = account.id,
-                toAccountId = toAccount?.id,
-                categoryId = if (isSplit) SPLIT_CATEGORY_ID else (resolvedCategory?.id ?: 0L),
-                payeeId = payeeId,
-                amount = signMultiplier * amountInCents,
-                toAmount = toAccount?.let { amountInCents },
-                note = note.orEmpty(),
-                dateTime = epochMillis,
-                attachedPicture = attachedPictureFileName,
-                splits = resolvedSplits.map { it.first },
-            )
-            TransactionResult(
-                transactionId = txId,
-                accountName = account.title,
-                categoryPath = if (isSplit) SPLIT_CATEGORY_PATH else resolvedCategory?.fullPath,
-                splitCategoryPaths = resolvedSplits.map { it.second.fullPath },
-                payeeName = resolvedPayeeName,
-                transactionDateTime = resolvedDateTime,
-                attachedPictureFileName = attachedPictureFileName,
-            )
-        }.getOrElse { error ->
-            throw (error as? AppFunctionException)
-                ?: AppFunctionAppUnknownException(error.message ?: "Failed to create transaction.")
-        }
+    ): TransactionResult = executeOnIo("Failed to create transaction.") {
+        val accounts = db.getAccounts()
+        val catalog = ClassificationCatalog(db.getCategories(), db.getPayees(), db.getCategoryHistory())
+        val (amountInCents, account) = validateAmountAndResolveAccount(amount, accountName, accounts)
+        val toAccount = resolveDestinationAccount(toAccountName, account, accounts, splits.isNotEmpty())
+        val resolvedCategory = resolveSingleCategory(
+            categoryName = categoryName,
+            catalog = catalog,
+            payeeName = payeeName,
+            note = note,
+            account = account,
+            isIncome = isIncome,
+            hasSplits = splits.isNotEmpty(),
+            isTransfer = toAccount != null,
+        )
+        val resolvedSplits = resolveSplits(
+            splits = splits,
+            totalCents = amountInCents,
+            catalog = catalog,
+            payeeName = payeeName,
+            account = account,
+            isIncome = isIncome,
+        )
+        val (payeeId, resolvedPayeeName) = resolveOrCreatePayee(payeeName, catalog.payees)
+        val attachedPictureFileName = receiptImageUri?.let(db::saveReceiptPicture)
+        val resolvedDateTime =
+            transactionDateTime ?: receiptImageUri?.let(db::extractReceiptImageDateTime) ?: LocalDateTime.now()
+        val epochMillis = resolvedDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val signMultiplier = if (toAccount == null && isIncome == true) 1L else -1L
+        val isSplit = resolvedSplits.isNotEmpty()
+        val txId = db.insertOrUpdateTransaction(
+            fromAccountId = account.id,
+            toAccountId = toAccount?.id,
+            categoryId = if (isSplit) SPLIT_CATEGORY_ID else (resolvedCategory?.id ?: 0L),
+            payeeId = payeeId,
+            amount = signMultiplier * amountInCents,
+            toAmount = toAccount?.let { amountInCents },
+            note = note.orEmpty(),
+            dateTime = epochMillis,
+            attachedPicture = attachedPictureFileName,
+            splits = resolvedSplits.map { it.first },
+        )
+        TransactionResult(
+            transactionId = txId,
+            accountName = account.title,
+            categoryPath = if (isSplit) SPLIT_CATEGORY_PATH else resolvedCategory?.fullPath,
+            splitCategoryPaths = resolvedSplits.map { it.second.fullPath },
+            payeeName = resolvedPayeeName,
+            transactionDateTime = resolvedDateTime,
+            attachedPictureFileName = attachedPictureFileName,
+        )
     }
 
     private fun resolveCandidateAccount(
@@ -534,3 +524,21 @@ data class TransactionResult(
     /** Stored file name of the attached receipt picture, or null if no image was attached. */
     val attachedPictureFileName: String?,
 )
+
+// Map exceptions outside withContext so AppFunctionException never crosses a dispatcher boundary
+// under JVM stack-trace recovery (kotlinx-coroutines calls getMethod, linking absent extension types).
+@Suppress("InjectDispatcher")
+private suspend fun <T> executeOnIo(
+    fallbackMessage: String,
+    block: () -> T,
+): T {
+    val outcome = withContext(Dispatchers.IO) {
+        runCatching(block).onFailure { error ->
+            if (error is CancellationException) throw error
+        }
+    }
+    return outcome.getOrElse { error ->
+        throw (error as? AppFunctionException)
+            ?: AppFunctionAppUnknownException(error.message ?: fallbackMessage)
+    }
+}
