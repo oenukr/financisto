@@ -133,31 +133,48 @@ object CategoryClassifier {
         query: String,
         exactOnly: Boolean = false,
         getTitle: (T) -> String,
-    ): T? {
+    ): T? = findBestMatches(items, query, exactOnly, getTitle).firstOrNull()
+
+    fun <T> findBestMatches(
+        items: List<T>,
+        query: String,
+        exactOnly: Boolean = false,
+        getTitle: (T) -> String,
+    ): List<T> {
         val trimmedQuery = query.trim()
         val normalizedQuery = HistoryScoreAccumulator.normalizeAlphanumeric(trimmedQuery)
-        if (normalizedQuery.isEmpty()) return null
+        if (normalizedQuery.isEmpty()) return emptyList()
 
-        val exactOrNormalized = items.firstOrNull { getTitle(it).equals(trimmedQuery, ignoreCase = true) }
-            ?: items.firstOrNull { HistoryScoreAccumulator.normalizeAlphanumeric(getTitle(it)) == normalizedQuery }
+        val exactMatches = items.filter { getTitle(it).trim().equals(trimmedQuery, ignoreCase = true) }
+        val normalizedMatches = if (exactMatches.isEmpty()) {
+            items.filter { HistoryScoreAccumulator.normalizeAlphanumeric(getTitle(it)) == normalizedQuery }
+        } else {
+            emptyList()
+        }
         val threshold = when {
             normalizedQuery.length <= SHORT_QUERY_LENGTH -> 0
             normalizedQuery.length <= MEDIUM_QUERY_LENGTH -> 1
             normalizedQuery.length <= LONG_QUERY_LENGTH -> 2
             else -> MAX_LEVENSHTEIN_DISTANCE
         }
-        return if (exactOrNormalized != null || exactOnly) {
-            exactOrNormalized
-        } else {
-            items
-                .map { item -> item to HistoryScoreAccumulator.normalizeAlphanumeric(getTitle(item)) }
-                .filter { (_, normalizedTitle) -> normalizedTitle.isNotEmpty() }
-                .map { (item, normalizedTitle) ->
-                    item to HistoryScoreAccumulator.calculateLevenshteinDistance(normalizedQuery, normalizedTitle)
+        return when {
+            exactMatches.isNotEmpty() -> exactMatches
+            normalizedMatches.isNotEmpty() || exactOnly -> normalizedMatches
+            else -> {
+                val withinThreshold = items
+                    .map { item -> item to HistoryScoreAccumulator.normalizeAlphanumeric(getTitle(item)) }
+                    .filter { (_, normalizedTitle) -> normalizedTitle.isNotEmpty() }
+                    .map { (item, normalizedTitle) ->
+                        item to HistoryScoreAccumulator.calculateLevenshteinDistance(normalizedQuery, normalizedTitle)
+                    }
+                    .filter { (_, distance) -> distance <= threshold }
+                val minDistance = withinThreshold.minOfOrNull { (_, distance) -> distance }
+                if (minDistance == null) {
+                    emptyList()
+                } else {
+                    withinThreshold.filter { (_, distance) -> distance == minDistance }.map { (item, _) -> item }
                 }
-                .filter { (_, distance) -> distance <= threshold }
-                .minByOrNull { (_, distance) -> distance }
-                ?.first
+            }
         }
     }
 
