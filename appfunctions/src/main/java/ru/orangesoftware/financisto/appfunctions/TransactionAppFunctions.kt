@@ -68,8 +68,9 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
             merchantName?.let { CategoryClassifier.findBestMatch(catalog.payees, it) { p -> p.title } }
         val resolvedPayeeName = matchedPayee?.title ?: merchantName?.trim()?.takeIf { it.isNotEmpty() }
         val resolvedDateTime = receiptDateTime ?: receiptImageUri?.let(db::extractReceiptImageDateTime)
+        val isIncomeTransaction = isIncome == true
         val candidateCategories = catalog.categories
-            .filter { it.isIncome == (isIncome == true) }
+            .filter { it.isIncome == isIncomeTransaction }
             .ifEmpty { catalog.categories }
             .map { CategoryOption(it.id, it.title, it.fullPath, it.isIncome) }
         val resolution = resolveReceiptCategories(
@@ -79,7 +80,7 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
             merchantName = merchantName,
             receiptItems = receiptItems,
             matchedAccount = matchedAccount,
-            isIncome = isIncome,
+            isIncome = isIncomeTransaction,
         )
         ReceiptTransactionPreparation(
             matchedAccount = matchedAccount?.let { AccountOption(it.id, it.title, it.currencyCode, it.type) },
@@ -135,13 +136,14 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
         val catalog = ClassificationCatalog(db.getCategories(), db.getPayees(), db.getCategoryHistory())
         val (amountInCents, account) = validateAmountAndResolveAccount(amount, accountName, accounts)
         val toAccount = resolveDestinationAccount(toAccountName, account, accounts, splits.isNotEmpty())
+        val isIncomeTransaction = isIncome == true
         val resolvedCategory = resolveSingleCategory(
             categoryName = categoryName,
             catalog = catalog,
             payeeName = payeeName,
             note = note,
             account = account,
-            isIncome = isIncome,
+            isIncome = isIncomeTransaction,
             hasSplits = splits.isNotEmpty(),
             isTransfer = toAccount != null,
         )
@@ -151,14 +153,14 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
             catalog = catalog,
             payeeName = payeeName,
             account = account,
-            isIncome = isIncome,
+            isIncome = isIncomeTransaction,
         )
         val (payeeId, resolvedPayeeName) = resolveOrCreatePayee(payeeName, catalog.payees)
         val attachedPictureFileName = receiptImageUri?.let(db::saveReceiptPicture)
         val resolvedDateTime =
             transactionDateTime ?: receiptImageUri?.let(db::extractReceiptImageDateTime) ?: LocalDateTime.now()
         val epochMillis = resolvedDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-        val signMultiplier = if (toAccount == null && isIncome == true) 1L else -1L
+        val signMultiplier = if (toAccount == null && isIncomeTransaction) 1L else -1L
         val isSplit = resolvedSplits.isNotEmpty()
         val txId = db.insertOrUpdateTransaction(
             fromAccountId = account.id,
@@ -188,7 +190,8 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
         accountQuery: String?,
     ): AccountInfo? {
         return when {
-            !accountQuery.isNullOrBlank() -> CategoryClassifier.findBestMatch(accounts, accountQuery) { it.title }
+            !accountQuery.isNullOrBlank() ->
+                CategoryClassifier.findBestMatches(accounts, accountQuery) { it.title }.singleOrNull()
             accounts.size == 1 -> accounts.first()
             else -> null
         }
@@ -201,7 +204,7 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
         merchantName: String?,
         receiptItems: String?,
         matchedAccount: AccountInfo?,
-        isIncome: Boolean?,
+        isIncome: Boolean,
     ): ReceiptCategoryResolution {
         val splitResult = lineItems.takeIf { it.isNotEmpty() }?.let { items ->
             CategoryClassifier.classifyLineItems(
@@ -249,12 +252,7 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
         if (amountInCents <= 0L) {
             throw AppFunctionInvalidArgumentException("Transaction amount must be non-zero.")
         }
-        val account = CategoryClassifier.findBestMatch(accounts, accountName) { it.title }
-            ?: throw AppFunctionElementNotFoundException(
-                "Account '$accountName' not found. Available accounts: " +
-                    "${accounts.joinToString(", ") { it.title }.ifEmpty { "none" }}."
-            )
-        return amountInCents to account
+        return amountInCents to resolveUniqueAccount(accounts, accountName, "Account")
     }
 
     private fun resolveDestinationAccount(
@@ -264,11 +262,7 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
         hasSplits: Boolean,
     ): AccountInfo? {
         if (toAccountName.isNullOrBlank()) return null
-        val toAccount = CategoryClassifier.findBestMatch(accounts, toAccountName) { it.title }
-            ?: throw AppFunctionElementNotFoundException(
-                "Destination account '$toAccountName' not found. Available accounts: " +
-                    "${accounts.joinToString(", ") { it.title }.ifEmpty { "none" }}."
-            )
+        val toAccount = resolveUniqueAccount(accounts, toAccountName, "Destination account")
         val invalidReason = when {
             hasSplits -> "Cannot specify both destination account '$toAccountName' and category splits."
             toAccount.id == sourceAccount.id ->
@@ -287,7 +281,7 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
         payeeName: String?,
         note: String?,
         account: AccountInfo,
-        isIncome: Boolean?,
+        isIncome: Boolean,
         hasSplits: Boolean,
         isTransfer: Boolean,
     ): CategoryInfo? {
@@ -318,12 +312,12 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
         catalog: ClassificationCatalog,
         payeeName: String?,
         account: AccountInfo,
-        isIncome: Boolean?,
+        isIncome: Boolean,
     ): List<Pair<TransactionSplit, CategoryInfo>> {
         if (splits.isEmpty()) return emptyList()
         val rawCents = validateSplitAmounts(splits, totalCents)
         val sumSplitCents = rawCents.sum()
-        val signMultiplier = if (isIncome == true) 1L else -1L
+        val signMultiplier = if (isIncome) 1L else -1L
         val availableCategories = catalog.categories.joinToString(", ") { it.fullPath }.ifEmpty { "none" }
 
         return splits.mapIndexed { index, split ->
@@ -541,4 +535,23 @@ private suspend fun <T> executeOnIo(
         throw (error as? AppFunctionException)
             ?: AppFunctionAppUnknownException(error.message ?: fallbackMessage)
     }
+}
+
+private fun resolveUniqueAccount(
+    accounts: List<AccountInfo>,
+    accountName: String,
+    roleLabel: String,
+): AccountInfo {
+    val matches = CategoryClassifier.findBestMatches(accounts, accountName) { it.title }
+    if (matches.size > 1) {
+        throw AppFunctionInvalidArgumentException(
+            "$roleLabel '$accountName' matches multiple accounts: " +
+                "${matches.joinToString(", ") { it.title }}. " +
+                "Available accounts: ${accounts.joinToString(", ") { it.title }.ifEmpty { "none" }}."
+        )
+    }
+    return matches.singleOrNull() ?: throw AppFunctionElementNotFoundException(
+        "$roleLabel '$accountName' not found. Available accounts: " +
+            "${accounts.joinToString(", ") { it.title }.ifEmpty { "none" }}."
+    )
 }

@@ -495,52 +495,6 @@ class TransactionAppFunctionsTest {
     }
 
     @Test
-    fun testAppFunctionDatabaseImplWithMockAdapterAndExifParser() {
-        val mockAdapter = createMockDatabaseAdapter()
-        val impl = AppFunctionDatabaseImpl(mockAdapter)
-
-        val accounts = impl.getAccounts()
-        assertEquals(1, accounts.size)
-        assertEquals("Checking", accounts[0].title)
-        assertEquals("USD", accounts[0].currencyCode)
-
-        val categories = impl.getCategories()
-        assertEquals(2, categories.size)
-        assertEquals("Food", categories[0].fullPath)
-        assertEquals("Food > Groceries", categories[1].fullPath)
-        assertEquals(10L, categories[1].parentId)
-
-        val txId = impl.insertOrUpdateTransaction(
-            fromAccountId = 1L,
-            toAccountId = null,
-            categoryId = null,
-            payeeId = 5L,
-            amount = -5000L,
-            toAmount = null,
-            note = "Split test",
-            dateTime = 123456L,
-            attachedPicture = "pic.jpg",
-            splits = listOf(TransactionSplit(categoryId = 11L, amount = -5000L, note = "Item")),
-        )
-        assertEquals(777L, txId)
-        val captor = argumentCaptor<Transaction>()
-        verify(mockAdapter).insertOrUpdate(captor.capture())
-        assertEquals(Category.SPLIT_CATEGORY_ID, captor.firstValue.categoryId)
-        assertEquals(1, captor.firstValue.splits.size)
-
-        assertEquals(
-            LocalDateTime.of(2026, 11, 5, 14, 30, 15),
-            AppFunctionDatabaseImpl.parseExifDateTime("2026:11:05 14:30:15"),
-        )
-        assertNull(AppFunctionDatabaseImpl.parseExifDateTime("invalid"))
-        assertTrue(impl.getCategoryHistory(0).isEmpty())
-        val history = impl.getCategoryHistory(10)
-        assertEquals(2, history.size)
-        assertEquals(HistoricalCategorySignal(categoryId = 11L, payeeId = 300L, note = "Сир та сметана"), history[0])
-        assertEquals(HistoricalCategorySignal(categoryId = 10L, payeeId = 0L, note = ""), history[1])
-    }
-
-    @Test
     fun testPrepareAndAddUkrainianCategoriesFromHistoryAndMorphologicalPrefix() {
         runBlocking {
             setupUkrainianFixtures(db)
@@ -640,6 +594,105 @@ class TransactionAppFunctionsTest {
     }
 
     @Test
+    fun testNullIsIncomeDefaultsToExpenseClassificationWhileTrueSelectsIncome() {
+        runBlocking {
+            val prepExpenseDefault = appFunctions.prepareReceiptTransaction(
+                receiptItems = "Salary",
+                accountQuery = "Cash",
+                isIncome = null,
+            )
+            assertNull(prepExpenseDefault.suggestedCategory)
+            assertEquals("NONE", prepExpenseDefault.categoryConfidence)
+            assertTrue(prepExpenseDefault.candidateCategories.none { it.isIncome })
+
+            val prepSplitExpenseDefault = appFunctions.prepareReceiptTransaction(
+                lineItems = listOf(
+                    ReceiptLineItem(description = "Milk", amount = 10.0),
+                    ReceiptLineItem(description = "Salary", amount = 5.0),
+                ),
+                accountQuery = "Cash",
+                isIncome = null,
+            )
+            assertTrue(prepSplitExpenseDefault.suggestedSplits.none { it.category?.isIncome == true })
+
+            val prepIncome = appFunctions.prepareReceiptTransaction(
+                receiptItems = "Salary",
+                accountQuery = "Cash",
+                isIncome = true,
+            )
+            assertEquals("Salary", prepIncome.suggestedCategory?.fullPath)
+            assertEquals("HIGH", prepIncome.categoryConfidence)
+
+            stubInsert(
+                db = db,
+                txId = 1099L,
+                fromAccountId = 1L,
+                categoryId = 0L,
+                payeeId = 0L,
+                amount = -2000L,
+                note = "Salary",
+            )
+            val addExpenseDefault = appFunctions.addTransaction(
+                amount = 20.0,
+                accountName = "Cash",
+                note = "Salary",
+                isIncome = null,
+            )
+            assertEquals(1099L, addExpenseDefault.transactionId)
+            assertNull(addExpenseDefault.categoryPath)
+        }
+    }
+}
+
+class CategoryClassifierAndDatabaseAdapterTest {
+
+    @Test
+    fun testAppFunctionDatabaseImplWithMockAdapterAndExifParser() {
+        val mockAdapter = createMockDatabaseAdapter()
+        val impl = AppFunctionDatabaseImpl(mockAdapter)
+
+        val accounts = impl.getAccounts()
+        assertEquals(1, accounts.size)
+        assertEquals("Checking", accounts[0].title)
+        assertEquals("USD", accounts[0].currencyCode)
+
+        val categories = impl.getCategories()
+        assertEquals(2, categories.size)
+        assertEquals("Food", categories[0].fullPath)
+        assertEquals("Food > Groceries", categories[1].fullPath)
+        assertEquals(10L, categories[1].parentId)
+
+        val txId = impl.insertOrUpdateTransaction(
+            fromAccountId = 1L,
+            toAccountId = null,
+            categoryId = null,
+            payeeId = 5L,
+            amount = -5000L,
+            toAmount = null,
+            note = "Split test",
+            dateTime = 123456L,
+            attachedPicture = "pic.jpg",
+            splits = listOf(TransactionSplit(categoryId = 11L, amount = -5000L, note = "Item")),
+        )
+        assertEquals(777L, txId)
+        val captor = argumentCaptor<Transaction>()
+        verify(mockAdapter).insertOrUpdate(captor.capture())
+        assertEquals(Category.SPLIT_CATEGORY_ID, captor.firstValue.categoryId)
+        assertEquals(1, captor.firstValue.splits.size)
+
+        assertEquals(
+            LocalDateTime.of(2026, 11, 5, 14, 30, 15),
+            AppFunctionDatabaseImpl.parseExifDateTime("2026:11:05 14:30:15"),
+        )
+        assertNull(AppFunctionDatabaseImpl.parseExifDateTime("invalid"))
+        assertTrue(impl.getCategoryHistory(0).isEmpty())
+        val history = impl.getCategoryHistory(10)
+        assertEquals(2, history.size)
+        assertEquals(HistoricalCategorySignal(categoryId = 11L, payeeId = 300L, note = "Сир та сметана"), history[0])
+        assertEquals(HistoricalCategorySignal(categoryId = 10L, payeeId = 0L, note = ""), history[1])
+    }
+
+    @Test
     fun testCategoryClassifierUnicodeMorphologicalAndPayeeHistoryFallback() {
         assertTrue(CategoryClassifier.tokensMatch("Продукти", "продуктів"))
         assertTrue(CategoryClassifier.tokensMatch("Geschenke", "Geschenk"))
@@ -678,6 +731,80 @@ class TransactionAppFunctionsTest {
         )
         assertEquals(10L, payeeFreqResult.category?.id)
         assertEquals(CategoryMatchConfidence.HIGH, payeeFreqResult.confidence)
+
+        val unrestrictedResult = CategoryClassifier.classify(
+            categories = categories,
+            payees = payees,
+            receiptItems = "Зарплата",
+            isIncome = null,
+            history = history,
+        )
+        assertEquals(20L, unrestrictedResult.category?.id)
+    }
+
+    @Test
+    fun testAmbiguousTiedAccountMatchesRequireSelectionAndPreserveUniqueMatches() {
+        val db: AppFunctionDatabase = mock()
+        setupDefaultFixtures(db)
+        val tiedAccounts = listOf(
+            AccountInfo(id = 1L, title = "Cash", currencyCode = "USD", type = "CASH"),
+            AccountInfo(id = 2L, title = "Card 1", currencyCode = "USD", type = "CARD"),
+            AccountInfo(id = 3L, title = "Card 2", currencyCode = "USD", type = "CARD"),
+        )
+        whenever(db.getAccounts()).thenReturn(tiedAccounts)
+        assertEquals(
+            listOf(2L, 3L),
+            CategoryClassifier.findBestMatches(tiedAccounts, "Card") { it.title }.map { it.id },
+        )
+        val normalizedAccounts = listOf(AccountInfo(4L, "My Card"), AccountInfo(5L, "My-Card"))
+        assertEquals(
+            listOf(4L, 5L),
+            CategoryClassifier.findBestMatches(normalizedAccounts, "MyCard") { it.title }.map { it.id },
+        )
+
+        ensureBundleEmptyInitialized()
+        stopKoin()
+        startKoin { modules(module { single { db } }) }
+        try {
+            val service = TransactionAppFunctionService()
+            runBlocking {
+                val ambiguousPrep = service.prepareReceiptTransaction(accountQuery = "Card")
+                assertNull(ambiguousPrep.matchedAccount)
+                assertTrue(ambiguousPrep.requiresAccountSelection)
+
+                val uniquePrep = service.prepareReceiptTransaction(accountQuery = "Csh")
+                assertEquals("Cash", uniquePrep.matchedAccount?.name)
+                assertFalse(uniquePrep.requiresAccountSelection)
+
+                val srcEx = assertThrows(AppFunctionInvalidArgumentException::class.java) {
+                    runBlocking { service.addTransaction(amount = 10.0, accountName = "Card") }
+                }
+                assertTrue(srcEx.message.orEmpty().contains("Card 1"))
+                assertTrue(srcEx.message.orEmpty().contains("Card 2"))
+
+                val dstEx = assertThrows(AppFunctionInvalidArgumentException::class.java) {
+                    runBlocking { service.addTransaction(amount = 10.0, accountName = "Cash", toAccountName = "Card") }
+                }
+                assertTrue(dstEx.message.orEmpty().contains("Card 1"))
+
+                stubInsert(
+                    db = db,
+                    txId = 5001L,
+                    fromAccountId = 1L,
+                    toAccountId = 3L,
+                    categoryId = 0L,
+                    payeeId = 0L,
+                    amount = -1500L,
+                    toAmount = 1500L,
+                    note = "",
+                )
+                val transfer = service.addTransaction(amount = 15.0, accountName = "Csh", toAccountName = "Card 2")
+                assertEquals(5001L, transfer.transactionId)
+                assertEquals("Cash", transfer.accountName)
+            }
+        } finally {
+            stopKoin()
+        }
     }
 }
 
