@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<AppFunctionAppMetadata 
-    xmlns:appfn="http://schemas.android.com/apk/androidx.appfunctions" 
-    appfn:description="Personal finance tracker. Exposes transaction and transfer creation." 
+<AppFunctionAppMetadata
+    xmlns:appfn="http://schemas.android.com/apk/androidx.appfunctions"
+    appfn:instructions="Personal finance tracker for recording expenses, income, transfers, and single-category or split-category receipt transactions across user accounts and categories.
+    Operational Patterns:
+    - Call 'prepareReceiptTransaction' before 'addTransaction' when creating a transaction from a receipt photo or when the target account or category is unspecified.
+    - Categories may be user-defined in any language (such as Ukrainian, German, Polish, or English). Map receipt items semantically to 'candidateCategories' returned by 'prepareReceiptTransaction', and pass category hints in the user's category language when known.
+    - When a receipt contains items from multiple categories (such as groceries and gifts in the same checkout), pass each item or group in 'lineItems' to 'prepareReceiptTransaction' and pass the confirmed 'splits' to 'addTransaction'.
+    - When 'prepareReceiptTransaction' returns 'requiresAccountSelection' as true or 'requiresCategoryConfirmation' as true, disambiguate the account from 'candidateAccounts' (passing 'accountId' when names are duplicated or similar) and the category or splits from 'candidateCategories' with the user before calling 'addTransaction'.
+    - Pass 'resolvedDateTime' from 'prepareReceiptTransaction' (or the date extracted from the receipt) as 'transactionDateTime' in 'addTransaction', along with 'receiptImageUri' to attach the receipt image.
+    Constraints:
+    - Transactions and splits can only use existing accounts and existing categories returned by the app."
     appfn:displayDescription="@string/app_name" />

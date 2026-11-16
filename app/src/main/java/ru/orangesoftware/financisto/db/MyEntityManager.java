@@ -50,7 +50,7 @@ import ru.orangesoftware.orb.Sort;
 
 public abstract class MyEntityManager extends EntityManager {
 
-    protected final Context context;
+    public final Context context;
 
     public MyEntityManager(Context context) {
         super(new DependenciesHolder().getDatabaseHelper(), new DatabaseFixPlugin());
