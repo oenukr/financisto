@@ -900,6 +900,64 @@ class CategoryClassifierAndDatabaseAdapterTest {
             stopKoin()
         }
     }
+
+    @Test
+    fun testAddTransactionAccountIdsResolveDuplicatesAndPreserveNameAmbiguity() {
+        val db: AppFunctionDatabase = mock()
+        setupDefaultFixtures(db)
+        whenever(db.getAccounts()).thenReturn(
+            listOf(
+                AccountInfo(id = 10L, title = "Wallet", currencyCode = "USD", type = "CASH"),
+                AccountInfo(id = 11L, title = "Wallet", currencyCode = "EUR", type = "CASH"),
+            )
+        )
+        ensureBundleEmptyInitialized()
+        stopKoin()
+        startKoin { modules(module { single { db } }) }
+        try {
+            val service = TransactionAppFunctionService()
+            val dupEx = assertThrows(AppFunctionInvalidArgumentException::class.java) {
+                runBlocking { service.addTransaction(amount = 10.0, accountName = "Wallet") }
+            }
+            assertTrue(dupEx.message.orEmpty().contains("id=10"))
+            assertTrue(dupEx.message.orEmpty().contains("id=11"))
+            assertThrows(AppFunctionElementNotFoundException::class.java) {
+                runBlocking { service.addTransaction(amount = 10.0, accountId = 999L) }
+            }
+            assertThrows(AppFunctionInvalidArgumentException::class.java) {
+                runBlocking { service.addTransaction(amount = 10.0) }
+            }
+            stubInsert(
+                db = db,
+                txId = 5003L,
+                fromAccountId = 11L,
+                categoryId = 10L,
+                payeeId = 0L,
+                amount = -1000L,
+                note = "",
+            )
+            val byId = runBlocking { service.addTransaction(amount = 10.0, categoryName = "Food", accountId = 11L) }
+            assertEquals(5003L, byId.transactionId)
+            stubInsert(
+                db = db,
+                txId = 5004L,
+                fromAccountId = 10L,
+                toAccountId = 11L,
+                categoryId = 0L,
+                payeeId = 0L,
+                amount = -2500L,
+                toAmount = 2500L,
+                note = "",
+            )
+            val transferByIds = runBlocking {
+                service.addTransaction(amount = 25.0, accountId = 10L, toAccountId = 11L)
+            }
+            assertEquals(5004L, transferByIds.transactionId)
+            assertEquals("Wallet", transferByIds.accountName)
+        } finally {
+            stopKoin()
+        }
+    }
 }
 
 private fun setupDefaultFixtures(db: AppFunctionDatabase) {

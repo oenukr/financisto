@@ -104,28 +104,34 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
     /**
      * Creates an expense, income, split transaction, or transfer in Financisto.
      *
-     * If [toAccountName] is provided, records a transfer from [accountName] to [toAccountName].
-     * If [splits] is non-empty, records a split transaction across multiple existing categories.
-     * Otherwise, records a single-category expense or income transaction.
+     * If [toAccountName] or [toAccountId] is provided, records a transfer from the source account to that
+     * destination account. If [splits] is non-empty, records a split transaction across multiple existing
+     * categories. Otherwise, records a single-category expense or income transaction.
      *
      * @param amount Non-zero transaction amount with at most 2 decimal places (e.g. 15.50).
-     * @param accountName Name of an existing active source account (e.g. "Cash").
+     * @param accountName Optional name of an existing active source account (e.g. "Cash"). Used when [accountId]
+     * is null.
      * @param categoryName Optional name or full path of an existing category (e.g. "Food > Groceries",
      * "Їжа > Продукти"). Categories may be user-defined in any language. Ignored for transfers or split
      * transactions; if null, classifies automatically from payee, note, and transaction history.
      * @param payeeName Optional payee or merchant name (e.g. "Starbucks"). Creates a new payee if not found.
      * @param note Optional note or item description for the transaction.
      * @param isIncome True for income, false or null for expense. Ignored for transfers.
-     * @param toAccountName Optional destination account name for transfers. Must be null when [splits] is non-empty.
+     * @param toAccountName Optional destination account name for transfers. Used when [toAccountId] is null.
+     * Must be null when [splits] is non-empty.
      * @param transactionDateTime Optional transaction date and time. Defaults to EXIF or current date and time.
      * @param receiptImageUri Optional URI of a receipt photo to attach to the transaction.
      * @param splits Optional list of category splits for multi-category transactions whose amounts sum to [amount].
+     * @param accountId Optional unique ID of an existing active source account from [AccountOption.id]. Takes
+     * precedence over [accountName] and disambiguates duplicate or similar account names.
+     * @param toAccountId Optional unique ID of an existing active destination account from [AccountOption.id] for
+     * transfers. Takes precedence over [toAccountName]; must be null when [splits] is non-empty.
      * @return A [TransactionResult] describing the created transaction.
      */
     @AppFunctionDeclaration(isDescribedByKDoc = true)
     suspend fun addTransaction(
         amount: Double,
-        accountName: String,
+        accountName: String? = null,
         categoryName: String? = null,
         payeeName: String? = null,
         note: String? = null,
@@ -134,11 +140,13 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
         transactionDateTime: LocalDateTime? = null,
         receiptImageUri: Uri? = null,
         splits: List<TransactionSplitInput> = emptyList(),
+        accountId: Long? = null,
+        toAccountId: Long? = null,
     ): TransactionResult = executeOnIo("Failed to create transaction.") {
         val accounts = db.getAccounts()
         val catalog = ClassificationCatalog(db.getCategories(), db.getPayees(), db.getCategoryHistory())
-        val (amountInCents, account) = validateAmountAndResolveAccount(amount, accountName, accounts)
-        val toAccount = resolveDestinationAccount(toAccountName, account, accounts, splits.isNotEmpty())
+        val (amountInCents, account) = validateAmountAndResolveAccount(amount, accountName, accountId, accounts)
+        val toAccount = resolveDestinationAccount(toAccountName, toAccountId, account, accounts, splits.isNotEmpty())
         val isIncomeTransaction = isIncome == true
         val resolvedCategory = resolveSingleCategory(
             categoryName = categoryName,
@@ -248,23 +256,26 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
 
     private fun validateAmountAndResolveAccount(
         amount: Double,
-        accountName: String,
+        accountName: String?,
+        accountId: Long?,
         accounts: List<AccountInfo>,
     ): Pair<Long, AccountInfo> {
         val amountInCents = toValidatedMinorUnits(amount, "Transaction amount", allowNegative = true)
-        return amountInCents to resolveUniqueAccount(accounts, accountName, "Account")
+        return amountInCents to resolveUniqueAccount(accounts, accountId, accountName, "Account")
     }
 
     private fun resolveDestinationAccount(
         toAccountName: String?,
+        toAccountId: Long?,
         sourceAccount: AccountInfo,
         accounts: List<AccountInfo>,
         hasSplits: Boolean,
     ): AccountInfo? {
-        if (toAccountName.isNullOrBlank()) return null
-        val toAccount = resolveUniqueAccount(accounts, toAccountName, "Destination account")
+        if (toAccountId == null && toAccountName.isNullOrBlank()) return null
+        val toAccount = resolveUniqueAccount(accounts, toAccountId, toAccountName, "Destination account")
         val invalidReason = when {
-            hasSplits -> "Cannot specify both destination account '$toAccountName' and category splits."
+            hasSplits ->
+                "Cannot specify both destination account '${toAccountName ?: toAccount.title}' and category splits."
             toAccount.id == sourceAccount.id ->
                 "Source and destination accounts must be different ('${sourceAccount.title}')."
             else -> null
@@ -538,20 +549,49 @@ private suspend fun <T> executeOnIo(
 
 private fun resolveUniqueAccount(
     accounts: List<AccountInfo>,
-    accountName: String,
+    accountId: Long?,
+    accountName: String?,
     roleLabel: String,
 ): AccountInfo {
-    val matches = CategoryClassifier.findBestMatches(accounts, accountName) { it.title }
-    if (matches.size > 1) {
-        throw AppFunctionInvalidArgumentException(
-            "$roleLabel '$accountName' matches multiple accounts: " +
-                "${matches.joinToString(", ") { it.title }}. " +
-                "Available accounts: ${accounts.joinToString(", ") { it.title }.ifEmpty { "none" }}."
+    val available = accounts.joinToString(", ") { it.title }.ifEmpty { "none" }
+    val byId = if (accountId != null) {
+        if (accountId <= 0L) {
+            throw AppFunctionInvalidArgumentException("$roleLabel ID must be a positive identifier.")
+        }
+        accounts.firstOrNull { it.id == accountId } ?: throw AppFunctionElementNotFoundException(
+            "$roleLabel ID $accountId not found. Available accounts: $available."
         )
+    } else {
+        null
+    }
+    return byId ?: resolveUniqueAccountByName(accounts, accountName, roleLabel, available)
+}
+
+private fun resolveUniqueAccountByName(
+    accounts: List<AccountInfo>,
+    accountName: String?,
+    roleLabel: String,
+    available: String,
+): AccountInfo {
+    val query = accountName?.takeIf { it.isNotBlank() }
+    val matches = if (query != null) {
+        CategoryClassifier.findBestMatches(accounts, query) { it.title }
+    } else {
+        emptyList()
+    }
+    val invalidReason = when {
+        query == null -> "$roleLabel name or ID is required. Available accounts: $available."
+        matches.size > 1 ->
+            "$roleLabel '$query' matches multiple accounts: " +
+                "${matches.joinToString(", ") { "${it.title} (id=${it.id})" }}. " +
+                "Available accounts: $available."
+        else -> null
+    }
+    if (invalidReason != null) {
+        throw AppFunctionInvalidArgumentException(invalidReason)
     }
     return matches.singleOrNull() ?: throw AppFunctionElementNotFoundException(
-        "$roleLabel '$accountName' not found. Available accounts: " +
-            "${accounts.joinToString(", ") { it.title }.ifEmpty { "none" }}."
+        "$roleLabel '$query' not found. Available accounts: $available."
     )
 }
 
