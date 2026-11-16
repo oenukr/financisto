@@ -1,24 +1,24 @@
 [versions]
 accompanist = "0.36.0"
 activity-compose = "1.13.0"
-android_tools = "9.4.1"
+android_tools = "9.5.1"
 androidannotations = "4.8.0"
 appcompat = "1.8.0"
-appfunctions = "1.0.0-beta01"
+appfunctions = "1.0.0-rc01"
 biometric = "1.1.0"
-collection-ktx = "1.6.0"
+collection-ktx = "1.7.0"
 commons-io = "2.22.0"
 core-ktx = "1.19.1"
-datastore = "1.2.1"
+datastore = "1.3.0"
 detekt = "1.23.8"
 glide = "5.0.9"
 glide-compose = "1.0.0-beta10"
-kotlin = "2.4.20"
+kotlin = "2.4.21"
 kotlinx-coroutines = "1.11.0"
 kotlinx-datetime = "0.8.0"
-kover = "0.9.10"
-ksp = "2.3.12"
-ktor = "3.6.0"
+kover = "0.9.11"
+ksp = "2.3.14"
+ktor = "3.6.1"
 lifecycle = "2.11.0"
 lib-recur = "0.17.1"
 test-core = "1.7.0"
@@ -26,7 +26,7 @@ test-hamcrest = "3.0"
 test-junit = "4.13.2"
 test-mockito = "5.24.0"
 test-mockito-kotlin = "6.4.0"
-test-robolectric = "4.17"
+test-robolectric = "4.18"
 workmanager = "2.12.0"
 
 [libraries]
@@ -47,7 +47,7 @@ detekt-formatting = { module = "io.gitlab.arturbosch.detekt:detekt-formatting", 
 eventbus = { module = "org.greenrobot:eventbus", version = "3.3.1" }
 glide = { module = "com.github.bumptech.glide:glide", version.ref = "glide" }
 glide-compose = { module = "com.github.bumptech.glide:compose", version.ref = "glide-compose" }
-google-play-base = { module = "com.google.android.gms:play-services-base", version = "18.11.0" }
+google-play-base = { module = "com.google.android.gms:play-services-base", version = "18.11.1" }
 google-play-drive = { module = "com.google.android.gms:play-services-drive", version = "17.0.0" }
 java-collections = { module = "net.sf.trove4j:core", version = "3.1.0" }
 koala-chart = { module = "io.github.koalaplot:koalaplot-core", version = "0.12.1" }
