@@ -10,6 +10,7 @@ import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.UUID
 
 object PicturesUtil {
 
@@ -22,7 +23,7 @@ object PicturesUtil {
 
     @JvmStatic
     fun createEmptyImageFile(): File = pictureFile(
-        pictureFileName = "${PICTURE_FILE_NAME_FORMAT.format(Date())}.jpg",
+        pictureFileName = "${PICTURE_FILE_NAME_FORMAT.format(Date())}_${UUID.randomUUID()}.jpg",
         fallbackToLegacy = false,
     )
 
