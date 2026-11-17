@@ -9,6 +9,8 @@
 - **Dependency Injection:** Use Koin. Refer to `JavaAppKoin.kt` for existing module configurations.
 - **Database:** We use legacy SQLite with SQL scripts in `assets/database`. Do not modify any SQL as of now.
 - **State Management:** Use StateFlow in ViewModels to expose UI state to Compose.
+- **Verification:** After modifying code, always verify changes by running relevant unit tests (`./gradlew :app:testDebugUnitTest`) and static analysis (`./gradlew detekt`).
+- **Ambiguity Protocol:** If a user request conflicts with core architectural guidelines (e.g. asking for new Java code or legacy XML layouts), clarify with the user before proceeding.
 
 ## 🧠 Dynamic Agent Skills
 We maintain specific operational procedures and expert personas in the `.agents/skills/` directory. Do not load these unless relevant to the user's current request.
@@ -58,3 +60,4 @@ Financisto allows users to manage multiple accounts, currencies, budgets, and tr
 Read these files for further context before generating extensive logic:
 @./get-started.md
 @./shared/style-guidance.md
+@./docs/migrations/ASYNC_TASK_MIGRATION_PLAN.md
