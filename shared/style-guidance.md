@@ -14,7 +14,7 @@ It is based on canonical Kotlin guidelines and aligned with the project's modern
 - **Language:** Use Kotlin for all new code. Avoid writing new Java code.
 - **UI Paradigm:** Use Jetpack Compose for all new UI components. Modify legacy XML layouts only when fixing bugs in existing screens.
 - **Architecture & State:** Follow Unidirectional Data Flow (MVI/MVVM). Expose UI state from ViewModels using `StateFlow`.
-- **Asynchronous Code:** Use Kotlin Coroutines and `viewModelScope` for background work instead of legacy `AsyncTask` or raw threads.
+- **Asynchronous Code:** Use Kotlin Coroutines instead of legacy `AsyncTask`, raw threads, or `GlobalScope`, selecting the coroutine scope based on work ownership: use `viewModelScope` for ViewModel-owned work, `lifecycleScope` for `LifecycleOwner`-bound work, and an appropriate longer-lived scope such as `applicationScope` (provided via Koin) for app-level work that must outlive a screen.
 - **Dependency Injection:** Use Koin for DI. Register new dependencies in `JavaAppKoin.kt` or feature Koin modules. Prefer constructor injection over manual service location (`DependenciesHolder`).
 - **Database:** Database schema and migrations are located in `app/src/main/assets/database`. Do not alter SQL scripts without architectural review.
 
