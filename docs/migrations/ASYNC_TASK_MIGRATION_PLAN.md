@@ -1,8 +1,8 @@
-# AsyncTask to Kotlin Coroutines Migration Roadmap
+# AsyncTask to Kotlin Coroutines Migration (Post-Migration Architectural Reference)
 
-This document outlines the master implementation plan and step-by-step phased roadmap for migrating all legacy `AsyncTask` usages in Financisto to Kotlin Coroutines and converting affected components to idiomatic Kotlin.
+This document serves as the master architectural reference and historical record of the complete migration of all legacy `AsyncTask` usages in Financisto to Kotlin Coroutines and idiomatic Kotlin.
 
-It follows the guidelines defined in `.agents/skills/asynctask-to-coroutine/SKILL.md` and repository standards in `AGENTS.md`.
+It documents the standards defined in `.agents/skills/asynctask-to-coroutine/SKILL.md` and repository guidelines in `AGENTS.md`.
 
 ---
 
@@ -151,3 +151,29 @@ All 5 tiers of the `AsyncTask` to Kotlin Coroutines migration have been **100% C
 
 **Outcome**: Exactly **0 occurrences** of `android.os.AsyncTask` remain across Financisto. All asynchronous operations now utilize Kotlin Coroutines with structured concurrency and injected dispatchers: UI and total-calculation tasks run in explicitly passed lifecycle-aware scopes (`lifecycleScope` / `viewModelScope`), while `ImportExportAsyncTask` subclasses default to `DependenciesHolder().applicationScope` when no scope is passed (including `MenuListActivity`'s Dropbox backup, restore, and file-listing tasks, which guard UI updates against finishing/destroyed activities).
 
+---
+
+## ⚠️ Anti-Patterns to Avoid (Post-Migration)
+
+- **Do not use `GlobalScope`**: Always tie asynchronous jobs to `lifecycleScope` for UI components, `viewModelScope` for ViewModels, or `applicationScope` (`DependenciesHolder().applicationScope`) for app-level background tasks.
+- **Do not perform blocking I/O on `Dispatchers.Main`**: Always execute database queries, file operations, and network requests on `withContext(Dispatchers.IO)`.
+- **Do not manually manage thread lifecycles or raw threads**: Always leverage Kotlin Coroutines and structured concurrency with cooperative cancellation (`ensureActive()`).
+- **Do not reintroduce `android.os.AsyncTask`**: `AsyncTask` is deprecated on Android and completely eradicated from Financisto.
+
+---
+
+## 🔍 Continuous Verification
+
+To verify that no legacy `AsyncTask` usage or reference is reintroduced, run the following search in CI/CD or before committing:
+```bash
+(
+  status=0
+  git grep -n "android.os.AsyncTask" app/src/ || status=$?
+  case "$status" in
+    0) exit 1 ;;
+    1) exit 0 ;;
+    *) exit "$status" ;;
+  esac
+)
+```
+*(Expected result: exit code 0 when 0 matching lines are found, exit code 1 when matches are found, and non-zero search error codes propagated)*
