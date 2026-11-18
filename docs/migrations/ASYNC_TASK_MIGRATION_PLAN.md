@@ -166,6 +166,14 @@ All 5 tiers of the `AsyncTask` to Kotlin Coroutines migration have been **100% C
 
 To verify that no legacy `AsyncTask` usage or reference is reintroduced, run the following search in CI/CD or before committing:
 ```bash
-git grep -n "android.os.AsyncTask" app/src/
+(
+  status=0
+  git grep -n "android.os.AsyncTask" app/src/ || status=$?
+  case "$status" in
+    0) exit 1 ;;
+    1) exit 0 ;;
+    *) exit "$status" ;;
+  esac
+)
 ```
-*(Expected result: exit code 1 with 0 matching lines)*
+*(Expected result: exit code 0 when 0 matching lines are found, exit code 1 when matches are found, and non-zero search error codes propagated)*
