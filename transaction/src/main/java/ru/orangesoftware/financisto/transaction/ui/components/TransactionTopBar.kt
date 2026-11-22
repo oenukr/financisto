@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.transaction.ui.components
 
+import android.text.format.DateFormat
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,10 +18,13 @@ import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,20 +34,32 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.number
+import kotlinx.datetime.toLocalDateTime
+import ru.orangesoftware.financisto.core.designsystem.theme.FinancistoTheme
+import ru.orangesoftware.financisto.transaction.R
 import ru.orangesoftware.financisto.transaction.model.TransactionStatusOption
-import ru.orangesoftware.financisto.transaction.ui.theme.StitchColors
-import ru.orangesoftware.financisto.transaction.ui.theme.StitchDimens
-import ru.orangesoftware.financisto.transaction.ui.theme.TransactionStitchTheme
-import java.text.SimpleDateFormat
-import java.util.Date
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
+import kotlin.time.Instant
+
+private val MonthDayFormatterCache = ConcurrentHashMap<Locale, DateTimeFormatter>()
+private val Time24FormatterCache = ConcurrentHashMap<Locale, DateTimeFormatter>()
+private val Time12HmFormatterCache = ConcurrentHashMap<Locale, DateTimeFormatter>()
+private val AmPmFormatterCache = ConcurrentHashMap<Locale, DateTimeFormatter>()
 
 @Composable
 fun TransactionTopBar(
@@ -57,25 +72,30 @@ fun TransactionTopBar(
     onStatusClick: () -> Unit,
     onClearFormClick: () -> Unit,
     onOpenLegacyClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    var menuExpanded by remember { mutableStateOf(false) }
-    val dateParts = remember(dateTimeMillis) { formatDateParts(dateTimeMillis) }
-    val timeParts = remember(dateTimeMillis, is24HourFormat) {
-        formatTimeParts(dateTimeMillis, is24HourFormat)
+    val configuration = LocalConfiguration.current
+    val locale = remember(configuration) { configuration.locales[0] ?: Locale.getDefault() }
+    val timeZone = remember { TimeZone.currentSystemDefault() }
+    val dateParts = remember(dateTimeMillis, locale, timeZone) {
+        formatDateParts(dateTimeMillis, locale, timeZone)
+    }
+    val timeParts = remember(dateTimeMillis, is24HourFormat, locale, timeZone) {
+        formatTimeParts(dateTimeMillis, is24HourFormat, locale, timeZone)
     }
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 6.dp),
+            .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         IconButton(onClick = onBackClick) {
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                contentDescription = "Back",
-                tint = StitchColors.TextPrimary,
+                contentDescription = stringResource(R.string.tx_cd_back),
+                tint = MaterialTheme.colorScheme.onSurface,
             )
         }
         Row(
@@ -87,43 +107,57 @@ fun TransactionTopBar(
                 icon = Icons.Rounded.CalendarToday,
                 lineOne = dateParts.first,
                 lineTwo = dateParts.second,
+                actionLabel = stringResource(R.string.tx_cd_select_date),
                 onClick = onDateClick,
             )
             TwoLineMetaChip(
                 icon = Icons.Rounded.Schedule,
                 lineOne = timeParts.first,
                 lineTwo = timeParts.second,
+                actionLabel = stringResource(R.string.tx_cd_select_time),
                 onClick = onTimeClick,
             )
             StatusChip(status = status, onClick = onStatusClick)
         }
-        Box {
-            IconButton(onClick = { menuExpanded = true }) {
-                Icon(
-                    imageVector = Icons.Rounded.MoreVert,
-                    contentDescription = "More options",
-                    tint = StitchColors.TextPrimary,
-                )
-            }
-            DropdownMenu(
-                expanded = menuExpanded,
-                onDismissRequest = { menuExpanded = false },
-            ) {
-                DropdownMenuItem(
-                    text = { Text("Clear form") },
-                    onClick = {
-                        menuExpanded = false
-                        onClearFormClick()
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text("Open in legacy editor") },
-                    onClick = {
-                        menuExpanded = false
-                        onOpenLegacyClick()
-                    },
-                )
-            }
+        TopBarOverflowMenu(
+            onClearFormClick = onClearFormClick,
+            onOpenLegacyClick = onOpenLegacyClick,
+        )
+    }
+}
+
+@Composable
+private fun TopBarOverflowMenu(
+    onClearFormClick: () -> Unit,
+    onOpenLegacyClick: () -> Unit,
+) {
+    var menuExpanded by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { menuExpanded = true }) {
+            Icon(
+                imageVector = Icons.Rounded.MoreVert,
+                contentDescription = stringResource(R.string.tx_cd_more_options),
+                tint = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+        DropdownMenu(
+            expanded = menuExpanded,
+            onDismissRequest = { menuExpanded = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.tx_menu_clear_form)) },
+                onClick = {
+                    menuExpanded = false
+                    onClearFormClick()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.tx_menu_open_legacy)) },
+                onClick = {
+                    menuExpanded = false
+                    onOpenLegacyClick()
+                },
+            )
         }
     }
 }
@@ -133,14 +167,17 @@ private fun TwoLineMetaChip(
     icon: ImageVector,
     lineOne: String,
     lineTwo: String,
+    actionLabel: String,
     onClick: () -> Unit,
 ) {
+    val semantic = FinancistoTheme.semanticColors
+    val dimens = FinancistoTheme.dimens
+    val description = if (lineTwo.isNotEmpty()) "$actionLabel: $lineOne $lineTwo" else "$actionLabel: $lineOne"
     Surface(
-        shape = RoundedCornerShape(StitchDimens.RadiusPill),
-        color = StitchColors.TopChipBg,
-        modifier = Modifier
-            .clip(RoundedCornerShape(StitchDimens.RadiusPill))
-            .clickable(onClick = onClick),
+        onClick = onClick,
+        shape = RoundedCornerShape(dimens.RadiusPill),
+        color = semantic.topChipBackground,
+        modifier = Modifier.semantics { contentDescription = description },
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -150,24 +187,22 @@ private fun TwoLineMetaChip(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = StitchColors.Primary,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(16.dp),
             )
             Column {
                 Text(
                     text = lineOne,
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
-                    color = StitchColors.TextPrimary,
-                    lineHeight = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                 )
                 if (lineTwo.isNotEmpty()) {
                     Text(
                         text = lineTwo,
-                        fontSize = 10.sp,
-                        color = StitchColors.TextSecondary,
-                        lineHeight = 11.sp,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                     )
                 }
@@ -181,95 +216,115 @@ private fun StatusChip(
     status: TransactionStatusOption,
     onClick: () -> Unit,
 ) {
+    val semantic = FinancistoTheme.semanticColors
+    val dimens = FinancistoTheme.dimens
     val isClearedOrReconciled =
         status == TransactionStatusOption.CLEARED || status == TransactionStatusOption.RECONCILED
-    val bgColor = if (isClearedOrReconciled) StitchColors.ClearedBg else StitchColors.TopChipBg
-    val borderColor = if (isClearedOrReconciled) StitchColors.ClearedBorder else StitchColors.HeroBorder
-    val iconColor = if (isClearedOrReconciled) StitchColors.ClearedGreen else StitchColors.Primary
-    val textColor = if (isClearedOrReconciled) StitchColors.ClearedText else StitchColors.TextPrimary
+    val bgColor = if (isClearedOrReconciled) semantic.clearedContainer else semantic.topChipBackground
+    val borderColor = if (isClearedOrReconciled) semantic.clearedBorder else semantic.heroBorder
+    val iconColor = if (isClearedOrReconciled) semantic.clearedAccent else MaterialTheme.colorScheme.primary
+    val textColor = if (isClearedOrReconciled) semantic.onClearedContainer else MaterialTheme.colorScheme.onSurface
+    val labelText = status.localizedLabel()
+    val statusDescription = "${stringResource(R.string.tx_cd_select_status)}: $labelText"
 
-    Surface(
-        shape = CircleShape,
-        color = bgColor,
-        border = BorderStroke(StitchDimens.DefaultBorderWidth, borderColor),
-        modifier = Modifier
-            .clip(CircleShape)
-            .clickable(onClick = onClick),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
+    AssistChip(
+        onClick = onClick,
+        label = {
+            Text(
+                text = labelText,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
+        leadingIcon = {
             Icon(
                 imageVector = Icons.Rounded.CheckCircle,
                 contentDescription = null,
-                tint = iconColor,
                 modifier = Modifier.size(15.dp),
             )
-            Text(
-                text = status.label,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = textColor,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+        },
+        shape = CircleShape,
+        colors = AssistChipDefaults.assistChipColors(
+            containerColor = bgColor,
+            labelColor = textColor,
+            leadingIconContentColor = iconColor,
+        ),
+        border = BorderStroke(dimens.DefaultBorderWidth, borderColor),
+        modifier = Modifier.semantics { contentDescription = statusDescription },
+    )
+}
+
+private fun formatDateParts(millis: Long, locale: Locale, timeZone: TimeZone): Pair<String, String> {
+    val ldt = Instant.fromEpochMilliseconds(millis).toLocalDateTime(timeZone)
+    val javaDate = LocalDate.of(ldt.year, ldt.month.number, ldt.day)
+    val formatter = MonthDayFormatterCache.computeIfAbsent(locale) { loc ->
+        DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(loc, "MMMd"), loc)
+    }
+    return formatter.format(javaDate) to ldt.year.toString()
+}
+
+private fun formatTimeParts(
+    millis: Long,
+    is24Hour: Boolean,
+    locale: Locale,
+    timeZone: TimeZone,
+): Pair<String, String> {
+    val ldt = Instant.fromEpochMilliseconds(millis).toLocalDateTime(timeZone)
+    val javaTime = LocalTime.of(ldt.hour, ldt.minute)
+    return if (is24Hour) {
+        val formatter = Time24FormatterCache.computeIfAbsent(locale) { loc ->
+            DateTimeFormatter.ofPattern(DateFormat.getBestDateTimePattern(loc, "Hm"), loc)
+        }
+        formatter.format(javaTime) to ""
+    } else {
+        val hmFormatter = Time12HmFormatterCache.computeIfAbsent(locale) { loc ->
+            DateTimeFormatter.ofPattern("h:mm", loc)
+        }
+        val amPmFormatter = AmPmFormatterCache.computeIfAbsent(locale) { loc ->
+            DateTimeFormatter.ofPattern("a", loc)
+        }
+        hmFormatter.format(javaTime) to amPmFormatter.format(javaTime)
+    }
+}
+
+@Preview(name = "Transaction Top Bar - Cleared Light", showBackground = true)
+@Composable
+private fun TransactionTopBarClearedPreview() {
+    FinancistoTheme {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            TransactionTopBar(
+                dateTimeMillis = 1715774400000L,
+                is24HourFormat = false,
+                status = TransactionStatusOption.CLEARED,
+                onBackClick = {},
+                onDateClick = {},
+                onTimeClick = {},
+                onStatusClick = {},
+                onClearFormClick = {},
+                onOpenLegacyClick = {},
             )
         }
     }
 }
 
-private fun formatDateParts(millis: Long): Pair<String, String> {
-    val date = Date(millis)
-    val monthDay = SimpleDateFormat("MMM d,", Locale.getDefault()).format(date)
-    val year = SimpleDateFormat("yyyy", Locale.getDefault()).format(date)
-    return monthDay to year
-}
-
-private fun formatTimeParts(millis: Long, is24Hour: Boolean): Pair<String, String> {
-    val date = Date(millis)
-    return if (is24Hour) {
-        SimpleDateFormat("HH:mm", Locale.getDefault()).format(date) to ""
-    } else {
-        val hm = SimpleDateFormat("h:mm", Locale.getDefault()).format(date)
-        val amPm = SimpleDateFormat("a", Locale.getDefault()).format(date)
-        hm to amPm
-    }
-}
-
-@Preview(name = "Transaction Top Bar - Cleared", showBackground = true)
+@Preview(name = "Transaction Top Bar - Unreconciled Dark", showBackground = true)
 @Composable
-private fun TransactionTopBarClearedPreview() {
-    TransactionStitchTheme {
-        TransactionTopBar(
-            dateTimeMillis = 1715774400000L,
-            is24HourFormat = false,
-            status = TransactionStatusOption.CLEARED,
-            onBackClick = {},
-            onDateClick = {},
-            onTimeClick = {},
-            onStatusClick = {},
-            onClearFormClick = {},
-            onOpenLegacyClick = {},
-        )
+private fun TransactionTopBarUnreconciledDarkPreview() {
+    FinancistoTheme(darkTheme = true) {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            TransactionTopBar(
+                dateTimeMillis = 1715774400000L,
+                is24HourFormat = true,
+                status = TransactionStatusOption.UR,
+                onBackClick = {},
+                onDateClick = {},
+                onTimeClick = {},
+                onStatusClick = {},
+                onClearFormClick = {},
+                onOpenLegacyClick = {},
+            )
+        }
     }
 }
-
-@Preview(name = "Transaction Top Bar - Unreconciled", showBackground = true)
-@Composable
-private fun TransactionTopBarUnreconciledPreview() {
-    TransactionStitchTheme {
-        TransactionTopBar(
-            dateTimeMillis = 1715774400000L,
-            is24HourFormat = true,
-            status = TransactionStatusOption.UR,
-            onBackClick = {},
-            onDateClick = {},
-            onTimeClick = {},
-            onStatusClick = {},
-            onClearFormClick = {},
-            onOpenLegacyClick = {},
-        )
-    }
-}
-

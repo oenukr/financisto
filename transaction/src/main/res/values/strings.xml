@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-2.0-only -->
+<resources>
+    <!-- Blocking / Error states -->
+    <string name="tx_error_not_found_title">Transaction not found</string>
+    <string name="tx_error_not_found_body">This transaction may have been deleted.</string>
+    <string name="tx_error_no_accounts_title">No active accounts</string>
+    <string name="tx_error_no_accounts_body">Create or activate an account before recording a transaction.</string>
+    <string name="tx_validation_bullet">• %1$s</string>
+
+    <!-- Common actions -->
+    <string name="tx_action_close">Close</string>
+    <string name="tx_action_cancel">Cancel</string>
+    <string name="tx_action_ok">OK</string>
+    <string name="tx_action_apply">Apply</string>
+    <string name="tx_action_save">Save</string>
+    <string name="tx_action_save_transfer">Save Transfer</string>
+    <string name="tx_action_save_and_new">Save &amp; New</string>
+    <string name="tx_action_new">New</string>
+    <string name="tx_action_select">Select</string>
+    <string name="tx_action_discard">Discard</string>
+    <string name="tx_action_keep_editing">Keep editing</string>
+    <string name="tx_action_edit_saved">Edit saved</string>
+    <string name="tx_action_create_duplicate">Create duplicate</string>
+
+    <!-- Common content descriptions -->
+    <string name="tx_cd_back">Back</string>
+    <string name="tx_cd_more_options">More options</string>
+    <string name="tx_cd_clear">Clear</string>
+    <string name="tx_cd_collapse">Collapse</string>
+    <string name="tx_cd_select_date">Select date</string>
+    <string name="tx_cd_select_time">Select time</string>
+    <string name="tx_cd_select_status">Select transaction status</string>
+
+    <!-- Top bar menu -->
+    <string name="tx_menu_clear_form">Clear form</string>
+    <string name="tx_menu_open_legacy">Open in legacy editor</string>
+
+    <!-- Transaction statuses -->
+    <string name="tx_status_restored">Restored</string>
+    <string name="tx_status_pending">Pending</string>
+    <string name="tx_status_unreconciled">Unreconciled</string>
+    <string name="tx_status_cleared">Cleared</string>
+    <string name="tx_status_reconciled">Reconciled</string>
+
+    <!-- Hero amount card -->
+    <string name="tx_label_dual_currency_mode">DUAL-CURRENCY MODE</string>
+    <string name="tx_label_amount_out_currency">AMOUNT OUT (%1$s)</string>
+    <string name="tx_label_amount_currency">AMOUNT (%1$s)</string>
+    <string name="tx_label_amount_out_debit">AMOUNT OUT (DEBIT)</string>
+    <string name="tx_label_foreign_amount">FOREIGN AMOUNT</string>
+    <string name="tx_label_amount_in_credit">AMOUNT IN (CREDIT)</string>
+    <string name="tx_label_account_amount">ACCOUNT AMOUNT</string>
+    <string name="tx_label_from_account_inline">From %1$s</string>
+    <string name="tx_label_to_account_inline">To %1$s</string>
+    <string name="tx_mode_currency_transfer">Currency Transfer</string>
+    <string name="tx_mode_transfer">Transfer</string>
+    <string name="tx_mode_income">+ Income</string>
+    <string name="tx_mode_expense">– Expense</string>
+    <string name="tx_mode_transfer_menu">⇄ Transfer</string>
+    <string name="tx_cd_toggle_expense_income">Toggle expense or income</string>
+    <string name="tx_cd_open_calculator">Open calculator</string>
+
+    <!-- Exchange rate card -->
+    <string name="tx_label_conversion_rate">CONVERSION RATE</string>
+    <string name="tx_action_syncing">Syncing…</string>
+    <string name="tx_action_sync_rate">Sync Rate</string>
+    <string name="tx_label_effective_rate">Effective rate applied</string>
+    <string name="tx_rate_pair_format">%1$s / %2$s</string>
+    <string name="tx_cd_download_rate">Download rate</string>
+    <string name="tx_cd_rate_calculator">Rate calculator</string>
+
+    <!-- Account & currency section -->
+    <string name="tx_label_account_prefix">Account:</string>
+    <string name="tx_label_currency_prefix">Currency:</string>
+    <string name="tx_placeholder_select_account">Select account</string>
+    <string name="tx_currency_same_as_account_code">Same as account (%1$s)</string>
+    <string name="tx_currency_same_as_account">Same as account</string>
+    <string name="tx_label_from_account">FROM ACCOUNT</string>
+    <string name="tx_label_to_account">TO ACCOUNT</string>
+    <string name="tx_account_meta_format">%1$s • %2$s</string>
+    <string name="tx_cd_swap_accounts">Swap accounts</string>
+
+    <!-- Category & split cards -->
+    <string name="tx_label_category">Category</string>
+    <string name="tx_placeholder_uncategorized">Uncategorized</string>
+    <string name="tx_cd_clear_category">Clear category</string>
+    <string name="tx_cd_split_transaction">Split transaction</string>
+    <string name="tx_cd_category_suggestions">Category suggestions</string>
+    <string name="tx_header_category_suggestions">CATEGORY SUGGESTIONS</string>
+    <string name="tx_action_browse_all">Browse All</string>
+    <string name="tx_badge_current">Current</string>
+    <string name="tx_action_new_category">New Category</string>
+    <string name="tx_action_split_category">Split Category</string>
+    <string name="tx_action_add_split_item">Add split item</string>
+    <string name="tx_cd_exit_split_mode">Exit split mode</string>
+    <plurals name="tx_split_categories_count">
+        <item quantity="one">Split (%1$d category)</item>
+        <item quantity="other">Split (%1$d categories)</item>
+    </plurals>
+    <string name="tx_split_fully_allocated">Fully allocated (%1$s unsplit)</string>
+    <string name="tx_split_unsplit_remaining">Unsplit: %1$s</string>
+    <string name="tx_action_rebalance">Rebalance</string>
+    <string name="tx_rebalance_adjust_total">Adjust total amount</string>
+    <string name="tx_rebalance_distribute_evenly">Distribute evenly</string>
+    <string name="tx_rebalance_adjust_last">Adjust last split</string>
+    <string name="tx_rebalance_collapse_single">Collapse to single category</string>
+    <string name="tx_split_project_prefix">Project: %1$s</string>
+    <string name="tx_cd_remove_split">Remove split</string>
+    <string name="tx_category_id_fallback">#%1$d</string>
+
+    <!-- Payee, location & note cards -->
+    <string name="tx_label_payee">Payee</string>
+    <string name="tx_label_payee_search">Payee (Incremental search)</string>
+    <string name="tx_placeholder_no_payee">No payee</string>
+    <string name="tx_placeholder_search_payee">Search or enter payee…</string>
+    <string name="tx_cd_clear_payee">Clear payee</string>
+    <string name="tx_header_suggestions">SUGGESTIONS</string>
+    <string name="tx_tag_selected">Selected</string>
+    <string name="tx_tag_payee">Payee</string>
+    <string name="tx_action_create_payee">Create new payee “%1$s”</string>
+    <string name="tx_label_location">Location</string>
+    <string name="tx_label_location_search">Location (Incremental search)</string>
+    <string name="tx_placeholder_current_location">Current location</string>
+    <string name="tx_placeholder_search_location">Search location…</string>
+    <string name="tx_cd_reset_location">Reset location</string>
+    <string name="tx_option_current_location_gps">Current location (GPS)</string>
+    <string name="tx_tag_nearby">Nearby</string>
+    <string name="tx_tag_saved">Saved</string>
+    <string name="tx_action_create_location">Create new location in editor</string>
+    <string name="tx_label_note">Note</string>
+    <string name="tx_placeholder_add_note">Add a note…</string>
+    <string name="tx_cd_clear_note">Clear note</string>
+    <string name="tx_label_recent_notes">Recent:</string>
+
+    <!-- Secondary cards -->
+    <string name="tx_label_project">Project</string>
+    <string name="tx_placeholder_no_project">No project</string>
+    <string name="tx_cd_clear_project">Clear project</string>
+    <string name="tx_label_receipt_attachment">Receipt or Attachment</string>
+    <string name="tx_placeholder_take_picture">Take a picture</string>
+    <string name="tx_action_camera">Camera</string>
+    <string name="tx_action_browse">Browse</string>
+    <string name="tx_cd_remove_attachment">Remove attachment</string>
+    <string name="tx_cd_receipt_preview">Receipt preview</string>
+    <string name="tx_label_ccard_payment">Credit Card Payment</string>
+    <string name="tx_subtitle_ccard_payment">Not include into bill total</string>
+
+    <!-- Picker sheets -->
+    <string name="tx_sheet_select_account">Select Account</string>
+    <string name="tx_sheet_select_to_account">Select To Account</string>
+    <string name="tx_placeholder_search_account">Search account…</string>
+    <string name="tx_account_archived_format">%1$s (Archived)</string>
+    <string name="tx_sheet_transaction_currency">Transaction Currency</string>
+    <string name="tx_currency_no_conversion">No currency conversion</string>
+    <string name="tx_currency_code_symbol_format">%1$s (%2$s)</string>
+    <plurals name="tx_currency_decimals">
+        <item quantity="one">%1$d decimal place</item>
+        <item quantity="other">%1$d decimal places</item>
+    </plurals>
+    <string name="tx_sheet_transaction_status">Transaction Status</string>
+    <string name="tx_sheet_select_project">Select Project</string>
+    <string name="tx_placeholder_new_project">New project name</string>
+    <string name="tx_project_inactive_format">%1$s (Inactive)</string>
+
+    <!-- Category browser, split editor & dialogs -->
+    <string name="tx_sheet_select_category">Select Category</string>
+    <string name="tx_action_plus_new_category">+ New Category</string>
+    <string name="tx_placeholder_search_categories">Search categories…</string>
+    <string name="tx_sheet_add_split_item">Add Split Item</string>
+    <string name="tx_sheet_edit_split_item">Edit Split Item</string>
+    <string name="tx_chip_expense">Expense</string>
+    <string name="tx_chip_income">Income</string>
+    <string name="tx_label_amount">Amount</string>
+    <string name="tx_cd_calculator">Calculator</string>
+    <string name="tx_dialog_select_time">Select Time</string>
+    <string name="tx_dialog_discard_draft_title">Discard transaction draft?</string>
+    <string name="tx_dialog_discard_changes_title">Discard unsaved changes?</string>
+    <string name="tx_dialog_discard_draft_body">This transaction has not been saved yet. Any staged receipt photo will be removed.</string>
+    <string name="tx_dialog_discard_changes_body">Your unsaved edits will be lost.</string>
+    <string name="tx_dialog_consumed_draft_title">Draft already saved</string>
+    <string name="tx_dialog_consumed_draft_body">This assistant draft was already saved as transaction #%1$d. Would you like to edit the saved transaction or create another entry?</string>
+
+    <!-- Calculator sheet -->
+    <string name="tx_sheet_rate_calculator">Rate Calculator</string>
+    <string name="tx_sheet_amount_calculator">Amount Calculator</string>
+    <string name="tx_error_invalid_expression">Invalid expression</string>
+    <string name="tx_cd_calc_clear">Clear</string>
+    <string name="tx_cd_calc_backspace">Backspace</string>
+    <string name="tx_cd_calc_divide">Divide</string>
+    <string name="tx_cd_calc_multiply">Multiply</string>
+    <string name="tx_cd_calc_subtract">Subtract</string>
+    <string name="tx_cd_calc_add">Add</string>
+    <string name="tx_cd_calc_equals">Equals</string>
+</resources>

@@ -3,7 +3,6 @@ package ru.orangesoftware.financisto.transaction.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,11 +23,16 @@ import androidx.compose.material.icons.rounded.CurrencyExchange
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.SwapVert
 import androidx.compose.material.icons.rounded.UnfoldMore
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,29 +45,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import ru.orangesoftware.financisto.core.designsystem.theme.FinancistoTheme
+import ru.orangesoftware.financisto.transaction.R
 import ru.orangesoftware.financisto.transaction.model.TransactionMode
-import ru.orangesoftware.financisto.transaction.ui.theme.StitchColors
-import ru.orangesoftware.financisto.transaction.ui.theme.StitchDimens
-import ru.orangesoftware.financisto.transaction.ui.theme.TransactionStitchTheme
-
-data class HeroAmountDisplayModel(
-    val mode: TransactionMode,
-    val isDualCurrency: Boolean,
-    val primaryInput: String,
-    val primaryCurrencyCode: String,
-    val primaryCurrencySymbol: String,
-    val primaryAccountLabel: String,
-    val secondaryInput: String,
-    val secondaryCurrencyCode: String,
-    val secondaryCurrencySymbol: String,
-    val secondaryAccountLabel: String,
-)
 
 @Composable
 fun HeroAmountCard(
@@ -74,37 +64,19 @@ fun HeroAmountCard(
     onSecondaryAmountChanged: (String) -> Unit,
     onOpenPrimaryCalculator: () -> Unit,
     onOpenSecondaryCalculator: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
+    val semantic = FinancistoTheme.semanticColors
+    val dimens = FinancistoTheme.dimens
+
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(StitchDimens.RadiusHeroCard),
-        color = StitchColors.HeroSurface,
-        border = BorderStroke(StitchDimens.DefaultBorderWidth, StitchColors.HeroBorder),
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(dimens.RadiusHeroCard),
+        color = semantic.heroSurface,
+        border = BorderStroke(dimens.DefaultBorderWidth, semantic.heroBorder),
     ) {
-        Column(modifier = Modifier.padding(StitchDimens.HeroPadding)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                ModeSelectorBadge(
-                    mode = model.mode,
-                    isDualCurrency = model.isDualCurrency,
-                    onSwitchMode = onSwitchMode,
-                )
-                val rightLabel = when {
-                    model.isDualCurrency -> "DUAL-CURRENCY MODE"
-                    model.mode == TransactionMode.TRANSFER -> "AMOUNT OUT (${model.primaryCurrencyCode})"
-                    else -> "AMOUNT (${model.primaryCurrencyCode})"
-                }
-                Text(
-                    text = rightLabel,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.6.sp,
-                    color = StitchColors.TextSecondary,
-                )
-            }
+        Column(modifier = Modifier.padding(dimens.HeroPadding)) {
+            HeroCardHeaderRow(model = model, onSwitchMode = onSwitchMode)
             Spacer(modifier = Modifier.height(12.dp))
             if (model.isDualCurrency) {
                 DualCurrencyAmountRows(
@@ -129,78 +101,134 @@ fun HeroAmountCard(
 }
 
 @Composable
+private fun HeroCardHeaderRow(
+    model: HeroAmountDisplayModel,
+    onSwitchMode: (TransactionMode) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ModeSelectorBadge(
+            mode = model.mode,
+            isDualCurrency = model.isDualCurrency,
+            onSwitchMode = onSwitchMode,
+        )
+        val rightLabel = when {
+            model.isDualCurrency -> stringResource(R.string.tx_label_dual_currency_mode)
+            model.mode == TransactionMode.TRANSFER ->
+                stringResource(R.string.tx_label_amount_out_currency, model.primaryCurrencyCode)
+            else -> stringResource(R.string.tx_label_amount_currency, model.primaryCurrencyCode)
+        }
+        Text(
+            text = rightLabel,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
 private fun ModeSelectorBadge(
     mode: TransactionMode,
     isDualCurrency: Boolean,
     onSwitchMode: (TransactionMode) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val (bgColor, textColor, label) = when {
-        mode == TransactionMode.TRANSFER && isDualCurrency ->
-            Triple(StitchColors.TransferBadgeBg, StitchColors.TransferBadgeText, "Currency Transfer")
-        mode == TransactionMode.TRANSFER ->
-            Triple(StitchColors.TransferBadgeBg, StitchColors.TransferBadgeText, "Transfer")
-        mode == TransactionMode.INCOME ->
-            Triple(StitchColors.IncomeBadgeBg, StitchColors.IncomeBadgeText, "+ Income")
-        else ->
-            Triple(StitchColors.ExpenseBadgeBg, StitchColors.ExpenseBadgeText, "– Expense")
+    val (bgColor, textColor, label) = resolveModeBadgeStyle(mode, isDualCurrency)
+    val leadingIcon: (@Composable () -> Unit)? = if (mode == TransactionMode.TRANSFER) {
+        {
+            Icon(
+                imageVector = if (isDualCurrency) Icons.Rounded.CurrencyExchange else Icons.Rounded.SwapHoriz,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+    } else {
+        null
     }
+
     Box {
-        Surface(
-            shape = CircleShape,
-            color = bgColor,
-            modifier = Modifier
-                .clip(CircleShape)
-                .clickable { expanded = true },
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 11.dp, vertical = 5.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
-            ) {
-                if (mode == TransactionMode.TRANSFER) {
-                    Icon(
-                        imageVector = if (isDualCurrency) {
-                            Icons.Rounded.CurrencyExchange
-                        } else {
-                            Icons.Rounded.SwapHoriz
-                        },
-                        contentDescription = null,
-                        tint = textColor,
-                        modifier = Modifier.size(14.dp),
-                    )
-                }
+        AssistChip(
+            onClick = { expanded = true },
+            label = {
                 Text(
                     text = label,
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = textColor,
                 )
-            }
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(
-                text = { Text("– Expense") },
-                onClick = {
-                    expanded = false
-                    onSwitchMode(TransactionMode.EXPENSE)
-                },
-            )
-            DropdownMenuItem(
-                text = { Text("+ Income") },
-                onClick = {
-                    expanded = false
-                    onSwitchMode(TransactionMode.INCOME)
-                },
-            )
-            DropdownMenuItem(
-                text = { Text("⇄ Transfer") },
-                onClick = {
-                    expanded = false
-                    onSwitchMode(TransactionMode.TRANSFER)
-                },
-            )
-        }
+            },
+            leadingIcon = leadingIcon,
+            shape = CircleShape,
+            colors = AssistChipDefaults.assistChipColors(
+                containerColor = bgColor,
+                labelColor = textColor,
+                leadingIconContentColor = textColor,
+            ),
+            border = null,
+        )
+        ModeSelectorDropdown(
+            expanded = expanded,
+            onDismiss = { expanded = false },
+            onSelectMode = { selected ->
+                expanded = false
+                onSwitchMode(selected)
+            },
+        )
+    }
+}
+
+@Composable
+private fun resolveModeBadgeStyle(
+    mode: TransactionMode,
+    isDualCurrency: Boolean,
+): Triple<Color, Color, String> {
+    val semantic = FinancistoTheme.semanticColors
+    return when {
+        mode == TransactionMode.TRANSFER && isDualCurrency -> Triple(
+            semantic.transferContainer,
+            semantic.onTransferContainer,
+            stringResource(R.string.tx_mode_currency_transfer),
+        )
+        mode == TransactionMode.TRANSFER -> Triple(
+            semantic.transferContainer,
+            semantic.onTransferContainer,
+            stringResource(R.string.tx_mode_transfer),
+        )
+        mode == TransactionMode.INCOME -> Triple(
+            semantic.incomeContainer,
+            semantic.onIncomeContainer,
+            stringResource(R.string.tx_mode_income),
+        )
+        else -> Triple(
+            semantic.expenseContainer,
+            semantic.onExpenseContainer,
+            stringResource(R.string.tx_mode_expense),
+        )
+    }
+}
+
+@Composable
+private fun ModeSelectorDropdown(
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+    onSelectMode: (TransactionMode) -> Unit,
+) {
+    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.tx_mode_expense)) },
+            onClick = { onSelectMode(TransactionMode.EXPENSE) },
+        )
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.tx_mode_income)) },
+            onClick = { onSelectMode(TransactionMode.INCOME) },
+        )
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.tx_mode_transfer_menu)) },
+            onClick = { onSelectMode(TransactionMode.TRANSFER) },
+        )
     }
 }
 
@@ -224,48 +252,31 @@ private fun SingleAmountRow(
             if (symbol.isNotBlank()) {
                 Text(
                     text = symbol,
-                    fontSize = 28.sp,
+                    style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
-                    color = StitchColors.TextPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(end = 6.dp),
                 )
             }
             val amountState = rememberSyncedTextFieldState(amountInput, onAmountChanged)
             BasicTextField(
                 state = amountState,
+                inputTransformation = DecimalInputTransformation,
                 lineLimits = TextFieldLineLimits.SingleLine,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                cursorBrush = SolidColor(StitchColors.Primary),
-                textStyle = TextStyle(
-                    fontSize = 36.sp,
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                textStyle = MaterialTheme.typography.displaySmall.copy(
                     fontWeight = FontWeight.ExtraBold,
-                    color = StitchColors.TextPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                 ),
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            IconButton(onClick = onCycleSignOrMode, modifier = Modifier.size(36.dp)) {
-                Icon(
-                    imageVector = Icons.Rounded.UnfoldMore,
-                    contentDescription = "Toggle expense or income",
-                    tint = StitchColors.TextSecondary,
-                )
-            }
-            Surface(
-                shape = RoundedCornerShape(StitchDimens.RadiusTile),
-                color = StitchColors.SurfaceWhite,
-                border = BorderStroke(StitchDimens.DefaultBorderWidth, StitchColors.CardBorder),
-            ) {
-                IconButton(onClick = onOpenCalculator, modifier = Modifier.size(36.dp)) {
-                    Icon(
-                        imageVector = Icons.Rounded.Calculate,
-                        contentDescription = "Open calculator",
-                        tint = StitchColors.Primary,
-                    )
-                }
-            }
-        }
+        AmountRowActionButtons(
+            toggleIcon = Icons.Rounded.UnfoldMore,
+            onToggleClick = onCycleSignOrMode,
+            onCalcClick = onOpenCalculator,
+        )
     }
 }
 
@@ -278,28 +289,28 @@ private fun DualCurrencyAmountRows(
     onOpenPrimaryCalculator: () -> Unit,
     onOpenSecondaryCalculator: () -> Unit,
 ) {
+    val semantic = FinancistoTheme.semanticColors
     val isTransfer = model.mode == TransactionMode.TRANSFER
-    val primaryHeader = if (isTransfer) "AMOUNT OUT (DEBIT)" else "FOREIGN AMOUNT"
-    val secondaryHeader = if (isTransfer) "AMOUNT IN (CREDIT)" else "ACCOUNT AMOUNT"
-    val primarySign = if (model.mode == TransactionMode.INCOME) "+" else "−"
-    val secondarySign = if (isTransfer || model.mode == TransactionMode.INCOME) "+" else "−"
-    val primarySignColor = if (model.mode == TransactionMode.INCOME) {
-        StitchColors.IncomeBadgeText
-    } else {
-        StitchColors.DebitText
-    }
-    val secondarySignColor = if (isTransfer || model.mode == TransactionMode.INCOME) {
-        StitchColors.IncomeBadgeText
-    } else {
-        StitchColors.DebitText
-    }
+    val primaryHeader = stringResource(
+        if (isTransfer) R.string.tx_label_amount_out_debit else R.string.tx_label_foreign_amount,
+    )
+    val secondaryHeader = stringResource(
+        if (isTransfer) R.string.tx_label_amount_in_credit else R.string.tx_label_account_amount,
+    )
+    val isPrimaryPositive = model.mode == TransactionMode.INCOME
+    val isSecondaryPositive = isTransfer || model.mode == TransactionMode.INCOME
+    val primarySignColor = if (isPrimaryPositive) semantic.onIncomeContainer else semantic.onDebitContainer
+    val secondarySignColor = if (isSecondaryPositive) semantic.onIncomeContainer else semantic.onDebitContainer
 
     Column {
-        DualAmountLine(
+        DualAmountLineHeader(
             dotColor = primarySignColor,
             header = primaryHeader,
             accountLabel = model.primaryAccountLabel,
-            sign = primarySign,
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        DualAmountInputRow(
+            sign = if (isPrimaryPositive) "+" else "−",
             signColor = primarySignColor,
             input = model.primaryInput,
             currencyCode = model.primaryCurrencyCode,
@@ -310,13 +321,16 @@ private fun DualCurrencyAmountRows(
         )
         HorizontalDivider(
             modifier = Modifier.padding(vertical = 10.dp),
-            color = StitchColors.HeroBorder,
+            color = semantic.heroBorder,
         )
-        DualAmountLine(
+        DualAmountLineHeader(
             dotColor = secondarySignColor,
             header = secondaryHeader,
             accountLabel = model.secondaryAccountLabel,
-            sign = secondarySign,
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        DualAmountInputRow(
+            sign = if (isSecondaryPositive) "+" else "−",
             signColor = secondarySignColor,
             input = model.secondaryInput,
             currencyCode = model.secondaryCurrencyCode,
@@ -329,163 +343,187 @@ private fun DualCurrencyAmountRows(
 }
 
 @Composable
-private fun DualAmountLine(
+private fun DualAmountLineHeader(
     dotColor: Color,
     header: String,
     accountLabel: String,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(7.dp)
+                    .clip(CircleShape)
+                    .background(dotColor),
+            )
+            Text(
+                text = header,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text(
+            text = accountLabel,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.outline,
+        )
+    }
+}
+
+@Composable
+private fun DualAmountInputRow(
     sign: String,
     signColor: Color,
     input: String,
     currencyCode: String,
     onValueChange: (String) -> Unit,
-    trailingIcon: androidx.compose.ui.graphics.vector.ImageVector,
+    trailingIcon: ImageVector,
     onTrailingClick: () -> Unit,
     onCalcClick: () -> Unit,
 ) {
-    Column {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.weight(1f),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(7.dp)
-                        .clip(CircleShape)
-                        .background(dotColor)
-                )
-                Text(
-                    text = header,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = StitchColors.TextSecondary,
-                )
-            }
-            Text(text = accountLabel, fontSize = 11.sp, color = StitchColors.TextTertiary)
+            Text(
+                text = sign,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = signColor,
+                modifier = Modifier.padding(end = 6.dp),
+            )
+            val inputState = rememberSyncedTextFieldState(input, onValueChange)
+            BasicTextField(
+                state = inputState,
+                inputTransformation = DecimalInputTransformation,
+                lineLimits = TextFieldLineLimits.SingleLine,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                textStyle = MaterialTheme.typography.headlineMedium.copy(
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                ),
+                modifier = Modifier.weight(1f, fill = false),
+            )
+            Text(
+                text = currencyCode,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 6.dp),
+            )
         }
-        Spacer(modifier = Modifier.height(4.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
+        AmountRowActionButtons(
+            toggleIcon = trailingIcon,
+            onToggleClick = onTrailingClick,
+            onCalcClick = onCalcClick,
+        )
+    }
+}
+
+@Composable
+private fun AmountRowActionButtons(
+    toggleIcon: ImageVector,
+    onToggleClick: () -> Unit,
+    onCalcClick: () -> Unit,
+) {
+    val semantic = FinancistoTheme.semanticColors
+    val dimens = FinancistoTheme.dimens
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = onToggleClick) {
+            Icon(
+                imageVector = toggleIcon,
+                contentDescription = stringResource(R.string.tx_cd_toggle_expense_income),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        OutlinedIconButton(
+            onClick = onCalcClick,
+            shape = RoundedCornerShape(dimens.RadiusTile),
+            border = BorderStroke(dimens.DefaultBorderWidth, semantic.cardBorder),
+            colors = IconButtonDefaults.outlinedIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary,
+            ),
         ) {
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = sign,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = signColor,
-                    modifier = Modifier.padding(end = 6.dp),
-                )
-                val inputState = rememberSyncedTextFieldState(input, onValueChange)
-                BasicTextField(
-                    state = inputState,
-                    lineLimits = TextFieldLineLimits.SingleLine,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    cursorBrush = SolidColor(StitchColors.Primary),
-                    textStyle = TextStyle(
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = StitchColors.TextPrimary,
-                    ),
-                    modifier = Modifier.weight(1f, fill = false),
-                )
-                Text(
-                    text = currencyCode,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = StitchColors.TextSecondary,
-                    modifier = Modifier.padding(start = 6.dp),
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                IconButton(onClick = onTrailingClick, modifier = Modifier.size(34.dp)) {
-                    Icon(
-                        imageVector = trailingIcon,
-                        contentDescription = null,
-                        tint = StitchColors.TextSecondary,
-                    )
-                }
-                Surface(
-                    shape = RoundedCornerShape(StitchDimens.RadiusTile),
-                    color = StitchColors.SurfaceWhite,
-                    border = BorderStroke(StitchDimens.DefaultBorderWidth, StitchColors.CardBorder),
-                ) {
-                    IconButton(onClick = onCalcClick, modifier = Modifier.size(34.dp)) {
-                        Icon(
-                            imageVector = Icons.Rounded.Calculate,
-                            contentDescription = "Open calculator",
-                            tint = StitchColors.Primary,
-                        )
-                    }
-                }
-            }
+            Icon(
+                imageVector = Icons.Rounded.Calculate,
+                contentDescription = stringResource(R.string.tx_cd_open_calculator),
+            )
         }
     }
 }
 
-@Preview(name = "Hero Amount Card - Single Currency", showBackground = true, backgroundColor = 0xFFFCFBFC)
+@Preview(name = "Hero Amount Card - Single Light", showBackground = true)
 @Composable
 private fun HeroAmountCardSingleCurrencyPreview() {
-    TransactionStitchTheme {
-        Box(modifier = Modifier.padding(16.dp)) {
-            HeroAmountCard(
-                model = HeroAmountDisplayModel(
-                    mode = TransactionMode.EXPENSE,
-                    isDualCurrency = false,
-                    primaryInput = "125.00",
-                    primaryCurrencyCode = "USD",
-                    primaryCurrencySymbol = "$",
-                    primaryAccountLabel = "Main Checking",
-                    secondaryInput = "",
-                    secondaryCurrencyCode = "",
-                    secondaryCurrencySymbol = "",
-                    secondaryAccountLabel = "",
-                ),
-                onSwitchMode = {},
-                onCycleSignOrMode = {},
-                onPrimaryAmountChanged = {},
-                onSecondaryAmountChanged = {},
-                onOpenPrimaryCalculator = {},
-                onOpenSecondaryCalculator = {},
-            )
+    FinancistoTheme {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            Box(modifier = Modifier.padding(16.dp)) {
+                HeroAmountCard(
+                    model = HeroAmountDisplayModel(
+                        mode = TransactionMode.EXPENSE,
+                        isDualCurrency = false,
+                        primaryInput = "125.00",
+                        primaryCurrencyCode = "USD",
+                        primaryCurrencySymbol = "$",
+                        primaryAccountLabel = "Main Checking",
+                        secondaryInput = "",
+                        secondaryCurrencyCode = "",
+                        secondaryCurrencySymbol = "",
+                        secondaryAccountLabel = "",
+                    ),
+                    onSwitchMode = {},
+                    onCycleSignOrMode = {},
+                    onPrimaryAmountChanged = {},
+                    onSecondaryAmountChanged = {},
+                    onOpenPrimaryCalculator = {},
+                    onOpenSecondaryCalculator = {},
+                )
+            }
         }
     }
 }
 
-@Preview(name = "Hero Amount Card - Dual Currency", showBackground = true, backgroundColor = 0xFFFCFBFC)
+@Preview(name = "Hero Amount Card - Dual Dark", showBackground = true)
 @Composable
-private fun HeroAmountCardDualCurrencyPreview() {
-    TransactionStitchTheme {
-        Box(modifier = Modifier.padding(16.dp)) {
-            HeroAmountCard(
-                model = HeroAmountDisplayModel(
-                    mode = TransactionMode.TRANSFER,
-                    isDualCurrency = true,
-                    primaryInput = "100.00",
-                    primaryCurrencyCode = "USD",
-                    primaryCurrencySymbol = "$",
-                    primaryAccountLabel = "Main Checking",
-                    secondaryInput = "92.50",
-                    secondaryCurrencyCode = "EUR",
-                    secondaryCurrencySymbol = "€",
-                    secondaryAccountLabel = "Travel Card",
-                ),
-                onSwitchMode = {},
-                onCycleSignOrMode = {},
-                onPrimaryAmountChanged = {},
-                onSecondaryAmountChanged = {},
-                onOpenPrimaryCalculator = {},
-                onOpenSecondaryCalculator = {},
-            )
+private fun HeroAmountCardDualCurrencyDarkPreview() {
+    FinancistoTheme(darkTheme = true) {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            Box(modifier = Modifier.padding(16.dp)) {
+                HeroAmountCard(
+                    model = HeroAmountDisplayModel(
+                        mode = TransactionMode.TRANSFER,
+                        isDualCurrency = true,
+                        primaryInput = "100.00",
+                        primaryCurrencyCode = "USD",
+                        primaryCurrencySymbol = "$",
+                        primaryAccountLabel = "From Main Checking",
+                        secondaryInput = "92.50",
+                        secondaryCurrencyCode = "EUR",
+                        secondaryCurrencySymbol = "€",
+                        secondaryAccountLabel = "To Travel Card",
+                    ),
+                    onSwitchMode = {},
+                    onCycleSignOrMode = {},
+                    onPrimaryAmountChanged = {},
+                    onSecondaryAmountChanged = {},
+                    onOpenPrimaryCalculator = {},
+                    onOpenSecondaryCalculator = {},
+                )
+            }
         }
     }
 }
-

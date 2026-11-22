@@ -14,8 +14,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.input.TextFieldDecorator
 import androidx.compose.foundation.text.input.TextFieldLineLimits
@@ -27,9 +27,12 @@ import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.MyLocation
 import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material.icons.rounded.Storefront
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,19 +41,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import ru.orangesoftware.financisto.core.designsystem.theme.FinancistoTheme
+import ru.orangesoftware.financisto.transaction.R
 import ru.orangesoftware.financisto.transaction.model.LocationOption
 import ru.orangesoftware.financisto.transaction.model.PayeeOption
 import ru.orangesoftware.financisto.transaction.model.TransactionIds
-import ru.orangesoftware.financisto.transaction.ui.theme.StitchColors
-import ru.orangesoftware.financisto.transaction.ui.theme.TransactionStitchTheme
 
-private const val MAX_INLINE_SUGGESTIONS = 5
+private const val MaxInlineSuggestions = 5
 
 @Composable
 fun PayeeFieldCard(
@@ -64,93 +67,28 @@ fun PayeeFieldCard(
     onSelectPayee: (Long) -> Unit,
     onCreatePendingPayee: (String) -> Unit,
     onClear: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val activePayeeName = payees.firstOrNull { it.id == selectedPayeeId }?.title ?: pendingPayeeName
-    val displayValue = activePayeeName ?: query.ifBlank { "No payee" }
-    val filtered = remember(query, payees) {
-        val needle = query.trim().lowercase()
-        val source = if (needle.isEmpty()) payees else payees.filter { it.title.lowercase().contains(needle) }
-        source.take(MAX_INLINE_SUGGESTIONS)
+    val activePayeeName = remember(payees, selectedPayeeId, pendingPayeeName) {
+        payees.firstOrNull { it.id == selectedPayeeId }?.title ?: pendingPayeeName
     }
-    val hasExactMatch = payees.any { it.title.equals(query.trim(), ignoreCase = true) }
+    val (filtered, hasExactMatch) = remember(query, payees) {
+        val trimmed = query.trim()
+        val needle = trimmed.lowercase()
+        val source = if (needle.isEmpty()) payees else payees.filter { it.title.lowercase().contains(needle) }
+        val exact = payees.any { it.title.equals(trimmed, ignoreCase = true) }
+        source.take(MaxInlineSuggestions) to exact
+    }
 
-    FormFieldCardSurface(isActive = isExpanded) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onToggleExpand),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                LeadingIconTile(icon = Icons.Rounded.Storefront, isActive = isExpanded)
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = if (isExpanded) "Payee (Incremental search)" else "Payee",
-                        fontSize = 11.sp,
-                        fontWeight = if (isExpanded) FontWeight.SemiBold else FontWeight.Medium,
-                        color = if (isExpanded) StitchColors.ActiveBorder else StitchColors.TextTertiary,
-                    )
-                    if (isExpanded) {
-                        val queryState = rememberSyncedTextFieldState(query, onQueryChanged)
-                        BasicTextField(
-                            state = queryState,
-                            lineLimits = TextFieldLineLimits.SingleLine,
-                            cursorBrush = SolidColor(StitchColors.ActiveBorder),
-                            textStyle = TextStyle(
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = StitchColors.TextPrimary,
-                            ),
-                            decorator = TextFieldDecorator { inner ->
-                                if (queryState.text.isEmpty()) {
-                                    Text(
-                                        text = "Search or enter payee...",
-                                        fontSize = 14.sp,
-                                        color = StitchColors.TextTertiary,
-                                    )
-                                }
-                                inner()
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    } else {
-                        Text(
-                            text = displayValue,
-                            fontSize = 14.sp,
-                            fontWeight = if (activePayeeName != null) FontWeight.Bold else FontWeight.Normal,
-                            color = if (activePayeeName != null) {
-                                StitchColors.TextPrimary
-                            } else {
-                                StitchColors.TextSecondary
-                            },
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-            }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (activePayeeName != null || query.isNotEmpty()) {
-                    ClearMiniIconButton(onClick = onClear, contentDescription = "Clear payee")
-                }
-                if (isExpanded) {
-                    IconButton(onClick = onToggleExpand, modifier = Modifier.size(28.dp)) {
-                        Icon(
-                            imageVector = Icons.Rounded.ArrowDropUp,
-                            contentDescription = "Collapse",
-                            tint = StitchColors.TextSecondary,
-                        )
-                    }
-                } else {
-                    AssistNewPill(label = "New", icon = Icons.Rounded.PersonAdd, onClick = onToggleExpand)
-                }
-            }
-        }
+    FormFieldCardSurface(isActive = isExpanded, modifier = modifier) {
+        PayeeCardHeaderRow(
+            query = query,
+            activePayeeName = activePayeeName,
+            isExpanded = isExpanded,
+            onToggleExpand = onToggleExpand,
+            onQueryChanged = onQueryChanged,
+            onClear = onClear,
+        )
         CapturedAnimatedVisibility(visible = isExpanded) {
             PayeeSuggestionsSection(
                 query = query,
@@ -165,6 +103,73 @@ fun PayeeFieldCard(
 }
 
 @Composable
+private fun PayeeCardHeaderRow(
+    query: String,
+    activePayeeName: String?,
+    isExpanded: Boolean,
+    onToggleExpand: () -> Unit,
+    onQueryChanged: (String) -> Unit,
+    onClear: () -> Unit,
+) {
+    val semantic = FinancistoTheme.semanticColors
+    val displayValue = activePayeeName ?: query.ifBlank { stringResource(R.string.tx_placeholder_no_payee) }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(FinancistoTheme.dimens.RadiusTile))
+            .clickable(onClick = onToggleExpand),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            LeadingIconTile(icon = Icons.Rounded.Storefront, isActive = isExpanded)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(if (isExpanded) R.string.tx_label_payee_search else R.string.tx_label_payee),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = if (isExpanded) FontWeight.SemiBold else FontWeight.Medium,
+                    color = if (isExpanded) semantic.activeBorder else MaterialTheme.colorScheme.outline,
+                )
+                if (isExpanded) {
+                    InlineSearchInputField(
+                        value = query,
+                        placeholder = stringResource(R.string.tx_placeholder_search_payee),
+                        onValueChanged = onQueryChanged,
+                    )
+                } else {
+                    Text(
+                        text = displayValue,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = if (activePayeeName != null) FontWeight.Bold else FontWeight.Normal,
+                        color = if (activePayeeName != null) {
+                            MaterialTheme.colorScheme.onSurface
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+        ExpandableFieldTrailingActions(
+            showClear = activePayeeName != null || query.isNotEmpty(),
+            clearDescription = stringResource(R.string.tx_cd_clear_payee),
+            isExpanded = isExpanded,
+            collapsedActionIcon = Icons.Rounded.PersonAdd,
+            onClear = onClear,
+            onCollapse = onToggleExpand,
+            onCollapsedAction = onToggleExpand,
+        )
+    }
+}
+
+@Composable
 private fun PayeeSuggestionsSection(
     query: String,
     suggestions: List<PayeeOption>,
@@ -173,20 +178,24 @@ private fun PayeeSuggestionsSection(
     onSelectPayee: (Long) -> Unit,
     onCreatePendingPayee: (String) -> Unit,
 ) {
-    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = StitchColors.HeroBorder)
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 8.dp),
+            color = FinancistoTheme.semanticColors.heroBorder,
+        )
         Text(
-            text = "SUGGESTIONS",
-            fontSize = 10.sp,
+            text = stringResource(R.string.tx_header_suggestions),
+            style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            letterSpacing = 0.6.sp,
-            color = StitchColors.TextTertiary,
+            color = MaterialTheme.colorScheme.outline,
             modifier = Modifier.padding(horizontal = 6.dp),
         )
         suggestions.forEach { payee ->
             SuggestionOptionRow(
                 title = payee.title,
-                tagLabel = if (payee.id == selectedPayeeId) "Selected" else "Payee",
+                tagLabel = stringResource(
+                    if (payee.id == selectedPayeeId) R.string.tx_tag_selected else R.string.tx_tag_payee,
+                ),
                 isHighlighted = payee.id == selectedPayeeId,
                 onClick = { onSelectPayee(payee.id) },
             )
@@ -194,7 +203,7 @@ private fun PayeeSuggestionsSection(
         if (showCreateButton) {
             Spacer(modifier = Modifier.height(2.dp))
             CreateInlineSuggestionButton(
-                text = "+ Create new payee \"${query.trim()}\"",
+                text = stringResource(R.string.tx_action_create_payee, query.trim()),
                 onClick = { onCreatePendingPayee(query.trim()) },
             )
         }
@@ -212,109 +221,200 @@ fun LocationFieldCard(
     onSelectLocation: (Long) -> Unit,
     onClear: () -> Unit,
     onCreateNewLocation: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val selectedTitle = locations.firstOrNull { it.id == selectedLocationId }?.title
-        ?: "Current location"
-    val filtered = remember(query, locations) {
+    val selectedTitle = remember(locations, selectedLocationId) {
+        locations.firstOrNull { it.id == selectedLocationId }?.title
+    } ?: stringResource(R.string.tx_placeholder_current_location)
+    val savedSuggestions = remember(query, locations) {
         val needle = query.trim().lowercase()
-        val source = if (needle.isEmpty()) locations else locations.filter { it.title.lowercase().contains(needle) }
-        source.take(MAX_INLINE_SUGGESTIONS)
+        locations.asSequence()
+            .filter { it.id > 0L }
+            .filter { needle.isEmpty() || it.title.lowercase().contains(needle) }
+            .take(MaxInlineSuggestions)
+            .toList()
     }
 
-    FormFieldCardSurface(isActive = isExpanded) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onToggleExpand),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                LeadingIconTile(icon = Icons.Rounded.LocationOn, isActive = isExpanded)
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = if (isExpanded) "Location (Incremental search)" else "Location",
-                        fontSize = 11.sp,
-                        fontWeight = if (isExpanded) FontWeight.SemiBold else FontWeight.Medium,
-                        color = if (isExpanded) StitchColors.ActiveBorder else StitchColors.TextTertiary,
-                    )
-                    if (isExpanded) {
-                        val queryState = rememberSyncedTextFieldState(query, onQueryChanged)
-                        BasicTextField(
-                            state = queryState,
-                            lineLimits = TextFieldLineLimits.SingleLine,
-                            cursorBrush = SolidColor(StitchColors.ActiveBorder),
-                            textStyle = TextStyle(
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = StitchColors.TextPrimary,
-                            ),
-                            decorator = TextFieldDecorator { inner ->
-                                if (queryState.text.isEmpty()) {
-                                    Text("Search location...", fontSize = 14.sp, color = StitchColors.TextTertiary)
-                                }
-                                inner()
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    } else {
-                        Text(
-                            text = selectedTitle,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = StitchColors.TextPrimary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                }
-            }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (selectedLocationId != TransactionIds.CURRENT_LOCATION_ID) {
-                    ClearMiniIconButton(onClick = onClear, contentDescription = "Reset location")
-                }
-                if (isExpanded) {
-                    IconButton(onClick = onToggleExpand, modifier = Modifier.size(28.dp)) {
-                        Icon(
-                            imageVector = Icons.Rounded.ArrowDropUp,
-                            contentDescription = "Collapse",
-                            tint = StitchColors.TextSecondary,
-                        )
-                    }
-                } else {
-                    AssistNewPill(label = "New", icon = Icons.Rounded.AddLocationAlt, onClick = onCreateNewLocation)
-                }
-            }
-        }
+    FormFieldCardSurface(isActive = isExpanded, modifier = modifier) {
+        LocationCardHeaderRow(
+            query = query,
+            selectedLocationId = selectedLocationId,
+            selectedTitle = selectedTitle,
+            isExpanded = isExpanded,
+            onToggleExpand = onToggleExpand,
+            onQueryChanged = onQueryChanged,
+            onClear = onClear,
+            onCreateNewLocation = onCreateNewLocation,
+        )
         CapturedAnimatedVisibility(visible = isExpanded) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = StitchColors.HeroBorder)
-                SuggestionOptionRow(
-                    title = "Current location (GPS)",
-                    tagLabel = "Nearby",
-                    isHighlighted = selectedLocationId == TransactionIds.CURRENT_LOCATION_ID,
-                    icon = Icons.Rounded.MyLocation,
-                    onClick = { onSelectLocation(TransactionIds.CURRENT_LOCATION_ID) },
-                )
-                filtered.filter { it.id > 0L }.forEach { loc ->
-                    SuggestionOptionRow(
-                        title = loc.title,
-                        tagLabel = "Saved",
-                        isHighlighted = loc.id == selectedLocationId,
-                        onClick = { onSelectLocation(loc.id) },
-                    )
-                }
-                CreateInlineSuggestionButton(
-                    text = "+ Create new location in editor",
-                    onClick = onCreateNewLocation,
-                )
-            }
+            LocationSuggestionsSection(
+                selectedLocationId = selectedLocationId,
+                suggestions = savedSuggestions,
+                onSelectLocation = onSelectLocation,
+                onCreateNewLocation = onCreateNewLocation,
+            )
         }
     }
+}
+
+@Composable
+private fun LocationCardHeaderRow(
+    query: String,
+    selectedLocationId: Long,
+    selectedTitle: String,
+    isExpanded: Boolean,
+    onToggleExpand: () -> Unit,
+    onQueryChanged: (String) -> Unit,
+    onClear: () -> Unit,
+    onCreateNewLocation: () -> Unit,
+) {
+    val semantic = FinancistoTheme.semanticColors
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(FinancistoTheme.dimens.RadiusTile))
+            .clickable(onClick = onToggleExpand),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            LeadingIconTile(icon = Icons.Rounded.LocationOn, isActive = isExpanded)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(
+                        if (isExpanded) R.string.tx_label_location_search else R.string.tx_label_location,
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = if (isExpanded) FontWeight.SemiBold else FontWeight.Medium,
+                    color = if (isExpanded) semantic.activeBorder else MaterialTheme.colorScheme.outline,
+                )
+                if (isExpanded) {
+                    InlineSearchInputField(
+                        value = query,
+                        placeholder = stringResource(R.string.tx_placeholder_search_location),
+                        onValueChanged = onQueryChanged,
+                    )
+                } else {
+                    Text(
+                        text = selectedTitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+        ExpandableFieldTrailingActions(
+            showClear = selectedLocationId != TransactionIds.CURRENT_LOCATION_ID,
+            clearDescription = stringResource(R.string.tx_cd_reset_location),
+            isExpanded = isExpanded,
+            collapsedActionIcon = Icons.Rounded.AddLocationAlt,
+            onClear = onClear,
+            onCollapse = onToggleExpand,
+            onCollapsedAction = onCreateNewLocation,
+        )
+    }
+}
+
+@Composable
+private fun ExpandableFieldTrailingActions(
+    showClear: Boolean,
+    clearDescription: String,
+    isExpanded: Boolean,
+    collapsedActionIcon: ImageVector,
+    onClear: () -> Unit,
+    onCollapse: () -> Unit,
+    onCollapsedAction: () -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (showClear) {
+            ClearMiniIconButton(onClick = onClear, contentDescription = clearDescription)
+        }
+        if (isExpanded) {
+            IconButton(onClick = onCollapse) {
+                Icon(
+                    imageVector = Icons.Rounded.ArrowDropUp,
+                    contentDescription = stringResource(R.string.tx_cd_collapse),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else {
+            AssistNewPill(
+                label = stringResource(R.string.tx_action_new),
+                icon = collapsedActionIcon,
+                onClick = onCollapsedAction,
+            )
+        }
+    }
+}
+
+@Composable
+private fun LocationSuggestionsSection(
+    selectedLocationId: Long,
+    suggestions: List<LocationOption>,
+    onSelectLocation: (Long) -> Unit,
+    onCreateNewLocation: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 8.dp),
+            color = FinancistoTheme.semanticColors.heroBorder,
+        )
+        SuggestionOptionRow(
+            title = stringResource(R.string.tx_option_current_location_gps),
+            tagLabel = stringResource(R.string.tx_tag_nearby),
+            isHighlighted = selectedLocationId == TransactionIds.CURRENT_LOCATION_ID,
+            icon = Icons.Rounded.MyLocation,
+            onClick = { onSelectLocation(TransactionIds.CURRENT_LOCATION_ID) },
+        )
+        suggestions.forEach { loc ->
+            SuggestionOptionRow(
+                title = loc.title,
+                tagLabel = stringResource(R.string.tx_tag_saved),
+                isHighlighted = loc.id == selectedLocationId,
+                onClick = { onSelectLocation(loc.id) },
+            )
+        }
+        CreateInlineSuggestionButton(
+            text = stringResource(R.string.tx_action_create_location),
+            onClick = onCreateNewLocation,
+        )
+    }
+}
+
+@Composable
+private fun InlineSearchInputField(
+    value: String,
+    placeholder: String,
+    onValueChanged: (String) -> Unit,
+) {
+    val queryState = rememberSyncedTextFieldState(value, onValueChanged)
+    BasicTextField(
+        state = queryState,
+        lineLimits = TextFieldLineLimits.SingleLine,
+        cursorBrush = SolidColor(FinancistoTheme.semanticColors.activeBorder),
+        textStyle = MaterialTheme.typography.titleSmall.copy(
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+        ),
+        decorator = TextFieldDecorator { inner ->
+            if (queryState.text.isEmpty()) {
+                Text(
+                    text = placeholder,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.outline,
+                )
+            }
+            inner()
+        },
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 @Composable
@@ -324,8 +424,9 @@ fun NoteFieldCard(
     onNoteChanged: (String) -> Unit,
     onSelectRecentNote: (String) -> Unit,
     onClear: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    FormFieldCardSurface(isActive = false) {
+    FormFieldCardSurface(isActive = false, modifier = modifier) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -339,23 +440,25 @@ fun NoteFieldCard(
                 LeadingIconTile(icon = Icons.Rounded.EditNote)
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Note",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = StitchColors.TextTertiary,
+                        text = stringResource(R.string.tx_label_note),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline,
                     )
                     val noteState = rememberSyncedTextFieldState(note, onNoteChanged)
                     BasicTextField(
                         state = noteState,
-                        cursorBrush = SolidColor(StitchColors.Primary),
-                        textStyle = TextStyle(
-                            fontSize = 13.sp,
+                        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(
                             fontWeight = FontWeight.SemiBold,
-                            color = StitchColors.TextPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                         ),
                         decorator = TextFieldDecorator { inner ->
                             if (noteState.text.isEmpty()) {
-                                Text("Add a note...", fontSize = 13.sp, color = StitchColors.TextTertiary)
+                                Text(
+                                    text = stringResource(R.string.tx_placeholder_add_note),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.outline,
+                                )
                             }
                             inner()
                         },
@@ -364,171 +467,131 @@ fun NoteFieldCard(
                 }
             }
             if (note.isNotEmpty()) {
-                ClearMiniIconButton(onClick = onClear, contentDescription = "Clear note")
+                ClearMiniIconButton(
+                    onClick = onClear,
+                    contentDescription = stringResource(R.string.tx_cd_clear_note),
+                )
             }
         }
         if (recentNotes.isNotEmpty()) {
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = StitchColors.HeroBorder)
-            FlexBox(
-                modifier = Modifier.fillMaxWidth(),
-                config = {
-                    wrap(FlexWrap.Wrap)
-                    alignItems(FlexAlignItems.Center)
-                    gap(6.dp)
-                },
-            ) {
-                Text(
-                    text = "Recent:",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = StitchColors.TextTertiary,
-                )
-                recentNotes.forEach { recent ->
-                    Surface(
-                        shape = CircleShape,
-                        color = if (recent == note) StitchColors.TopChipBg else StitchColors.PillSurface,
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .clickable { onSelectRecentNote(recent) },
-                    ) {
-                        Text(
-                            text = recent,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = StitchColors.TextSecondary,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                        )
-                    }
-                }
-            }
+            RecentNotesChipRow(
+                currentNote = note,
+                recentNotes = recentNotes,
+                onSelectRecentNote = onSelectRecentNote,
+            )
         }
     }
 }
 
-private val samplePayees = listOf(
+@Composable
+private fun RecentNotesChipRow(
+    currentNote: String,
+    recentNotes: List<String>,
+    onSelectRecentNote: (String) -> Unit,
+) {
+    val semantic = FinancistoTheme.semanticColors
+    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = semantic.heroBorder)
+    FlexBox(
+        modifier = Modifier.fillMaxWidth(),
+        config = {
+            wrap(FlexWrap.Wrap)
+            alignItems(FlexAlignItems.Center)
+            gap(6.dp)
+        },
+    ) {
+        Text(
+            text = stringResource(R.string.tx_label_recent_notes),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.outline,
+        )
+        recentNotes.forEach { recent ->
+            FilterChip(
+                selected = recent == currentNote,
+                onClick = { onSelectRecentNote(recent) },
+                label = {
+                    Text(
+                        text = recent,
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                },
+                shape = CircleShape,
+                colors = FilterChipDefaults.filterChipColors(
+                    containerColor = semantic.pillSurface,
+                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    selectedContainerColor = semantic.topChipBackground,
+                    selectedLabelColor = MaterialTheme.colorScheme.onSurface,
+                ),
+                border = null,
+            )
+        }
+    }
+}
+
+private val SamplePayees = listOf(
     PayeeOption(id = 1L, title = "Supermarket Grocery"),
     PayeeOption(id = 2L, title = "Corner Coffee Shop"),
     PayeeOption(id = 3L, title = "Gas Station & Auto"),
 )
 
-@Preview(name = "Payee Field Card - Collapsed", showBackground = true, backgroundColor = 0xFFFCFBFC)
-@Composable
-private fun PayeeFieldCardCollapsedPreview() {
-    TransactionStitchTheme {
-        Box(modifier = Modifier.padding(16.dp)) {
-            PayeeFieldCard(
-                query = "",
-                selectedPayeeId = 1L,
-                pendingPayeeName = null,
-                payees = samplePayees,
-                isExpanded = false,
-                onToggleExpand = {},
-                onQueryChanged = {},
-                onSelectPayee = {},
-                onCreatePendingPayee = {},
-                onClear = {},
-            )
-        }
-    }
-}
-
-@Preview(name = "Payee Field Card - Expanded", showBackground = true, backgroundColor = 0xFFFCFBFC)
-@Composable
-private fun PayeeFieldCardExpandedPreview() {
-    TransactionStitchTheme {
-        Box(modifier = Modifier.padding(16.dp)) {
-            PayeeFieldCard(
-                query = "Coffee",
-                selectedPayeeId = 0L,
-                pendingPayeeName = null,
-                payees = samplePayees,
-                isExpanded = true,
-                onToggleExpand = {},
-                onQueryChanged = {},
-                onSelectPayee = {},
-                onCreatePendingPayee = {},
-                onClear = {},
-            )
-        }
-    }
-}
-
-private val sampleLocations = listOf(
+private val SampleLocations = listOf(
     LocationOption(id = 1L, title = "Main Office"),
     LocationOption(id = 2L, title = "Downtown Mall"),
-    LocationOption(id = 3L, title = "Home Town"),
 )
 
-@Preview(name = "Location Field Card - Collapsed", showBackground = true, backgroundColor = 0xFFFCFBFC)
+private val SampleRecentNotes = listOf("Weekly groceries", "Gas station", "Dinner with team")
+
+@Preview(name = "Payee Field Card - Expanded Light", showBackground = true)
 @Composable
-private fun LocationFieldCardCollapsedPreview() {
-    TransactionStitchTheme {
-        Box(modifier = Modifier.padding(16.dp)) {
-            LocationFieldCard(
-                query = "",
-                selectedLocationId = 1L,
-                locations = sampleLocations,
-                isExpanded = false,
-                onToggleExpand = {},
-                onQueryChanged = {},
-                onSelectLocation = {},
-                onClear = {},
-                onCreateNewLocation = {},
-            )
+private fun PayeeFieldCardExpandedPreview() {
+    FinancistoTheme {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            Box(modifier = Modifier.padding(16.dp)) {
+                PayeeFieldCard(
+                    query = "Coffee",
+                    selectedPayeeId = 0L,
+                    pendingPayeeName = null,
+                    payees = SamplePayees,
+                    isExpanded = true,
+                    onToggleExpand = {},
+                    onQueryChanged = {},
+                    onSelectPayee = {},
+                    onCreatePendingPayee = {},
+                    onClear = {},
+                )
+            }
         }
     }
 }
 
-@Preview(name = "Location Field Card - Expanded", showBackground = true, backgroundColor = 0xFFFCFBFC)
+@Preview(name = "Location & Note Cards - Dark", showBackground = true)
 @Composable
-private fun LocationFieldCardExpandedPreview() {
-    TransactionStitchTheme {
-        Box(modifier = Modifier.padding(16.dp)) {
-            LocationFieldCard(
-                query = "Mall",
-                selectedLocationId = TransactionIds.CURRENT_LOCATION_ID,
-                locations = sampleLocations,
-                isExpanded = true,
-                onToggleExpand = {},
-                onQueryChanged = {},
-                onSelectLocation = {},
-                onClear = {},
-                onCreateNewLocation = {},
-            )
-        }
-    }
-}
-
-private val sampleRecentNotes = listOf("Weekly groceries", "Gas station", "Dinner with team")
-
-@Preview(name = "Note Field Card - Filled with Recent Notes", showBackground = true, backgroundColor = 0xFFFCFBFC)
-@Composable
-private fun NoteFieldCardPreview() {
-    TransactionStitchTheme {
-        Box(modifier = Modifier.padding(16.dp)) {
-            NoteFieldCard(
-                note = "Weekly groceries",
-                recentNotes = sampleRecentNotes,
-                onNoteChanged = {},
-                onSelectRecentNote = {},
-                onClear = {},
-            )
-        }
-    }
-}
-
-@Preview(name = "Note Field Card - Empty", showBackground = true, backgroundColor = 0xFFFCFBFC)
-@Composable
-private fun NoteFieldCardEmptyPreview() {
-    TransactionStitchTheme {
-        Box(modifier = Modifier.padding(16.dp)) {
-            NoteFieldCard(
-                note = "",
-                recentNotes = sampleRecentNotes,
-                onNoteChanged = {},
-                onSelectRecentNote = {},
-                onClear = {},
-            )
+private fun LocationAndNoteCardsDarkPreview() {
+    FinancistoTheme(darkTheme = true) {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                LocationFieldCard(
+                    query = "",
+                    selectedLocationId = 1L,
+                    locations = SampleLocations,
+                    isExpanded = false,
+                    onToggleExpand = {},
+                    onQueryChanged = {},
+                    onSelectLocation = {},
+                    onClear = {},
+                    onCreateNewLocation = {},
+                )
+                NoteFieldCard(
+                    note = "Weekly groceries",
+                    recentNotes = SampleRecentNotes,
+                    onNoteChanged = {},
+                    onSelectRecentNote = {},
+                    onClear = {},
+                )
+            }
         }
     }
 }

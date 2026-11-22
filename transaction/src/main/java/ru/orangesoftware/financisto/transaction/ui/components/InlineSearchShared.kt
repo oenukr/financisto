@@ -3,19 +3,27 @@ package ru.orangesoftware.financisto.transaction.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CornerRounding
 import androidx.compose.foundation.shape.MorphPolygonShape
 import androidx.compose.foundation.shape.PolygonShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.TextFieldBuffer
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
@@ -23,8 +31,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AddCircle
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,33 +51,91 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.flow.distinctUntilChanged
-import ru.orangesoftware.financisto.transaction.ui.theme.StitchColors
-import ru.orangesoftware.financisto.transaction.ui.theme.StitchDimens
-import ru.orangesoftware.financisto.transaction.ui.theme.TransactionStitchTheme
+import kotlinx.coroutines.flow.drop
+import ru.orangesoftware.financisto.core.designsystem.theme.FinancistoTheme
+import ru.orangesoftware.financisto.transaction.R
+
+private const val MaxPendingEmitted = 16
+private const val TileCornerSmoothing = 0.4f
+
+val DecimalInputTransformation: InputTransformation = object : InputTransformation {
+    override val keyboardOptions: KeyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+
+    override fun TextFieldBuffer.transformInput() {
+        if (!isValidDecimalInput(asCharSequence())) {
+            revertAllChanges()
+        }
+    }
+}
+
+private fun isValidDecimalInput(text: CharSequence): Boolean {
+    var separatorSeen = false
+    for (index in 0 until text.length) {
+        val ch = text[index]
+        val isSeparator = ch == '.' || ch == ','
+        when {
+            ch.isDigit() -> Unit
+            isSeparator && !separatorSeen -> separatorSeen = true
+            else -> return false
+        }
+    }
+    return true
+}
 
 @Composable
 fun FormFieldCardSurface(
     isActive: Boolean,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+    contentModifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    val borderColor = if (isActive) StitchColors.ActiveBorder else StitchColors.CardBorder
-    val borderWidth = if (isActive) StitchDimens.ActiveBorderWidth else StitchDimens.DefaultBorderWidth
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(StitchDimens.RadiusFormCard),
-        color = StitchColors.SurfaceWhite,
-        border = BorderStroke(borderWidth, borderColor),
-        shadowElevation = if (isActive) 3.dp else 1.dp,
-    ) {
-        Column(modifier = Modifier.padding(StitchDimens.CardPadding)) {
-            content()
+    val semantic = FinancistoTheme.semanticColors
+    val dimens = FinancistoTheme.dimens
+    val borderColor = if (isActive) semantic.activeBorder else semantic.cardBorder
+    val borderWidth = if (isActive) dimens.ActiveBorderWidth else dimens.DefaultBorderWidth
+    val shape = RoundedCornerShape(dimens.RadiusFormCard)
+    val elevation = if (isActive) 3.dp else 1.dp
+
+    if (onClick != null) {
+        Surface(
+            onClick = onClick,
+            modifier = modifier.fillMaxWidth(),
+            shape = shape,
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(borderWidth, borderColor),
+            shadowElevation = elevation,
+        ) {
+            Column(
+                modifier = contentModifier
+                    .fillMaxWidth()
+                    .padding(dimens.CardPadding),
+            ) {
+                content()
+            }
+        }
+    } else {
+        Surface(
+            modifier = modifier.fillMaxWidth(),
+            shape = shape,
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(borderWidth, borderColor),
+            shadowElevation = elevation,
+        ) {
+            Column(
+                modifier = contentModifier
+                    .fillMaxWidth()
+                    .padding(dimens.CardPadding),
+            ) {
+                content()
+            }
         }
     }
 }
@@ -76,10 +147,16 @@ fun rememberSyncedTextFieldState(
 ): TextFieldState {
     val state = rememberTextFieldState(initialText = value)
     val latestOnValueChanged by rememberUpdatedState(onValueChanged)
-    val latestValue by rememberUpdatedState(value)
+    val pendingEmitted = remember(state) { ArrayDeque<String>() }
+    val lastExternalApplied = remember(state) { arrayOfNulls<String>(1) }
 
     LaunchedEffect(value) {
-        if (state.text.toString() != value) {
+        val echoIndex = pendingEmitted.indexOf(value)
+        if (echoIndex >= 0) {
+            repeat(echoIndex + 1) { pendingEmitted.removeFirst() }
+        } else if (state.text.toString() != value) {
+            pendingEmitted.clear()
+            lastExternalApplied[0] = value
             state.setTextAndPlaceCursorAtEnd(value)
         }
     }
@@ -87,8 +164,16 @@ fun rememberSyncedTextFieldState(
     LaunchedEffect(state) {
         snapshotFlow { state.text.toString() }
             .distinctUntilChanged()
+            .drop(1)
             .collect { current ->
-                if (current != latestValue) {
+                if (lastExternalApplied[0] == current) {
+                    lastExternalApplied[0] = null
+                } else {
+                    lastExternalApplied[0] = null
+                    if (pendingEmitted.size >= MaxPendingEmitted) {
+                        pendingEmitted.removeFirst()
+                    }
+                    pendingEmitted.addLast(current)
                     latestOnValueChanged(current)
                 }
             }
@@ -99,34 +184,45 @@ fun rememberSyncedTextFieldState(
 @Composable
 fun LeadingIconTile(
     icon: ImageVector,
+    modifier: Modifier = Modifier,
     isActive: Boolean = false,
-    tintColor: Color = if (isActive) StitchColors.ActiveBorder else StitchColors.TextSecondary,
-    bgColor: Color = if (isActive) StitchColors.PrimaryTonal else StitchColors.IconTileBg,
+    tintColor: Color = if (isActive) {
+        FinancistoTheme.semanticColors.activeBorder
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    },
+    bgColor: Color = if (isActive) {
+        FinancistoTheme.semanticColors.primaryTonal
+    } else {
+        FinancistoTheme.semanticColors.iconTileBackground
+    },
 ) {
+    val dimens = FinancistoTheme.dimens
     val activeProgress by animateFloatAsState(
         targetValue = if (isActive) 1f else 0f,
         label = "iconTileMorph",
     )
     val tileShape = remember {
         MorphPolygonShape(
-            start = PolygonShape.rectangle(CornerRounding.dp(StitchDimens.RadiusTile, smoothing = 0.4f)),
+            start = PolygonShape.rectangle(
+                CornerRounding.dp(dimens.RadiusTile, smoothing = TileCornerSmoothing),
+            ),
             end = PolygonShape.circle(),
             progress = { activeProgress },
         )
     }
-    Surface(
-        shape = tileShape,
-        color = bgColor,
-        modifier = Modifier.size(StitchDimens.TileSize),
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .size(dimens.TileSize)
+            .background(color = bgColor, shape = tileShape),
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = tintColor,
-                modifier = Modifier.size(21.dp),
-            )
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = tintColor,
+            modifier = Modifier.size(21.dp),
+        )
     }
 }
 
@@ -135,34 +231,36 @@ fun AssistNewPill(
     label: String,
     icon: ImageVector,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Surface(
-        shape = CircleShape,
-        color = StitchColors.TopChipBg,
-        border = BorderStroke(StitchDimens.DefaultBorderWidth, StitchColors.HeroBorder),
-        modifier = Modifier
-            .clip(CircleShape)
-            .clickable(onClick = onClick),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
+    val semantic = FinancistoTheme.semanticColors
+    val dimens = FinancistoTheme.dimens
+    AssistChip(
+        onClick = onClick,
+        label = {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+            )
+        },
+        leadingIcon = {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = StitchColors.ChipText,
-                modifier = Modifier.size(15.dp),
+                modifier = Modifier.size(AssistChipDefaults.IconSize),
             )
-            Text(
-                text = label,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = StitchColors.ChipText,
-            )
-        }
-    }
+        },
+        shape = CircleShape,
+        colors = AssistChipDefaults.assistChipColors(
+            containerColor = semantic.topChipBackground,
+            labelColor = semantic.chipText,
+            leadingIconContentColor = semantic.chipText,
+        ),
+        border = BorderStroke(dimens.DefaultBorderWidth, semantic.heroBorder),
+        modifier = modifier,
+    )
 }
 
 @Composable
@@ -170,49 +268,55 @@ fun SuggestionOptionRow(
     title: String,
     tagLabel: String,
     isHighlighted: Boolean,
-    icon: ImageVector = Icons.Rounded.History,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: ImageVector = Icons.Rounded.History,
 ) {
-    Surface(
-        shape = RoundedCornerShape(StitchDimens.RadiusTile),
-        color = if (isHighlighted) StitchColors.TopChipBg else Color.Transparent,
-        modifier = Modifier
+    val semantic = FinancistoTheme.semanticColors
+    val rowShape = RoundedCornerShape(FinancistoTheme.dimens.RadiusTile)
+    val bgColor = if (isHighlighted) semantic.topChipBackground else Color.Transparent
+
+    Row(
+        modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(StitchDimens.RadiusTile))
-            .clickable(onClick = onClick),
+            .defaultMinSize(minHeight = 48.dp)
+            .clip(rowShape)
+            .background(bgColor)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            modifier = Modifier.weight(1f),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = if (isHighlighted) StitchColors.Primary else StitchColors.TextTertiary,
-                    modifier = Modifier.size(17.dp),
-                )
-                Text(
-                    text = title,
-                    fontSize = 13.sp,
-                    fontWeight = if (isHighlighted) FontWeight.SemiBold else FontWeight.Normal,
-                    color = StitchColors.TextPrimary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            if (tagLabel.isNotEmpty()) {
-                Text(
-                    text = tagLabel,
-                    fontSize = 11.sp,
-                    color = StitchColors.TextTertiary,
-                )
-            }
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (isHighlighted) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.outline
+                },
+                modifier = Modifier.size(18.dp),
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = if (isHighlighted) FontWeight.SemiBold else FontWeight.Normal,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (tagLabel.isNotEmpty()) {
+            Text(
+                text = tagLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.outline,
+            )
         }
     }
 }
@@ -221,54 +325,56 @@ fun SuggestionOptionRow(
 fun CreateInlineSuggestionButton(
     text: String,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Surface(
-        shape = RoundedCornerShape(StitchDimens.RadiusTile),
-        color = StitchColors.PrimaryTonal,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(StitchDimens.RadiusTile))
-            .clickable(onClick = onClick),
+    val semantic = FinancistoTheme.semanticColors
+    FilledTonalButton(
+        onClick = onClick,
+        shape = RoundedCornerShape(FinancistoTheme.dimens.RadiusTile),
+        colors = ButtonDefaults.filledTonalButtonColors(
+            containerColor = semantic.primaryTonal,
+            contentColor = semantic.activeBorder,
+        ),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+        modifier = modifier.fillMaxWidth(),
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.AddCircle,
-                contentDescription = null,
-                tint = StitchColors.ActiveBorder,
-                modifier = Modifier.size(16.dp),
-            )
-            Text(
-                text = text,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = StitchColors.ActiveBorder,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+        Icon(
+            imageVector = Icons.Rounded.AddCircle,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 
 @Composable
-fun ClearMiniIconButton(onClick: () -> Unit, contentDescription: String = "Clear") {
-    IconButton(onClick = onClick, modifier = Modifier.size(28.dp)) {
+fun ClearMiniIconButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    contentDescription: String = stringResource(R.string.tx_cd_clear),
+) {
+    IconButton(onClick = onClick, modifier = modifier) {
         Icon(
             imageVector = Icons.Rounded.Close,
             contentDescription = contentDescription,
-            tint = StitchColors.TextSecondary,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(18.dp),
         )
     }
 }
 
-@Preview(name = "Form Field Card Surface - Inactive", showBackground = true, backgroundColor = 0xFFFCFBFC)
+@Preview(name = "Form Field Card Surface - Light", showBackground = true)
 @Composable
-private fun FormFieldCardSurfaceInactivePreview() {
-    TransactionStitchTheme {
+private fun FormFieldCardSurfaceLightPreview() {
+    FinancistoTheme {
         Box(modifier = Modifier.padding(16.dp)) {
             FormFieldCardSurface(isActive = false) {
                 Row(
@@ -279,14 +385,13 @@ private fun FormFieldCardSurfaceInactivePreview() {
                     Column {
                         Text(
                             text = "Payee",
-                            fontSize = 12.sp,
-                            color = StitchColors.TextTertiary,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.outline,
                         )
                         Text(
                             text = "Supermarket",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = StitchColors.TextPrimary,
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurface,
                         )
                     }
                 }
@@ -295,29 +400,30 @@ private fun FormFieldCardSurfaceInactivePreview() {
     }
 }
 
-@Preview(name = "Form Field Card Surface - Active", showBackground = true, backgroundColor = 0xFFFCFBFC)
+@Preview(name = "Form Field Card Surface - Dark Active", showBackground = true)
 @Composable
-private fun FormFieldCardSurfaceActivePreview() {
-    TransactionStitchTheme {
-        Box(modifier = Modifier.padding(16.dp)) {
-            FormFieldCardSurface(isActive = true) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    LeadingIconTile(icon = Icons.Rounded.History, isActive = true)
-                    Column {
-                        Text(
-                            text = "Payee",
-                            fontSize = 12.sp,
-                            color = StitchColors.TextTertiary,
-                        )
-                        Text(
-                            text = "Supermarket",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = StitchColors.TextPrimary,
-                        )
+private fun FormFieldCardSurfaceDarkActivePreview() {
+    FinancistoTheme(darkTheme = true) {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            Box(modifier = Modifier.padding(16.dp)) {
+                FormFieldCardSurface(isActive = true) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        LeadingIconTile(icon = Icons.Rounded.History, isActive = true)
+                        Column {
+                            Text(
+                                text = "Payee",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.outline,
+                            )
+                            Text(
+                                text = "Supermarket",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
                     }
                 }
             }
@@ -325,83 +431,18 @@ private fun FormFieldCardSurfaceActivePreview() {
     }
 }
 
-@Preview(name = "Leading Icon Tile - Inactive", showBackground = true, backgroundColor = 0xFFFCFBFC)
+@Preview(name = "Assist New Pill & Suggestion Row", showBackground = true)
 @Composable
-private fun LeadingIconTileInactivePreview() {
-    TransactionStitchTheme {
-        Box(modifier = Modifier.padding(16.dp)) {
-            LeadingIconTile(
-                icon = Icons.Rounded.History,
-                isActive = false,
-            )
-        }
-    }
-}
-
-@Preview(name = "Leading Icon Tile - Active", showBackground = true, backgroundColor = 0xFFFCFBFC)
-@Composable
-private fun LeadingIconTileActivePreview() {
-    TransactionStitchTheme {
-        Box(modifier = Modifier.padding(16.dp)) {
-            LeadingIconTile(
-                icon = Icons.Rounded.History,
-                isActive = true,
-            )
-        }
-    }
-}
-
-@Preview(name = "Assist New Pill", showBackground = true, backgroundColor = 0xFFFCFBFC)
-@Composable
-private fun AssistNewPillPreview() {
-    TransactionStitchTheme {
-        Box(modifier = Modifier.padding(16.dp)) {
-            AssistNewPill(
-                label = "New Payee",
-                icon = Icons.Rounded.AddCircle,
-                onClick = {},
-            )
-        }
-    }
-}
-
-@Preview(name = "Suggestion Option Row - Normal", showBackground = true, backgroundColor = 0xFFFCFBFC)
-@Composable
-private fun SuggestionOptionRowNormalPreview() {
-    TransactionStitchTheme {
-        Box(modifier = Modifier.padding(16.dp)) {
-            SuggestionOptionRow(
-                title = "Supermarket",
-                tagLabel = "Payee",
-                isHighlighted = false,
-                onClick = {},
-            )
-        }
-    }
-}
-
-@Preview(name = "Suggestion Option Row - Highlighted", showBackground = true, backgroundColor = 0xFFFCFBFC)
-@Composable
-private fun SuggestionOptionRowHighlightedPreview() {
-    TransactionStitchTheme {
-        Box(modifier = Modifier.padding(16.dp)) {
-            SuggestionOptionRow(
-                title = "Supermarket",
-                tagLabel = "Payee",
-                isHighlighted = true,
-                onClick = {},
-            )
-        }
-    }
-}
-
-@Preview(name = "Clear Mini Icon Button", showBackground = true, backgroundColor = 0xFFFCFBFC)
-@Composable
-private fun ClearMiniIconButtonPreview() {
-    TransactionStitchTheme {
-        Box(modifier = Modifier.padding(16.dp)) {
+private fun SharedControlsPreview() {
+    FinancistoTheme {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            AssistNewPill(label = "New Payee", icon = Icons.Rounded.AddCircle, onClick = {})
+            SuggestionOptionRow(title = "Supermarket", tagLabel = "Payee", isHighlighted = true, onClick = {})
+            CreateInlineSuggestionButton(text = "Create new payee", onClick = {})
             ClearMiniIconButton(onClick = {})
         }
     }
 }
-

@@ -3,6 +3,7 @@ package ru.orangesoftware.financisto.transaction.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material.icons.rounded.SwapVert
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,9 +32,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -40,13 +42,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import ru.orangesoftware.financisto.core.designsystem.theme.FinancistoTheme
+import ru.orangesoftware.financisto.transaction.R
 import ru.orangesoftware.financisto.transaction.domain.AmountScale
 import ru.orangesoftware.financisto.transaction.model.AccountOption
 import ru.orangesoftware.financisto.transaction.model.CurrencyOption
-import ru.orangesoftware.financisto.transaction.ui.theme.StitchColors
-import ru.orangesoftware.financisto.transaction.ui.theme.StitchDimens
-import ru.orangesoftware.financisto.transaction.ui.theme.TransactionStitchTheme
+
+private const val ConduitLineAlpha = 0.5f
+private const val ConduitStrokeWidthPx = 3f
+private const val DashOnPx = 8f
+private const val DashOffPx = 8f
 
 @Composable
 fun SingleAccountAndCurrencyPills(
@@ -55,12 +60,16 @@ fun SingleAccountAndCurrencyPills(
     showCurrencySelector: Boolean,
     onAccountClick: () -> Unit,
     onCurrencyClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         CompactSelectorPill(
             icon = Icons.Rounded.AccountBalanceWallet,
-            prefix = "Account: ",
-            value = account?.title ?: "Select account",
+            prefix = stringResource(R.string.tx_label_account_prefix),
+            value = account?.title ?: stringResource(R.string.tx_placeholder_select_account),
             onClick = onAccountClick,
         )
         if (showCurrencySelector) {
@@ -68,11 +77,15 @@ fun SingleAccountAndCurrencyPills(
                 selectedCurrency.code
             } else {
                 val code = account?.currencyCode.orEmpty()
-                if (code.isNotEmpty()) "Same as account ($code)" else "Same as account"
+                if (code.isNotEmpty()) {
+                    stringResource(R.string.tx_currency_same_as_account_code, code)
+                } else {
+                    stringResource(R.string.tx_currency_same_as_account)
+                }
             }
             CompactSelectorPill(
                 icon = Icons.Rounded.Payments,
-                prefix = "Currency: ",
+                prefix = stringResource(R.string.tx_label_currency_prefix),
                 value = currencyLabel,
                 onClick = onCurrencyClick,
             )
@@ -89,16 +102,20 @@ fun TransferAccountsGroupCard(
     onFromAccountClick: () -> Unit,
     onToAccountClick: () -> Unit,
     onSwapClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
+    val semantic = FinancistoTheme.semanticColors
+    val dimens = FinancistoTheme.dimens
+
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(StitchDimens.RadiusHeroCard),
-        color = StitchColors.SurfaceWhite,
-        border = BorderStroke(StitchDimens.DefaultBorderWidth, StitchColors.HeroBorder),
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(dimens.RadiusHeroCard),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(dimens.DefaultBorderWidth, semantic.heroBorder),
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             TransferAccountRow(
-                label = "FROM ACCOUNT",
+                label = stringResource(R.string.tx_label_from_account),
                 account = fromAccount,
                 deltaMinor = if (outAmountMinor > 0L) -outAmountMinor else null,
                 isDestination = false,
@@ -106,7 +123,7 @@ fun TransferAccountsGroupCard(
             )
             SwapConduitRow(onSwapClick = onSwapClick)
             TransferAccountRow(
-                label = "TO ACCOUNT",
+                label = stringResource(R.string.tx_label_to_account),
                 account = toAccount,
                 deltaMinor = if (inAmountMinor > 0L) inAmountMinor else null,
                 isDestination = true,
@@ -123,16 +140,16 @@ private fun CompactSelectorPill(
     value: String,
     onClick: () -> Unit,
 ) {
+    val semantic = FinancistoTheme.semanticColors
+    val dimens = FinancistoTheme.dimens
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(StitchDimens.RadiusPill))
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(StitchDimens.RadiusPill),
-        color = StitchColors.PillSurface,
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(dimens.RadiusPill),
+        color = semantic.pillSurface,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
@@ -144,17 +161,25 @@ private fun CompactSelectorPill(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = StitchColors.TextSecondary,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(18.dp),
                 )
                 Text(
                     text = buildAnnotatedString {
-                        withStyle(SpanStyle(color = StitchColors.TextSecondary)) { append(prefix) }
-                        withStyle(SpanStyle(color = StitchColors.TextPrimary, fontWeight = FontWeight.SemiBold)) {
+                        withStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
+                            append(prefix)
+                            append(' ')
+                        }
+                        withStyle(
+                            SpanStyle(
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.SemiBold,
+                            ),
+                        ) {
                             append(value)
                         }
                     },
-                    fontSize = 13.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -162,7 +187,7 @@ private fun CompactSelectorPill(
             Icon(
                 imageVector = Icons.Rounded.ArrowDropDown,
                 contentDescription = null,
-                tint = StitchColors.TextSecondary,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(18.dp),
             )
         }
@@ -177,14 +202,23 @@ private fun TransferAccountRow(
     isDestination: Boolean,
     onClick: () -> Unit,
 ) {
-    val tileBg = if (isDestination) StitchColors.Primary else StitchColors.PrimaryContainer
-    val tileTint = if (isDestination) Color.White else StitchColors.Primary
+    val dimens = FinancistoTheme.dimens
+    val tileBg = if (isDestination) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.primaryContainer
+    }
+    val tileTint = if (isDestination) {
+        MaterialTheme.colorScheme.onPrimary
+    } else {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    }
     val icon = if (isDestination) Icons.Rounded.CreditCard else Icons.Rounded.AccountBalanceWallet
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(StitchDimens.RadiusPill))
+            .clip(RoundedCornerShape(dimens.RadiusPill))
             .clickable(onClick = onClick)
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -195,205 +229,203 @@ private fun TransferAccountRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Surface(
-                shape = RoundedCornerShape(StitchDimens.RadiusInnerCard),
-                color = tileBg,
-                modifier = Modifier.size(46.dp),
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(46.dp)
+                    .background(color = tileBg, shape = RoundedCornerShape(dimens.RadiusInnerCard)),
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = tileTint,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
-            }
-            Column {
-                Text(
-                    text = label,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.6.sp,
-                    color = StitchColors.TextTertiary,
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = tileTint,
+                    modifier = Modifier.size(22.dp),
                 )
-                Text(
-                    text = account?.title ?: "Select account",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = StitchColors.TextPrimary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (account != null) {
-                    val balText = AmountScale.formatDisplayAmount(
-                        minorUnits = account.balanceMinor,
-                        decimals = account.currencyDecimals,
-                        symbol = account.currencySymbol.ifBlank { account.currencyCode },
-                        includeSign = account.balanceMinor < 0L,
-                    )
-                    Text(
-                        text = "${account.typeLabel} • $balText",
-                        fontSize = 11.sp,
-                        color = StitchColors.TextSecondary,
-                    )
-                }
             }
+            TransferAccountLabels(label = label, account = account)
         }
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            if (deltaMinor != null && account != null) {
-                val isPos = deltaMinor > 0L
-                val chipBg = if (isPos) StitchColors.IncomeBadgeBg else StitchColors.DebitChipBg
-                val chipFg = if (isPos) StitchColors.IncomeBadgeText else StitchColors.DebitText
-                Surface(shape = RoundedCornerShape(6.dp), color = chipBg) {
-                    Text(
-                        text = AmountScale.formatDisplayAmount(
-                            minorUnits = deltaMinor,
-                            decimals = account.currencyDecimals,
-                            symbol = account.currencySymbol.ifBlank { account.currencyCode },
-                            includeSign = true,
-                        ),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = chipFg,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    )
-                }
-            }
-            Icon(
-                imageVector = Icons.Rounded.ExpandMore,
-                contentDescription = null,
-                tint = StitchColors.TextTertiary,
+        TransferAccountTrailing(account = account, deltaMinor = deltaMinor)
+    }
+}
+
+@Composable
+private fun TransferAccountLabels(
+    label: String,
+    account: AccountOption?,
+) {
+    Column {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.outline,
+        )
+        Text(
+            text = account?.title ?: stringResource(R.string.tx_placeholder_select_account),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (account != null) {
+            val balText = AmountScale.formatDisplayAmount(
+                minorUnits = account.balanceMinor,
+                decimals = account.currencyDecimals,
+                symbol = account.currencySymbol.ifBlank { account.currencyCode },
+                includeSign = account.balanceMinor < 0L,
+            )
+            Text(
+                text = stringResource(R.string.tx_account_meta_format, account.typeLabel, balText),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+}
+
+@Composable
+private fun TransferAccountTrailing(
+    account: AccountOption?,
+    deltaMinor: Long?,
+) {
+    val semantic = FinancistoTheme.semanticColors
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        if (deltaMinor != null && account != null) {
+            val isPos = deltaMinor > 0L
+            val chipBg = if (isPos) semantic.incomeContainer else semantic.debitContainer
+            val chipFg = if (isPos) semantic.onIncomeContainer else semantic.onDebitContainer
+            Text(
+                text = AmountScale.formatDisplayAmount(
+                    minorUnits = deltaMinor,
+                    decimals = account.currencyDecimals,
+                    symbol = account.currencySymbol.ifBlank { account.currencyCode },
+                    includeSign = true,
+                ),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = chipFg,
+                modifier = Modifier
+                    .background(color = chipBg, shape = RoundedCornerShape(6.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+            )
+        }
+        Icon(
+            imageVector = Icons.Rounded.ExpandMore,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.outline,
+        )
     }
 }
 
 @Composable
 private fun SwapConduitRow(onSwapClick: () -> Unit) {
+    val semantic = FinancistoTheme.semanticColors
+    val dimens = FinancistoTheme.dimens
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(40.dp),
+            .height(48.dp),
         contentAlignment = Alignment.Center,
     ) {
-        val lineColor = StitchColors.TextTertiary.copy(alpha = 0.5f)
+        val lineColor = MaterialTheme.colorScheme.outline.copy(alpha = ConduitLineAlpha)
         Canvas(
             modifier = Modifier
                 .width(2.dp)
-                .height(40.dp)
+                .height(48.dp),
         ) {
             drawLine(
                 color = lineColor,
                 start = Offset(size.width / 2f, 0f),
                 end = Offset(size.width / 2f, size.height),
-                strokeWidth = 3f,
-                pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f), 0f),
+                strokeWidth = ConduitStrokeWidthPx,
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(DashOnPx, DashOffPx), 0f),
             )
         }
         Surface(
+            onClick = onSwapClick,
             shape = CircleShape,
-            color = StitchColors.SurfaceWhite,
-            border = BorderStroke(StitchDimens.DefaultBorderWidth, StitchColors.HeroBorder),
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(dimens.DefaultBorderWidth, semantic.heroBorder),
             shadowElevation = 2.dp,
-            modifier = Modifier
-                .size(34.dp)
-                .clip(CircleShape)
-                .clickable(onClick = onSwapClick),
+            modifier = Modifier.size(48.dp),
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = Icons.Rounded.SwapVert,
-                    contentDescription = "Swap accounts",
-                    tint = StitchColors.Primary,
-                    modifier = Modifier.size(18.dp),
+                    contentDescription = stringResource(R.string.tx_cd_swap_accounts),
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp),
                 )
             }
         }
     }
 }
 
-@Preview(name = "Single Account & Currency Pills", showBackground = true, backgroundColor = 0xFFFCFBFC)
+@Preview(name = "Single Account & Currency Pills - Light", showBackground = true)
 @Composable
 private fun SingleAccountAndCurrencyPillsPreview() {
-    TransactionStitchTheme {
-        Box(modifier = Modifier.padding(16.dp)) {
-            SingleAccountAndCurrencyPills(
-                account = AccountOption(
-                    id = 1L,
-                    title = "Main Checking",
-                    typeLabel = "Bank",
-                    currencyId = 1L,
-                    currencyCode = "USD",
-                    currencySymbol = "$",
-                    currencyDecimals = 2,
-                    balanceMinor = 245075L,
-                ),
-                selectedCurrency = CurrencyOption(
-                    id = 2L,
-                    code = "EUR",
-                    symbol = "€",
-                    decimals = 2,
-                ),
-                showCurrencySelector = true,
-                onAccountClick = {},
-                onCurrencyClick = {},
-            )
+    FinancistoTheme {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            Box(modifier = Modifier.padding(16.dp)) {
+                SingleAccountAndCurrencyPills(
+                    account = AccountOption(
+                        id = 1L,
+                        title = "Main Checking",
+                        typeLabel = "Bank",
+                        currencyId = 1L,
+                        currencyCode = "USD",
+                        currencySymbol = "$",
+                        currencyDecimals = 2,
+                        balanceMinor = 245075L,
+                    ),
+                    selectedCurrency = CurrencyOption(id = 2L, code = "EUR", symbol = "€", decimals = 2),
+                    showCurrencySelector = true,
+                    onAccountClick = {},
+                    onCurrencyClick = {},
+                )
+            }
         }
     }
 }
 
-@Preview(name = "Single Account Pills (Empty)", showBackground = true, backgroundColor = 0xFFFCFBFC)
+@Preview(name = "Transfer Accounts Group Card - Dark", showBackground = true)
 @Composable
-private fun SingleAccountAndCurrencyPillsEmptyPreview() {
-    TransactionStitchTheme {
-        Box(modifier = Modifier.padding(16.dp)) {
-            SingleAccountAndCurrencyPills(
-                account = null,
-                selectedCurrency = null,
-                showCurrencySelector = true,
-                onAccountClick = {},
-                onCurrencyClick = {},
-            )
-        }
-    }
-}
-
-@Preview(name = "Transfer Accounts Group Card", showBackground = true, backgroundColor = 0xFFFCFBFC)
-@Composable
-private fun TransferAccountsGroupCardPreview() {
-    TransactionStitchTheme {
-        Box(modifier = Modifier.padding(16.dp)) {
-            TransferAccountsGroupCard(
-                fromAccount = AccountOption(
-                    id = 1L,
-                    title = "Main Checking",
-                    typeLabel = "Bank",
-                    currencyId = 1L,
-                    currencyCode = "USD",
-                    currencySymbol = "$",
-                    currencyDecimals = 2,
-                    balanceMinor = 245075L,
-                ),
-                toAccount = AccountOption(
-                    id = 2L,
-                    title = "Travel Card",
-                    typeLabel = "Credit Card",
-                    currencyId = 2L,
-                    currencyCode = "EUR",
-                    currencySymbol = "€",
-                    currencyDecimals = 2,
-                    balanceMinor = 84050L,
-                ),
-                outAmountMinor = 15000L,
-                inAmountMinor = 13850L,
-                onFromAccountClick = {},
-                onToAccountClick = {},
-                onSwapClick = {},
-            )
+private fun TransferAccountsGroupCardDarkPreview() {
+    FinancistoTheme(darkTheme = true) {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            Box(modifier = Modifier.padding(16.dp)) {
+                TransferAccountsGroupCard(
+                    fromAccount = AccountOption(
+                        id = 1L,
+                        title = "Main Checking",
+                        typeLabel = "Bank",
+                        currencyId = 1L,
+                        currencyCode = "USD",
+                        currencySymbol = "$",
+                        currencyDecimals = 2,
+                        balanceMinor = 245075L,
+                    ),
+                    toAccount = AccountOption(
+                        id = 2L,
+                        title = "Travel Card",
+                        typeLabel = "Credit Card",
+                        currencyId = 2L,
+                        currencyCode = "EUR",
+                        currencySymbol = "€",
+                        currencyDecimals = 2,
+                        balanceMinor = 84050L,
+                    ),
+                    outAmountMinor = 15000L,
+                    inAmountMinor = 13850L,
+                    onFromAccountClick = {},
+                    onToAccountClick = {},
+                    onSwapClick = {},
+                )
+            }
         }
     }
 }

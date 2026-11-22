@@ -2,10 +2,10 @@
 package ru.orangesoftware.financisto.transaction.ui.components
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -28,31 +30,33 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.InputChip
+import androidx.compose.material3.InputChipDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.blur.BlurRadiusSpec
-import androidx.compose.ui.graphics.blur.BlurStop
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
+import ru.orangesoftware.financisto.core.designsystem.theme.FinancistoTheme
+import ru.orangesoftware.financisto.transaction.R
 import ru.orangesoftware.financisto.transaction.model.ProjectOption
 import ru.orangesoftware.financisto.transaction.model.TransactionMode
-import ru.orangesoftware.financisto.transaction.ui.theme.StitchColors
-import ru.orangesoftware.financisto.transaction.ui.theme.StitchDimens
-import ru.orangesoftware.financisto.transaction.ui.theme.TransactionStitchTheme
 import java.io.File
+
+private const val BottomBarBackgroundAlpha = 0.96f
 
 @Composable
 fun ProjectFieldCard(
@@ -61,11 +65,17 @@ fun ProjectFieldCard(
     projects: List<ProjectOption>,
     onOpenPicker: () -> Unit,
     onClear: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val activeTitle = pendingProjectName
-        ?: projects.firstOrNull { it.id == selectedProjectId && it.id > 0L }?.title
+    val activeTitle = remember(projects, selectedProjectId, pendingProjectName) {
+        pendingProjectName ?: projects.firstOrNull { it.id == selectedProjectId && it.id > 0L }?.title
+    }
 
-    FormFieldCardSurface(isActive = false, modifier = Modifier.clickable(onClick = onOpenPicker)) {
+    FormFieldCardSurface(
+        isActive = false,
+        modifier = modifier,
+        onClick = onOpenPicker,
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -78,48 +88,78 @@ fun ProjectFieldCard(
             ) {
                 LeadingIconTile(icon = Icons.Rounded.Folder)
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Project", fontSize = 11.sp, color = StitchColors.TextTertiary)
+                    Text(
+                        text = stringResource(R.string.tx_label_project),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline,
+                    )
                     Spacer(modifier = Modifier.height(2.dp))
                     if (activeTitle != null) {
-                        Surface(
-                            shape = CircleShape,
-                            color = StitchColors.PrimaryTonal,
-                            border = BorderStroke(StitchDimens.DefaultBorderWidth, StitchColors.HeroBorder),
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(start = 8.dp, end = 4.dp, top = 3.dp, bottom = 3.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            ) {
-                                Text(
-                                    text = activeTitle,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = StitchColors.OnPrimaryContainer,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                Icon(
-                                    imageVector = Icons.Rounded.Close,
-                                    contentDescription = "Clear project",
-                                    tint = StitchColors.TextSecondary,
-                                    modifier = Modifier
-                                        .size(14.dp)
-                                        .clickable(onClick = onClear),
-                                )
-                            }
-                        }
+                        ProjectSelectedChip(title = activeTitle, onClear = onClear)
                     } else {
-                        Text("No project", fontSize = 13.sp, color = StitchColors.TextSecondary)
+                        Text(
+                            text = stringResource(R.string.tx_placeholder_no_project),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                AssistNewPill(label = "Select", icon = Icons.Rounded.CreateNewFolder, onClick = onOpenPicker)
-                Icon(Icons.Rounded.ExpandMore, contentDescription = null, tint = StitchColors.TextTertiary)
+                AssistNewPill(
+                    label = stringResource(R.string.tx_action_select),
+                    icon = Icons.Rounded.CreateNewFolder,
+                    onClick = onOpenPicker,
+                )
+                Icon(
+                    imageVector = Icons.Rounded.ExpandMore,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.outline,
+                )
             }
         }
     }
+}
+
+@Composable
+private fun ProjectSelectedChip(
+    title: String,
+    onClear: () -> Unit,
+) {
+    val semantic = FinancistoTheme.semanticColors
+    val dimens = FinancistoTheme.dimens
+    InputChip(
+        selected = true,
+        onClick = onClear,
+        label = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
+        trailingIcon = {
+            Icon(
+                imageVector = Icons.Rounded.Close,
+                contentDescription = stringResource(R.string.tx_cd_clear_project),
+                modifier = Modifier.size(InputChipDefaults.IconSize),
+            )
+        },
+        shape = CircleShape,
+        colors = InputChipDefaults.inputChipColors(
+            selectedContainerColor = semantic.primaryTonal,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            selectedTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        ),
+        border = InputChipDefaults.inputChipBorder(
+            enabled = true,
+            selected = true,
+            selectedBorderColor = semantic.heroBorder,
+            selectedBorderWidth = dimens.DefaultBorderWidth,
+        ),
+    )
 }
 
 @OptIn(ExperimentalGlideComposeApi::class)
@@ -130,70 +170,115 @@ fun ReceiptAttachmentCard(
     onCameraClick: () -> Unit,
     onBrowseClick: () -> Unit,
     onRemoveClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    FormFieldCardSurface(isActive = false) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                LeadingIconTile(icon = Icons.Rounded.PhotoCamera)
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Receipt or Attachment", fontSize = 11.sp, color = StitchColors.TextTertiary)
-                    Text(
-                        text = attachedFileName ?: "Take a picture",
-                        fontSize = 13.sp,
-                        fontWeight = if (attachedFileName != null) FontWeight.SemiBold else FontWeight.Normal,
-                        color = StitchColors.TextPrimary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                OutlinedButton(
-                    onClick = onCameraClick,
-                    shape = CircleShape,
-                    border = BorderStroke(StitchDimens.DefaultBorderWidth, StitchColors.TextTertiary),
-                ) {
-                    Text("Camera", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = StitchColors.ChipText)
-                }
-                OutlinedButton(
-                    onClick = onBrowseClick,
-                    shape = CircleShape,
-                    border = BorderStroke(StitchDimens.DefaultBorderWidth, StitchColors.TextTertiary),
-                ) {
-                    Text("Browse", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = StitchColors.ChipText)
-                }
-                if (attachedFileName != null) {
-                    ClearMiniIconButton(onClick = onRemoveClick, contentDescription = "Remove attachment")
-                }
-            }
-        }
-        if (resolvedFilePath != null) {
+    val receiptFile = remember(resolvedFilePath) { resolvedFilePath?.let(::File) }
+
+    FormFieldCardSurface(isActive = false, modifier = modifier) {
+        ReceiptAttachmentHeaderRow(
+            attachedFileName = attachedFileName,
+            onCameraClick = onCameraClick,
+            onBrowseClick = onBrowseClick,
+            onRemoveClick = onRemoveClick,
+        )
+        if (receiptFile != null) {
             Spacer(modifier = Modifier.height(10.dp))
             GlideImage(
-                model = File(resolvedFilePath),
-                contentDescription = "Receipt preview",
+                model = receiptFile,
+                contentDescription = stringResource(R.string.tx_cd_receipt_preview),
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(160.dp)
-                    .clip(RoundedCornerShape(StitchDimens.RadiusTile))
-                    .blur {
-                        blurRadiusSpec = BlurRadiusSpec.verticalGradient(
-                            stops = listOf(
-                                BlurStop(fraction = 0f, radius = 0.dp),
-                                BlurStop(fraction = 0.78f, radius = 0.dp),
-                                BlurStop(fraction = 1f, radius = 8.dp),
-                            )
-                        )
-                    },
+                    .clip(RoundedCornerShape(FinancistoTheme.dimens.RadiusTile)),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReceiptAttachmentHeaderRow(
+    attachedFileName: String?,
+    onCameraClick: () -> Unit,
+    onBrowseClick: () -> Unit,
+    onRemoveClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            LeadingIconTile(icon = Icons.Rounded.PhotoCamera)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.tx_label_receipt_attachment),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.outline,
+                )
+                Text(
+                    text = attachedFileName ?: stringResource(R.string.tx_placeholder_take_picture),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = if (attachedFileName != null) FontWeight.SemiBold else FontWeight.Normal,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        ReceiptAttachmentActions(
+            hasAttachment = attachedFileName != null,
+            onCameraClick = onCameraClick,
+            onBrowseClick = onBrowseClick,
+            onRemoveClick = onRemoveClick,
+        )
+    }
+}
+
+@Composable
+private fun ReceiptAttachmentActions(
+    hasAttachment: Boolean,
+    onCameraClick: () -> Unit,
+    onBrowseClick: () -> Unit,
+    onRemoveClick: () -> Unit,
+) {
+    val semantic = FinancistoTheme.semanticColors
+    val buttonBorder = BorderStroke(FinancistoTheme.dimens.DefaultBorderWidth, MaterialTheme.colorScheme.outline)
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        OutlinedButton(
+            onClick = onCameraClick,
+            shape = CircleShape,
+            border = buttonBorder,
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.tx_action_camera),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = semantic.chipText,
+            )
+        }
+        OutlinedButton(
+            onClick = onBrowseClick,
+            shape = CircleShape,
+            border = buttonBorder,
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.tx_action_browse),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = semantic.chipText,
+            )
+        }
+        if (hasAttachment) {
+            ClearMiniIconButton(
+                onClick = onRemoveClick,
+                contentDescription = stringResource(R.string.tx_cd_remove_attachment),
             )
         }
     }
@@ -203,10 +288,19 @@ fun ReceiptAttachmentCard(
 fun CreditCardPaymentCard(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
+    val cardShape = RoundedCornerShape(FinancistoTheme.dimens.RadiusFormCard)
     FormFieldCardSurface(
         isActive = false,
-        modifier = Modifier.clickable { onCheckedChange(!checked) },
+        modifier = modifier,
+        contentModifier = Modifier
+            .clip(cardShape)
+            .toggleable(
+                value = checked,
+                role = Role.Checkbox,
+                onValueChange = onCheckedChange,
+            ),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -221,22 +315,21 @@ fun CreditCardPaymentCard(
                 LeadingIconTile(icon = Icons.Rounded.CreditCard)
                 Column {
                     Text(
-                        text = "Credit Card Payment",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = StitchColors.TextPrimary,
+                        text = stringResource(R.string.tx_label_ccard_payment),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
-                        text = "Not include into bill total",
-                        fontSize = 12.sp,
-                        color = StitchColors.TextTertiary,
+                        text = stringResource(R.string.tx_subtitle_ccard_payment),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline,
                     )
                 }
             }
             Checkbox(
                 checked = checked,
-                onCheckedChange = onCheckedChange,
-                colors = CheckboxDefaults.colors(checkedColor = StitchColors.Primary),
+                onCheckedChange = null,
+                colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary),
             )
         }
     }
@@ -249,10 +342,19 @@ fun TransactionBottomBar(
     isSaving: Boolean,
     onSecondaryAction: () -> Unit,
     onSaveClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
+    val semantic = FinancistoTheme.semanticColors
+    val secondaryLabelRes = if (isBlankNew) R.string.tx_action_save_and_new else R.string.tx_action_cancel
+    val saveLabelRes = when (mode) {
+        TransactionMode.TRANSFER -> R.string.tx_action_save_transfer
+        else -> R.string.tx_action_save
+    }
+
     Surface(
-        color = StitchColors.ScreenBg.copy(alpha = 0.96f),
+        color = MaterialTheme.colorScheme.background.copy(alpha = BottomBarBackgroundAlpha),
         shadowElevation = 6.dp,
+        modifier = modifier,
     ) {
         Row(
             modifier = Modifier
@@ -266,80 +368,106 @@ fun TransactionBottomBar(
                 enabled = !isSaving,
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = StitchColors.PrimaryTonal,
-                    contentColor = StitchColors.OnPrimaryContainer,
+                    containerColor = semantic.primaryTonal,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 ),
                 modifier = Modifier
                     .weight(1f)
                     .height(48.dp),
             ) {
                 Text(
-                    text = if (isBlankNew) "Save & New" else "Cancel",
+                    text = stringResource(secondaryLabelRes),
+                    style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
                 )
             }
-            Button(
-                onClick = onSaveClick,
+            BottomBarSaveButton(
+                label = stringResource(saveLabelRes),
                 enabled = !isSaving,
-                shape = CircleShape,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = StitchColors.Primary,
-                    contentColor = Color.White,
-                ),
-                modifier = Modifier
-                    .weight(1f)
-                    .height(48.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Check,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-                Text(
-                    text = if (mode == TransactionMode.TRANSFER) " Save Transfer" else " Save",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                )
-            }
+                onClick = onSaveClick,
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }
 
-private val sampleProjects = listOf(
+@Composable
+private fun BottomBarSaveButton(
+    label: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        shape = CircleShape,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+        ),
+        modifier = modifier.height(48.dp),
+    ) {
+        Icon(imageVector = Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+}
+
+private val SampleProjects = listOf(
     ProjectOption(id = 1L, title = "House Renovation"),
     ProjectOption(id = 2L, title = "Vacation 2025"),
 )
 
-@Preview(name = "Project Field Card - Selected", showBackground = true, backgroundColor = 0xFFFCFBFC)
+@Preview(name = "Project & CCard Cards - Light", showBackground = true)
 @Composable
-private fun ProjectFieldCardSelectedPreview() {
-    TransactionStitchTheme {
-        Box(modifier = Modifier.padding(16.dp)) {
-            ProjectFieldCard(
-                selectedProjectId = 1L,
-                pendingProjectName = null,
-                projects = sampleProjects,
-                onOpenPicker = {},
-                onClear = {},
-            )
+private fun SecondaryCardsLightPreview() {
+    FinancistoTheme {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                ProjectFieldCard(
+                    selectedProjectId = 1L,
+                    pendingProjectName = null,
+                    projects = SampleProjects,
+                    onOpenPicker = {},
+                    onClear = {},
+                )
+                CreditCardPaymentCard(checked = true, onCheckedChange = {})
+            }
         }
     }
 }
 
-@Preview(name = "Project Field Card - No Selection", showBackground = true, backgroundColor = 0xFFFCFBFC)
+@Preview(name = "Bottom Bar & Project - Dark", showBackground = true)
 @Composable
-private fun ProjectFieldCardNoSelectionPreview() {
-    TransactionStitchTheme {
-        Box(modifier = Modifier.padding(16.dp)) {
-            ProjectFieldCard(
-                selectedProjectId = 0L,
-                pendingProjectName = null,
-                projects = sampleProjects,
-                onOpenPicker = {},
-                onClear = {},
-            )
+private fun SecondaryCardsDarkPreview() {
+    FinancistoTheme(darkTheme = true) {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(modifier = Modifier.padding(16.dp)) {
+                    ProjectFieldCard(
+                        selectedProjectId = 0L,
+                        pendingProjectName = null,
+                        projects = SampleProjects,
+                        onOpenPicker = {},
+                        onClear = {},
+                    )
+                }
+                TransactionBottomBar(
+                    isBlankNew = true,
+                    mode = TransactionMode.EXPENSE,
+                    isSaving = false,
+                    onSecondaryAction = {},
+                    onSaveClick = {},
+                )
+            }
         }
     }
 }
-
