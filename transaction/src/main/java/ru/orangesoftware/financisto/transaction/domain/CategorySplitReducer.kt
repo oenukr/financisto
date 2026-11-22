@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.transaction.domain
 
+import ru.orangesoftware.financisto.transaction.model.CategoryOption
 import ru.orangesoftware.financisto.transaction.model.EditableSplit
 import ru.orangesoftware.financisto.transaction.model.TransactionIds
 import ru.orangesoftware.financisto.transaction.model.TransactionMode
-import ru.orangesoftware.financisto.transaction.mvi.ActiveSheet
+import ru.orangesoftware.financisto.transaction.mvi.TransactionFormState
 import ru.orangesoftware.financisto.transaction.mvi.TransactionIntent
 import ru.orangesoftware.financisto.transaction.mvi.TransactionUiState
-import kotlin.math.abs
 
 internal object CategorySplitReducer {
     private const val DEFAULT_DECIMALS = 2
@@ -22,10 +22,10 @@ internal object CategorySplitReducer {
                 form = state.form.copy(categoryId = TransactionIds.NO_CATEGORY_ID, isSplitMode = false)
             )
             is TransactionIntent.ToggleSplitMode -> toggleSplitMode(state)
-            is TransactionIntent.OpenNewSplitEditor -> openNewSplit(state)
-            is TransactionIntent.OpenEditSplitEditor -> openEditSplit(state, intent.localId)
-            is TransactionIntent.UpdateSplitDraft -> updateSplitDraft(state, intent.split)
-            is TransactionIntent.SaveSplitItem -> saveSplitItem(state, intent.split)
+            is TransactionIntent.OpenNewSplitEditor -> SplitEditorSheetReducer.openNewSplit(state)
+            is TransactionIntent.OpenEditSplitEditor -> SplitEditorSheetReducer.openEditSplit(state, intent.localId)
+            is TransactionIntent.UpdateSplitDraft -> SplitEditorSheetReducer.updateSplitDraft(state, intent.split)
+            is TransactionIntent.SaveSplitItem -> SplitEditorSheetReducer.saveSplitItem(state, intent.split)
             is TransactionIntent.RemoveSplitItem -> state.copy(
                 form = state.form.copy(splits = state.form.splits.filterNot { it.localId == intent.localId }),
                 validationErrors = emptyList(),
@@ -38,39 +38,6 @@ internal object CategorySplitReducer {
         }
     }
 
-    private fun openNewSplit(state: TransactionUiState.Ready): TransactionUiState.Ready {
-        val form = state.form
-        val parentSigned = SplitAllocationCalculator.parentSignedMinor(form.primaryAmountMinor, form.mode)
-        val unsplit = SplitAllocationCalculator.unsplitSignedMinor(parentSigned, form.splits)
-        val defaultIncome = if (unsplit != 0L) unsplit > 0L else form.mode == TransactionMode.INCOME
-        val draftSplit = EditableSplit(
-            localId = form.nextSplitLocalId,
-            categoryId = TransactionIds.NO_CATEGORY_ID,
-            amountMinor = abs(unsplit),
-            isIncome = defaultIncome,
-        )
-        return state.copy(
-            form = form.copy(nextSplitLocalId = form.nextSplitLocalId - 1L),
-            sheetStack = listOf(ActiveSheet.SplitItemEditor(draftSplit, isNew = true)),
-        )
-    }
-
-    private fun openEditSplit(state: TransactionUiState.Ready, localId: Long): TransactionUiState.Ready {
-        val target = state.form.splits.firstOrNull { it.localId == localId } ?: return state
-        return state.copy(sheetStack = listOf(ActiveSheet.SplitItemEditor(target, isNew = false)))
-    }
-
-    private fun updateSplitDraft(state: TransactionUiState.Ready, draft: EditableSplit): TransactionUiState.Ready {
-        val updatedStack = state.sheetStack.map { sheet ->
-            if (sheet is ActiveSheet.SplitItemEditor && sheet.split.localId == draft.localId) {
-                sheet.copy(split = draft)
-            } else {
-                sheet
-            }
-        }
-        return state.copy(sheetStack = updatedStack)
-    }
-
     private fun selectCategory(
         state: TransactionUiState.Ready,
         categoryId: Long,
@@ -80,38 +47,57 @@ internal object CategorySplitReducer {
             return selectSplitCategory(state, categoryId, forSplitLocalId)
         }
         val cat = state.catalog.categories.firstOrNull { it.id == categoryId }
+        val updatedForm = applySelectedCategoryToForm(state, categoryId, cat)
+        return state.copy(
+            form = updatedForm,
+            expandedField = null,
+            sheetStack = emptyList(),
+            validationErrors = emptyList(),
+        )
+    }
+
+    private fun applySelectedCategoryToForm(
+        state: TransactionUiState.Ready,
+        categoryId: Long,
+        cat: CategoryOption?,
+    ): TransactionFormState {
         val form = state.form
         val nextMode = if (cat != null && form.mode != TransactionMode.TRANSFER) {
             if (cat.isIncome) TransactionMode.INCOME else TransactionMode.EXPENSE
         } else {
             form.mode
         }
-        val canRememberLoc = form.isFromNewBlankLaunch && state.prefs.isRememberLocation
-        val fillLoc = canRememberLoc &&
-            form.locationId == TransactionIds.CURRENT_LOCATION_ID &&
-            (cat?.lastLocationId ?: 0L) > 0L
+        val rememberedLocationId = resolveRememberedLocationId(state, cat)
+        val locTitle = if (rememberedLocationId != form.locationId) {
+            state.catalog.locations.firstOrNull { it.id == rememberedLocationId }?.title.orEmpty()
+        } else {
+            form.locationQuery
+        }
         val canRememberProj = form.isFromNewBlankLaunch && state.prefs.isRememberProject
         val fillProj = canRememberProj &&
             form.projectId == TransactionIds.NO_PROJECT_ID &&
             (cat?.lastProjectId ?: 0L) > 0L
-        val locTitle = if (fillLoc && cat != null) {
-            state.catalog.locations.firstOrNull { it.id == cat.lastLocationId }?.title.orEmpty()
-        } else {
-            form.locationQuery
-        }
-        return state.copy(
-            form = form.copy(
-                categoryId = categoryId,
-                isSplitMode = false,
-                mode = nextMode,
-                locationId = if (fillLoc && cat != null) cat.lastLocationId else form.locationId,
-                locationQuery = locTitle,
-                projectId = if (fillProj && cat != null) cat.lastProjectId else form.projectId,
-            ),
-            expandedField = null,
-            sheetStack = emptyList(),
-            validationErrors = emptyList(),
+        return form.copy(
+            categoryId = categoryId,
+            isSplitMode = false,
+            mode = nextMode,
+            locationId = rememberedLocationId,
+            locationQuery = locTitle,
+            projectId = if (fillProj && cat != null) cat.lastProjectId else form.projectId,
         )
+    }
+
+    private fun resolveRememberedLocationId(
+        state: TransactionUiState.Ready,
+        cat: CategoryOption?,
+    ): Long {
+        val form = state.form
+        val canRemember = form.isFromNewBlankLaunch && state.prefs.isRememberLocation
+        val candidate = cat?.lastLocationId ?: 0L
+        val shouldFill = canRemember &&
+            form.locationId == TransactionIds.CURRENT_LOCATION_ID &&
+            candidate > 0L
+        return if (shouldFill) candidate else form.locationId
     }
 
     private fun selectSplitCategory(
@@ -168,24 +154,6 @@ internal object CategorySplitReducer {
                 nextSplitLocalId = if (shouldSeed) form.nextSplitLocalId - 1L else form.nextSplitLocalId,
             ),
             expandedField = null,
-            validationErrors = emptyList(),
-        )
-    }
-
-    private fun saveSplitItem(state: TransactionUiState.Ready, item: EditableSplit): TransactionUiState.Ready {
-        val exists = state.form.splits.any { it.localId == item.localId }
-        val updated = if (exists) {
-            state.form.splits.map { if (it.localId == item.localId) item else it }
-        } else {
-            state.form.splits + item
-        }
-        return state.copy(
-            form = state.form.copy(
-                splits = updated,
-                isSplitMode = true,
-                categoryId = TransactionIds.SPLIT_CATEGORY_ID,
-            ),
-            sheetStack = emptyList(),
             validationErrors = emptyList(),
         )
     }

@@ -48,7 +48,9 @@ object CurrencyConversionCalculator {
         toCode: String,
         rate: Double,
     ): Pair<String, String>? {
-        if (rate <= MIN_POSITIVE_RATE || !rate.isFinite() || fromCode.isBlank() || toCode.isBlank()) {
+        val hasValidRate = rate > MIN_POSITIVE_RATE && rate.isFinite()
+        val hasCodes = fromCode.isNotBlank() && toCode.isNotBlank()
+        if (!hasValidRate || !hasCodes) {
             return null
         }
         val forward = formatRate(rate)

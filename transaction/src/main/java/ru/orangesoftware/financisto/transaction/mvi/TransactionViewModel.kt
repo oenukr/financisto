@@ -107,8 +107,8 @@ class TransactionViewModel(
             }
             is TransactionIntent.ConfirmDiscard -> discardAndClose(ready)
             is TransactionIntent.FetchLiveRate -> rateCoordinator.fetchLiveRate(ready)
-            is TransactionIntent.AttachReceiptFromUri -> stageReceiptUri(intent.uriString)
-            is TransactionIntent.ExternalEntityCreated -> reloadExternalEntity(ready, intent)
+            is TransactionIntent.AttachReceiptFromUri,
+            is TransactionIntent.ExternalEntityCreated -> launchExternalOrMediaUpdate(ready, intent)
             is TransactionIntent.ClearFormClicked -> {
                 rateCoordinator.cancel()
                 publishState(
@@ -240,44 +240,48 @@ class TransactionViewModel(
         }
     }
 
-    private fun stageReceiptUri(uriString: String) {
-        viewModelScope.launch {
-            val staged = TransactionActionRunner.runOn(ioDispatcher) {
-                ports.receiptMediaPort.stageFromUri(uriString)
-            } ?: return@launch
-            val currentReady = internalState as? TransactionUiState.Ready
-            if (currentReady == null || currentReady.isSaving) {
-                TransactionActionRunner.runOn(ioDispatcher) { ports.receiptMediaPort.deleteStagedFile(staged) }
-            } else {
-                publishState(
-                    currentReady.copy(
-                        form = currentReady.form.copy(
-                            attachedPictureFileName = staged,
-                            newlyStagedPictureFiles = currentReady.form.newlyStagedPictureFiles + staged,
+    private fun launchExternalOrMediaUpdate(
+        ready: TransactionUiState.Ready,
+        intent: TransactionIntent,
+    ) {
+        when (intent) {
+            is TransactionIntent.AttachReceiptFromUri -> viewModelScope.launch {
+                val staged = TransactionActionRunner.runOn(ioDispatcher) {
+                    ports.receiptMediaPort.stageFromUri(intent.uriString)
+                } ?: return@launch
+                val currentReady = internalState as? TransactionUiState.Ready
+                if (currentReady == null || currentReady.isSaving) {
+                    TransactionActionRunner.runOn(ioDispatcher) { ports.receiptMediaPort.deleteStagedFile(staged) }
+                } else {
+                    publishState(
+                        currentReady.copy(
+                            form = currentReady.form.copy(
+                                attachedPictureFileName = staged,
+                                newlyStagedPictureFiles = currentReady.form.newlyStagedPictureFiles + staged,
+                            )
                         )
                     )
-                )
+                }
             }
-        }
-    }
-
-    private fun reloadExternalEntity(
-        ready: TransactionUiState.Ready,
-        intent: TransactionIntent.ExternalEntityCreated,
-    ) {
-        val editId = ready.form.existingTransactionId.takeIf { it > 0L }
-        viewModelScope.launch {
-            val catalog = TransactionActionRunner.runOn(ioDispatcher) {
-                ports.repository.loadCatalog(editingTransactionId = editId)
+            is TransactionIntent.ExternalEntityCreated -> {
+                val editId = ready.form.existingTransactionId.takeIf { it > 0L }
+                viewModelScope.launch {
+                    val catalog = TransactionActionRunner.runOn(ioDispatcher) {
+                        ports.repository.loadCatalog(editingTransactionId = editId)
+                    }
+                    val latestReady = (internalState as? TransactionUiState.Ready)
+                        ?.takeUnless { it.isSaving }
+                        ?: return@launch
+                    val updated = TransactionActionRunner.applyExternalEntityCreated(
+                        ready = latestReady,
+                        refreshedCatalog = catalog,
+                        kind = intent.kind,
+                        createdId = intent.createdId,
+                    )
+                    publishState(updated)
+                }
             }
-            val latestReady = (internalState as? TransactionUiState.Ready)?.takeUnless { it.isSaving } ?: return@launch
-            val updated = TransactionActionRunner.applyExternalEntityCreated(
-                ready = latestReady,
-                refreshedCatalog = catalog,
-                kind = intent.kind,
-                createdId = intent.createdId,
-            )
-            publishState(updated)
+            else -> Unit
         }
     }
 

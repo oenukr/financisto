@@ -13,10 +13,19 @@ internal object EntityNoteReducer {
         intent: TransactionIntent,
     ): TransactionUiState.Ready {
         return when (intent) {
-            is TransactionIntent.ToggleInlineField -> state.copy(
-                expandedField = if (state.expandedField == intent.field) null else intent.field
-            )
-            is TransactionIntent.CollapseInlineField -> state.copy(expandedField = null)
+            is TransactionIntent.UpdatePayeeQuery,
+            is TransactionIntent.SelectPayee,
+            is TransactionIntent.CreatePendingPayee,
+            is TransactionIntent.ClearPayee -> reducePayee(state, intent)
+            else -> reduceLocationAndNote(state, intent)
+        }
+    }
+
+    private fun reducePayee(
+        state: TransactionUiState.Ready,
+        intent: TransactionIntent,
+    ): TransactionUiState.Ready {
+        return when (intent) {
             is TransactionIntent.UpdatePayeeQuery -> state.copy(
                 form = state.form.copy(
                     payeeQuery = intent.query,
@@ -40,6 +49,19 @@ internal object EntityNoteReducer {
                     payeeQuery = "",
                 )
             )
+            else -> state
+        }
+    }
+
+    private fun reduceLocationAndNote(
+        state: TransactionUiState.Ready,
+        intent: TransactionIntent,
+    ): TransactionUiState.Ready {
+        return when (intent) {
+            is TransactionIntent.ToggleInlineField -> state.copy(
+                expandedField = if (state.expandedField == intent.field) null else intent.field
+            )
+            is TransactionIntent.CollapseInlineField -> state.copy(expandedField = null)
             is TransactionIntent.UpdateLocationQuery -> state.copy(
                 form = state.form.copy(locationQuery = intent.query)
             )

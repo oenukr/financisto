@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.transaction.domain
 
+import ru.orangesoftware.financisto.transaction.model.AccountOption
 import ru.orangesoftware.financisto.transaction.model.TransactionIds
 import ru.orangesoftware.financisto.transaction.model.TransactionMode
+import ru.orangesoftware.financisto.transaction.mvi.TransactionFormState
 import ru.orangesoftware.financisto.transaction.mvi.TransactionIntent
 import ru.orangesoftware.financisto.transaction.mvi.TransactionUiState
 
@@ -26,32 +28,51 @@ internal object CurrencyAccountReducer {
         isDestination: Boolean,
     ): TransactionUiState.Ready {
         val account = state.catalog.accounts.firstOrNull { it.id == accountId } ?: return state
-        val form = state.form
         val nextForm = if (isDestination) {
-            form.copy(toAccountId = accountId)
+            state.form.copy(toAccountId = accountId)
         } else {
-            val canRememberCategory = form.isFromNewBlankLaunch &&
-                !state.prefs.isShowPayee &&
-                state.prefs.isRememberCategory
-            val shouldRememberCategory = canRememberCategory &&
-                form.categoryId == TransactionIds.NO_CATEGORY_ID &&
-                account.lastCategoryId > 0L
-            val canRememberTo = form.mode == TransactionMode.TRANSFER &&
-                form.isFromNewBlankLaunch &&
-                state.prefs.isRememberAccount
-            val validLastAccount = account.lastAccountId > 0L &&
-                account.lastAccountId != accountId &&
-                state.catalog.accounts.any { it.id == account.lastAccountId && it.isActive }
-            val shouldRememberTo = canRememberTo && form.toAccountId <= 0L && validLastAccount
-            form.copy(
-                fromAccountId = accountId,
-                categoryId = if (shouldRememberCategory) account.lastCategoryId else form.categoryId,
-                toAccountId = if (shouldRememberTo) account.lastAccountId else form.toAccountId,
-            )
+            selectSourceAccount(state, account)
         }
         return syncRateOnCurrencyChange(
             state.copy(form = nextForm, sheetStack = emptyList(), validationErrors = emptyList())
         )
+    }
+
+    private fun selectSourceAccount(
+        state: TransactionUiState.Ready,
+        account: AccountOption,
+    ): TransactionFormState {
+        val form = state.form
+        val canRememberCategory = form.isFromNewBlankLaunch &&
+            !state.prefs.isShowPayee &&
+            state.prefs.isRememberCategory
+        val shouldRememberCategory = canRememberCategory &&
+            form.categoryId == TransactionIds.NO_CATEGORY_ID &&
+            account.lastCategoryId > 0L
+        val nextToId = resolveRememberedDestination(state, account)
+        return form.copy(
+            fromAccountId = account.id,
+            categoryId = if (shouldRememberCategory) account.lastCategoryId else form.categoryId,
+            toAccountId = nextToId,
+        )
+    }
+
+    private fun resolveRememberedDestination(
+        state: TransactionUiState.Ready,
+        account: AccountOption,
+    ): Long {
+        val form = state.form
+        val canRememberTo = form.mode == TransactionMode.TRANSFER &&
+            form.isFromNewBlankLaunch &&
+            state.prefs.isRememberAccount
+        val validLastAccount = account.lastAccountId > 0L &&
+            account.lastAccountId != account.id &&
+            state.catalog.accounts.any { it.id == account.lastAccountId && it.isActive }
+        return if (canRememberTo && form.toAccountId <= 0L && validLastAccount) {
+            account.lastAccountId
+        } else {
+            form.toAccountId
+        }
     }
 
     private fun swapTransferAccounts(state: TransactionUiState.Ready): TransactionUiState.Ready {

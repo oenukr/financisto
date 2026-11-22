@@ -24,18 +24,7 @@ object TransactionInitialStateFactory {
         val activeAccounts = catalog.accounts.filter { it.isActive }
         val resolvedFromId = resolveInitialAccountId(args.accountId, activeAccounts, prefs)
         val fromAccount = activeAccounts.firstOrNull { it.id == resolvedFromId }
-        val resolvedToId = if (
-            args.initialMode == TransactionMode.TRANSFER &&
-            prefs.isRememberAccount &&
-            fromAccount != null &&
-            fromAccount.lastAccountId > 0L &&
-            fromAccount.lastAccountId != fromAccount.id &&
-            activeAccounts.any { it.id == fromAccount.lastAccountId }
-        ) {
-            fromAccount.lastAccountId
-        } else {
-            0L
-        }
+        val resolvedToId = resolveInitialToAccountId(args, fromAccount, activeAccounts, prefs)
         return TransactionFormState(
             mode = args.initialMode,
             dateTimeMillis = args.initialDateTimeMillis ?: nowMillis,
@@ -101,7 +90,8 @@ object TransactionInitialStateFactory {
                 projectId = split.projectId,
             )
         }
-        val (primaryMinor, secondaryMinor) = resolveDraftAmounts(draft, catalog)
+        val primaryMinor = resolveDraftPrimaryAmount(draft)
+        val secondaryMinor = resolveDraftSecondaryAmount(draft, catalog)
         val payeeTitle = draft.payeeId?.let { id -> catalog.payees.firstOrNull { it.id == id }?.title }
             ?: draft.pendingPayeeName.orEmpty()
         val stagedList = listOfNotNull(draft.stagedReceiptFileName)
@@ -138,30 +128,46 @@ object TransactionInitialStateFactory {
         return populateFormattedAmountsAndRate(base, catalog)
     }
 
-    private fun resolveDraftAmounts(
+    private fun resolveInitialToAccountId(
+        args: TransactionLaunchArgs.BlankNew,
+        fromAccount: AccountOption?,
+        activeAccounts: List<AccountOption>,
+        prefs: TransactionFormPreferences,
+    ): Long {
+        val shouldLookup = args.initialMode == TransactionMode.TRANSFER && prefs.isRememberAccount
+        val candidate = if (shouldLookup) fromAccount?.lastAccountId ?: 0L else 0L
+        val isValidTarget = candidate > 0L &&
+            candidate != fromAccount?.id &&
+            activeAccounts.any { it.id == candidate }
+        return if (isValidTarget) candidate else 0L
+    }
+
+    private fun resolveDraftPrimaryAmount(draft: TransactionDraft): Long {
+        val foreignMinor = draft.originalAmountMinor?.takeIf { draft.originalCurrencyId != null }
+        return abs(foreignMinor ?: draft.amountMinor ?: 0L)
+    }
+
+    private fun resolveDraftSecondaryAmount(
         draft: TransactionDraft,
         catalog: TransactionCatalog,
-    ): Pair<Long, Long> {
-        val fromAccount = draft.fromAccountId?.let { id -> catalog.accounts.firstOrNull { it.id == id } }
-        val toAccount = draft.toAccountId?.let { id -> catalog.accounts.firstOrNull { it.id == id } }
-        val isSameCurrencyTransfer = draft.mode == TransactionMode.TRANSFER &&
-            fromAccount != null &&
-            fromAccount.currencyId == toAccount?.currencyId
-        val primaryMinor = when {
-            draft.originalCurrencyId != null && draft.originalAmountMinor != null -> abs(draft.originalAmountMinor)
-            draft.amountMinor != null -> abs(draft.amountMinor)
-            else -> 0L
-        }
-        val secondaryMinor = when {
-            draft.mode == TransactionMode.TRANSFER -> when {
-                draft.toAmountMinor != null -> abs(draft.toAmountMinor)
-                isSameCurrencyTransfer -> abs(draft.amountMinor ?: 0L)
-                else -> 0L
-            }
+    ): Long {
+        return when {
+            draft.mode == TransactionMode.TRANSFER -> resolveTransferSecondaryAmount(draft, catalog)
             draft.originalCurrencyId != null -> abs(draft.amountMinor ?: 0L)
             else -> 0L
         }
-        return primaryMinor to secondaryMinor
+    }
+
+    private fun resolveTransferSecondaryAmount(
+        draft: TransactionDraft,
+        catalog: TransactionCatalog,
+    ): Long {
+        val explicit = draft.toAmountMinor
+        if (explicit != null) return abs(explicit)
+        val fromAccount = draft.fromAccountId?.let { id -> catalog.accounts.firstOrNull { it.id == id } }
+        val toAccount = draft.toAccountId?.let { id -> catalog.accounts.firstOrNull { it.id == id } }
+        val isSameCurrency = fromAccount != null && fromAccount.currencyId == toAccount?.currencyId
+        return if (isSameCurrency) abs(draft.amountMinor ?: 0L) else 0L
     }
 
     private fun resolveInitialAccountId(
