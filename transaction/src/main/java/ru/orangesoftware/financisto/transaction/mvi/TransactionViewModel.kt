@@ -77,7 +77,7 @@ class TransactionViewModel(
 
     fun hasUnsavedUserEdits(): Boolean {
         val ready = internalState as? TransactionUiState.Ready ?: return false
-        return ready.form != ready.initialFormSnapshot
+        return ready.form != ready.initialFormSnapshot || ready.isStagingReceipt || ready.isSaving
     }
 
     fun cleanupStagedReceipts() {
@@ -151,7 +151,6 @@ class TransactionViewModel(
         loadJob?.cancel()
         rateCoordinator.cancel()
         stagingCoordinator.cancelAll()
-        currentLaunchArgs = args
         val restoredForm = if (restoreSaved) {
             savedStateHandle.get<TransactionFormState>(KEY_FORM_STATE)
         } else {
@@ -162,6 +161,13 @@ class TransactionViewModel(
         } else {
             null
         }
+        val restoredEditId = restoredForm?.takeIf { it.isEditing && !it.isAiDraft }?.existingTransactionId
+        val effectiveArgs = if (args is TransactionLaunchArgs.AiDraft && restoredEditId != null) {
+            TransactionLaunchArgs.Edit(restoredEditId)
+        } else {
+            args
+        }
+        currentLaunchArgs = effectiveArgs
         if (!restoreSaved) {
             savedStateHandle.remove<TransactionFormState>(KEY_FORM_STATE)
             savedStateHandle.remove<TransactionFormState>(KEY_INITIAL_SNAPSHOT)
@@ -170,7 +176,7 @@ class TransactionViewModel(
         loadJob = viewModelScope.launch {
             val loaded = TransactionActionRunner.runOn(ioDispatcher) {
                 TransactionLoader.loadInitial(
-                    launchArgs = args,
+                    launchArgs = effectiveArgs,
                     ports = ports,
                     restoredForm = restoredForm,
                     restoredSnapshot = restoredSnap,
@@ -179,7 +185,7 @@ class TransactionViewModel(
             }
             if (formGeneration != capturedGeneration) return@launch
             if (loaded is TransactionUiState.LegacyRedirecting) {
-                _effects.trySend(TransactionEffect.OpenLegacyEditor(args))
+                _effects.trySend(TransactionEffect.OpenLegacyEditor(effectiveArgs))
             }
             publishState(loaded)
             if (loaded is TransactionUiState.Ready) {

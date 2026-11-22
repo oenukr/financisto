@@ -425,4 +425,41 @@ class TransactionViewModelConcurrencyTest {
         )
         assertEquals(TransactionEffect.CloseCancelled, vm.effects.first())
     }
+
+    @Test
+    fun hasUnsavedUserEditsIsTrueWhileStagingReceiptOrSavingUntouchedEdit() = runTest {
+        val stageGate = CompletableDeferred<String?>()
+        mediaPort.stageHandler = { stageGate.await() }
+        val blankVm = TransactionViewModel(
+            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
+            savedStateHandle = SavedStateHandle(),
+            ports = ports,
+            ioDispatcher = testDispatcher,
+            clock = fixedClock,
+        )
+        assertFalse(blankVm.hasUnsavedUserEdits())
+        blankVm.onIntent(TransactionIntent.AttachReceiptFromUri("content://gallery/in-flight"))
+        assertTrue((blankVm.uiState.value as TransactionUiState.Ready).isStagingReceipt)
+        assertTrue(blankVm.hasUnsavedUserEdits())
+        stageGate.complete(null)
+        assertFalse((blankVm.uiState.value as TransactionUiState.Ready).isStagingReceipt)
+        assertFalse(blankVm.hasUnsavedUserEdits())
+
+        val saveGate = CompletableDeferred<Long>()
+        repository.editResult = TransactionEditLoadResult.Loaded(sampleRecord(id = 77L))
+        repository.pendingSaveDeferred = saveGate
+        val editVm = TransactionViewModel(
+            launchArgs = TransactionLaunchArgs.Edit(77L),
+            savedStateHandle = SavedStateHandle(),
+            ports = ports,
+            ioDispatcher = testDispatcher,
+            clock = fixedClock,
+        )
+        assertFalse(editVm.hasUnsavedUserEdits())
+        editVm.onIntent(TransactionIntent.SaveClicked)
+        assertTrue((editVm.uiState.value as TransactionUiState.Ready).isSaving)
+        assertTrue(editVm.hasUnsavedUserEdits())
+        saveGate.complete(77L)
+        assertEquals(TransactionEffect.SavedAndFinish(77L), editVm.effects.first())
+    }
 }

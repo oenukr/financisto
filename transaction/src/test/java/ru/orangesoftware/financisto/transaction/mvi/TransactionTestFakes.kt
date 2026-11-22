@@ -147,10 +147,12 @@ internal class FakeTransactionRepository(
     var failLoadCatalogAfterFirstMessage: String? = null
     var rateHandler: (suspend (Long, Long) -> Double?)? = null
     var failSaveMessage: String? = null
+    var lastLoadCatalogEditingTransactionId: Long? = null
     private var nextId = 101L
     private var loadCatalogCalls = 0
 
     override suspend fun loadCatalog(editingTransactionId: Long?): TransactionCatalog {
+        lastLoadCatalogEditingTransactionId = editingTransactionId
         onLoadCatalog?.invoke()
         loadCatalogCalls++
         if (loadCatalogCalls > 1) {
@@ -200,8 +202,10 @@ internal class FakeReceiptMediaPort : ReceiptMediaPort {
     var stageHandler: (suspend (String) -> String?)? = null
     var failDeleteMessage: String? = null
 
-    override suspend fun stageFromUri(uriString: String): String? =
-        stageHandler?.invoke(uriString) ?: "uri_staged.jpg"
+    override suspend fun stageFromUri(uriString: String): String? {
+        val custom = stageHandler
+        return if (custom != null) custom(uriString) else "uri_staged.jpg"
+    }
 
     override fun resolveFilePath(fileName: String): String = "/tmp/$fileName"
 

@@ -445,5 +445,53 @@ class TransactionViewModelTest {
         assertTrue(ready.catalog.categories.any { it.id == 88L })
     }
 
+    @Test
+    fun processDeathAfterOpenSavedTransactionFromConsumedDraftRestoresEditAndAllowsSave() = runTest {
+        draftStore.savedByDraftId["draft-open-saved"] = 88L
+        repository.editResult = TransactionEditLoadResult.Loaded(
+            sampleRecord(id = 88L, attachedPicture = "saved_88.jpg")
+        )
+        val draftArgs = TransactionLaunchArgs.AiDraft(
+            TransactionDraft(
+                draftId = "draft-open-saved",
+                mode = TransactionMode.EXPENSE,
+                amountMinor = 1500L,
+                fromAccountId = 1L,
+                dateTimeMillis = FIXED_NOW_MILLIS,
+                stagedReceiptFileName = "draft_receipt.jpg",
+            )
+        )
+        val handle = SavedStateHandle()
+        val vm1 = TransactionViewModel(draftArgs, handle, ports, testDispatcher, fixedClock)
+        assertEquals(
+            ActiveSheet.ConsumedDraftPrompt(88L),
+            (vm1.uiState.value as TransactionUiState.Ready).activeSheet,
+        )
+
+        vm1.onIntent(TransactionIntent.OpenSavedTransaction(88L))
+        vm1.onIntent(TransactionIntent.UpdateNote("Edited saved tx"))
+
+        val vm2 = TransactionViewModel(draftArgs, handle, ports, testDispatcher, fixedClock)
+        val restored = vm2.uiState.value as TransactionUiState.Ready
+        assertEquals(88L, restored.form.existingTransactionId)
+        assertFalse(restored.form.isAiDraft)
+        assertEquals("Edited saved tx", restored.form.note)
+        assertEquals("saved_88.jpg", restored.form.initialPersistedPictureFileName)
+        assertNull(restored.activeSheet)
+        assertNull(restored.consumedDraftTransactionId)
+        assertEquals(88L, repository.lastLoadCatalogEditingTransactionId)
+
+        vm2.onIntent(TransactionIntent.OpenInLegacyClicked)
+        assertEquals(
+            TransactionEffect.OpenLegacyEditor(TransactionLaunchArgs.Edit(88L)),
+            vm2.effects.first(),
+        )
+
+        vm2.onIntent(TransactionIntent.SaveClicked)
+        assertEquals(1, repository.savedCommands.size)
+        assertEquals(88L, repository.savedCommands.single().existingTransactionId)
+        assertEquals(TransactionEffect.SavedAndFinish(101L), vm2.effects.first())
+    }
+
     private fun SaveTransactionCommand.amountCommandMinor(): Long = fromAmountMinor
 }
