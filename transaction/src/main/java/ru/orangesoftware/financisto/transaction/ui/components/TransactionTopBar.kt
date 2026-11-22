@@ -71,7 +71,7 @@ fun TransactionTopBar(
     onTimeClick: () -> Unit,
     onStatusClick: () -> Unit,
     onClearFormClick: () -> Unit,
-    onOpenLegacyClick: () -> Unit,
+    onOpenLegacyClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val configuration = LocalConfiguration.current
@@ -129,7 +129,7 @@ fun TransactionTopBar(
 @Composable
 private fun TopBarOverflowMenu(
     onClearFormClick: () -> Unit,
-    onOpenLegacyClick: () -> Unit,
+    onOpenLegacyClick: (() -> Unit)?,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     Box {
@@ -151,13 +151,15 @@ private fun TopBarOverflowMenu(
                     onClearFormClick()
                 },
             )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.tx_menu_open_legacy)) },
-                onClick = {
-                    menuExpanded = false
-                    onOpenLegacyClick()
-                },
-            )
+            if (onOpenLegacyClick != null) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.tx_menu_open_legacy)) },
+                    onClick = {
+                        menuExpanded = false
+                        onOpenLegacyClick()
+                    },
+                )
+            }
         }
     }
 }

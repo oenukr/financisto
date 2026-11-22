@@ -115,21 +115,7 @@ private fun ReadyTransactionContent(
         modifier = modifier
             .fillMaxSize()
             .imePadding(),
-        topBar = {
-            Box(modifier = Modifier.statusBarsPadding()) {
-                TransactionTopBar(
-                    dateTimeMillis = state.form.dateTimeMillis,
-                    is24HourFormat = state.prefs.is24HourFormat,
-                    status = state.form.status,
-                    onBackClick = { onIntent(TransactionIntent.CancelOrBackClicked) },
-                    onDateClick = { onIntent(TransactionIntent.OpenDatePicker) },
-                    onTimeClick = { onIntent(TransactionIntent.OpenTimePicker) },
-                    onStatusClick = { onIntent(TransactionIntent.OpenStatusPicker) },
-                    onClearFormClick = { onIntent(TransactionIntent.ClearFormClicked) },
-                    onOpenLegacyClick = { onIntent(TransactionIntent.OpenInLegacyClicked) },
-                )
-            }
-        },
+        topBar = { ReadyTopBar(state = state, onIntent = onIntent) },
         bottomBar = {
             TransactionBottomBar(
                 isBlankNew = state.form.isFromNewBlankLaunch,
@@ -162,6 +148,30 @@ private fun ReadyTransactionContent(
         onIntent = onIntent,
         onDismissAll = { onIntent(TransactionIntent.DismissSheet) },
     )
+}
+
+@Composable
+private fun ReadyTopBar(
+    state: TransactionUiState.Ready,
+    onIntent: (TransactionIntent) -> Unit,
+) {
+    Box(modifier = Modifier.statusBarsPadding()) {
+        TransactionTopBar(
+            dateTimeMillis = state.form.dateTimeMillis,
+            is24HourFormat = state.prefs.is24HourFormat,
+            status = state.form.status,
+            onBackClick = { onIntent(TransactionIntent.CancelOrBackClicked) },
+            onDateClick = { onIntent(TransactionIntent.OpenDatePicker) },
+            onTimeClick = { onIntent(TransactionIntent.OpenTimePicker) },
+            onStatusClick = { onIntent(TransactionIntent.OpenStatusPicker) },
+            onClearFormClick = { onIntent(TransactionIntent.ClearFormClicked) },
+            onOpenLegacyClick = if (state.form.isAiDraft) {
+                null
+            } else {
+                { onIntent(TransactionIntent.OpenInLegacyClicked) }
+            },
+        )
+    }
 }
 
 @Composable

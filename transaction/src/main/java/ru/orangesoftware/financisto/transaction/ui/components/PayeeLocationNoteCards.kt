@@ -74,10 +74,9 @@ fun PayeeFieldCard(
     }
     val (filtered, hasExactMatch) = remember(query, payees) {
         val trimmed = query.trim()
-        val needle = trimmed.lowercase()
-        val source = if (needle.isEmpty()) payees else payees.filter { it.title.lowercase().contains(needle) }
-        val exact = payees.any { it.title.equals(trimmed, ignoreCase = true) }
-        source.take(MaxInlineSuggestions) to exact
+        val ranked = filterAndRankSuggestions(payees, trimmed, MaxInlineSuggestions) { it.title }
+        val exact = trimmed.isNotEmpty() && payees.any { it.title.equals(trimmed, ignoreCase = true) }
+        ranked to exact
     }
 
     FormFieldCardSurface(isActive = isExpanded, modifier = modifier) {
@@ -227,12 +226,8 @@ fun LocationFieldCard(
         locations.firstOrNull { it.id == selectedLocationId }?.title
     } ?: stringResource(R.string.tx_placeholder_current_location)
     val savedSuggestions = remember(query, locations) {
-        val needle = query.trim().lowercase()
-        locations.asSequence()
-            .filter { it.id > 0L }
-            .filter { needle.isEmpty() || it.title.lowercase().contains(needle) }
-            .take(MaxInlineSuggestions)
-            .toList()
+        val savedLocations = locations.filter { it.id > 0L }
+        filterAndRankSuggestions(savedLocations, query, MaxInlineSuggestions) { it.title }
     }
 
     FormFieldCardSurface(isActive = isExpanded, modifier = modifier) {

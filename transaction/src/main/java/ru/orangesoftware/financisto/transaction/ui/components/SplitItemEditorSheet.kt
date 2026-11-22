@@ -34,13 +34,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import ru.orangesoftware.financisto.core.designsystem.theme.FinancistoTheme
 import ru.orangesoftware.financisto.transaction.R
 import ru.orangesoftware.financisto.transaction.domain.AmountScale
@@ -104,8 +108,11 @@ fun SplitItemEditorSheetContent(
         initialText = AmountScale.formatEditableAmount(split.amountMinor, currencyDecimals),
     )
     var isIncome by remember(split.localId, split.isIncome) { mutableStateOf(split.isIncome) }
+    var showAmountError by remember(split.localId, split.amountMinor) { mutableStateOf(false) }
     val noteState = rememberTextFieldState(initialText = split.note)
-    SyncSplitEditorFieldsEffect(split, currencyDecimals, amountState, noteState)
+    SyncSplitEditorFieldsEffect(split, currencyDecimals, amountState, noteState) {
+        showAmountError = false
+    }
 
     val selectedCategory = remember(categories, split.categoryId) {
         categories.firstOrNull { it.id == split.categoryId }
@@ -113,9 +120,19 @@ fun SplitItemEditorSheetContent(
     val selectedProject = remember(projects, split.projectId) {
         projects.firstOrNull { it.id == split.projectId && it.id > 0L }
     }
-    val buildDraft = {
-        val minor = AmountScale.parseMinorUnits(amountState.text.toString(), currencyDecimals) ?: 0L
-        split.copy(amountMinor = minor, isIncome = isIncome, note = noteState.text.toString())
+    val commitDraftAndRun = { action: () -> Unit ->
+        val minor = parseValidSplitAmountMinor(amountState.text.toString(), currencyDecimals) ?: split.amountMinor
+        onUpdateDraft(split.copy(amountMinor = minor, isIncome = isIncome, note = noteState.text.toString()))
+        action()
+    }
+    val onApplyClick = {
+        val parsedMinor = parseValidSplitAmountMinor(amountState.text.toString(), currencyDecimals)
+        if (parsedMinor == null) {
+            showAmountError = true
+        } else {
+            showAmountError = false
+            onSave(split.copy(amountMinor = parsedMinor, isIncome = isIncome, note = noteState.text.toString()))
+        }
     }
 
     Column(
@@ -127,21 +144,13 @@ fun SplitItemEditorSheetContent(
             categoryName = selectedCategory?.fullPath ?: stringResource(R.string.tx_placeholder_uncategorized),
             projectName = selectedProject?.title ?: stringResource(R.string.tx_placeholder_no_project),
             amountState = amountState,
+            showAmountError = showAmountError,
             noteState = noteState,
-            onPickCategory = {
-                onUpdateDraft(buildDraft())
-                onPickCategory()
-            },
-            onOpenCalculator = {
-                onUpdateDraft(buildDraft())
-                onOpenCalculator()
-            },
-            onPickProject = {
-                onUpdateDraft(buildDraft())
-                onPickProject()
-            },
+            onPickCategory = { commitDraftAndRun(onPickCategory) },
+            onOpenCalculator = { commitDraftAndRun(onOpenCalculator) },
+            onPickProject = { commitDraftAndRun(onPickProject) },
         )
-        SplitEditorActionButtons(onDismiss = onDismiss, onApply = { onSave(buildDraft()) })
+        SplitEditorActionButtons(onDismiss = onDismiss, onApply = onApplyClick)
         Spacer(modifier = Modifier.height(12.dp))
     }
 }
@@ -152,8 +161,10 @@ private fun SyncSplitEditorFieldsEffect(
     currencyDecimals: Int,
     amountState: TextFieldState,
     noteState: TextFieldState,
+    onAmountTextEdited: () -> Unit,
 ) {
-    LaunchedEffect(split.localId, split.amountMinor) {
+    val latestOnAmountTextEdited by rememberUpdatedState(onAmountTextEdited)
+    LaunchedEffect(split.localId, split.amountMinor, currencyDecimals) {
         val updatedAmount = AmountScale.formatEditableAmount(split.amountMinor, currencyDecimals)
         if (amountState.text.toString() != updatedAmount) {
             amountState.setTextAndPlaceCursorAtEnd(updatedAmount)
@@ -163,6 +174,22 @@ private fun SyncSplitEditorFieldsEffect(
         if (noteState.text.toString() != split.note) {
             noteState.setTextAndPlaceCursorAtEnd(split.note)
         }
+    }
+    LaunchedEffect(amountState) {
+        snapshotFlow { amountState.text.toString() }
+            .distinctUntilChanged()
+            .drop(1)
+            .collect { latestOnAmountTextEdited() }
+    }
+}
+
+private fun parseValidSplitAmountMinor(rawInput: String, decimals: Int): Long? {
+    val trimmed = rawInput.trim()
+    val validText = trimmed.isNotEmpty() && isValidDecimalInput(trimmed)
+    return if (validText) {
+        AmountScale.parseMinorUnits(trimmed, decimals)?.takeIf { it > 0L }
+    } else {
+        null
     }
 }
 
@@ -197,6 +224,7 @@ private fun SplitEditorFormFields(
     categoryName: String,
     projectName: String,
     amountState: TextFieldState,
+    showAmountError: Boolean,
     noteState: TextFieldState,
     onPickCategory: () -> Unit,
     onOpenCalculator: () -> Unit,
@@ -211,6 +239,12 @@ private fun SplitEditorFormFields(
         state = amountState,
         inputTransformation = DecimalInputTransformation,
         label = { Text(stringResource(R.string.tx_label_amount)) },
+        isError = showAmountError,
+        supportingText = if (showAmountError) {
+            { Text(stringResource(R.string.tx_error_invalid_split_amount)) }
+        } else {
+            null
+        },
         lineLimits = TextFieldLineLimits.SingleLine,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         trailingIcon = {

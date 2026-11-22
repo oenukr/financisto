@@ -172,6 +172,7 @@
     <string name="tx_chip_expense">Expense</string>
     <string name="tx_chip_income">Income</string>
     <string name="tx_label_amount">Amount</string>
+    <string name="tx_error_invalid_split_amount">Enter a valid amount greater than zero</string>
     <string name="tx_cd_calculator">Calculator</string>
     <string name="tx_dialog_select_time">Select Time</string>
     <string name="tx_dialog_discard_draft_title">Discard transaction draft?</string>

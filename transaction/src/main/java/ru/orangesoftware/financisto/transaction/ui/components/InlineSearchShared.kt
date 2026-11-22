@@ -43,9 +43,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,11 +61,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.drop
 import ru.orangesoftware.financisto.core.designsystem.theme.FinancistoTheme
 import ru.orangesoftware.financisto.transaction.R
 
-private const val MaxPendingEmitted = 16
+private const val MaxPendingEmitted = 64
 private const val TileCornerSmoothing = 0.4f
 
 val DecimalInputTransformation: InputTransformation = object : InputTransformation {
@@ -75,13 +77,13 @@ val DecimalInputTransformation: InputTransformation = object : InputTransformati
     }
 }
 
-private fun isValidDecimalInput(text: CharSequence): Boolean {
+internal fun isValidDecimalInput(text: CharSequence): Boolean {
     var separatorSeen = false
     for (index in 0 until text.length) {
         val ch = text[index]
         val isSeparator = ch == '.' || ch == ','
         when {
-            ch.isDigit() -> Unit
+            ch in '0'..'9' -> Unit
             isSeparator && !separatorSeen -> separatorSeen = true
             else -> return false
         }
@@ -140,41 +142,88 @@ fun FormFieldCardSurface(
     }
 }
 
+private class SyncedTextFieldTracker(initialText: String) {
+    val pendingEmitted = ArrayDeque<String>()
+    var lastSyncedText: String = initialText
+    var reconcileToken by mutableIntStateOf(0)
+
+    fun consumeEchoOrExternal(value: String, currentText: String): Boolean {
+        val echoIndex = pendingEmitted.indexOf(value)
+        return if (echoIndex >= 0) {
+            repeat(echoIndex + 1) { pendingEmitted.removeFirst() }
+            if (pendingEmitted.lastOrNull() == value && currentText == value) {
+                reconcileToken++
+            }
+            false
+        } else {
+            pendingEmitted.clear()
+            lastSyncedText = value
+            currentText != value
+        }
+    }
+}
+
+internal fun <T> filterAndRankSuggestions(
+    items: List<T>,
+    query: String,
+    limit: Int,
+    titleOf: (T) -> String,
+): List<T> {
+    val trimmed = query.trim()
+    if (trimmed.isEmpty()) return items.take(limit)
+    val exact = mutableListOf<T>()
+    val prefix = mutableListOf<T>()
+    val substring = mutableListOf<T>()
+    for (item in items) {
+        val title = titleOf(item)
+        when {
+            title.equals(trimmed, ignoreCase = true) -> exact.add(item)
+            title.startsWith(trimmed, ignoreCase = true) -> prefix.add(item)
+            title.contains(trimmed, ignoreCase = true) -> substring.add(item)
+        }
+    }
+    return sequenceOf(exact, prefix, substring).flatten().take(limit).toList()
+}
+
 @Composable
 fun rememberSyncedTextFieldState(
     value: String,
     onValueChanged: (String) -> Unit,
 ): TextFieldState {
     val state = rememberTextFieldState(initialText = value)
+    val latestValue by rememberUpdatedState(value)
     val latestOnValueChanged by rememberUpdatedState(onValueChanged)
-    val pendingEmitted = remember(state) { ArrayDeque<String>() }
-    val lastExternalApplied = remember(state) { arrayOfNulls<String>(1) }
+    val tracker = remember(state) { SyncedTextFieldTracker(initialText = state.text.toString()) }
 
     LaunchedEffect(value) {
-        val echoIndex = pendingEmitted.indexOf(value)
-        if (echoIndex >= 0) {
-            repeat(echoIndex + 1) { pendingEmitted.removeFirst() }
-        } else if (state.text.toString() != value) {
-            pendingEmitted.clear()
-            lastExternalApplied[0] = value
+        if (tracker.consumeEchoOrExternal(value, state.text.toString())) {
             state.setTextAndPlaceCursorAtEnd(value)
+        }
+    }
+
+    LaunchedEffect(tracker.reconcileToken) {
+        if (tracker.reconcileToken > 0) {
+            withFrameNanos { }
+            if (latestValue == state.text.toString() && tracker.pendingEmitted.lastOrNull() == latestValue) {
+                tracker.pendingEmitted.clear()
+            }
         }
     }
 
     LaunchedEffect(state) {
         snapshotFlow { state.text.toString() }
             .distinctUntilChanged()
-            .drop(1)
             .collect { current ->
-                if (lastExternalApplied[0] == current) {
-                    lastExternalApplied[0] = null
-                } else {
-                    lastExternalApplied[0] = null
-                    if (pendingEmitted.size >= MaxPendingEmitted) {
-                        pendingEmitted.removeFirst()
+                if (current != tracker.lastSyncedText) {
+                    tracker.lastSyncedText = current
+                    if (tracker.pendingEmitted.size >= MaxPendingEmitted) {
+                        tracker.pendingEmitted.removeFirst()
                     }
-                    pendingEmitted.addLast(current)
+                    tracker.pendingEmitted.addLast(current)
                     latestOnValueChanged(current)
+                    if (current == latestValue) {
+                        tracker.reconcileToken++
+                    }
                 }
             }
     }
