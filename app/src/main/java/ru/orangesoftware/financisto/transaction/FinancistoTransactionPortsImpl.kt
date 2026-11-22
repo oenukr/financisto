@@ -151,6 +151,10 @@ class FinancistoDraftSessionStore(
     fun consumePendingAutoOpenDraft(currentDraftId: String? = null): TransactionDraft? =
         synchronized(lock) { resolvePendingDraftLocked(currentDraftId, removeOnMatch = true) }
 
+    fun clearPendingAutoOpenDraft(draftId: String) {
+        synchronized(lock) { removePendingIfMatchingLocked(draftId) }
+    }
+
     private fun resolvePendingDraftLocked(currentDraftId: String?, removeOnMatch: Boolean): TransactionDraft? {
         val raw = prefs.getString(KEY_PENDING_DRAFT, null) ?: return null
         val draft = DraftSessionCodec.decodeDraft(raw)
@@ -223,17 +227,21 @@ class FinancistoReceiptMediaPort(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ReceiptMediaPort {
     override suspend fun stageFromUri(uriString: String): String? = withContext(ioDispatcher) {
+        var targetFile: File? = null
         try {
             val uri = uriString.toUri()
             val inputStream = openReceiptStream(uri)
             inputStream?.use { input ->
-                val targetFile = PicturesUtil.createEmptyImageFile()
-                targetFile.outputStream().use { output -> input.copyTo(output) }
-                targetFile.name
+                val createdFile = PicturesUtil.createEmptyImageFile()
+                targetFile = createdFile
+                createdFile.outputStream().use { output -> input.copyTo(output) }
+                createdFile.name
             }
         } catch (e: CancellationException) {
+            deleteFileQuietly(targetFile)
             throw e
         } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
+            deleteFileQuietly(targetFile)
             Timber.w(e, "Failed to stage receipt image from URI: %s", uriString)
             null
         }
@@ -274,6 +282,17 @@ class FinancistoReceiptMediaPort(
         }
         return contentStream ?: uri.path?.takeIf { it.isNotBlank() }?.let { path ->
             File(path).inputStream()
+        }
+    }
+
+    private fun deleteFileQuietly(file: File?) {
+        if (file == null) return
+        try {
+            if (file.exists() && !file.delete()) {
+                Timber.w("Failed to clean up partial receipt file: %s", file.absolutePath)
+            }
+        } catch (e: SecurityException) {
+            Timber.w(e, "No permission to clean up partial receipt file: %s", file.absolutePath)
         }
     }
 }

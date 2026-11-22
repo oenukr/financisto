@@ -13,6 +13,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import ru.orangesoftware.financisto.activity.AbstractTransactionActivity
 import ru.orangesoftware.financisto.activity.TransactionActivity
+import ru.orangesoftware.financisto.activity.TransferActivity
 import ru.orangesoftware.financisto.db.AbstractDbTest
 import ru.orangesoftware.financisto.model.Account
 import ru.orangesoftware.financisto.model.Category
@@ -25,14 +26,19 @@ import ru.orangesoftware.financisto.test.CategoryBuilder
 import ru.orangesoftware.financisto.test.CurrencyBuilder
 import ru.orangesoftware.financisto.test.ProjectBuilder
 import ru.orangesoftware.financisto.test.TransactionBuilder
+import ru.orangesoftware.financisto.transaction.domain.TransactionValidationResult
+import ru.orangesoftware.financisto.transaction.domain.TransactionValidator
 import ru.orangesoftware.financisto.transaction.model.DraftSplit
+import ru.orangesoftware.financisto.transaction.model.EditableSplit
 import ru.orangesoftware.financisto.transaction.model.SaveSplitCommand
 import ru.orangesoftware.financisto.transaction.model.SaveTransactionCommand
 import ru.orangesoftware.financisto.transaction.model.TransactionDraft
 import ru.orangesoftware.financisto.transaction.model.TransactionEditLoadResult
 import ru.orangesoftware.financisto.transaction.model.TransactionIds
+import ru.orangesoftware.financisto.transaction.model.TransactionLaunchArgs
 import ru.orangesoftware.financisto.transaction.model.TransactionMode
 import ru.orangesoftware.financisto.transaction.model.TransactionStatusOption
+import ru.orangesoftware.financisto.transaction.mvi.TransactionFormState
 
 class FinancistoTransactionRepositoryTest : AbstractDbTest() {
 
@@ -234,6 +240,49 @@ class FinancistoTransactionRepositoryTest : AbstractDbTest() {
     }
 
     @Test
+    fun saveForeignCurrencyEqualSplitsAbsorbsRoundingRemainderEndToEnd() = runTest {
+        val eur = CurrencyBuilder.withDb(db).name("EUR").title("Euro").symbol("€").create()
+        val categories = CategoryBuilder.createDefaultHierarchy(db)
+        val catA1 = categories.getValue("A1")
+        val catA2 = categories.getValue("A2")
+        val catalog = repository.loadCatalog(editingTransactionId = null)
+
+        // 3 equal €10.00 splits (€30.00 total) converting to $31.00:
+        // naive per-split rounding yields -$10.33 * 3 = -$30.99 (1-cent drift).
+        // Remainder absorption must persist -$10.33, -$10.33, -$10.34 summing to exact -$31.00.
+        val form = TransactionFormState(
+            mode = TransactionMode.EXPENSE,
+            fromAccountId = cash.id,
+            originalCurrencyId = eur.id,
+            primaryAmountInput = "30.00",
+            primaryAmountMinor = 3000L,
+            secondaryAmountInput = "31.00",
+            secondaryAmountMinor = 3100L,
+            categoryId = TransactionIds.SPLIT_CATEGORY_ID,
+            isSplitMode = true,
+            splits = listOf(
+                EditableSplit(localId = -1L, categoryId = catA1.id, amountMinor = 1000L, note = "S1"),
+                EditableSplit(localId = -2L, categoryId = catA2.id, amountMinor = 1000L, note = "S2"),
+                EditableSplit(localId = -3L, categoryId = catA1.id, amountMinor = 1000L, note = "S3"),
+            ),
+            dateTimeMillis = 1_700_000_000_000L,
+        )
+        val validation = TransactionValidator.validateAndBuildCommand(form, catalog)
+        assertTrue(validation is TransactionValidationResult.Valid)
+        val command = (validation as TransactionValidationResult.Valid).command
+
+        val savedId = repository.saveTransaction(command)
+        val persistedParent = db.getTransaction(savedId)
+        val persistedSplits = db.getSplitsForTransaction(savedId)
+
+        assertEquals(-3100L, persistedParent.fromAmount)
+        assertEquals(-3000L, persistedParent.originalFromAmount)
+        assertEquals(listOf(-1000L, -1000L, -1000L), persistedSplits.map { it.originalFromAmount })
+        assertEquals(listOf(-1033L, -1033L, -1034L), persistedSplits.map { it.fromAmount })
+        assertEquals(persistedParent.fromAmount, persistedSplits.sumOf { it.fromAmount })
+    }
+
+    @Test
     fun draftSessionStoreSerializesRoundTripAndEnforcesBoundedHistory() = runTest {
         val store = FinancistoDraftSessionStore(context)
         val richDraft = TransactionDraft(
@@ -300,6 +349,24 @@ class FinancistoTransactionRepositoryTest : AbstractDbTest() {
         )
         assertTrue(
             TransactionEntryRouter.shouldUseLegacyImmediately(
+                Intent().putExtra(TransactionActivity.AMOUNT_EXTRA, 5000L),
+                db,
+            )
+        )
+        assertTrue(
+            TransactionEntryRouter.shouldUseLegacyImmediately(
+                Intent().putExtra(TransactionActivity.AMOUNT_EXTRA, -5000L),
+                db,
+            )
+        )
+        assertTrue(
+            TransactionEntryRouter.shouldUseLegacyImmediately(
+                Intent().putExtra(TransactionActivity.AMOUNT_EXTRA, 0L),
+                db,
+            )
+        )
+        assertTrue(
+            TransactionEntryRouter.shouldUseLegacyImmediately(
                 Intent().putExtra(AbstractTransactionActivity.DUPLICATE_EXTRA, true),
                 db,
             )
@@ -322,6 +389,45 @@ class FinancistoTransactionRepositoryTest : AbstractDbTest() {
     }
 
     @Test
+    fun entryRouterBlocksLegacyEditorForAiDraftsAndPreservesBlankAndEdit() {
+        val pendingDraft = TransactionDraft(
+            draftId = "draft-legacy-guard",
+            mode = TransactionMode.EXPENSE,
+            amountMinor = 4250L,
+            fromAccountId = cash.id,
+            dateTimeMillis = 1_700_000_123_456L,
+        )
+        assertNull(
+            TransactionEntryRouter.createLegacyEditorIntent(context, TransactionLaunchArgs.AiDraft(pendingDraft))
+        )
+        assertNull(
+            TransactionEntryRouter.createLegacyEditorIntent(
+                context,
+                TransactionLaunchArgs.AiDraft(pendingDraft.copy(mode = TransactionMode.TRANSFER)),
+                fallbackIsTransfer = true,
+            )
+        )
+
+        val blankLegacy = TransactionEntryRouter.createLegacyEditorIntent(
+            context,
+            TransactionLaunchArgs.BlankNew(accountId = cash.id, initialMode = TransactionMode.TRANSFER),
+        )
+        assertNotNull(blankLegacy)
+        assertEquals(TransferActivity::class.java.name, blankLegacy?.component?.className)
+        assertTrue(blankLegacy?.getBooleanExtra(TransactionEntryRouter.EXTRA_FORCE_LEGACY, false) == true)
+        assertEquals(cash.id, blankLegacy?.getLongExtra(AbstractTransactionActivity.ACCOUNT_ID_EXTRA, -1L))
+
+        val editLegacy = TransactionEntryRouter.createLegacyEditorIntent(
+            context,
+            TransactionLaunchArgs.Edit(77L),
+            fallbackIsTransfer = false,
+        )
+        assertNotNull(editLegacy)
+        assertEquals(TransactionActivity::class.java.name, editLegacy?.component?.className)
+        assertEquals(77L, editLegacy?.getLongExtra(AbstractTransactionActivity.TRAN_ID_EXTRA, -1L))
+    }
+
+    @Test
     fun entryRouterHandlesPendingDraftConsumptionAndFlags() = runTest {
         val store = FinancistoDraftSessionStore(context)
         val pendingDraft = TransactionDraft(
@@ -333,8 +439,16 @@ class FinancistoTransactionRepositoryTest : AbstractDbTest() {
         )
         val aiIntent = TransactionEntryRouter.createAiDraftIntent(context, pendingDraft)
         assertNotNull(aiIntent.component)
+        assertTrue(aiIntent.flags and Intent.FLAG_ACTIVITY_NEW_TASK != 0)
         assertTrue(aiIntent.flags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0)
+        assertTrue(aiIntent.flags and Intent.FLAG_ACTIVITY_REORDER_TO_FRONT != 0)
         assertEquals(0, aiIntent.flags and Intent.FLAG_ACTIVITY_CLEAR_TOP)
+
+        store.savePendingDraft(pendingDraft)
+        store.clearPendingAutoOpenDraft("different-draft-id")
+        assertEquals(pendingDraft, store.peekPendingAutoOpenDraft())
+        store.clearPendingAutoOpenDraft(pendingDraft.draftId)
+        assertNull(store.peekPendingAutoOpenDraft())
 
         store.savePendingDraft(pendingDraft)
         store.acknowledgeDraftOpened(pendingDraft.draftId)

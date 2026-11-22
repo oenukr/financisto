@@ -42,7 +42,11 @@ object TransactionEntryRouter {
     fun createAiDraftIntent(context: Context, draft: TransactionDraft): Intent {
         return Intent(context, ComposeTransactionActivity::class.java).apply {
             putExtra(EXTRA_LAUNCH_ARGS, TransactionLaunchArgs.AiDraft(draft))
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                    Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+            )
         }
     }
 
@@ -83,34 +87,30 @@ object TransactionEntryRouter {
         context: Context,
         args: TransactionLaunchArgs,
         fallbackIsTransfer: Boolean = false,
-    ): Intent {
-        val targetClass = when (args) {
-            is TransactionLaunchArgs.BlankNew ->
-                if (args.initialMode == TransactionMode.TRANSFER) {
+    ): Intent? {
+        return when (args) {
+            is TransactionLaunchArgs.AiDraft -> null
+            is TransactionLaunchArgs.BlankNew -> {
+                val targetClass = if (args.initialMode == TransactionMode.TRANSFER) {
                     TransferActivity::class.java
                 } else {
                     TransactionActivity::class.java
                 }
-            is TransactionLaunchArgs.Edit ->
-                if (fallbackIsTransfer) TransferActivity::class.java else TransactionActivity::class.java
-            is TransactionLaunchArgs.AiDraft ->
-                if (args.draft.mode == TransactionMode.TRANSFER) {
-                    TransferActivity::class.java
-                } else {
-                    TransactionActivity::class.java
-                }
-        }
-        return Intent(context, targetClass).apply {
-            putExtra(EXTRA_FORCE_LEGACY, true)
-            when (args) {
-                is TransactionLaunchArgs.BlankNew -> {
+                Intent(context, targetClass).apply {
+                    putExtra(EXTRA_FORCE_LEGACY, true)
                     args.accountId?.let { putExtra(AbstractTransactionActivity.ACCOUNT_ID_EXTRA, it) }
                     args.initialDateTimeMillis?.let { putExtra(AbstractTransactionActivity.DATETIME_EXTRA, it) }
                 }
-                is TransactionLaunchArgs.Edit -> putExtra(AbstractTransactionActivity.TRAN_ID_EXTRA, args.transactionId)
-                is TransactionLaunchArgs.AiDraft -> {
-                    args.draft.fromAccountId?.let { putExtra(AbstractTransactionActivity.ACCOUNT_ID_EXTRA, it) }
-                    putExtra(AbstractTransactionActivity.DATETIME_EXTRA, args.draft.dateTimeMillis)
+            }
+            is TransactionLaunchArgs.Edit -> {
+                val targetClass = if (fallbackIsTransfer) {
+                    TransferActivity::class.java
+                } else {
+                    TransactionActivity::class.java
+                }
+                Intent(context, targetClass).apply {
+                    putExtra(EXTRA_FORCE_LEGACY, true)
+                    putExtra(AbstractTransactionActivity.TRAN_ID_EXTRA, args.transactionId)
                 }
             }
         }
@@ -153,8 +153,10 @@ object TransactionEntryRouter {
     @JvmStatic
     fun shouldUseLegacyImmediately(intent: Intent?, db: DatabaseAdapter): Boolean {
         if (intent == null) return false
+        val hasAmountOrBalanceExtra = intent.hasExtra(TransactionActivity.CURRENT_BALANCE_EXTRA) ||
+            intent.hasExtra(TransactionActivity.AMOUNT_EXTRA)
         val hasLegacyFlag = intent.getBooleanExtra(EXTRA_FORCE_LEGACY, false) ||
-            intent.hasExtra(TransactionActivity.CURRENT_BALANCE_EXTRA) ||
+            hasAmountOrBalanceExtra ||
             intent.getBooleanExtra(AbstractTransactionActivity.DUPLICATE_EXTRA, false)
         val hasTemplateExtra = intent.getBooleanExtra(AbstractTransactionActivity.NEW_FROM_TEMPLATE_EXTRA, false) ||
             intent.getIntExtra(AbstractTransactionActivity.TEMPLATE_EXTRA, 0) > 0

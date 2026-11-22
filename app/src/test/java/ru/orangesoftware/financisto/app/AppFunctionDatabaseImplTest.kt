@@ -36,6 +36,8 @@ import ru.orangesoftware.financisto.transaction.port.ReceiptMediaPort
 import ru.orangesoftware.financisto.transaction.port.TransactionRepository
 import ru.orangesoftware.financisto.utils.PicturesUtil
 import java.io.File
+import java.io.IOException
+import java.io.InputStream
 import java.time.LocalDateTime
 import kotlin.time.Clock
 
@@ -124,6 +126,32 @@ class AppFunctionDatabaseImplTest : AbstractDbTest() {
         )
         assertNull(AppFunctionDatabaseImpl.parseExifDateTime("invalid-date"))
         assertNull(AppFunctionDatabaseImpl.parseExifDateTime(null))
+    }
+
+    @Test
+    fun testSaveReceiptPictureDeletesPartialFileWhenCopyFails() {
+        val picturesDir = PicturesUtil.pictureFile("probe.jpg", false).parentFile
+        requireNotNull(picturesDir)
+        val beforeFiles = picturesDir.listFiles()?.map { it.name }.orEmpty().toSet()
+
+        val uri = Uri.parse("content://ru.orangesoftware.financisto.test/broken_receipt.jpg")
+        val failingStream = object : InputStream() {
+            private var deliveredFirstByte = false
+            override fun read(): Int {
+                if (!deliveredFirstByte) {
+                    deliveredFirstByte = true
+                    return 0xFF
+                }
+                throw IOException("Simulated stream read failure")
+            }
+        }
+        Shadows.shadowOf(context.contentResolver).registerInputStream(uri, failingStream)
+
+        val savedFileName = appDb.saveReceiptPicture(uri)
+        assertNull(savedFileName)
+
+        val afterFiles = picturesDir.listFiles()?.map { it.name }.orEmpty().toSet()
+        assertEquals(beforeFiles, afterFiles)
     }
 
     @Test
@@ -229,7 +257,9 @@ class AppFunctionDatabaseImplTest : AbstractDbTest() {
 
         val savedIntent = Shadows.shadowOf(pendingIntent).savedIntent
         assertEquals(ComposeTransactionActivity::class.java.name, savedIntent.component?.className)
+        assertTrue(savedIntent.flags and Intent.FLAG_ACTIVITY_NEW_TASK != 0)
         assertTrue(savedIntent.flags and Intent.FLAG_ACTIVITY_SINGLE_TOP != 0)
+        assertTrue(savedIntent.flags and Intent.FLAG_ACTIVITY_REORDER_TO_FRONT != 0)
         assertEquals(0, savedIntent.flags and Intent.FLAG_ACTIVITY_CLEAR_TOP)
 
         val launchArgs = IntentCompat.getParcelableExtra(

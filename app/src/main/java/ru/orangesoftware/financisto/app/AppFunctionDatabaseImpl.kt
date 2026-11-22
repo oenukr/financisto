@@ -104,18 +104,22 @@ class AppFunctionDatabaseImpl(
     }
 
     override fun saveReceiptPicture(uri: Uri): String? {
+        var targetFile: File? = null
         return try {
             openUriStream(uri)?.use { input ->
-                val targetFile = PicturesUtil.createEmptyImageFile()
-                targetFile.outputStream().use { output ->
+                val createdFile = PicturesUtil.createEmptyImageFile()
+                targetFile = createdFile
+                createdFile.outputStream().use { output ->
                     input.copyTo(output)
                 }
-                targetFile.name
+                createdFile.name
             }
         } catch (e: IOException) {
+            deletePartialReceipt(targetFile)
             Timber.w(e, "Failed to save receipt picture from URI: %s", uri)
             null
         } catch (e: SecurityException) {
+            deletePartialReceipt(targetFile)
             Timber.w(e, "No permission to read receipt picture URI: %s", uri)
             null
         }
@@ -202,6 +206,17 @@ class AppFunctionDatabaseImpl(
             }
         } else {
             null
+        }
+    }
+
+    private fun deletePartialReceipt(file: File?) {
+        if (file == null) return
+        try {
+            if (file.exists() && !file.delete()) {
+                Timber.w("Failed to clean up partial receipt file: %s", file.absolutePath)
+            }
+        } catch (e: SecurityException) {
+            Timber.w(e, "No permission to clean up partial receipt file: %s", file.absolutePath)
         }
     }
 

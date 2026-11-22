@@ -181,6 +181,7 @@
             android:name=".transaction.ComposeTransactionActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:exported="false"
+            android:taskAffinity=".MainActivity"
             android:windowSoftInputMode="stateAlwaysHidden|adjustResize" />
 
         <activity
