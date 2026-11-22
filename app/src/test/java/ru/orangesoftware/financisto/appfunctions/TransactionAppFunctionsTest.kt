@@ -2,6 +2,7 @@
 package ru.orangesoftware.financisto.appfunctions
 
 import android.app.PendingIntent
+import android.content.Context
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.net.Uri
@@ -22,11 +23,9 @@ import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
 import org.koin.dsl.module
 import org.mockito.kotlin.any
-import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
-import org.mockito.kotlin.never
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
@@ -37,10 +36,14 @@ import ru.orangesoftware.financisto.model.Category
 import ru.orangesoftware.financisto.model.CategoryEntity
 import ru.orangesoftware.financisto.model.CategoryTree
 import ru.orangesoftware.financisto.model.Currency
-import ru.orangesoftware.financisto.model.Transaction
+import ru.orangesoftware.financisto.transaction.FinancistoDraftSessionStore
 import java.lang.reflect.Field
 import java.time.LocalDateTime
 import java.time.ZoneId
+import kotlin.time.Clock
+import kotlin.time.Instant
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 class TransactionAppFunctionsTest {
 
@@ -85,7 +88,6 @@ class TransactionAppFunctionsTest {
             assertFalse(draft.isIncome)
             assertEquals("Coffee", draft.note)
             assertNull(draft.attachedPicture)
-            verifyNoDbWrites(db)
         }
     }
 
@@ -108,7 +110,6 @@ class TransactionAppFunctionsTest {
             assertEquals(50000L, draft.amount)
             assertTrue(draft.isIncome)
             assertEquals("Pay", draft.note)
-            verifyNoDbWrites(db)
         }
     }
 
@@ -127,7 +128,6 @@ class TransactionAppFunctionsTest {
             assertEquals(5000L, draft.toAmount)
             assertFalse(draft.isIncome)
             assertEquals("ATM", draft.note)
-            verifyNoDbWrites(db)
         }
     }
 
@@ -148,7 +148,6 @@ class TransactionAppFunctionsTest {
             assertEquals("McDonalds", draft.payeeName)
             assertEquals(-2500L, draft.amount)
             assertEquals("Lunch", draft.note)
-            verifyNoDbWrites(db)
         }
     }
 
@@ -182,7 +181,6 @@ class TransactionAppFunctionsTest {
             assertEquals(10L, captor.secondValue.categoryId)
             assertEquals(100L, captor.secondValue.payeeId)
             assertEquals(-1550L, captor.secondValue.amount)
-            verifyNoDbWrites(db)
         }
     }
 
@@ -228,7 +226,6 @@ class TransactionAppFunctionsTest {
             assertEquals(100L, draft.payeeId)
             assertEquals("Starbucks", draft.payeeName)
             assertEquals(-1550L, draft.amount)
-            verifyNoDbWrites(db)
         }
     }
 
@@ -245,7 +242,6 @@ class TransactionAppFunctionsTest {
             )
             val draft = captureDraft(db)
             assertEquals(-1550L, draft.amount)
-            verifyNoDbWrites(db)
         }
     }
 
@@ -259,7 +255,6 @@ class TransactionAppFunctionsTest {
             assertEquals(-5000L, draft.amount)
             assertEquals(5000L, draft.toAmount)
             assertEquals("ATM", draft.note)
-            verifyNoDbWrites(db)
         }
     }
 
@@ -316,7 +311,6 @@ class TransactionAppFunctionsTest {
             assertEquals("Weekly groceries", draft.note)
             assertEquals(expectedMillis, draft.dateTime)
             assertEquals("20261105143000.jpg", draft.attachedPicture)
-            verifyNoDbWrites(db)
         }
     }
 
@@ -349,7 +343,6 @@ class TransactionAppFunctionsTest {
             assertEquals("Supermarket checkout", draft.note)
             assertEquals(expectedMillis, draft.dateTime)
             assertEquals(expectedSplits, draft.splits)
-            verifyNoDbWrites(db)
         }
     }
 
@@ -377,7 +370,6 @@ class TransactionAppFunctionsTest {
             assertEquals(-1L, draft.categoryId)
             assertEquals(-10000L, draft.amount)
             assertEquals(expectedSplits, draft.splits)
-            verifyNoDbWrites(db)
         }
     }
 
@@ -551,7 +543,6 @@ class TransactionAppFunctionsTest {
             assertEquals(-50000L, draft.amount)
             assertEquals("Чек Сільпо", draft.note)
             assertEquals(expectedSplits, draft.splits)
-            verifyNoDbWrites(db)
         }
     }
 
@@ -641,7 +632,6 @@ class TransactionAppFunctionsTest {
             assertEquals(-2000L, draft.amount)
             assertFalse(draft.isIncome)
             assertEquals("Salary", draft.note)
-            verifyNoDbWrites(db)
         }
     }
 }
@@ -651,36 +641,21 @@ class CategoryClassifierAndDatabaseAdapterTest {
     @Test
     fun testAppFunctionDatabaseImplWithMockAdapterAndExifParser() {
         val mockAdapter = createMockDatabaseAdapter()
-        val impl = AppFunctionDatabaseImpl(mockAdapter)
+        val mockContext: Context = mock()
+        whenever(mockContext.getSharedPreferences(any(), any())).thenReturn(mock())
+        val impl = AppFunctionDatabaseImpl(mockAdapter, FinancistoDraftSessionStore(mockContext))
 
         val accounts = impl.getAccounts()
         assertEquals(1, accounts.size)
         assertEquals("Checking", accounts[0].title)
         assertEquals("USD", accounts[0].currencyCode)
+        assertEquals(1L, accounts[0].currencyId)
 
         val categories = impl.getCategories()
         assertEquals(2, categories.size)
         assertEquals("Food", categories[0].fullPath)
         assertEquals("Food > Groceries", categories[1].fullPath)
         assertEquals(10L, categories[1].parentId)
-
-        val txId = impl.insertOrUpdateTransaction(
-            fromAccountId = 1L,
-            toAccountId = null,
-            categoryId = null,
-            payeeId = 5L,
-            amount = -5000L,
-            toAmount = null,
-            note = "Split test",
-            dateTime = 123456L,
-            attachedPicture = "pic.jpg",
-            splits = listOf(TransactionSplit(categoryId = 11L, amount = -5000L, note = "Item")),
-        )
-        assertEquals(777L, txId)
-        val captor = argumentCaptor<Transaction>()
-        verify(mockAdapter).insertOrUpdate(captor.capture())
-        assertEquals(Category.SPLIT_CATEGORY_ID, captor.firstValue.categoryId)
-        assertEquals(1, captor.firstValue.splits.size)
 
         assertEquals(
             LocalDateTime.of(2026, 11, 5, 14, 30, 15),
@@ -800,7 +775,6 @@ class CategoryClassifierAndDatabaseAdapterTest {
                 assertEquals(3L, draft.toAccountId)
                 assertEquals(-1500L, draft.amount)
                 assertEquals(1500L, draft.toAmount)
-                verifyNoDbWrites(db)
             }
         } finally {
             stopKoin()
@@ -891,7 +865,6 @@ class CategoryClassifierAndDatabaseAdapterTest {
             assertSame(reviewIntent, adjustedResult)
             assertEquals(-100L, draft.amount)
             assertEquals(expectedSplits, draft.splits)
-            verifyNoDbWrites(db)
         } finally {
             stopKoin()
         }
@@ -903,8 +876,8 @@ class CategoryClassifierAndDatabaseAdapterTest {
         setupDefaultFixtures(db)
         whenever(db.getAccounts()).thenReturn(
             listOf(
-                AccountInfo(id = 10L, title = "Wallet", currencyCode = "USD", type = "CASH"),
-                AccountInfo(id = 11L, title = "Wallet", currencyCode = "EUR", type = "CASH"),
+                AccountInfo(id = 10L, title = "Wallet", currencyCode = "USD", type = "CASH", currencyId = 1L),
+                AccountInfo(id = 11L, title = "Wallet", currencyCode = "EUR", type = "CASH", currencyId = 2L),
             )
         )
         ensureBundleEmptyInitialized()
@@ -939,8 +912,61 @@ class CategoryClassifierAndDatabaseAdapterTest {
             assertEquals(10L, captor.secondValue.fromAccountId)
             assertEquals(11L, captor.secondValue.toAccountId)
             assertEquals(-2500L, captor.secondValue.amount)
-            assertEquals(2500L, captor.secondValue.toAmount)
-            verifyNoDbWrites(db)
+            assertNull(captor.secondValue.toAmount)
+        } finally {
+            stopKoin()
+        }
+    }
+
+    @OptIn(ExperimentalUuidApi::class)
+    @Test
+    fun testOpenDraftCrossCurrencyTransferLeavesToAmountNullAndUsesInjectedClock() {
+        val db: AppFunctionDatabase = mock()
+        setupDefaultFixtures(db)
+        whenever(db.getAccounts()).thenReturn(
+            listOf(
+                AccountInfo(id = 1L, title = "USD Cash", currencyCode = "USD", type = "CASH", currencyId = 1L),
+                AccountInfo(id = 2L, title = "USD Bank", currencyCode = "USD", type = "BANK", currencyId = 1L),
+                AccountInfo(id = 3L, title = "EUR Bank", currencyCode = "EUR", type = "BANK", currencyId = 2L),
+                AccountInfo(id = 4L, title = "Custom USD", currencyCode = "USD", type = "BANK", currencyId = 9L),
+            )
+        )
+        val fixedInstant = Instant.parse("2026-11-22T10:15:30Z")
+        val fixedClock = object : Clock {
+            override fun now(): Instant = fixedInstant
+        }
+        ensureBundleEmptyInitialized()
+        stopKoin()
+        startKoin {
+            modules(
+                module {
+                    single { db }
+                    single<Clock> { fixedClock }
+                }
+            )
+        }
+        try {
+            val service = TransactionAppFunctionService()
+            runBlocking {
+                service.openDraft(amount = 50.0, accountId = 1L, toAccountId = 3L, note = "FX transfer")
+                service.openDraft(amount = 50.0, accountId = 1L, toAccountId = 2L, note = "Same currency")
+                service.openDraft(amount = 50.0, accountId = 1L, toAccountId = 4L, note = "Different currencyId")
+            }
+            val captor = argumentCaptor<AppFunctionTransactionDraft>()
+            verify(db, times(3)).createTransactionReviewPendingIntent(captor.capture())
+
+            val fxDraft = captor.allValues[0]
+            assertEquals(-5000L, fxDraft.amount)
+            assertNull(fxDraft.toAmount)
+            assertEquals(fixedInstant.toEpochMilliseconds(), fxDraft.dateTime)
+            assertEquals(fxDraft.draftId, Uuid.parse(fxDraft.draftId).toString())
+
+            val sameCurrencyDraft = captor.allValues[1]
+            assertEquals(-5000L, sameCurrencyDraft.amount)
+            assertEquals(5000L, sameCurrencyDraft.toAmount)
+
+            val differentIdDraft = captor.allValues[2]
+            assertNull(differentIdDraft.toAmount)
         } finally {
             stopKoin()
         }
@@ -950,8 +976,15 @@ class CategoryClassifierAndDatabaseAdapterTest {
 private fun setupDefaultFixtures(db: AppFunctionDatabase) {
     whenever(db.getAccounts()).thenReturn(
         listOf(
-            AccountInfo(id = 1L, title = "Cash", currencyCode = "USD", type = "CASH"),
-            AccountInfo(id = 2L, title = "Card", currencyCode = "USD", type = "CARD", lastCategoryId = 20L),
+            AccountInfo(id = 1L, title = "Cash", currencyCode = "USD", type = "CASH", currencyId = 1L),
+            AccountInfo(
+                id = 2L,
+                title = "Card",
+                currencyCode = "USD",
+                type = "CARD",
+                lastCategoryId = 20L,
+                currencyId = 1L,
+            ),
         )
     )
     whenever(db.getCategories()).thenReturn(
@@ -1030,25 +1063,12 @@ private fun captureDraft(db: AppFunctionDatabase): AppFunctionTransactionDraft {
     return captor.firstValue
 }
 
-private fun verifyNoDbWrites(db: AppFunctionDatabase) {
-    verify(db, never()).createPayee(any())
-    verify(db, never()).insertOrUpdateTransaction(
-        fromAccountId = any(),
-        toAccountId = anyOrNull(),
-        categoryId = anyOrNull(),
-        payeeId = anyOrNull(),
-        amount = any(),
-        toAmount = anyOrNull(),
-        note = any(),
-        dateTime = any(),
-        attachedPicture = anyOrNull(),
-        splits = any(),
-    )
-}
-
 private fun createMockDatabaseAdapter(): DatabaseAdapter {
     val mockAdapter: DatabaseAdapter = mock()
-    val usd = Currency().apply { name = "USD" }
+    val usd = Currency().apply {
+        id = 1L
+        name = "USD"
+    }
     val activeAcc = Account().apply {
         id = 1L
         title = "Checking"
@@ -1082,7 +1102,6 @@ private fun createMockDatabaseAdapter(): DatabaseAdapter {
         add(food)
     }
     whenever(mockAdapter.getCategoriesTree(false)).thenReturn(tree)
-    whenever(mockAdapter.insertOrUpdate(any<Transaction>())).thenReturn(777L)
     val cursor: Cursor = mock()
     whenever(cursor.moveToNext()).thenReturn(true, true, false)
     whenever(cursor.getLong(0)).thenReturn(11L, 10L)

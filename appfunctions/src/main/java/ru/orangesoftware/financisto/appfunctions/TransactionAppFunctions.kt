@@ -19,9 +19,11 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.time.LocalDateTime
 import java.time.ZoneId
-import java.util.UUID
 import kotlin.math.abs
 import kotlin.math.round
+import kotlin.time.Clock
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 @RequiresApi(value = 36)
 @AppFunctionServiceEntryPoint(
@@ -31,6 +33,7 @@ import kotlin.math.round
 abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
 
     private val db: AppFunctionDatabase by inject()
+    private val clock: Clock by lazy { getKoin().getOrNull<Clock>() ?: Clock.System }
 
     /**
      * Classifies receipt details or line items against existing categories and resolves candidate accounts.
@@ -132,6 +135,7 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
      * transfers. Takes precedence over [toAccountName]; must be null when [splits] is non-empty.
      * @return A [PendingIntent] that opens Financisto's pre-filled transaction review screen before saving.
      */
+    @OptIn(ExperimentalUuidApi::class)
     @AppFunctionDeclaration(isDescribedByKDoc = true)
     suspend fun openDraft(
         amount: Double,
@@ -172,12 +176,15 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
         )
         val (payeeId, resolvedPayeeName) = resolvePayeeWithoutCreate(payeeName, catalog.payees)
         val attachedPictureFileName = receiptImageUri?.let(db::saveReceiptPicture)
-        val resolvedDateTime =
-            transactionDateTime ?: receiptImageUri?.let(db::extractReceiptImageDateTime) ?: LocalDateTime.now()
-        val epochMillis = resolvedDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val resolvedDateTime = transactionDateTime ?: receiptImageUri?.let(db::extractReceiptImageDateTime)
+        val epochMillis = resolvedDateTime
+            ?.atZone(ZoneId.systemDefault())
+            ?.toInstant()
+            ?.toEpochMilli()
+            ?: clock.now().toEpochMilliseconds()
         val signMultiplier = if (toAccount == null && isIncomeTransaction) 1L else -1L
         val isSplit = resolvedSplits.isNotEmpty()
-        val draftId = UUID.randomUUID().toString()
+        val draftId = Uuid.random().toString()
         val draft = AppFunctionTransactionDraft(
             draftId = draftId,
             fromAccountId = account.id,
@@ -186,7 +193,7 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
             payeeId = payeeId,
             payeeName = resolvedPayeeName,
             amount = signMultiplier * amountInCents,
-            toAmount = toAccount?.let { amountInCents },
+            toAmount = toAccount?.takeIf { isSameCurrency(account, it) }?.let { amountInCents },
             isIncome = toAccount == null && isIncomeTransaction,
             note = note.orEmpty(),
             dateTime = epochMillis,
@@ -579,6 +586,15 @@ private object AmountPrecision {
     const val CENTS_PER_UNIT = 100.0
     const val EPSILON = 1e-4
     const val MAX_STORED_CENTS = 1e14
+}
+
+private fun isSameCurrency(from: AccountInfo, to: AccountInfo): Boolean {
+    return when {
+        from.currencyId > 0L && to.currencyId > 0L -> from.currencyId == to.currencyId
+        from.currencyCode.isNotBlank() && to.currencyCode.isNotBlank() ->
+            from.currencyCode.equals(to.currencyCode, ignoreCase = true)
+        else -> false
+    }
 }
 
 private fun toValidatedMinorUnits(

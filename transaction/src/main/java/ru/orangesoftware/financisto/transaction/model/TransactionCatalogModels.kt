@@ -86,9 +86,6 @@ data class TransactionFormPreferences(
     val isShowNote: Boolean = true,
     val isShowTakePicture: Boolean = true,
     val isShowIsCCardPayment: Boolean = true,
-    val isSetFocusOnAmountField: Boolean = true,
-    val isPinProtected: Boolean = false,
-    val isPinProtectedNewTransaction: Boolean = true,
     val is24HourFormat: Boolean = true,
     val lastAccountId: Long = -1L,
 )

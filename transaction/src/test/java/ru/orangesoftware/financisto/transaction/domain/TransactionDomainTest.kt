@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.transaction.domain
 
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -22,6 +26,7 @@ import ru.orangesoftware.financisto.transaction.mvi.CalculatorTarget
 import ru.orangesoftware.financisto.transaction.mvi.TransactionFormState
 import ru.orangesoftware.financisto.transaction.mvi.TransactionIntent
 import ru.orangesoftware.financisto.transaction.mvi.TransactionUiState
+import kotlin.time.Instant
 
 class TransactionDomainTest {
 
@@ -241,8 +246,8 @@ class TransactionDomainTest {
                 EditableSplit(localId = -2L, categoryId = 20L, amountMinor = 2000L, isIncome = true),
             ),
         )
-        val mixedCmd = (TransactionValidator.validateAndBuildCommand(mixedSignForm, catalog)
-            as TransactionValidationResult.Valid).command
+        val mixedValidation = TransactionValidator.validateAndBuildCommand(mixedSignForm, catalog)
+        val mixedCmd = (mixedValidation as TransactionValidationResult.Valid).command
         assertEquals(listOf(-12000L, 2000L), mixedCmd.splits.map { it.originalFromAmountMinor })
         assertEquals(listOf(-14400L, 2400L), mixedCmd.splits.map { it.amountMinor })
         assertEquals(mixedCmd.fromAmountMinor, mixedCmd.splits.sumOf { it.amountMinor })
@@ -450,6 +455,47 @@ class TransactionDomainTest {
         assertFalse(state.form.isSplitMode)
         assertEquals(11L, state.form.categoryId)
         assertTrue(state.form.splits.isEmpty())
+    }
+
+    @Test
+    fun metaSheetReducerUpdatesDateAndTimeWithExplicitTimeZone() {
+        val nyZone = TimeZone.of("America/New_York")
+        val initialMillis = Instant.parse("2026-03-15T02:30:45.123Z").toEpochMilliseconds()
+        val initialState = blankReadyState().let {
+            it.copy(
+                form = it.form.copy(dateTimeMillis = initialMillis),
+                sheetStack = listOf(ActiveSheet.DatePicker),
+            )
+        }
+        val afterDate = MetaSheetReducer.reduce(
+            state = initialState,
+            intent = TransactionIntent.UpdateDate(year = 2026, monthZeroBased = 11, dayOfMonth = 25),
+            timeZone = nyZone,
+        )
+        assertNull(afterDate.activeSheet)
+        assertEquals(
+            LocalDateTime(2026, 12, 25, 22, 30, 45, 123_000_000).toInstant(nyZone).toEpochMilliseconds(),
+            afterDate.form.dateTimeMillis,
+        )
+        val afterTime = MetaSheetReducer.reduce(
+            state = afterDate.copy(sheetStack = listOf(ActiveSheet.TimePicker)),
+            intent = TransactionIntent.UpdateTime(hourOfDay = 8, minute = 15),
+            timeZone = nyZone,
+        )
+        assertNull(afterTime.activeSheet)
+        assertEquals(
+            LocalDateTime(2026, 12, 25, 8, 15, 45, 123_000_000),
+            Instant.fromEpochMilliseconds(afterTime.form.dateTimeMillis).toLocalDateTime(nyZone),
+        )
+        val leapUtc = MetaSheetReducer.reduce(
+            state = afterTime,
+            intent = TransactionIntent.UpdateDate(year = 2024, monthZeroBased = 1, dayOfMonth = 29),
+            timeZone = TimeZone.UTC,
+        )
+        assertEquals(
+            LocalDateTime(2024, 2, 29, 13, 15, 45, 123_000_000),
+            Instant.fromEpochMilliseconds(leapUtc.form.dateTimeMillis).toLocalDateTime(TimeZone.UTC),
+        )
     }
 
     private fun blankReadyState(): TransactionUiState.Ready {

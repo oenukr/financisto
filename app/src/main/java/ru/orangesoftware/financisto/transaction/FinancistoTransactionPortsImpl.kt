@@ -3,15 +3,19 @@ package ru.orangesoftware.financisto.transaction
 
 import android.content.Context
 import android.net.Uri
-import org.json.JSONArray
-import org.json.JSONObject
+import androidx.core.content.edit
+import androidx.core.net.toUri
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
 import ru.orangesoftware.financisto.datetime.DateUtils
 import ru.orangesoftware.financisto.db.DatabaseAdapter
-import ru.orangesoftware.financisto.transaction.model.DraftSplit
 import ru.orangesoftware.financisto.transaction.model.TransactionDraft
 import ru.orangesoftware.financisto.transaction.model.TransactionFormPreferences
-import ru.orangesoftware.financisto.transaction.model.TransactionMode
-import ru.orangesoftware.financisto.transaction.model.TransactionStatusOption
 import ru.orangesoftware.financisto.transaction.port.DraftSessionStore
 import ru.orangesoftware.financisto.transaction.port.ExchangeRatePort
 import ru.orangesoftware.financisto.transaction.port.ReceiptMediaPort
@@ -19,8 +23,10 @@ import ru.orangesoftware.financisto.transaction.port.TransactionPreferencesPort
 import ru.orangesoftware.financisto.utils.CurrencyCache
 import ru.orangesoftware.financisto.utils.MyPreferences
 import ru.orangesoftware.financisto.utils.PicturesUtil
+import timber.log.Timber
 import java.io.File
-import java.io.FileInputStream
+import java.io.IOException
+import java.io.InputStream
 
 class FinancistoTransactionPreferencesPort(
     private val context: Context,
@@ -39,187 +45,198 @@ class FinancistoTransactionPreferencesPort(
             isShowNote = MyPreferences.isShowNote(context),
             isShowTakePicture = MyPreferences.isShowTakePicture(context),
             isShowIsCCardPayment = MyPreferences.isShowIsCCardPayment(context),
-            isSetFocusOnAmountField = MyPreferences.isSetFocusOnAmountField(context),
-            isPinProtected = MyPreferences.isPinProtected(context),
-            isPinProtectedNewTransaction = MyPreferences.isPinProtectedNewTransaction(context),
             is24HourFormat = DateUtils.is24HourFormat(context),
             lastAccountId = MyPreferences.getLastAccount(context),
         )
     }
 }
 
+@Serializable
+private data class SavedDraftEntry(
+    val draftId: String,
+    val transactionId: Long,
+)
+
+private object DraftSessionCodec {
+    private val json = Json {
+        ignoreUnknownKeys = true
+        encodeDefaults = true
+    }
+
+    fun encodeDraft(draft: TransactionDraft): String = json.encodeToString(draft)
+
+    fun decodeDraft(raw: String): TransactionDraft? {
+        return try {
+            json.decodeFromString<TransactionDraft>(raw)
+        } catch (e: SerializationException) {
+            Timber.w(e, "Failed to decode pending AI transaction draft")
+            null
+        } catch (e: IllegalArgumentException) {
+            Timber.w(e, "Invalid pending AI transaction draft payload")
+            null
+        }
+    }
+
+    fun encodeHistory(entries: List<SavedDraftEntry>): String = json.encodeToString(entries)
+
+    fun decodeHistory(raw: String): List<SavedDraftEntry> {
+        return try {
+            json.decodeFromString<List<SavedDraftEntry>>(raw)
+        } catch (e: SerializationException) {
+            Timber.w(e, "Failed to decode saved AI draft history")
+            emptyList()
+        } catch (e: IllegalArgumentException) {
+            Timber.w(e, "Invalid saved AI draft history payload")
+            emptyList()
+        }
+    }
+}
+
 class FinancistoDraftSessionStore(
     context: Context,
+    @Suppress("InjectDispatcher")
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : DraftSessionStore {
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val lock = Any()
 
-    override suspend fun getSavedTransactionId(draftId: String): Long? {
-        val value = prefs.getLong(draftId, -1L)
-        return value.takeIf { it > 0L }
+    override suspend fun getSavedTransactionId(draftId: String): Long? = withContext(ioDispatcher) {
+        synchronized(lock) {
+            val raw = prefs.getString(KEY_SAVED_DRAFTS, null) ?: return@synchronized null
+            DraftSessionCodec.decodeHistory(raw)
+                .lastOrNull { it.draftId == draftId }
+                ?.transactionId
+                ?.takeIf { it > 0L }
+        }
     }
 
     override suspend fun markDraftSaved(draftId: String, transactionId: Long) {
-        if (transactionId > 0L) {
-            prefs.edit().putLong(draftId, transactionId).apply()
+        withContext(ioDispatcher) {
+            synchronized(lock) {
+                if (transactionId > 0L) {
+                    val existing = prefs.getString(KEY_SAVED_DRAFTS, null)
+                        ?.let(DraftSessionCodec::decodeHistory)
+                        .orEmpty()
+                    val retained = existing.filterNot { it.draftId == draftId }
+                    val updated = (retained + SavedDraftEntry(draftId = draftId, transactionId = transactionId))
+                        .takeLast(MAX_SAVED_DRAFTS)
+                    prefs.edit { putString(KEY_SAVED_DRAFTS, DraftSessionCodec.encodeHistory(updated)) }
+                }
+                removePendingIfMatchingLocked(draftId)
+            }
         }
-        removePendingIfMatching(draftId)
     }
 
     override suspend fun acknowledgeDraftOpened(draftId: String) {
-        removePendingIfMatching(draftId)
+        withContext(ioDispatcher) {
+            synchronized(lock) { removePendingIfMatchingLocked(draftId) }
+        }
     }
 
     override suspend fun clearPendingDraft(draftId: String) {
-        removePendingIfMatching(draftId)
+        withContext(ioDispatcher) {
+            synchronized(lock) { removePendingIfMatchingLocked(draftId) }
+        }
     }
 
     fun savePendingDraft(draft: TransactionDraft) {
-        prefs.edit().putString(KEY_PENDING_DRAFT, encodeDraft(draft).toString()).commit()
+        synchronized(lock) {
+            prefs.edit(commit = true) { putString(KEY_PENDING_DRAFT, DraftSessionCodec.encodeDraft(draft)) }
+        }
     }
 
-    fun consumePendingAutoOpenDraft(currentDraftId: String? = null): TransactionDraft? {
+    fun peekPendingAutoOpenDraft(currentDraftId: String? = null): TransactionDraft? =
+        synchronized(lock) { resolvePendingDraftLocked(currentDraftId, removeOnMatch = false) }
+
+    fun consumePendingAutoOpenDraft(currentDraftId: String? = null): TransactionDraft? =
+        synchronized(lock) { resolvePendingDraftLocked(currentDraftId, removeOnMatch = true) }
+
+    private fun resolvePendingDraftLocked(currentDraftId: String?, removeOnMatch: Boolean): TransactionDraft? {
         val raw = prefs.getString(KEY_PENDING_DRAFT, null) ?: return null
-        prefs.edit().remove(KEY_PENDING_DRAFT).apply()
-        val draft = runCatching { decodeDraft(JSONObject(raw)) }.getOrNull() ?: return null
-        val alreadySaved = prefs.getLong(draft.draftId, -1L) > 0L
-        return if (alreadySaved || (currentDraftId != null && draft.draftId == currentDraftId)) {
-            null
-        } else {
-            draft
+        val draft = DraftSessionCodec.decodeDraft(raw)
+        val savedHistory = prefs.getString(KEY_SAVED_DRAFTS, null)
+            ?.let(DraftSessionCodec::decodeHistory)
+            .orEmpty()
+        val alreadySaved = draft != null && savedHistory.any { it.draftId == draft.draftId && it.transactionId > 0L }
+        val isCurrentDraft = currentDraftId != null && draft?.draftId == currentDraftId
+        val shouldDrop = draft == null || alreadySaved || isCurrentDraft
+        if (shouldDrop || removeOnMatch) {
+            prefs.edit { remove(KEY_PENDING_DRAFT) }
         }
+        return if (shouldDrop) null else draft
     }
 
-    private fun removePendingIfMatching(draftId: String) {
+    private fun removePendingIfMatchingLocked(draftId: String) {
         val raw = prefs.getString(KEY_PENDING_DRAFT, null) ?: return
-        val pendingId = runCatching { JSONObject(raw).optString("draftId") }.getOrNull()
-        if (pendingId == draftId) {
-            prefs.edit().remove(KEY_PENDING_DRAFT).apply()
+        val pending = DraftSessionCodec.decodeDraft(raw)
+        if (pending == null || pending.draftId == draftId) {
+            prefs.edit { remove(KEY_PENDING_DRAFT) }
         }
     }
 
-    private fun encodeDraft(draft: TransactionDraft): JSONObject {
-        val splitsJson = JSONArray().apply {
-            draft.splits.forEach { split ->
-                put(
-                    JSONObject()
-                        .put("categoryId", split.categoryId)
-                        .put("categoryName", split.categoryName)
-                        .put("amountMinor", split.amountMinor)
-                        .put("note", split.note)
-                        .put("projectId", split.projectId)
-                )
-            }
-        }
-        return JSONObject()
-            .put("draftId", draft.draftId)
-            .put("mode", draft.mode.name)
-            .put("amountMinor", draft.amountMinor)
-            .put("fromAccountId", draft.fromAccountId)
-            .put("toAccountId", draft.toAccountId)
-            .put("originalCurrencyId", draft.originalCurrencyId)
-            .put("originalAmountMinor", draft.originalAmountMinor)
-            .put("toAmountMinor", draft.toAmountMinor)
-            .put("categoryId", draft.categoryId)
-            .put("payeeId", draft.payeeId)
-            .put("pendingPayeeName", draft.pendingPayeeName)
-            .put("projectId", draft.projectId)
-            .put("locationId", draft.locationId)
-            .put("dateTimeMillis", draft.dateTimeMillis)
-            .put("status", draft.status.name)
-            .put("note", draft.note)
-            .put("isCCardPayment", draft.isCCardPayment)
-            .put("stagedReceiptFileName", draft.stagedReceiptFileName)
-            .put("splits", splitsJson)
-    }
-
-    private fun decodeDraft(json: JSONObject): TransactionDraft {
-        val splitsArray = json.optJSONArray("splits") ?: JSONArray()
-        val splits = List(splitsArray.length()) { index ->
-            val obj = splitsArray.getJSONObject(index)
-            DraftSplit(
-                categoryId = obj.getLong("categoryId"),
-                categoryName = obj.optStringOrNull("categoryName"),
-                amountMinor = obj.getLong("amountMinor"),
-                note = obj.optString("note", ""),
-                projectId = obj.optLong("projectId", 0L),
-            )
-        }
-        val modeName = json.optString("mode", TransactionMode.EXPENSE.name)
-        val statusName = json.optString("status", TransactionStatusOption.UR.name)
-        return TransactionDraft(
-            draftId = json.getString("draftId"),
-            mode = TransactionMode.entries.firstOrNull { it.name == modeName } ?: TransactionMode.EXPENSE,
-            amountMinor = json.optLongOrNull("amountMinor"),
-            fromAccountId = json.optLongOrNull("fromAccountId"),
-            toAccountId = json.optLongOrNull("toAccountId"),
-            originalCurrencyId = json.optLongOrNull("originalCurrencyId"),
-            originalAmountMinor = json.optLongOrNull("originalAmountMinor"),
-            toAmountMinor = json.optLongOrNull("toAmountMinor"),
-            categoryId = json.optLongOrNull("categoryId"),
-            payeeId = json.optLongOrNull("payeeId"),
-            pendingPayeeName = json.optStringOrNull("pendingPayeeName"),
-            projectId = json.optLong("projectId", 0L),
-            locationId = json.optLong("locationId", 0L),
-            dateTimeMillis = json.getLong("dateTimeMillis"),
-            status = TransactionStatusOption.entries.firstOrNull { it.name == statusName }
-                ?: TransactionStatusOption.UR,
-            note = json.optString("note", ""),
-            isCCardPayment = json.optBoolean("isCCardPayment", false),
-            stagedReceiptFileName = json.optStringOrNull("stagedReceiptFileName"),
-            splits = splits,
-        )
-    }
-
-    private fun JSONObject.optLongOrNull(key: String): Long? = if (has(key) && !isNull(key)) getLong(key) else null
-
-    private fun JSONObject.optStringOrNull(key: String): String? =
-        if (has(key) && !isNull(key)) getString(key) else null
-
-    private companion object {
+    internal companion object {
         const val PREFS_NAME = "financisto_ai_draft_sessions"
         const val KEY_PENDING_DRAFT = "pending_auto_open_draft"
+        const val KEY_SAVED_DRAFTS = "saved_draft_history"
+        const val MAX_SAVED_DRAFTS = 50
     }
 }
 
 class FinancistoExchangeRatePort(
     private val context: Context,
     private val db: DatabaseAdapter,
+    @Suppress("InjectDispatcher")
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ExchangeRatePort {
-    @Suppress("TooGenericExceptionCaught")
-    override suspend fun fetchLiveRate(fromCurrencyId: Long, toCurrencyId: Long): Result<Double> {
-        return try {
-            val fromCur = CurrencyCache.getCurrency(db, fromCurrencyId)
-                ?: return Result.failure(IllegalArgumentException("Source currency not found"))
-            val toCur = CurrencyCache.getCurrency(db, toCurrencyId)
-                ?: return Result.failure(IllegalArgumentException("Target currency not found"))
-            val provider = MyPreferences.createExchangeRatesProvider(context)
-            val rate = provider.getRate(fromCur, toCur)
-            if (rate.isOk && rate.rate > 0.0) {
-                Result.success(rate.rate)
-            } else {
-                Result.failure(IllegalStateException(rate.errorMessage?.ifBlank { null } ?: "Unable to fetch rate"))
+    override suspend fun fetchLiveRate(fromCurrencyId: Long, toCurrencyId: Long): Result<Double> =
+        withContext(ioDispatcher) {
+            try {
+                val fromCur = CurrencyCache.getCurrency(db, fromCurrencyId)
+                val toCur = CurrencyCache.getCurrency(db, toCurrencyId)
+                when {
+                    fromCur == null -> Result.failure(IllegalArgumentException("Source currency not found"))
+                    toCur == null -> Result.failure(IllegalArgumentException("Target currency not found"))
+                    else -> {
+                        val provider = MyPreferences.createExchangeRatesProvider(context)
+                        val rate = provider.getRate(fromCur, toCur)
+                        if (rate.isOk && rate.rate > 0.0) {
+                            Result.success(rate.rate)
+                        } else {
+                            val msg = rate.errorMessage?.ifBlank { null } ?: "Unable to fetch rate"
+                            Timber.w("Exchange rate fetch failed (%s -> %s): %s", fromCur.name, toCur.name, msg)
+                            Result.failure(IllegalStateException(msg))
+                        }
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
+                Timber.w(e, "Failed to fetch live exchange rate (%d -> %d)", fromCurrencyId, toCurrencyId)
+                Result.failure(e)
             }
-        } catch (e: Exception) {
-            Result.failure(e)
         }
-    }
 }
 
 class FinancistoReceiptMediaPort(
     private val context: Context,
+    @Suppress("InjectDispatcher")
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ReceiptMediaPort {
-    override suspend fun stageFromUri(uriString: String): String? {
-        val uri = Uri.parse(uriString)
-        val inputStream = runCatching { context.contentResolver.openInputStream(uri) }.getOrNull()
-            ?: uri.path?.takeIf { it.isNotBlank() }?.let { runCatching { FileInputStream(File(it)) }.getOrNull() }
-            ?: return null
-        return runCatching {
-            inputStream.use { input ->
+    override suspend fun stageFromUri(uriString: String): String? = withContext(ioDispatcher) {
+        try {
+            val uri = uriString.toUri()
+            val inputStream = openReceiptStream(uri)
+            inputStream?.use { input ->
                 val targetFile = PicturesUtil.createEmptyImageFile()
                 targetFile.outputStream().use { output -> input.copyTo(output) }
                 targetFile.name
             }
-        }.getOrNull()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
+            Timber.w(e, "Failed to stage receipt image from URI: %s", uriString)
+            null
+        }
     }
 
     override fun resolveFilePath(fileName: String): String? {
@@ -228,11 +245,35 @@ class FinancistoReceiptMediaPort(
     }
 
     override suspend fun deleteStagedFile(fileName: String) {
-        runCatching {
-            val file = PicturesUtil.pictureFile(fileName, false)
-            if (file.exists()) {
-                file.delete()
+        withContext(ioDispatcher) {
+            try {
+                val file = PicturesUtil.pictureFile(fileName, false)
+                if (file.exists() && !file.delete()) {
+                    Timber.w("Failed to delete staged receipt file: %s", file.absolutePath)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
+                Timber.w(e, "Error deleting staged receipt file: %s", fileName)
             }
+        }
+    }
+
+    private fun openReceiptStream(uri: Uri): InputStream? {
+        val contentStream = try {
+            context.contentResolver.openInputStream(uri)
+        } catch (e: IOException) {
+            Timber.d(e, "ContentResolver could not open receipt URI: %s", uri)
+            null
+        } catch (e: SecurityException) {
+            Timber.w(e, "No permission to open receipt URI: %s", uri)
+            null
+        } catch (e: UnsupportedOperationException) {
+            Timber.d(e, "ContentResolver unsupported for receipt URI: %s", uri)
+            null
+        }
+        return contentStream ?: uri.path?.takeIf { it.isNotBlank() }?.let { path ->
+            File(path).inputStream()
         }
     }
 }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.transaction
 
+import android.database.sqlite.SQLiteException
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.db.DatabaseHelper
 import ru.orangesoftware.financisto.model.Category
@@ -14,6 +15,7 @@ import ru.orangesoftware.financisto.transaction.model.LocationOption
 import ru.orangesoftware.financisto.transaction.model.PayeeOption
 import ru.orangesoftware.financisto.transaction.model.ProjectOption
 import ru.orangesoftware.financisto.transaction.model.TransactionStatusOption
+import timber.log.Timber
 
 internal object FinancistoTransactionMapper {
     private const val RECENT_NOTES_LIMIT = 8
@@ -96,6 +98,17 @@ internal object FinancistoTransactionMapper {
             .map { loc -> LocationOption(id = loc.id, title = loc.title.orEmpty(), isActive = loc.isActive) }
     }
 
+    fun loadCategories(db: DatabaseAdapter): List<CategoryOption> {
+        val categories = mutableListOf<CategoryOption>()
+        collectCategories(
+            nodes = db.getCategoriesTree(false).roots,
+            parentPath = null,
+            parentId = 0L,
+            dest = categories,
+        )
+        return categories
+    }
+
     fun collectCategories(
         nodes: List<Category>,
         parentPath: String?,
@@ -128,7 +141,15 @@ internal object FinancistoTransactionMapper {
     }
 
     fun queryRecentNotes(db: DatabaseAdapter): List<String> {
-        val sqlDb = runCatching { db.db() }.getOrNull() ?: return emptyList()
+        val sqlDb = try {
+            db.db()
+        } catch (e: SQLiteException) {
+            Timber.w(e, "Failed to open database for recent notes")
+            null
+        } catch (e: IllegalStateException) {
+            Timber.w(e, "Database unavailable for recent notes")
+            null
+        } ?: return emptyList()
         val notes = mutableListOf<String>()
         sqlDb.rawQuery(RECENT_NOTES_SQL, arrayOf(RECENT_NOTES_LIMIT.toString())).use { cursor ->
             while (cursor.moveToNext()) {

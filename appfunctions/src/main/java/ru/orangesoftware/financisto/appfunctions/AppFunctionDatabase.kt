@@ -11,6 +11,7 @@ data class AccountInfo(
     val currencyCode: String = "",
     val type: String = "",
     val lastCategoryId: Long = 0L,
+    val currencyId: Long = 0L,
 )
 
 data class CategoryInfo(
@@ -60,22 +61,9 @@ interface AppFunctionDatabase {
     fun getCategories(): List<CategoryInfo>
     fun getPayees(): List<PayeeInfo>
     fun getCategoryHistory(limit: Int = DEFAULT_HISTORY_LIMIT): List<HistoricalCategorySignal> = emptyList()
-    fun createPayee(name: String): Long
     fun saveReceiptPicture(uri: Uri): String? = null
     fun extractReceiptImageDateTime(uri: Uri): LocalDateTime? = null
     fun createTransactionReviewPendingIntent(draft: AppFunctionTransactionDraft): PendingIntent
-    fun insertOrUpdateTransaction(
-        fromAccountId: Long,
-        toAccountId: Long?,
-        categoryId: Long?,
-        payeeId: Long?,
-        amount: Long,
-        toAmount: Long?,
-        note: String,
-        dateTime: Long,
-        attachedPicture: String? = null,
-        splits: List<TransactionSplit> = emptyList(),
-    ): Long
 
     companion object {
         const val DEFAULT_HISTORY_LIMIT = 500

@@ -190,6 +190,7 @@ dependencies {
     testImplementation(libs.test.hamcrest)
     testImplementation(libs.test.mockito.core)
     testImplementation(libs.test.mockito.kotlin)
+    testImplementation(libs.kotlinx.coroutines.test)
 
     implementation(project(":appfunctions"))
     implementation(project(":core:designsystem"))

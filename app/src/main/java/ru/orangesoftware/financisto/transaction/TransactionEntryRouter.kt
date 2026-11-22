@@ -3,6 +3,8 @@ package ru.orangesoftware.financisto.transaction
 
 import android.content.Context
 import android.content.Intent
+import androidx.core.content.IntentCompat
+import org.koin.core.context.GlobalContext
 import ru.orangesoftware.financisto.activity.AbstractTransactionActivity
 import ru.orangesoftware.financisto.activity.TransactionActivity
 import ru.orangesoftware.financisto.activity.TransferActivity
@@ -40,7 +42,13 @@ object TransactionEntryRouter {
     fun createAiDraftIntent(context: Context, draft: TransactionDraft): Intent {
         return Intent(context, ComposeTransactionActivity::class.java).apply {
             putExtra(EXTRA_LAUNCH_ARGS, TransactionLaunchArgs.AiDraft(draft))
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
+    }
+
+    internal fun createAiDraftReplacementIntent(context: Context, draft: TransactionDraft): Intent {
+        return Intent(context, ComposeTransactionActivity::class.java).apply {
+            putExtra(EXTRA_LAUNCH_ARGS, TransactionLaunchArgs.AiDraft(draft))
         }
     }
 
@@ -108,12 +116,36 @@ object TransactionEntryRouter {
         }
     }
 
+    internal fun resolveLaunchArgs(intent: Intent?): TransactionLaunchArgs {
+        val explicit = intent?.let {
+            IntentCompat.getParcelableExtra(it, EXTRA_LAUNCH_ARGS, TransactionLaunchArgs::class.java)
+        }
+        val tranId = intent?.getLongExtra(AbstractTransactionActivity.TRAN_ID_EXTRA, -1L) ?: -1L
+        return when {
+            explicit != null -> explicit
+            tranId > 0L -> TransactionLaunchArgs.Edit(tranId)
+            else -> {
+                val accountId = intent?.getLongExtra(AbstractTransactionActivity.ACCOUNT_ID_EXTRA, -1L)
+                    ?.takeIf { it > 0L }
+                val dateMillis = intent?.getLongExtra(AbstractTransactionActivity.DATETIME_EXTRA, -1L)
+                    ?.takeIf { it > 0L }
+                TransactionLaunchArgs.BlankNew(
+                    accountId = accountId,
+                    initialMode = TransactionMode.EXPENSE,
+                    initialDateTimeMillis = dateMillis,
+                )
+            }
+        }
+    }
+
     @JvmStatic
     @JvmOverloads
-    fun launchPendingAiDraftIfPresent(context: Context, currentDraftId: String? = null): Boolean {
-        val draft = FinancistoDraftSessionStore(context)
-            .consumePendingAutoOpenDraft(currentDraftId)
-            ?: return false
+    fun launchPendingAiDraftIfPresent(
+        context: Context,
+        currentDraftId: String? = null,
+        draftSessionStore: FinancistoDraftSessionStore = resolveDraftSessionStore(context),
+    ): Boolean {
+        val draft = draftSessionStore.consumePendingAutoOpenDraft(currentDraftId) ?: return false
         context.startActivity(createAiDraftIntent(context, draft))
         return true
     }
@@ -121,17 +153,22 @@ object TransactionEntryRouter {
     @JvmStatic
     fun shouldUseLegacyImmediately(intent: Intent?, db: DatabaseAdapter): Boolean {
         if (intent == null) return false
-        if (intent.getBooleanExtra(EXTRA_FORCE_LEGACY, false)) return true
-        if (intent.hasExtra(TransactionActivity.CURRENT_BALANCE_EXTRA)) return true
-        if (intent.getBooleanExtra(AbstractTransactionActivity.DUPLICATE_EXTRA, false)) return true
-        if (intent.getBooleanExtra(AbstractTransactionActivity.NEW_FROM_TEMPLATE_EXTRA, false)) return true
-        if (intent.getIntExtra(AbstractTransactionActivity.TEMPLATE_EXTRA, 0) > 0) return true
+        val hasLegacyFlag = intent.getBooleanExtra(EXTRA_FORCE_LEGACY, false) ||
+            intent.hasExtra(TransactionActivity.CURRENT_BALANCE_EXTRA) ||
+            intent.getBooleanExtra(AbstractTransactionActivity.DUPLICATE_EXTRA, false)
+        val hasTemplateExtra = intent.getBooleanExtra(AbstractTransactionActivity.NEW_FROM_TEMPLATE_EXTRA, false) ||
+            intent.getIntExtra(AbstractTransactionActivity.TEMPLATE_EXTRA, 0) > 0
         val tranId = intent.getLongExtra(AbstractTransactionActivity.TRAN_ID_EXTRA, -1L)
-        if (tranId > 0L) {
+        val isTemplateTransaction = tranId > 0L && run {
             val loaded = db.getTransaction(tranId)
             val parent = if (loaded.isSplitChild) db.getTransaction(loaded.parentId) else loaded
-            if (parent.id > 0L && parent.isTemplateLike) return true
+            parent.id > 0L && parent.isTemplateLike
         }
-        return false
+        return hasLegacyFlag || hasTemplateExtra || isTemplateTransaction
+    }
+
+    private fun resolveDraftSessionStore(context: Context): FinancistoDraftSessionStore {
+        return GlobalContext.getOrNull()?.getOrNull<FinancistoDraftSessionStore>()
+            ?: FinancistoDraftSessionStore(context.applicationContext)
     }
 }

@@ -1,12 +1,18 @@
 // SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.transaction.domain
 
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
 import ru.orangesoftware.financisto.transaction.model.TransactionIds
 import ru.orangesoftware.financisto.transaction.mvi.ActiveSheet
 import ru.orangesoftware.financisto.transaction.mvi.CalculatorTarget
 import ru.orangesoftware.financisto.transaction.mvi.TransactionIntent
 import ru.orangesoftware.financisto.transaction.mvi.TransactionUiState
-import java.util.Calendar
+import kotlin.time.Instant
 
 internal object MetaSheetReducer {
     private const val DEFAULT_DECIMALS = 2
@@ -14,6 +20,7 @@ internal object MetaSheetReducer {
     fun reduce(
         state: TransactionUiState.Ready,
         intent: TransactionIntent,
+        timeZone: TimeZone = TimeZone.currentSystemDefault(),
     ): TransactionUiState.Ready {
         return when (intent) {
             is TransactionIntent.OpenAccountPicker,
@@ -26,7 +33,7 @@ internal object MetaSheetReducer {
             is TransactionIntent.OpenCalculator,
             is TransactionIntent.DismissSheet,
             is TransactionIntent.DuplicateDraftAnyway -> reduceSheetNavigation(state, intent)
-            else -> reduceFieldMetadata(state, intent)
+            else -> reduceFieldMetadata(state, intent, timeZone)
         }
     }
 
@@ -62,6 +69,7 @@ internal object MetaSheetReducer {
     private fun reduceFieldMetadata(
         state: TransactionUiState.Ready,
         intent: TransactionIntent,
+        timeZone: TimeZone,
     ): TransactionUiState.Ready {
         return when (intent) {
             is TransactionIntent.SelectStatus ->
@@ -74,8 +82,9 @@ internal object MetaSheetReducer {
             is TransactionIntent.ClearProject -> state.copy(
                 form = state.form.copy(projectId = TransactionIds.NO_PROJECT_ID, pendingProjectName = null)
             )
-            is TransactionIntent.UpdateDate -> updateDate(state, intent.year, intent.monthZeroBased, intent.dayOfMonth)
-            is TransactionIntent.UpdateTime -> updateTime(state, intent.hourOfDay, intent.minute)
+            is TransactionIntent.UpdateDate ->
+                updateDate(state, intent.year, intent.monthZeroBased, intent.dayOfMonth, timeZone)
+            is TransactionIntent.UpdateTime -> updateTime(state, intent.hourOfDay, intent.minute, timeZone)
             is TransactionIntent.AttachCapturedPhotoFile -> state.copy(
                 form = state.form.copy(
                     attachedPictureFileName = intent.fileName,
@@ -143,23 +152,34 @@ internal object MetaSheetReducer {
         year: Int,
         monthZeroBased: Int,
         dayOfMonth: Int,
+        timeZone: TimeZone,
     ): TransactionUiState.Ready {
-        val cal = Calendar.getInstance().apply { timeInMillis = state.form.dateTimeMillis }
-        cal.set(Calendar.YEAR, year)
-        cal.set(Calendar.MONTH, monthZeroBased)
-        cal.set(Calendar.DAY_OF_MONTH, dayOfMonth)
-        return state.copy(form = state.form.copy(dateTimeMillis = cal.timeInMillis), sheetStack = emptyList())
+        val current = Instant.fromEpochMilliseconds(state.form.dateTimeMillis).toLocalDateTime(timeZone)
+        val updated = LocalDateTime(
+            date = LocalDate(year, monthZeroBased + 1, dayOfMonth),
+            time = current.time,
+        )
+        return state.copy(
+            form = state.form.copy(dateTimeMillis = updated.toInstant(timeZone).toEpochMilliseconds()),
+            sheetStack = emptyList(),
+        )
     }
 
     private fun updateTime(
         state: TransactionUiState.Ready,
         hourOfDay: Int,
         minute: Int,
+        timeZone: TimeZone,
     ): TransactionUiState.Ready {
-        val cal = Calendar.getInstance().apply { timeInMillis = state.form.dateTimeMillis }
-        cal.set(Calendar.HOUR_OF_DAY, hourOfDay)
-        cal.set(Calendar.MINUTE, minute)
-        return state.copy(form = state.form.copy(dateTimeMillis = cal.timeInMillis), sheetStack = emptyList())
+        val current = Instant.fromEpochMilliseconds(state.form.dateTimeMillis).toLocalDateTime(timeZone)
+        val updated = LocalDateTime(
+            date = current.date,
+            time = LocalTime(hourOfDay, minute, current.second, current.nanosecond),
+        )
+        return state.copy(
+            form = state.form.copy(dateTimeMillis = updated.toInstant(timeZone).toEpochMilliseconds()),
+            sheetStack = emptyList(),
+        )
     }
 
     private fun openCalculator(

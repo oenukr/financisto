@@ -413,8 +413,10 @@ public class DatabaseAdapter extends MyEntityManager {
     private void updateSplitOriginalAmount(Transaction parent, Transaction split) {
         if (parent.originalCurrencyId > 0) {
             split.originalCurrencyId = parent.originalCurrencyId;
-            split.originalFromAmount = split.fromAmount;
-            split.fromAmount = calculateAmountInAccountCurrency(parent, split.fromAmount);
+            if (split.originalFromAmount == 0) {
+                split.originalFromAmount = split.fromAmount;
+                split.fromAmount = calculateAmountInAccountCurrency(parent, split.fromAmount);
+            }
         }
     }
 

@@ -3,13 +3,16 @@ package ru.orangesoftware.financisto.transaction.model
 
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
+import kotlinx.serialization.Serializable
 
+@Serializable
 enum class TransactionMode {
     EXPENSE,
     INCOME,
     TRANSFER,
 }
 
+@Serializable
 enum class TransactionStatusOption(val label: String) {
     RS("Restored"),
     PN("Pending"),
@@ -18,6 +21,7 @@ enum class TransactionStatusOption(val label: String) {
     RECONCILED("Reconciled"),
 }
 
+@Serializable
 @Parcelize
 data class DraftSplit(
     val categoryId: Long,
@@ -27,6 +31,7 @@ data class DraftSplit(
     val projectId: Long = 0L,
 ) : Parcelable
 
+@Serializable
 @Parcelize
 data class TransactionDraft(
     val draftId: String,
