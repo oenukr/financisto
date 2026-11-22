@@ -102,7 +102,7 @@ internal object TransactionLoader {
             initialFormSnapshot = initialForm,
             catalog = catalog,
             prefs = prefs,
-            activeSheet = sheet,
+            sheetStack = listOfNotNull(sheet),
         )
     }
 

@@ -101,16 +101,7 @@ object TransactionInitialStateFactory {
                 projectId = split.projectId,
             )
         }
-        val primaryMinor = when {
-            draft.originalCurrencyId != null && draft.originalAmountMinor != null -> abs(draft.originalAmountMinor)
-            draft.amountMinor != null -> abs(draft.amountMinor)
-            else -> 0L
-        }
-        val secondaryMinor = when {
-            draft.mode == TransactionMode.TRANSFER -> abs(draft.toAmountMinor ?: draft.amountMinor ?: 0L)
-            draft.originalCurrencyId != null -> abs(draft.amountMinor ?: 0L)
-            else -> 0L
-        }
+        val (primaryMinor, secondaryMinor) = resolveDraftAmounts(draft, catalog)
         val payeeTitle = draft.payeeId?.let { id -> catalog.payees.firstOrNull { it.id == id }?.title }
             ?: draft.pendingPayeeName.orEmpty()
         val stagedList = listOfNotNull(draft.stagedReceiptFileName)
@@ -147,18 +138,42 @@ object TransactionInitialStateFactory {
         return populateFormattedAmountsAndRate(base, catalog)
     }
 
+    private fun resolveDraftAmounts(
+        draft: TransactionDraft,
+        catalog: TransactionCatalog,
+    ): Pair<Long, Long> {
+        val fromAccount = draft.fromAccountId?.let { id -> catalog.accounts.firstOrNull { it.id == id } }
+        val toAccount = draft.toAccountId?.let { id -> catalog.accounts.firstOrNull { it.id == id } }
+        val isSameCurrencyTransfer = draft.mode == TransactionMode.TRANSFER &&
+            fromAccount != null &&
+            fromAccount.currencyId == toAccount?.currencyId
+        val primaryMinor = when {
+            draft.originalCurrencyId != null && draft.originalAmountMinor != null -> abs(draft.originalAmountMinor)
+            draft.amountMinor != null -> abs(draft.amountMinor)
+            else -> 0L
+        }
+        val secondaryMinor = when {
+            draft.mode == TransactionMode.TRANSFER -> when {
+                draft.toAmountMinor != null -> abs(draft.toAmountMinor)
+                isSameCurrencyTransfer -> abs(draft.amountMinor ?: 0L)
+                else -> 0L
+            }
+            draft.originalCurrencyId != null -> abs(draft.amountMinor ?: 0L)
+            else -> 0L
+        }
+        return primaryMinor to secondaryMinor
+    }
+
     private fun resolveInitialAccountId(
         explicitAccountId: Long?,
         activeAccounts: List<AccountOption>,
         prefs: TransactionFormPreferences,
     ): Long {
-        if (explicitAccountId != null && activeAccounts.any { it.id == explicitAccountId }) {
-            return explicitAccountId
+        return when {
+            explicitAccountId != null && activeAccounts.any { it.id == explicitAccountId } -> explicitAccountId
+            prefs.isRememberAccount && activeAccounts.any { it.id == prefs.lastAccountId } -> prefs.lastAccountId
+            else -> activeAccounts.singleOrNull()?.id ?: 0L
         }
-        if (prefs.isRememberAccount && activeAccounts.any { it.id == prefs.lastAccountId }) {
-            return prefs.lastAccountId
-        }
-        return activeAccounts.singleOrNull()?.id ?: 0L
     }
 
     private fun populateFormattedAmountsAndRate(

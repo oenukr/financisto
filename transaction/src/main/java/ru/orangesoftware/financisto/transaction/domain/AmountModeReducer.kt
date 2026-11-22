@@ -15,9 +15,8 @@ internal object AmountModeReducer {
         state: TransactionUiState.Ready,
         intent: TransactionIntent,
     ): TransactionUiState.Ready {
-        val (primaryCur, secondaryCur) = TransactionValidator.resolveCurrencyMeta(state.form, state.catalog)
-        val pDec = primaryCur?.decimals ?: DEFAULT_DECIMALS
-        val sDec = secondaryCur?.decimals ?: DEFAULT_DECIMALS
+        val pDec = state.primaryCurrency?.decimals ?: DEFAULT_DECIMALS
+        val sDec = state.secondaryCurrency?.decimals ?: DEFAULT_DECIMALS
         return when (intent) {
             is TransactionIntent.SwitchMode -> switchMode(state, intent.mode)
             is TransactionIntent.CycleSignOrMode -> cycleSignMode(state)
@@ -46,8 +45,7 @@ internal object AmountModeReducer {
             current.toAccountId <= 0L &&
             state.prefs.isRememberAccount
         ) {
-            val fromAcc = state.catalog.accounts.firstOrNull { it.id == current.fromAccountId }
-            val remembered = fromAcc?.lastAccountId ?: 0L
+            val remembered = state.fromAccount?.lastAccountId ?: 0L
             val isValidTarget = remembered > 0L && remembered != current.fromAccountId &&
                 state.catalog.accounts.any { it.id == remembered && it.isActive }
             if (isValidTarget) remembered else 0L
@@ -68,14 +66,12 @@ internal object AmountModeReducer {
     ): TransactionUiState.Ready {
         val parsed = AmountScale.parseMinorUnits(text, primaryDecimals)
             ?: return state.copy(form = state.form.copy(primaryAmountInput = text), validationErrors = emptyList())
-        val fromAcc = state.catalog.accounts.firstOrNull { it.id == state.form.fromAccountId }
-        val isDual = TransactionValidator.isDualCurrencyActive(state.form, fromAcc, state.catalog)
         var nextSecondary = state.form.secondaryAmountMinor
         var nextSecondaryText = state.form.secondaryAmountInput
         var nextRate = state.form.exchangeRate
         var nextRateText = state.form.exchangeRateInput
 
-        if (isDual) {
+        if (state.isDualCurrency) {
             if (state.form.exchangeRate > 0.0) {
                 nextSecondary = CurrencyConversionCalculator.computeTargetMinor(
                     fromMinor = parsed,
@@ -163,31 +159,43 @@ internal object AmountModeReducer {
         primaryDecimals: Int,
         secondaryDecimals: Int,
     ): TransactionUiState.Ready {
-        val closedState = state.copy(activeSheet = null)
         val safeVal = abs(intent.value)
         return when (intent.target) {
             CalculatorTarget.PRIMARY_AMOUNT -> {
                 val minor = (safeVal * AmountScale.pow10(primaryDecimals)).roundToLong()
                 val text = AmountScale.formatEditableAmount(minor, primaryDecimals)
-                applyPrimaryAmountText(closedState, text, primaryDecimals, secondaryDecimals)
+                applyPrimaryAmountText(state.copy(sheetStack = emptyList()), text, primaryDecimals, secondaryDecimals)
             }
             CalculatorTarget.SECONDARY_AMOUNT -> {
                 val minor = (safeVal * AmountScale.pow10(secondaryDecimals)).roundToLong()
                 val text = AmountScale.formatEditableAmount(minor, secondaryDecimals)
-                applySecondaryAmountText(closedState, text, primaryDecimals, secondaryDecimals)
+                applySecondaryAmountText(state.copy(sheetStack = emptyList()), text, primaryDecimals, secondaryDecimals)
             }
             CalculatorTarget.EXCHANGE_RATE -> {
                 val text = CurrencyConversionCalculator.formatRate(safeVal)
-                applyExchangeRateText(closedState, text, primaryDecimals, secondaryDecimals)
+                applyExchangeRateText(state.copy(sheetStack = emptyList()), text, primaryDecimals, secondaryDecimals)
             }
-            CalculatorTarget.SPLIT_AMOUNT -> {
-                val splitId = intent.splitLocalId ?: return closedState
-                val minor = (safeVal * AmountScale.pow10(primaryDecimals)).roundToLong()
-                val updated = closedState.form.splits.map {
-                    if (it.localId == splitId) it.copy(amountMinor = minor) else it
-                }
-                closedState.copy(form = closedState.form.copy(splits = updated))
+            CalculatorTarget.SPLIT_AMOUNT ->
+                applySplitCalcResult(state, intent.splitLocalId, safeVal, primaryDecimals)
+        }
+    }
+
+    private fun applySplitCalcResult(
+        state: TransactionUiState.Ready,
+        splitLocalId: Long?,
+        safeVal: Double,
+        primaryDecimals: Int,
+    ): TransactionUiState.Ready {
+        val splitId = splitLocalId ?: return state.copy(sheetStack = state.sheetStack.dropLast(1))
+        val minor = (safeVal * AmountScale.pow10(primaryDecimals)).roundToLong()
+        val editor = state.activeSplitEditor?.takeIf { it.split.localId == splitId }
+        return if (editor != null) {
+            state.copy(sheetStack = listOf(editor.copy(split = editor.split.copy(amountMinor = minor))))
+        } else {
+            val updated = state.form.splits.map {
+                if (it.localId == splitId) it.copy(amountMinor = minor) else it
             }
+            state.copy(form = state.form.copy(splits = updated), sheetStack = emptyList())
         }
     }
 }

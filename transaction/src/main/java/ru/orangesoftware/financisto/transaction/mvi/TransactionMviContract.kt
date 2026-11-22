@@ -3,6 +3,9 @@ package ru.orangesoftware.financisto.transaction.mvi
 
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
+import ru.orangesoftware.financisto.transaction.domain.TransactionValidator
+import ru.orangesoftware.financisto.transaction.model.AccountOption
+import ru.orangesoftware.financisto.transaction.model.CurrencyOption
 import ru.orangesoftware.financisto.transaction.model.EditableSplit
 import ru.orangesoftware.financisto.transaction.model.TransactionCatalog
 import ru.orangesoftware.financisto.transaction.model.TransactionFormPreferences
@@ -16,7 +19,7 @@ data class TransactionFormState(
     val existingTransactionId: Long = TransactionIds.UNSAVED_TRANSACTION_ID,
     val aiDraftId: String? = null,
     val mode: TransactionMode = TransactionMode.EXPENSE,
-    val dateTimeMillis: Long = System.currentTimeMillis(),
+    val dateTimeMillis: Long = 0L,
     val status: TransactionStatusOption = TransactionStatusOption.UR,
     val fromAccountId: Long = 0L,
     val toAccountId: Long = 0L,
@@ -92,12 +95,33 @@ sealed interface TransactionUiState {
         val initialFormSnapshot: TransactionFormState,
         val catalog: TransactionCatalog,
         val prefs: TransactionFormPreferences,
-        val activeSheet: ActiveSheet? = null,
+        val sheetStack: List<ActiveSheet> = emptyList(),
         val expandedField: ExpandedInlineField? = null,
         val validationErrors: List<String> = emptyList(),
         val isSaving: Boolean = false,
         val isFetchingRate: Boolean = false,
     ) : TransactionUiState {
+        val activeSheet: ActiveSheet? get() = sheetStack.lastOrNull()
+        val activeSplitEditor: ActiveSheet.SplitItemEditor?
+            get() = sheetStack.lastOrNull { it is ActiveSheet.SplitItemEditor } as? ActiveSheet.SplitItemEditor
+
+        val fromAccount: AccountOption? = catalog.accounts.firstOrNull { it.id == form.fromAccountId }
+        val toAccount: AccountOption? = catalog.accounts.firstOrNull { it.id == form.toAccountId }
+        val isDualCurrency: Boolean = TransactionValidator.isDualCurrencyActive(form, fromAccount, catalog)
+        val primaryCurrency: CurrencyOption?
+        val secondaryCurrency: CurrencyOption?
+
+        init {
+            val (primary, secondary) = TransactionValidator.resolveCurrencyMeta(
+                form = form,
+                fromAccount = fromAccount,
+                toAccount = toAccount,
+                catalog = catalog,
+            )
+            primaryCurrency = primary
+            secondaryCurrency = secondary
+        }
+
         val hasUnsavedChanges: Boolean
             get() = form != initialFormSnapshot ||
                 (form.isAiDraft && form.attachedPictureFileName != null)
@@ -138,6 +162,7 @@ sealed interface TransactionIntent {
     data object ToggleSplitMode : TransactionIntent
     data object OpenNewSplitEditor : TransactionIntent
     data class OpenEditSplitEditor(val localId: Long) : TransactionIntent
+    data class UpdateSplitDraft(val split: EditableSplit) : TransactionIntent
     data class SaveSplitItem(val split: EditableSplit) : TransactionIntent
     data class RemoveSplitItem(val localId: Long) : TransactionIntent
     data object RebalanceAdjustTotal : TransactionIntent

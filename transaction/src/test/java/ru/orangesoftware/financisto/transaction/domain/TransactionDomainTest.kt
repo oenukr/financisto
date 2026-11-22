@@ -11,10 +11,14 @@ import ru.orangesoftware.financisto.transaction.model.CategoryOption
 import ru.orangesoftware.financisto.transaction.model.CurrencyOption
 import ru.orangesoftware.financisto.transaction.model.EditableSplit
 import ru.orangesoftware.financisto.transaction.model.PayeeOption
+import ru.orangesoftware.financisto.transaction.model.ProjectOption
 import ru.orangesoftware.financisto.transaction.model.TransactionCatalog
+import ru.orangesoftware.financisto.transaction.model.TransactionDraft
 import ru.orangesoftware.financisto.transaction.model.TransactionFormPreferences
 import ru.orangesoftware.financisto.transaction.model.TransactionIds
 import ru.orangesoftware.financisto.transaction.model.TransactionMode
+import ru.orangesoftware.financisto.transaction.mvi.ActiveSheet
+import ru.orangesoftware.financisto.transaction.mvi.CalculatorTarget
 import ru.orangesoftware.financisto.transaction.mvi.TransactionFormState
 import ru.orangesoftware.financisto.transaction.mvi.TransactionIntent
 import ru.orangesoftware.financisto.transaction.mvi.TransactionUiState
@@ -22,7 +26,7 @@ import ru.orangesoftware.financisto.transaction.mvi.TransactionUiState
 class TransactionDomainTest {
 
     @Test
-    fun amountScaleHandlesZeroTwoAndThreeDecimals() {
+    fun amountScaleHandlesZeroTwoAndThreeDecimalsAndEdgeCases() {
         assertEquals(1L, AmountScale.pow10(0))
         assertEquals(100L, AmountScale.pow10(2))
         assertEquals(1000L, AmountScale.pow10(3))
@@ -30,16 +34,27 @@ class TransactionDomainTest {
         assertEquals(1250L, AmountScale.parseMinorUnits("1250", 0))
         assertEquals(1550L, AmountScale.parseMinorUnits("15,5", 2))
         assertEquals(12345L, AmountScale.parseMinorUnits(" 12.345 ", 3))
+        assertEquals(1235L, AmountScale.parseMinorUnits("12.345", 2))
+        assertEquals(1300L, AmountScale.parseMinorUnits("12.999", 2))
+        assertEquals(50L, AmountScale.parseMinorUnits(".5", 2))
+        assertEquals(1550L, AmountScale.parseMinorUnits("-15.50", 2))
+        assertEquals(150L, AmountScale.parseMinorUnits("00000000000000000001.50", 2))
         assertEquals(0L, AmountScale.parseMinorUnits("", 2))
         assertNull(AmountScale.parseMinorUnits("12abc", 2))
+        assertNull(AmountScale.parseMinorUnits(".", 2))
+        assertNull(AmountScale.parseMinorUnits("-", 2))
+        assertNull(AmountScale.parseMinorUnits("1.2.3", 2))
+        assertNull(AmountScale.parseMinorUnits("99999999999999999999", 2))
 
         assertEquals("1250", AmountScale.formatEditableAmount(1250L, 0))
         assertEquals("15.50", AmountScale.formatEditableAmount(1550L, 2))
+        assertEquals("0.05", AmountScale.formatEditableAmount(5L, 2))
         assertEquals("12.345", AmountScale.formatEditableAmount(12345L, 3))
 
         assertEquals("-$ 15.50", AmountScale.formatDisplayAmount(-1550L, 2, "$", includeSign = true))
         assertEquals("+¥ 1,250", AmountScale.formatDisplayAmount(1250L, 0, "¥", includeSign = true))
         assertEquals("BD 12.345", AmountScale.formatDisplayAmount(12345L, 3, "BD", includeSign = false))
+        assertEquals("$ 1,234,567.89", AmountScale.formatDisplayAmount(123456789L, 2, "$", includeSign = false))
     }
 
     @Test
@@ -90,19 +105,25 @@ class TransactionDomainTest {
     }
 
     @Test
-    fun calculatorExpressionEvaluatorSupportsOperatorsParenthesesAndRejectsInvalidInput() {
-        assertEquals(14.0, CalculatorExpressionEvaluator.evaluate("2 + 3 * 4")!!, 1e-6)
-        assertEquals(20.0, CalculatorExpressionEvaluator.evaluate("(2 + 3) * 4")!!, 1e-6)
-        assertEquals(-3.5, CalculatorExpressionEvaluator.evaluate("-7 / 2")!!, 1e-6)
-        assertEquals(12.75, CalculatorExpressionEvaluator.evaluate("10,5 + 2.25")!!, 1e-6)
+    fun calculatorExpressionEvaluatorSupportsAsciiAndUnicodeOperatorsAndRejectsInvalidInput() {
+        assertEvaluatesTo(14.0, "2 + 3 * 4")
+        assertEvaluatesTo(20.0, "(2 + 3) * 4")
+        assertEvaluatesTo(-3.5, "-7 / 2")
+        assertEvaluatesTo(12.75, "10,5 + 2.25")
+        assertEvaluatesTo(24.0, "6 × 4")
+        assertEvaluatesTo(2.5, "10 ÷ 4")
+        assertEvaluatesTo(6.0, "10 − 4")
+        assertEvaluatesTo(-3.5, "−7 ÷ 2")
+        assertEvaluatesTo(17.0, "(2 + 3) × 4 − 6 ÷ 2")
         assertNull(CalculatorExpressionEvaluator.evaluate("10 / 0"))
+        assertNull(CalculatorExpressionEvaluator.evaluate("10 ÷ 0"))
         assertNull(CalculatorExpressionEvaluator.evaluate("(2 + 3"))
         assertNull(CalculatorExpressionEvaluator.evaluate(""))
         assertNull(CalculatorExpressionEvaluator.evaluate("12 + * 3"))
     }
 
     @Test
-    fun validatorEnforcesRulesAcrossZeroAmountsForeignCurrencySplitsAndTransfers() {
+    fun validatorEnforcesRulesForManualAiAndForeignTransactions() {
         val catalog = sampleCatalog()
 
         val manualZero = TransactionFormState(
@@ -133,7 +154,11 @@ class TransactionDomainTest {
         assertEquals(-1200L, foreignCmd.fromAmountMinor)
         assertEquals(2L, foreignCmd.originalCurrencyId)
         assertEquals(-1000L, foreignCmd.originalFromAmountMinor)
+    }
 
+    @Test
+    fun validatorEnforcesRulesForDomesticSplitsAndTransfers() {
+        val catalog = sampleCatalog()
         val mismatchedSplit = TransactionFormState(
             mode = TransactionMode.EXPENSE,
             fromAccountId = 1L,
@@ -145,9 +170,8 @@ class TransactionDomainTest {
                 EditableSplit(localId = -1L, categoryId = 10L, amountMinor = 2000L, isIncome = false, projectId = 5L),
             ),
         )
-        assertTrue(
-            TransactionValidator.validateAndBuildCommand(mismatchedSplit, catalog) is TransactionValidationResult.Invalid
-        )
+        val mismatchRes = TransactionValidator.validateAndBuildCommand(mismatchedSplit, catalog)
+        assertTrue(mismatchRes is TransactionValidationResult.Invalid)
 
         val validSplit = mismatchedSplit.copy(
             splits = listOf(
@@ -161,6 +185,8 @@ class TransactionDomainTest {
         assertEquals(TransactionIds.NO_PROJECT_ID, splitCmd.projectId)
         assertNull(splitCmd.pendingProjectName)
         assertEquals(2, splitCmd.splits.size)
+        assertEquals(listOf(-2000L, -3000L), splitCmd.splits.map { it.amountMinor })
+        assertEquals(listOf(0L, 0L), splitCmd.splits.map { it.originalFromAmountMinor })
 
         val multiCurrencyTransfer = TransactionFormState(
             mode = TransactionMode.TRANSFER,
@@ -169,37 +195,215 @@ class TransactionDomainTest {
             primaryAmountMinor = 10000L,
             secondaryAmountMinor = 9000L,
         )
-        val transferCmd = (TransactionValidator.validateAndBuildCommand(multiCurrencyTransfer, catalog)
-            as TransactionValidationResult.Valid).command
+        val transferResult = TransactionValidator.validateAndBuildCommand(multiCurrencyTransfer, catalog)
+        val transferCmd = (transferResult as TransactionValidationResult.Valid).command
         assertEquals(-10000L, transferCmd.fromAmountMinor)
         assertEquals(9000L, transferCmd.toAmountMinor)
 
         val sameAccountTransfer = multiCurrencyTransfer.copy(toAccountId = 1L)
-        assertTrue(TransactionValidator.validateAndBuildCommand(sameAccountTransfer, catalog)
-            is TransactionValidationResult.Invalid)
+        val sameAccResult = TransactionValidator.validateAndBuildCommand(sameAccountTransfer, catalog)
+        assertTrue(sameAccResult is TransactionValidationResult.Invalid)
     }
 
     @Test
-    fun reducerHandlesModeSwitchPayeeDefaultsTransferSwapAndSplitRebalancing() {
+    fun validatorPersistsForeignCurrencySplitsWithExactAccountSumAndOriginalAmounts() {
         val catalog = sampleCatalog()
-        val prefs = TransactionFormPreferences(
-            isRememberAccount = true,
-            isRememberCategory = true,
+        val foreignSplitForm = TransactionFormState(
+            mode = TransactionMode.EXPENSE,
+            fromAccountId = 1L,
+            originalCurrencyId = 2L,
+            primaryAmountMinor = 10000L,
+            secondaryAmountMinor = 11000L,
+            isSplitMode = true,
+            splits = listOf(
+                EditableSplit(localId = -1L, categoryId = 10L, amountMinor = 3333L, isIncome = false, note = "A"),
+                EditableSplit(localId = -2L, categoryId = 11L, amountMinor = 3333L, isIncome = false, note = "B"),
+                EditableSplit(localId = -3L, categoryId = 10L, amountMinor = 3334L, isIncome = false, note = "C"),
+            ),
         )
+        val result = TransactionValidator.validateAndBuildCommand(foreignSplitForm, catalog)
+        assertTrue(result is TransactionValidationResult.Valid)
+        val cmd = (result as TransactionValidationResult.Valid).command
+
+        assertEquals(2L, cmd.originalCurrencyId)
+        assertEquals(-11000L, cmd.fromAmountMinor)
+        assertEquals(-10000L, cmd.originalFromAmountMinor)
+        assertEquals(listOf(-3333L, -3333L, -3334L), cmd.splits.map { it.originalFromAmountMinor })
+        assertEquals(cmd.originalFromAmountMinor, cmd.splits.sumOf { it.originalFromAmountMinor })
+        assertEquals(listOf(-3666L, -3666L, -3668L), cmd.splits.map { it.amountMinor })
+        assertEquals(cmd.fromAmountMinor, cmd.splits.sumOf { it.amountMinor })
+
+        val mixedSignForm = foreignSplitForm.copy(
+            primaryAmountMinor = 10000L,
+            secondaryAmountMinor = 12000L,
+            splits = listOf(
+                EditableSplit(localId = -1L, categoryId = 10L, amountMinor = 12000L, isIncome = false),
+                EditableSplit(localId = -2L, categoryId = 20L, amountMinor = 2000L, isIncome = true),
+            ),
+        )
+        val mixedCmd = (TransactionValidator.validateAndBuildCommand(mixedSignForm, catalog)
+            as TransactionValidationResult.Valid).command
+        assertEquals(listOf(-12000L, 2000L), mixedCmd.splits.map { it.originalFromAmountMinor })
+        assertEquals(listOf(-14400L, 2400L), mixedCmd.splits.map { it.amountMinor })
+        assertEquals(mixedCmd.fromAmountMinor, mixedCmd.splits.sumOf { it.amountMinor })
+    }
+
+    @Test
+    fun togglingSplitModeOffResetsSplitCategoryId() {
+        val catalog = sampleCatalog()
         val initialForm = TransactionFormState(
             mode = TransactionMode.EXPENSE,
             fromAccountId = 1L,
-            primaryAmountMinor = 6000L,
-            primaryAmountInput = "60.00",
-            note = "Coffee",
-            isFromNewBlankLaunch = true,
+            categoryId = 10L,
+            primaryAmountMinor = 5000L,
+            primaryAmountInput = "50.00",
         )
         var state = TransactionUiState.Ready(
             form = initialForm,
             initialFormSnapshot = initialForm,
             catalog = catalog,
-            prefs = prefs,
+            prefs = TransactionFormPreferences(),
         )
+
+        state = TransactionReducer.reduce(state, TransactionIntent.ToggleSplitMode)
+        assertTrue(state.form.isSplitMode)
+        assertEquals(TransactionIds.SPLIT_CATEGORY_ID, state.form.categoryId)
+
+        state = TransactionReducer.reduce(state, TransactionIntent.ToggleSplitMode)
+        assertFalse(state.form.isSplitMode)
+        assertEquals(TransactionIds.NO_CATEGORY_ID, state.form.categoryId)
+
+        val saveResult = TransactionValidator.validateAndBuildCommand(state.form, catalog)
+        assertTrue(saveResult is TransactionValidationResult.Valid)
+        val cmd = (saveResult as TransactionValidationResult.Valid).command
+        assertEquals(TransactionIds.NO_CATEGORY_ID, cmd.categoryId)
+        assertTrue(cmd.splits.isEmpty())
+    }
+
+    @Test
+    fun nestedSplitItemEditorFlowForNewSplitPreservesDraftAcrossPickersAndDismiss() {
+        var state = splitReadyState()
+
+        state = TransactionReducer.reduce(state, TransactionIntent.OpenNewSplitEditor)
+        val openedNew = state.activeSheet as ActiveSheet.SplitItemEditor
+        assertTrue(openedNew.isNew)
+        assertEquals(-2L, openedNew.split.localId)
+        assertEquals(4000L, openedNew.split.amountMinor)
+        assertFalse(openedNew.split.isIncome)
+
+        state = TransactionReducer.reduce(
+            state,
+            TransactionIntent.UpdateSplitDraft(openedNew.split.copy(note = "Refund item")),
+        )
+        state = TransactionReducer.reduce(state, TransactionIntent.OpenCategoryBrowser(forSplitLocalId = -2L))
+        assertEquals(ActiveSheet.CategoryBrowser(forSplitLocalId = -2L), state.activeSheet)
+        assertEquals(2, state.sheetStack.size)
+
+        state = TransactionReducer.reduce(state, TransactionIntent.SelectCategory(20L, forSplitLocalId = -2L))
+        val afterCategory = state.activeSheet as ActiveSheet.SplitItemEditor
+        assertEquals(20L, afterCategory.split.categoryId)
+        assertTrue(afterCategory.split.isIncome)
+        assertEquals("Refund item", afterCategory.split.note)
+
+        state = TransactionReducer.reduce(state, TransactionIntent.OpenProjectPicker(forSplitLocalId = -2L))
+        assertEquals(ActiveSheet.ProjectPicker(forSplitLocalId = -2L), state.activeSheet)
+        state = TransactionReducer.reduce(state, TransactionIntent.DismissSheet)
+        assertEquals(afterCategory, state.activeSheet)
+
+        state = TransactionReducer.reduce(state, TransactionIntent.OpenProjectPicker(forSplitLocalId = -2L))
+        state = TransactionReducer.reduce(state, TransactionIntent.SelectProject(5L, forSplitLocalId = -2L))
+        val afterProject = state.activeSheet as ActiveSheet.SplitItemEditor
+        assertEquals(5L, afterProject.split.projectId)
+
+        state = TransactionReducer.reduce(
+            state,
+            TransactionIntent.OpenCalculator(CalculatorTarget.SPLIT_AMOUNT, splitLocalId = -2L),
+        )
+        val calcSheet = state.activeSheet as ActiveSheet.Calculator
+        assertEquals("40.00", calcSheet.initialText)
+        assertEquals(-2L, calcSheet.splitLocalId)
+
+        state = TransactionReducer.reduce(
+            state,
+            TransactionIntent.ApplyCalculatorResult(CalculatorTarget.SPLIT_AMOUNT, 25.5, splitLocalId = -2L),
+        )
+        val afterCalc = state.activeSheet as ActiveSheet.SplitItemEditor
+        assertEquals(2550L, afterCalc.split.amountMinor)
+        assertEquals(20L, afterCalc.split.categoryId)
+        assertEquals(5L, afterCalc.split.projectId)
+        assertEquals("Refund item", afterCalc.split.note)
+
+        state = TransactionReducer.reduce(state, TransactionIntent.DismissSheet)
+        assertNull(state.activeSheet)
+    }
+
+    @Test
+    fun nestedSplitItemEditorFlowForExistingSplitUpdatesDraftUntilSaved() {
+        var state = splitReadyState()
+
+        state = TransactionReducer.reduce(state, TransactionIntent.OpenEditSplitEditor(localId = -1L))
+        val openedExisting = state.activeSheet as ActiveSheet.SplitItemEditor
+        assertFalse(openedExisting.isNew)
+        assertEquals(6000L, openedExisting.split.amountMinor)
+
+        state = TransactionReducer.reduce(state, TransactionIntent.OpenCategoryBrowser(forSplitLocalId = -1L))
+        state = TransactionReducer.reduce(state, TransactionIntent.SelectCategory(20L, forSplitLocalId = -1L))
+        val existingAfterCat = state.activeSheet as ActiveSheet.SplitItemEditor
+        assertEquals(20L, existingAfterCat.split.categoryId)
+        assertTrue(existingAfterCat.split.isIncome)
+        assertEquals(10L, state.form.splits.first().categoryId)
+
+        state = TransactionReducer.reduce(
+            state,
+            TransactionIntent.OpenCalculator(CalculatorTarget.SPLIT_AMOUNT, splitLocalId = -1L),
+        )
+        assertEquals("60.00", (state.activeSheet as ActiveSheet.Calculator).initialText)
+        state = TransactionReducer.reduce(
+            state,
+            TransactionIntent.ApplyCalculatorResult(CalculatorTarget.SPLIT_AMOUNT, 75.0, splitLocalId = -1L),
+        )
+        val existingAfterCalc = state.activeSheet as ActiveSheet.SplitItemEditor
+        assertEquals(7500L, existingAfterCalc.split.amountMinor)
+
+        state = TransactionReducer.reduce(state, TransactionIntent.SaveSplitItem(existingAfterCalc.split))
+        assertNull(state.activeSheet)
+        assertEquals(7500L, state.form.splits.first().amountMinor)
+        assertEquals(20L, state.form.splits.first().categoryId)
+        assertTrue(state.form.splits.first().isIncome)
+    }
+
+    @Test
+    fun crossCurrencyAiTransferDraftLeavesSecondaryAmountAndRateUnsetWhenToAmountNull() {
+        val catalog = sampleCatalog()
+        val crossCurrencyDraft = TransactionDraft(
+            draftId = "draft-xfer-fx",
+            mode = TransactionMode.TRANSFER,
+            amountMinor = 10000L,
+            fromAccountId = 1L,
+            toAccountId = 2L,
+            toAmountMinor = null,
+            dateTimeMillis = 1_700_000_000_000L,
+        )
+        val form = TransactionInitialStateFactory.fromAiDraft(crossCurrencyDraft, catalog)
+        assertEquals(10000L, form.primaryAmountMinor)
+        assertEquals(0L, form.secondaryAmountMinor)
+        assertEquals(0.0, form.exchangeRate, 1e-6)
+        assertEquals("", form.exchangeRateInput)
+
+        val explicitToAmountDraft = crossCurrencyDraft.copy(toAmountMinor = 9000L)
+        val explicitForm = TransactionInitialStateFactory.fromAiDraft(explicitToAmountDraft, catalog)
+        assertEquals(9000L, explicitForm.secondaryAmountMinor)
+        assertEquals(0.9, explicitForm.exchangeRate, 1e-6)
+    }
+
+    @Test
+    fun reducerHandlesPayeeDefaultsTransferSwitchAndSwap() {
+        var state = blankReadyState()
+
+        assertEquals(1L, state.fromAccount?.id)
+        assertNull(state.toAccount)
+        assertFalse(state.isDualCurrency)
+        assertEquals("USD", state.primaryCurrency?.code)
 
         state = TransactionReducer.reduce(state, TransactionIntent.SelectPayee(200L))
         assertEquals(11L, state.form.categoryId)
@@ -209,6 +413,9 @@ class TransactionDomainTest {
         assertEquals(TransactionMode.TRANSFER, state.form.mode)
         assertEquals(2L, state.form.toAccountId)
         assertEquals("Coffee", state.form.note)
+        assertTrue(state.isDualCurrency)
+        assertEquals("USD", state.primaryCurrency?.code)
+        assertEquals("EUR", state.secondaryCurrency?.code)
 
         state = TransactionReducer.reduce(state, TransactionIntent.UpdateSecondaryAmount("54.00"))
         assertEquals(5400L, state.form.secondaryAmountMinor)
@@ -219,8 +426,12 @@ class TransactionDomainTest {
         assertEquals(1L, state.form.toAccountId)
         assertEquals(5400L, state.form.primaryAmountMinor)
         assertEquals(6000L, state.form.secondaryAmountMinor)
+    }
 
-        state = TransactionReducer.reduce(state, TransactionIntent.SwitchMode(TransactionMode.EXPENSE))
+    @Test
+    fun reducerHandlesSplitSeedingRebalancingAndCollapse() {
+        var state = blankReadyState()
+        state = TransactionReducer.reduce(state, TransactionIntent.SelectPayee(200L))
         state = TransactionReducer.reduce(state, TransactionIntent.UpdatePrimaryAmount("100.00"))
         state = TransactionReducer.reduce(state, TransactionIntent.ToggleSplitMode)
         assertTrue(state.form.isSplitMode)
@@ -239,6 +450,54 @@ class TransactionDomainTest {
         assertFalse(state.form.isSplitMode)
         assertEquals(11L, state.form.categoryId)
         assertTrue(state.form.splits.isEmpty())
+    }
+
+    private fun blankReadyState(): TransactionUiState.Ready {
+        val initialForm = TransactionFormState(
+            mode = TransactionMode.EXPENSE,
+            fromAccountId = 1L,
+            primaryAmountMinor = 6000L,
+            primaryAmountInput = "60.00",
+            note = "Coffee",
+            isFromNewBlankLaunch = true,
+        )
+        return TransactionUiState.Ready(
+            form = initialForm,
+            initialFormSnapshot = initialForm,
+            catalog = sampleCatalog(),
+            prefs = TransactionFormPreferences(
+                isRememberAccount = true,
+                isRememberCategory = true,
+            ),
+        )
+    }
+
+    private fun splitReadyState(): TransactionUiState.Ready {
+        val initialForm = TransactionFormState(
+            mode = TransactionMode.EXPENSE,
+            fromAccountId = 1L,
+            primaryAmountMinor = 10000L,
+            primaryAmountInput = "100.00",
+            isSplitMode = true,
+            categoryId = TransactionIds.SPLIT_CATEGORY_ID,
+            splits = listOf(
+                EditableSplit(localId = -1L, categoryId = 10L, amountMinor = 6000L, isIncome = false, projectId = 5L),
+            ),
+            nextSplitLocalId = -2L,
+        )
+        return TransactionUiState.Ready(
+            form = initialForm,
+            initialFormSnapshot = initialForm,
+            catalog = sampleCatalog(),
+            prefs = TransactionFormPreferences(),
+        )
+    }
+
+    private fun assertEvaluatesTo(expected: Double, expression: String) {
+        val actual = requireNotNull(CalculatorExpressionEvaluator.evaluate(expression)) {
+            "Expected non-null evaluation for '$expression'"
+        }
+        assertEquals(expected, actual, 1e-6)
     }
 
     private fun sampleCatalog(): TransactionCatalog {
@@ -290,6 +549,9 @@ class TransactionDomainTest {
             ),
             payees = listOf(
                 PayeeOption(id = 200L, title = "Starbucks", lastCategoryId = 11L),
+            ),
+            projects = listOf(
+                ProjectOption(id = 5L, title = "Trip"),
             ),
         )
     }

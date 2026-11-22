@@ -143,22 +143,16 @@ object TransactionValidator {
             sign * form.primaryAmountMinor
         }
         val originalFromMinor = if (foreignCurrencyId > 0L) sign * form.primaryAmountMinor else 0L
-        val saveSplits = if (form.isSplitMode) {
-            form.splits.map { split ->
-                SaveSplitCommand(
-                    categoryId = split.categoryId,
-                    amountMinor = SplitAllocationCalculator.splitSignedMinor(split),
-                    note = split.note.trim(),
-                    projectId = split.projectId,
-                )
-            }
-        } else {
-            emptyList()
-        }
+        val saveSplits = buildSaveSplits(
+            form = form,
+            foreignCurrencyId = foreignCurrencyId,
+            originalFromMinor = originalFromMinor,
+            accountAmountMinor = accountAmountMinor,
+        )
         val effectiveCategoryId = if (form.isSplitMode) {
             TransactionIds.SPLIT_CATEGORY_ID
         } else {
-            form.categoryId
+            form.categoryId.coerceAtLeast(TransactionIds.NO_CATEGORY_ID)
         }
         val effectiveProjectId = if (form.isSplitMode) TransactionIds.NO_PROJECT_ID else form.projectId
         return SaveTransactionCommand(
@@ -189,6 +183,42 @@ object TransactionValidator {
         )
     }
 
+    private fun buildSaveSplits(
+        form: TransactionFormState,
+        foreignCurrencyId: Long,
+        originalFromMinor: Long,
+        accountAmountMinor: Long,
+    ): List<SaveSplitCommand> {
+        return when {
+            !form.isSplitMode -> emptyList()
+            foreignCurrencyId > 0L -> {
+                val accountAmounts = SplitAllocationCalculator.allocateAccountAmounts(
+                    splits = form.splits,
+                    originalTotalSignedMinor = originalFromMinor,
+                    accountTotalSignedMinor = accountAmountMinor,
+                )
+                form.splits.mapIndexed { index, split ->
+                    SaveSplitCommand(
+                        categoryId = split.categoryId,
+                        amountMinor = accountAmounts[index],
+                        note = split.note.trim(),
+                        projectId = split.projectId,
+                        originalFromAmountMinor = SplitAllocationCalculator.splitSignedMinor(split),
+                    )
+                }
+            }
+            else -> form.splits.map { split ->
+                SaveSplitCommand(
+                    categoryId = split.categoryId,
+                    amountMinor = SplitAllocationCalculator.splitSignedMinor(split),
+                    note = split.note.trim(),
+                    projectId = split.projectId,
+                    originalFromAmountMinor = 0L,
+                )
+            }
+        }
+    }
+
     fun isDualCurrencyActive(
         form: TransactionFormState,
         fromAccount: AccountOption?,
@@ -209,12 +239,25 @@ object TransactionValidator {
         catalog: TransactionCatalog,
     ): Pair<CurrencyOption?, CurrencyOption?> {
         val fromAccount = catalog.accounts.firstOrNull { it.id == form.fromAccountId }
+        val toAccount = if (form.mode == TransactionMode.TRANSFER) {
+            catalog.accounts.firstOrNull { it.id == form.toAccountId }
+        } else {
+            null
+        }
+        return resolveCurrencyMeta(form, fromAccount, toAccount, catalog)
+    }
+
+    fun resolveCurrencyMeta(
+        form: TransactionFormState,
+        fromAccount: AccountOption?,
+        toAccount: AccountOption?,
+        catalog: TransactionCatalog,
+    ): Pair<CurrencyOption?, CurrencyOption?> {
         val fromAccountCurrency = fromAccount?.let {
             catalog.currencies.firstOrNull { c -> c.id == it.currencyId }
                 ?: CurrencyOption(it.currencyId, it.currencyCode, it.currencySymbol, it.currencyDecimals)
         }
         return if (form.mode == TransactionMode.TRANSFER) {
-            val toAccount = catalog.accounts.firstOrNull { it.id == form.toAccountId }
             val toCurrency = toAccount?.let {
                 catalog.currencies.firstOrNull { c -> c.id == it.currencyId }
                     ?: CurrencyOption(it.currencyId, it.currencyCode, it.currencySymbol, it.currencyDecimals)

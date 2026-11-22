@@ -6,6 +6,7 @@ import org.koin.dsl.module
 import ru.orangesoftware.financisto.transaction.model.TransactionLaunchArgs
 import ru.orangesoftware.financisto.transaction.mvi.TransactionViewModel
 import ru.orangesoftware.financisto.transaction.port.TransactionPorts
+import kotlin.time.Clock
 
 val transactionModule = module {
     single {
@@ -22,7 +23,8 @@ val transactionModule = module {
             launchArgs = args,
             savedStateHandle = get(),
             ports = get(),
-            ioDispatcher = get(),
+            ioDispatcher = getOrNull(),
+            clock = getOrNull() ?: Clock.System,
         )
     }
 }

@@ -135,6 +135,7 @@ data class SaveSplitCommand(
     val amountMinor: Long,
     val note: String,
     val projectId: Long,
+    val originalFromAmountMinor: Long = 0L,
 )
 
 data class SaveTransactionCommand(

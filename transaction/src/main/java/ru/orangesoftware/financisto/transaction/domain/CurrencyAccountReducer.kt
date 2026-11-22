@@ -30,32 +30,34 @@ internal object CurrencyAccountReducer {
         val nextForm = if (isDestination) {
             form.copy(toAccountId = accountId)
         } else {
-            val shouldRememberCategory = form.isFromNewBlankLaunch &&
+            val canRememberCategory = form.isFromNewBlankLaunch &&
                 !state.prefs.isShowPayee &&
-                state.prefs.isRememberCategory &&
+                state.prefs.isRememberCategory
+            val shouldRememberCategory = canRememberCategory &&
                 form.categoryId == TransactionIds.NO_CATEGORY_ID &&
                 account.lastCategoryId > 0L
-            val shouldRememberTo = form.mode == TransactionMode.TRANSFER &&
+            val canRememberTo = form.mode == TransactionMode.TRANSFER &&
                 form.isFromNewBlankLaunch &&
-                state.prefs.isRememberAccount &&
-                form.toAccountId <= 0L &&
-                account.lastAccountId > 0L &&
+                state.prefs.isRememberAccount
+            val validLastAccount = account.lastAccountId > 0L &&
                 account.lastAccountId != accountId &&
                 state.catalog.accounts.any { it.id == account.lastAccountId && it.isActive }
+            val shouldRememberTo = canRememberTo && form.toAccountId <= 0L && validLastAccount
             form.copy(
                 fromAccountId = accountId,
                 categoryId = if (shouldRememberCategory) account.lastCategoryId else form.categoryId,
                 toAccountId = if (shouldRememberTo) account.lastAccountId else form.toAccountId,
             )
         }
-        return syncRateOnCurrencyChange(state.copy(form = nextForm, activeSheet = null, validationErrors = emptyList()))
+        return syncRateOnCurrencyChange(
+            state.copy(form = nextForm, sheetStack = emptyList(), validationErrors = emptyList())
+        )
     }
 
     private fun swapTransferAccounts(state: TransactionUiState.Ready): TransactionUiState.Ready {
         val form = state.form
         if (form.mode != TransactionMode.TRANSFER) return state
-        val fromAcc = state.catalog.accounts.firstOrNull { it.id == form.fromAccountId }
-        val isDual = TransactionValidator.isDualCurrencyActive(form, fromAcc, state.catalog)
+        val isDual = state.isDualCurrency
         val swappedForm = form.copy(
             fromAccountId = form.toAccountId,
             toAccountId = form.fromAccountId,
@@ -68,7 +70,7 @@ internal object CurrencyAccountReducer {
     }
 
     private fun selectCurrency(state: TransactionUiState.Ready, currencyId: Long?): TransactionUiState.Ready {
-        val fromAcc = state.catalog.accounts.firstOrNull { it.id == state.form.fromAccountId }
+        val fromAcc = state.fromAccount
         val normalized = if (currencyId == null || currencyId <= 0L || currencyId == fromAcc?.currencyId) {
             null
         } else {
@@ -79,11 +81,14 @@ internal object CurrencyAccountReducer {
             secondaryAmountMinor = if (normalized == null) 0L else state.form.secondaryAmountMinor,
             secondaryAmountInput = if (normalized == null) "0" else state.form.secondaryAmountInput,
         )
-        return syncRateOnCurrencyChange(state.copy(form = nextForm, activeSheet = null, validationErrors = emptyList()))
+        return syncRateOnCurrencyChange(
+            state.copy(form = nextForm, sheetStack = emptyList(), validationErrors = emptyList())
+        )
     }
 
     private fun syncRateOnCurrencyChange(state: TransactionUiState.Ready): TransactionUiState.Ready {
-        val (pCur, sCur) = TransactionValidator.resolveCurrencyMeta(state.form, state.catalog)
+        val pCur = state.primaryCurrency
+        val sCur = state.secondaryCurrency
         if (pCur == null || sCur == null || pCur.id == sCur.id) {
             return state.copy(form = state.form.copy(exchangeRate = 0.0, exchangeRateInput = ""))
         }

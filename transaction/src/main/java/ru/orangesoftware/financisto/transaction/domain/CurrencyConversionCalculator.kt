@@ -10,6 +10,9 @@ import kotlin.math.roundToLong
 object CurrencyConversionCalculator {
     private const val RATE_PATTERN = "0.#####"
     private const val MIN_POSITIVE_RATE = 1e-9
+    private val rateFormatter: ThreadLocal<DecimalFormat> = ThreadLocal.withInitial {
+        DecimalFormat(RATE_PATTERN, DecimalFormatSymbols(Locale.US))
+    }
 
     fun computeRate(
         fromMinor: Long,
@@ -37,7 +40,7 @@ object CurrencyConversionCalculator {
 
     fun formatRate(rate: Double): String {
         if (rate <= MIN_POSITIVE_RATE || !rate.isFinite()) return ""
-        return DecimalFormat(RATE_PATTERN, DecimalFormatSymbols(Locale.US)).format(rate)
+        return rateFormatter.get()?.format(rate).orEmpty()
     }
 
     fun formatReciprocalPair(

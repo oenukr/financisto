@@ -40,6 +40,7 @@ object TransactionReducer {
             is TransactionIntent.ToggleSplitMode,
             is TransactionIntent.OpenNewSplitEditor,
             is TransactionIntent.OpenEditSplitEditor,
+            is TransactionIntent.UpdateSplitDraft,
             is TransactionIntent.SaveSplitItem,
             is TransactionIntent.RemoveSplitItem,
             is TransactionIntent.RebalanceAdjustTotal,
