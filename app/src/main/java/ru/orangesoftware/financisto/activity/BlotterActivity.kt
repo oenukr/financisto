@@ -33,10 +33,13 @@ import ru.orangesoftware.financisto.blotter.TotalCalculationTask
 import ru.orangesoftware.financisto.dialog.TransactionInfoDialog
 import ru.orangesoftware.financisto.filter.WhereFilter
 import ru.orangesoftware.financisto.model.AccountType
+import ru.orangesoftware.financisto.transaction.TransactionEntryRouter
+import ru.orangesoftware.financisto.transaction.model.TransactionMode
 import ru.orangesoftware.financisto.utils.IntegrityCheckRunningBalance
 import ru.orangesoftware.financisto.utils.MenuItemInfo
 import ru.orangesoftware.financisto.utils.MyPreferences
 import ru.orangesoftware.financisto.utils.MyPreferences.isQuickMenuEnabledForTransaction
+import ru.orangesoftware.financisto.utils.PinProtection
 import ru.orangesoftware.financisto.view.NodeInflater
 
 @Suppress("TooManyFunctions", "DEPRECATION")
@@ -168,6 +171,13 @@ open class BlotterActivity : AbstractListActivity {
         calculateTotals()
         prepareTransactionActionGrid()
         prepareAddButtonActionGrid()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (!enablePin || PinProtection.isUnlocked()) {
+            TransactionEntryRouter.launchPendingAiDraftIfPresent(this)
+        }
     }
 
     private fun setupSearch() {
@@ -415,12 +425,23 @@ open class BlotterActivity : AbstractListActivity {
     }
 
     protected open fun addItem(requestId: Int, clazz: Class<out AbstractTransactionActivity>) {
+        if (blotterFilter.getIsTemplate() <= 0) {
+            val mode = if (clazz == TransferActivity::class.java) {
+                TransactionMode.TRANSFER
+            } else {
+                TransactionMode.EXPENSE
+            }
+            val accountId = blotterFilter.accountId.takeIf { it != -1L }
+            startActivityForResult(TransactionEntryRouter.createNewIntent(this, accountId, mode), requestId)
+            return
+        }
         val intent = Intent(this@BlotterActivity, clazz)
         val accountId = blotterFilter.accountId
         if (accountId != -1L) {
             intent.putExtra(TransactionActivity.ACCOUNT_ID_EXTRA, accountId)
         }
         intent.putExtra(TransactionActivity.TEMPLATE_EXTRA, blotterFilter.getIsTemplate())
+        intent.putExtra(TransactionEntryRouter.EXTRA_FORCE_LEGACY, true)
         startActivityForResult(intent, requestId)
     }
 

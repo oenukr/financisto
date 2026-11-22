@@ -8,7 +8,11 @@ plugins {
 android {
     namespace = "ru.orangesoftware.financisto"
 
-    compileSdk = 37
+    compileSdk {
+        version = release(37) {
+            minorApiLevel = 1
+        }
+    }
 
     defaultConfig {
         applicationId = "ru.orangesoftware.financisto"
@@ -183,6 +187,7 @@ dependencies {
     testImplementation(libs.test.mockito.kotlin)
 
     implementation(project(":appfunctions"))
+    implementation(project(":transaction"))
     implementation(libs.appfunctions.core)
     ksp(libs.appfunctions.compiler)
 }

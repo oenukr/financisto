@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.app
 
+import android.app.PendingIntent
 import android.media.ExifInterface
 import android.net.Uri
 import ru.orangesoftware.financisto.appfunctions.AccountInfo
 import ru.orangesoftware.financisto.appfunctions.AppFunctionDatabase
+import ru.orangesoftware.financisto.appfunctions.AppFunctionTransactionDraft
 import ru.orangesoftware.financisto.appfunctions.CategoryInfo
 import ru.orangesoftware.financisto.appfunctions.HistoricalCategorySignal
 import ru.orangesoftware.financisto.appfunctions.PayeeInfo
@@ -15,6 +17,11 @@ import ru.orangesoftware.financisto.model.Category
 import ru.orangesoftware.financisto.model.Payee
 import ru.orangesoftware.financisto.model.Transaction
 import ru.orangesoftware.financisto.model.TransactionStatus
+import ru.orangesoftware.financisto.transaction.FinancistoDraftSessionStore
+import ru.orangesoftware.financisto.transaction.TransactionEntryRouter
+import ru.orangesoftware.financisto.transaction.model.DraftSplit
+import ru.orangesoftware.financisto.transaction.model.TransactionDraft
+import ru.orangesoftware.financisto.transaction.model.TransactionMode
 import ru.orangesoftware.financisto.utils.PicturesUtil
 import java.io.File
 import java.io.FileInputStream
@@ -106,6 +113,46 @@ class AppFunctionDatabaseImpl(private val db: DatabaseAdapter) : AppFunctionData
                 parseExifDateTime(rawDate)
             }
         }.getOrNull()
+    }
+
+    override fun createTransactionReviewPendingIntent(draft: AppFunctionTransactionDraft): PendingIntent {
+        val context = requireNotNull(db.context) { "DatabaseAdapter context is required to create PendingIntent." }
+        val mode = when {
+            draft.toAccountId != null && draft.toAccountId!! > 0L -> TransactionMode.TRANSFER
+            draft.isIncome -> TransactionMode.INCOME
+            else -> TransactionMode.EXPENSE
+        }
+        val uiDraft = TransactionDraft(
+            draftId = draft.draftId,
+            mode = mode,
+            amountMinor = kotlin.math.abs(draft.amount),
+            fromAccountId = draft.fromAccountId,
+            toAccountId = draft.toAccountId,
+            toAmountMinor = draft.toAmount?.let { kotlin.math.abs(it) },
+            categoryId = draft.categoryId,
+            payeeId = draft.payeeId,
+            pendingPayeeName = if (draft.payeeId == null) draft.payeeName else null,
+            dateTimeMillis = draft.dateTime,
+            note = draft.note,
+            stagedReceiptFileName = draft.attachedPicture,
+            splits = draft.splits.map { split ->
+                DraftSplit(
+                    categoryId = split.categoryId,
+                    amountMinor = split.amount,
+                    note = split.note,
+                )
+            },
+        )
+        val intent = TransactionEntryRouter.createAiDraftIntent(context, uiDraft)
+        FinancistoDraftSessionStore(context).savePendingDraft(uiDraft)
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            draft.draftId.hashCode(),
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        runCatching { context.startActivity(intent) }
+        return pendingIntent
     }
 
     override fun insertOrUpdateTransaction(

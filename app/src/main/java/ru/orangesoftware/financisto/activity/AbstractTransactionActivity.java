@@ -54,6 +54,7 @@ import ru.orangesoftware.financisto.model.TransactionAttribute;
 import ru.orangesoftware.financisto.model.TransactionStatus;
 import ru.orangesoftware.financisto.recur.NotificationOptions;
 import ru.orangesoftware.financisto.recur.Recurrence;
+import ru.orangesoftware.financisto.transaction.TransactionEntryRouter;
 import ru.orangesoftware.financisto.utils.EnumUtils;
 import ru.orangesoftware.financisto.utils.Logger;
 import ru.orangesoftware.financisto.utils.MyPreferences;
@@ -141,6 +142,17 @@ public abstract class AbstractTransactionActivity extends AbstractActivity imple
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        if (!TransactionEntryRouter.shouldUseLegacyImmediately(getIntent(), db)) {
+            Intent composeIntent = TransactionEntryRouter.createForwardedComposeIntent(
+                    this,
+                    getIntent(),
+                    this instanceof TransferActivity
+            );
+            startActivity(composeIntent);
+            finish();
+            return;
+        }
 
         df = DateUtils.getLongDateFormat(this);
         tf = DateUtils.getTimeFormat(this);

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.appfunctions
 
+import android.app.PendingIntent
 import android.net.Uri
 import androidx.annotation.RequiresApi
 import androidx.appfunctions.AppFunctionAppUnknownException
@@ -18,6 +19,7 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.util.UUID
 import kotlin.math.abs
 import kotlin.math.round
 
@@ -102,11 +104,12 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
     }
 
     /**
-     * Creates an expense, income, split transaction, or transfer in Financisto.
+     * Prepares an expense, income, split transaction, or transfer draft and returns a PendingIntent to review it.
      *
-     * If [toAccountName] or [toAccountId] is provided, records a transfer from the source account to that
-     * destination account. If [splits] is non-empty, records a split transaction across multiple existing
-     * categories. Otherwise, records a single-category expense or income transaction.
+     * Resolves accounts, categories or splits, payee, date, and optional receipt attachment without writing
+     * to the Financisto database yet. If [toAccountName] or [toAccountId] is provided, prepares a transfer
+     * from the source account to that destination account. If [splits] is non-empty, prepares a split
+     * transaction across multiple existing categories. Otherwise, prepares a single-category expense or income.
      *
      * @param amount Non-zero transaction amount with at most 2 decimal places (e.g. 15.50).
      * @param accountName Optional name of an existing active source account (e.g. "Cash"). Used when [accountId]
@@ -114,22 +117,23 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
      * @param categoryName Optional name or full path of an existing category (e.g. "Food > Groceries",
      * "Їжа > Продукти"). Categories may be user-defined in any language. Ignored for transfers or split
      * transactions; if null, classifies automatically from payee, note, and transaction history.
-     * @param payeeName Optional payee or merchant name (e.g. "Starbucks"). Creates a new payee if not found.
+     * @param payeeName Optional payee or merchant name (e.g. "Starbucks"). Pending new payees are saved only when
+     * the user confirms the draft in Financisto.
      * @param note Optional note or item description for the transaction.
      * @param isIncome True for income, false or null for expense. Ignored for transfers.
      * @param toAccountName Optional destination account name for transfers. Used when [toAccountId] is null.
      * Must be null when [splits] is non-empty.
      * @param transactionDateTime Optional transaction date and time. Defaults to EXIF or current date and time.
-     * @param receiptImageUri Optional URI of a receipt photo to attach to the transaction.
+     * @param receiptImageUri Optional URI of a receipt photo to stage and attach to the transaction draft.
      * @param splits Optional list of category splits for multi-category transactions whose amounts sum to [amount].
      * @param accountId Optional unique ID of an existing active source account from [AccountOption.id]. Takes
      * precedence over [accountName] and disambiguates duplicate or similar account names.
      * @param toAccountId Optional unique ID of an existing active destination account from [AccountOption.id] for
      * transfers. Takes precedence over [toAccountName]; must be null when [splits] is non-empty.
-     * @return A [TransactionResult] describing the created transaction.
+     * @return A [PendingIntent] that opens Financisto's pre-filled transaction review screen before saving.
      */
     @AppFunctionDeclaration(isDescribedByKDoc = true)
-    suspend fun addTransaction(
+    suspend fun openDraft(
         amount: Double,
         accountName: String? = null,
         categoryName: String? = null,
@@ -142,7 +146,7 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
         splits: List<TransactionSplitInput> = emptyList(),
         accountId: Long? = null,
         toAccountId: Long? = null,
-    ): TransactionResult = executeOnIo("Failed to create transaction.") {
+    ): PendingIntent = executeOnIo("Failed to prepare transaction draft.") {
         val accounts = db.getAccounts()
         val catalog = ClassificationCatalog(db.getCategories(), db.getPayees(), db.getCategoryHistory())
         val (amountInCents, account) = validateAmountAndResolveAccount(amount, accountName, accountId, accounts)
@@ -166,34 +170,30 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
             account = account,
             isIncome = isIncomeTransaction,
         )
-        val (payeeId, resolvedPayeeName) = resolveOrCreatePayee(payeeName, catalog.payees)
+        val (payeeId, resolvedPayeeName) = resolvePayeeWithoutCreate(payeeName, catalog.payees)
         val attachedPictureFileName = receiptImageUri?.let(db::saveReceiptPicture)
         val resolvedDateTime =
             transactionDateTime ?: receiptImageUri?.let(db::extractReceiptImageDateTime) ?: LocalDateTime.now()
         val epochMillis = resolvedDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val signMultiplier = if (toAccount == null && isIncomeTransaction) 1L else -1L
         val isSplit = resolvedSplits.isNotEmpty()
-        val txId = db.insertOrUpdateTransaction(
+        val draftId = UUID.randomUUID().toString()
+        val draft = AppFunctionTransactionDraft(
+            draftId = draftId,
             fromAccountId = account.id,
             toAccountId = toAccount?.id,
             categoryId = if (isSplit) SPLIT_CATEGORY_ID else (resolvedCategory?.id ?: 0L),
             payeeId = payeeId,
+            payeeName = resolvedPayeeName,
             amount = signMultiplier * amountInCents,
             toAmount = toAccount?.let { amountInCents },
+            isIncome = toAccount == null && isIncomeTransaction,
             note = note.orEmpty(),
             dateTime = epochMillis,
             attachedPicture = attachedPictureFileName,
             splits = resolvedSplits.map { it.first },
         )
-        TransactionResult(
-            transactionId = txId,
-            accountName = account.title,
-            categoryPath = if (isSplit) SPLIT_CATEGORY_PATH else resolvedCategory?.fullPath,
-            splitCategoryPaths = resolvedSplits.map { it.second.fullPath },
-            payeeName = resolvedPayeeName,
-            transactionDateTime = resolvedDateTime,
-            attachedPictureFileName = attachedPictureFileName,
-        )
+        db.createTransactionReviewPendingIntent(draft)
     }
 
     private fun resolveCandidateAccount(
@@ -379,23 +379,22 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
         }
     }
 
-    private fun resolveOrCreatePayee(
+    private fun resolvePayeeWithoutCreate(
         payeeName: String?,
         payees: List<PayeeInfo>,
-    ): Pair<Long, String?> {
-        if (payeeName.isNullOrBlank()) return 0L to null
+    ): Pair<Long?, String?> {
+        if (payeeName.isNullOrBlank()) return null to null
         val trimmed = payeeName.trim()
         val existing = CategoryClassifier.findBestMatch(payees, trimmed) { it.title }
         return if (existing != null) {
             existing.id to existing.title
         } else {
-            db.createPayee(trimmed) to trimmed
+            null to trimmed
         }
     }
 
     private companion object {
         private const val SPLIT_CATEGORY_ID = -1L
-        private const val SPLIT_CATEGORY_PATH = "<SPLIT_CATEGORY>"
     }
 }
 
@@ -508,25 +507,6 @@ data class ReceiptTransactionPreparation(
     val requiresAccountSelection: Boolean,
     /** True when categoryConfidence is "LOW" or "NONE" or when isSplitTransaction is true. */
     val requiresCategoryConfirmation: Boolean,
-)
-
-/** Details of a created transaction, split transaction, or transfer in Financisto. */
-@AppFunctionSerializable(isDescribedByKDoc = true)
-data class TransactionResult(
-    /** Database ID of the created transaction. */
-    val transactionId: Long,
-    /** Name of the source account used. */
-    val accountName: String,
-    /** Full path of the existing category assigned, "<SPLIT_CATEGORY>" for splits, or null if uncategorized. */
-    val categoryPath: String?,
-    /** Full paths of the child split categories when created as a split transaction, or empty otherwise. */
-    val splitCategoryPaths: List<String>,
-    /** Name of the payee assigned, or null if none. */
-    val payeeName: String?,
-    /** Transaction date and time recorded. */
-    val transactionDateTime: LocalDateTime,
-    /** Stored file name of the attached receipt picture, or null if no image was attached. */
-    val attachedPictureFileName: String?,
 )
 
 // Map exceptions outside withContext so AppFunctionException never crosses a dispatcher boundary

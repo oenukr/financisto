@@ -28,7 +28,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -89,7 +88,6 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
         super.attachBaseContext(MyPreferences.switchLocale(newBase))
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -233,7 +231,6 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun ReportTopBar(
         modifier: Modifier = Modifier,
@@ -256,7 +253,6 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
         )
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun ReportBottomBar(
         modifier: Modifier = Modifier,
@@ -374,7 +370,6 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun PieChartIconButton(
         modifier: Modifier = Modifier,
@@ -392,7 +387,6 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun IncomeExpenseIconButton(
         modifier: Modifier = Modifier,

@@ -2,6 +2,7 @@
 package ru.orangesoftware.financisto.app
 
 import android.net.Uri
+import androidx.core.content.IntentCompat
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -9,6 +10,8 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.robolectric.Shadows
+import ru.orangesoftware.financisto.appfunctions.AppFunctionTransactionDraft
 import ru.orangesoftware.financisto.appfunctions.TransactionSplit
 import ru.orangesoftware.financisto.db.AbstractDbTest
 import ru.orangesoftware.financisto.model.Account
@@ -18,6 +21,11 @@ import ru.orangesoftware.financisto.model.Payee
 import ru.orangesoftware.financisto.model.Transaction
 import ru.orangesoftware.financisto.test.AccountBuilder
 import ru.orangesoftware.financisto.test.CurrencyBuilder
+import ru.orangesoftware.financisto.transaction.ComposeTransactionActivity
+import ru.orangesoftware.financisto.transaction.FinancistoDraftSessionStore
+import ru.orangesoftware.financisto.transaction.TransactionEntryRouter
+import ru.orangesoftware.financisto.transaction.model.TransactionLaunchArgs
+import ru.orangesoftware.financisto.transaction.model.TransactionMode
 import ru.orangesoftware.financisto.utils.PicturesUtil
 import java.io.File
 import java.time.LocalDateTime
@@ -290,6 +298,55 @@ class AppFunctionDatabaseImplTest : AbstractDbTest() {
         assertEquals("Молоко і хліб", history[2].note)
         assertEquals(2, appDb.getCategoryHistory(limit = 2).size)
         assertTrue(appDb.getCategoryHistory(limit = 0).isEmpty())
+    }
+
+    @Test
+    fun testCreateTransactionReviewPendingIntentTargetsComposeActivityWithAiDraft() {
+        val pendingIntent = appDb.createTransactionReviewPendingIntent(
+            AppFunctionTransactionDraft(
+                draftId = "draft-123",
+                fromAccountId = account1.id,
+                toAccountId = null,
+                categoryId = Category.SPLIT_CATEGORY_ID,
+                payeeId = null,
+                payeeName = "Fresh Market",
+                amount = -4250L,
+                toAmount = null,
+                isIncome = false,
+                note = "Weekly shop",
+                dateTime = 1_700_000_000_000L,
+                attachedPicture = "receipt_draft.jpg",
+                splits = listOf(
+                    TransactionSplit(categoryId = 10L, amount = -2000L, note = "Produce"),
+                    TransactionSplit(categoryId = 20L, amount = -2250L, note = "Bakery"),
+                ),
+            )
+        )
+
+        val savedIntent = Shadows.shadowOf(pendingIntent).savedIntent
+        assertEquals(ComposeTransactionActivity::class.java.name, savedIntent.component?.className)
+        val launchArgs = IntentCompat.getParcelableExtra(
+            savedIntent,
+            TransactionEntryRouter.EXTRA_LAUNCH_ARGS,
+            TransactionLaunchArgs::class.java,
+        )
+        assertTrue(launchArgs is TransactionLaunchArgs.AiDraft)
+        val aiDraft = (launchArgs as TransactionLaunchArgs.AiDraft).draft
+        assertEquals("draft-123", aiDraft.draftId)
+        assertEquals(TransactionMode.EXPENSE, aiDraft.mode)
+        assertEquals(4250L, aiDraft.amountMinor)
+        assertEquals(account1.id, aiDraft.fromAccountId)
+        assertNull(aiDraft.payeeId)
+        assertEquals("Fresh Market", aiDraft.pendingPayeeName)
+        assertEquals("Weekly shop", aiDraft.note)
+        assertEquals("receipt_draft.jpg", aiDraft.stagedReceiptFileName)
+        assertEquals(2, aiDraft.splits.size)
+        assertEquals(10L, aiDraft.splits[0].categoryId)
+        assertEquals(-2000L, aiDraft.splits[0].amountMinor)
+
+        val draftStore = FinancistoDraftSessionStore(context)
+        assertEquals(aiDraft, draftStore.consumePendingAutoOpenDraft())
+        assertNull(draftStore.consumePendingAutoOpenDraft())
     }
 
     private fun createCategory(title: String, parent: Category? = null): Category {
