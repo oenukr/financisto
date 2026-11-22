@@ -16,11 +16,13 @@ glide-compose = "1.0.0-beta10"
 kotlin = "2.4.21"
 kotlinx-coroutines = "1.11.0"
 kotlinx-datetime = "0.8.0"
+kotlinx-serialization = "1.11.0"
 kover = "0.9.11"
 ksp = "2.3.14"
 ktor = "3.6.1"
 lifecycle = "2.11.0"
 lib-recur = "0.17.1"
+navigationevent = "1.2.0"
 test-core = "1.7.0"
 test-hamcrest = "3.0"
 test-junit = "4.13.2"
@@ -60,6 +62,7 @@ koin-test = { module = "io.insert-koin:koin-test" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 lib-recur = { module = "org.dmfs:lib-recur", version.ref = "lib-recur" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
@@ -71,6 +74,7 @@ lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", v
 lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "lifecycle" }
 lifecycle-viewmodel-savedstate = { module = "androidx.lifecycle:lifecycle-viewmodel-savedstate", version.ref = "lifecycle" }
 materialdatetimepicker = { module = "com.wdullaer:materialdatetimepicker", version = "4.2.3" }
+navigationevent-compose = { module = "androidx.navigationevent:navigationevent-compose", version.ref = "navigationevent" }
 okio = { module = "com.squareup.okio:okio", version = "3.18.2" }
 reactive-streams = { module = "org.reactivestreams:reactive-streams", version = "1.0.4" }
 rximagepicker = { module = "com.github.MLSDev:RxImagePicker", version = "master" }
@@ -95,5 +99,6 @@ android-application = { id = "com.android.application", version.ref = "android_t
 android-library = { id = "com.android.library", version.ref = "android_tools" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt"}
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }

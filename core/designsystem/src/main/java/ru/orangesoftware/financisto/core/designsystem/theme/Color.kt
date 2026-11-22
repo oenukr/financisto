@@ -1,0 +1,132 @@
+// SPDX-License-Identifier: GPL-2.0-only
+package ru.orangesoftware.financisto.core.designsystem.theme
+
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.ui.graphics.Color
+
+private val LightPrimary = Color(0xFF5B4394)
+private val LightPrimaryContainer = Color(0xFFEADBFF)
+private val LightOnPrimaryContainer = Color(0xFF21005D)
+private val LightSecondary = Color(0xFF625B71)
+private val LightSecondaryContainer = Color(0xFFEFEBFA)
+private val LightTertiary = Color(0xFF7D5260)
+private val LightTertiaryContainer = Color(0xFFFFD8E4)
+private val LightOnTertiaryContainer = Color(0xFF31111D)
+private val LightError = Color(0xFFB3261E)
+private val LightErrorContainer = Color(0xFFFCEEEE)
+private val LightOnErrorContainer = Color(0xFF410E0B)
+private val LightBackground = Color(0xFFFCFBFC)
+private val LightOnBackground = Color(0xFF1D1B20)
+private val LightSurface = Color(0xFFFFFFFF)
+private val LightSurfaceVariant = Color(0xFFF3EDF7)
+private val LightOnSurfaceVariant = Color(0xFF49454F)
+private val LightSurfaceContainerLow = Color(0xFFFBF7FD)
+private val LightSurfaceContainer = Color(0xFFF8F6F9)
+private val LightSurfaceContainerHighest = Color(0xFFEBE7F1)
+private val LightOutline = Color(0xFF79747E)
+private val LightOutlineVariant = Color(0xFFECE2F0)
+private val LightInverseSurface = Color(0xFF322F35)
+private val LightInverseOnSurface = Color(0xFFF5EFF7)
+
+private val DarkPrimary = Color(0xFFD0BCFF)
+private val DarkOnPrimary = Color(0xFF381E72)
+private val DarkPrimaryContainer = Color(0xFF4F378B)
+private val DarkOnPrimaryContainer = Color(0xFFEADDFF)
+private val DarkSecondary = Color(0xFFCCC2DC)
+private val DarkOnSecondary = Color(0xFF332D41)
+private val DarkSecondaryContainer = Color(0xFF4A4458)
+private val DarkOnSecondaryContainer = Color(0xFFE8DEF8)
+private val DarkTertiary = Color(0xFFEFB8C8)
+private val DarkOnTertiary = Color(0xFF492532)
+private val DarkTertiaryContainer = Color(0xFF633B48)
+private val DarkOnTertiaryContainer = Color(0xFFFFD8E4)
+private val DarkError = Color(0xFFF2B8B5)
+private val DarkOnError = Color(0xFF601410)
+private val DarkErrorContainer = Color(0xFF8C1D18)
+private val DarkOnErrorContainer = Color(0xFFF9DEDC)
+private val DarkBackground = Color(0xFF141218)
+private val DarkOnBackground = Color(0xFFE6E0E9)
+private val DarkSurface = Color(0xFF1C1A22)
+private val DarkSurfaceVariant = Color(0xFF2B2734)
+private val DarkOnSurfaceVariant = Color(0xFFCAC4D0)
+private val DarkSurfaceContainerLowest = Color(0xFF0F0D13)
+private val DarkSurfaceContainerLow = Color(0xFF1D1B22)
+private val DarkSurfaceContainer = Color(0xFF221F2A)
+private val DarkSurfaceContainerHighest = Color(0xFF363140)
+private val DarkOutline = Color(0xFF938F99)
+private val DarkOutlineVariant = Color(0xFF49454F)
+private val DarkInverseSurface = Color(0xFFE6E0E9)
+private val DarkInverseOnSurface = Color(0xFF322F35)
+
+val FinancistoLightColorScheme = lightColorScheme(
+    primary = LightPrimary,
+    onPrimary = Color.White,
+    primaryContainer = LightPrimaryContainer,
+    onPrimaryContainer = LightOnPrimaryContainer,
+    secondary = LightSecondary,
+    onSecondary = Color.White,
+    secondaryContainer = LightSecondaryContainer,
+    onSecondaryContainer = LightOnBackground,
+    tertiary = LightTertiary,
+    onTertiary = Color.White,
+    tertiaryContainer = LightTertiaryContainer,
+    onTertiaryContainer = LightOnTertiaryContainer,
+    error = LightError,
+    onError = Color.White,
+    errorContainer = LightErrorContainer,
+    onErrorContainer = LightOnErrorContainer,
+    background = LightBackground,
+    onBackground = LightOnBackground,
+    surface = LightSurface,
+    onSurface = LightOnBackground,
+    surfaceVariant = LightSurfaceVariant,
+    onSurfaceVariant = LightOnSurfaceVariant,
+    surfaceContainerLowest = LightSurface,
+    surfaceContainerLow = LightSurfaceContainerLow,
+    surfaceContainer = LightSurfaceContainer,
+    surfaceContainerHigh = LightSurfaceVariant,
+    surfaceContainerHighest = LightSurfaceContainerHighest,
+    outline = LightOutline,
+    outlineVariant = LightOutlineVariant,
+    inverseSurface = LightInverseSurface,
+    inverseOnSurface = LightInverseOnSurface,
+    inversePrimary = DarkPrimary,
+    scrim = Color.Black,
+)
+
+val FinancistoDarkColorScheme = darkColorScheme(
+    primary = DarkPrimary,
+    onPrimary = DarkOnPrimary,
+    primaryContainer = DarkPrimaryContainer,
+    onPrimaryContainer = DarkOnPrimaryContainer,
+    secondary = DarkSecondary,
+    onSecondary = DarkOnSecondary,
+    secondaryContainer = DarkSecondaryContainer,
+    onSecondaryContainer = DarkOnSecondaryContainer,
+    tertiary = DarkTertiary,
+    onTertiary = DarkOnTertiary,
+    tertiaryContainer = DarkTertiaryContainer,
+    onTertiaryContainer = DarkOnTertiaryContainer,
+    error = DarkError,
+    onError = DarkOnError,
+    errorContainer = DarkErrorContainer,
+    onErrorContainer = DarkOnErrorContainer,
+    background = DarkBackground,
+    onBackground = DarkOnBackground,
+    surface = DarkSurface,
+    onSurface = DarkOnBackground,
+    surfaceVariant = DarkSurfaceVariant,
+    onSurfaceVariant = DarkOnSurfaceVariant,
+    surfaceContainerLowest = DarkSurfaceContainerLowest,
+    surfaceContainerLow = DarkSurfaceContainerLow,
+    surfaceContainer = DarkSurfaceContainer,
+    surfaceContainerHigh = DarkSurfaceVariant,
+    surfaceContainerHighest = DarkSurfaceContainerHighest,
+    outline = DarkOutline,
+    outlineVariant = DarkOutlineVariant,
+    inverseSurface = DarkInverseSurface,
+    inverseOnSurface = DarkInverseOnSurface,
+    inversePrimary = LightPrimary,
+    scrim = Color.Black,
+)

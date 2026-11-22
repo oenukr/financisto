@@ -63,6 +63,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.MutableCreationExtras
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.core.designsystem.theme.FinancistoTheme
 import ru.orangesoftware.financisto.db.DatabaseHelper.ReportColumns
 import ru.orangesoftware.financisto.filter.Criteria
 import ru.orangesoftware.financisto.filter.WhereFilter
@@ -152,7 +153,7 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
             var maxAmount by remember { mutableLongStateOf(0L) }
             var maxAmountWidth by remember { mutableLongStateOf(0L) }
 
-            MaterialTheme {
+            FinancistoTheme {
                 Scaffold(
                     snackbarHost = {
                         SnackbarHost(hostState = snackbarHostState)
