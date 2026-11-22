@@ -3,7 +3,10 @@ package ru.orangesoftware.financisto.transaction
 
 import android.net.Uri
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertArrayEquals
@@ -67,6 +70,61 @@ class FinancistoReceiptMediaPortTest : AbstractDbTest() {
             // Expected cancellation propagation.
         }
 
+        val afterFiles = picturesDir.listFiles()?.map { it.name }.orEmpty().toSet()
+        assertEquals(beforeFiles, afterFiles)
+    }
+
+    @Test
+    fun stageFromUriDeletesFileWhenJobCancelledDuringBlockingReadWithoutThrowing() = runTest {
+        val picturesDir = requireNotNull(PicturesUtil.pictureFile("probe.jpg", false).parentFile)
+        val beforeFiles = picturesDir.listFiles()?.map { it.name }.orEmpty().toSet()
+
+        val uri = Uri.parse("content://ru.orangesoftware.financisto.test/job_cancelled_receipt.jpg")
+        lateinit var stagingJob: Job
+        val cancellingStream = object : InputStream() {
+            private var stage = 0
+
+            override fun read(): Int {
+                return when (stage++) {
+                    0 -> 0xFF
+                    1 -> {
+                        stagingJob.cancel(CancellationException("Caller cancelled during blocking read"))
+                        -1
+                    }
+                    else -> -1
+                }
+            }
+
+            override fun read(b: ByteArray, off: Int, len: Int): Int {
+                return when (stage++) {
+                    0 -> {
+                        b[off] = 0xFF.toByte()
+                        1
+                    }
+                    1 -> {
+                        stagingJob.cancel(CancellationException("Caller cancelled during blocking read"))
+                        -1
+                    }
+                    else -> -1
+                }
+            }
+        }
+        Shadows.shadowOf(context.contentResolver).registerInputStream(uri, cancellingStream)
+
+        var caughtCancellation = false
+        stagingJob = launch(start = CoroutineStart.LAZY) {
+            try {
+                mediaPort.stageFromUri(uri.toString())
+                fail("Expected CancellationException when job is cancelled during blocking read")
+            } catch (e: CancellationException) {
+                caughtCancellation = true
+                throw e
+            }
+        }
+        stagingJob.start()
+        stagingJob.join()
+
+        assertTrue(caughtCancellation)
         val afterFiles = picturesDir.listFiles()?.map { it.name }.orEmpty().toSet()
         assertEquals(beforeFiles, afterFiles)
     }

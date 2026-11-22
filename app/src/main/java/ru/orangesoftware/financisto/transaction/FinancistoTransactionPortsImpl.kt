@@ -8,6 +8,7 @@ import androidx.core.net.toUri
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -27,6 +28,8 @@ import timber.log.Timber
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
+import java.io.OutputStream
+import kotlin.coroutines.CoroutineContext
 
 class FinancistoTransactionPreferencesPort(
     private val context: Context,
@@ -232,9 +235,13 @@ class FinancistoReceiptMediaPort(
             val uri = uriString.toUri()
             val inputStream = openReceiptStream(uri)
             inputStream?.use { input ->
+                coroutineContext.ensureActive()
                 val createdFile = PicturesUtil.createEmptyImageFile()
                 targetFile = createdFile
-                createdFile.outputStream().use { output -> input.copyTo(output) }
+                createdFile.outputStream().use { output ->
+                    copyWithCancellationChecks(input, output, coroutineContext)
+                }
+                coroutineContext.ensureActive()
                 createdFile.name
             }
         } catch (e: CancellationException) {
@@ -283,6 +290,21 @@ class FinancistoReceiptMediaPort(
         return contentStream ?: uri.path?.takeIf { it.isNotBlank() }?.let { path ->
             File(path).inputStream()
         }
+    }
+
+    private fun copyWithCancellationChecks(
+        input: InputStream,
+        output: OutputStream,
+        coroutineContext: CoroutineContext,
+    ) {
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        while (true) {
+            coroutineContext.ensureActive()
+            val bytesRead = input.read(buffer)
+            if (bytesRead < 0) break
+            output.write(buffer, 0, bytesRead)
+        }
+        coroutineContext.ensureActive()
     }
 
     private fun deleteFileQuietly(file: File?) {
