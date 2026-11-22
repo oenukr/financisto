@@ -14,10 +14,14 @@ import ru.orangesoftware.financisto.transaction.mvi.TransactionFormState
 import ru.orangesoftware.financisto.transaction.mvi.TransactionIntent
 import ru.orangesoftware.financisto.transaction.mvi.TransactionUiState
 import ru.orangesoftware.financisto.transaction.port.TransactionPorts
+import timber.log.Timber
 import kotlin.time.Clock
 
 internal sealed interface SaveExecutionOutcome {
-    data class Finished(val savedId: Long) : SaveExecutionOutcome
+    data class Finished(
+        val savedId: Long,
+        val warningMessage: String? = null,
+    ) : SaveExecutionOutcome
     data class ResetNext(val nextReady: TransactionUiState.Ready) : SaveExecutionOutcome
     data class Failed(val message: String) : SaveExecutionOutcome
 }
@@ -45,7 +49,6 @@ internal object TransactionActionRunner {
         }
     }
 
-    @Suppress("TooGenericExceptionCaught")
     suspend fun executeSave(
         ready: TransactionUiState.Ready,
         command: SaveTransactionCommand,
@@ -53,27 +56,94 @@ internal object TransactionActionRunner {
         ports: TransactionPorts,
         clock: Clock = Clock.System,
     ): SaveExecutionOutcome {
-        return try {
-            val savedId = ports.repository.saveTransaction(command)
-            ready.form.aiDraftId?.let { draftId ->
-                ports.draftSessionStore.markDraftSaved(draftId, savedId)
+        val commitResult = commitTransaction(command, ports)
+        val savedId = commitResult.getOrNull()
+        return when {
+            commitResult.isFailure -> SaveExecutionOutcome.Failed(
+                commitResult.exceptionOrNull()?.localizedMessage ?: "Failed to save transaction."
+            )
+            savedId == null || savedId <= 0L -> SaveExecutionOutcome.Failed("Failed to save transaction.")
+            else -> {
+                runPostCommitCleanup(ready, command, savedId, ports)
+                if (saveAndNew) {
+                    val freshReady = buildFreshReadyStateOrNull(
+                        ready = ready,
+                        ports = ports,
+                        nowMillis = clock.now().toEpochMilliseconds(),
+                        savedId = savedId,
+                    )
+                    if (freshReady != null) {
+                        SaveExecutionOutcome.ResetNext(freshReady)
+                    } else {
+                        SaveExecutionOutcome.Finished(
+                            savedId = savedId,
+                            warningMessage = "Transaction saved, but failed to prepare a new form.",
+                        )
+                    }
+                } else {
+                    SaveExecutionOutcome.Finished(savedId)
+                }
             }
+        }
+    }
+
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun commitTransaction(
+        command: SaveTransactionCommand,
+        ports: TransactionPorts,
+    ): Result<Long> {
+        return try {
+            Result.success(ports.repository.saveTransaction(command))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun runPostCommitCleanup(
+        ready: TransactionUiState.Ready,
+        command: SaveTransactionCommand,
+        savedId: Long,
+        ports: TransactionPorts,
+    ) {
+        ready.form.aiDraftId?.let { draftId ->
+            try {
+                ports.draftSessionStore.markDraftSaved(draftId, savedId)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.w(e, "Failed to mark AI draft %s as saved for transaction %d", draftId, savedId)
+            }
+        }
+        try {
             TransactionLoader.deleteUnusedStagedFiles(
                 ports = ports,
                 stagedFiles = ready.form.newlyStagedPictureFiles,
                 keepFileName = command.attachedPicture,
             )
-            if (saveAndNew) {
-                SaveExecutionOutcome.ResetNext(
-                    buildFreshReadyState(ready, ports, clock.now().toEpochMilliseconds())
-                )
-            } else {
-                SaveExecutionOutcome.Finished(savedId)
-            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            SaveExecutionOutcome.Failed(e.localizedMessage ?: "Failed to save transaction.")
+            Timber.w(e, "Failed to delete unused staged receipts after saving transaction %d", savedId)
+        }
+    }
+
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun buildFreshReadyStateOrNull(
+        ready: TransactionUiState.Ready,
+        ports: TransactionPorts,
+        nowMillis: Long,
+        savedId: Long,
+    ): TransactionUiState.Ready? {
+        return try {
+            buildFreshReadyState(ready, ports, nowMillis)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.w(e, "Transaction %d saved, but failed to prepare fresh form", savedId)
+            null
         }
     }
 
@@ -121,6 +191,7 @@ internal object TransactionActionRunner {
             initialPersistedPictureFileName = ready.form.initialPersistedPictureFileName,
             newlyStagedPictureFiles = ready.form.newlyStagedPictureFiles,
             isFromNewBlankLaunch = ready.form.isFromNewBlankLaunch,
+            isDuplicateDraftConfirmed = ready.form.isDuplicateDraftConfirmed,
         )
     }
 
@@ -130,11 +201,25 @@ internal object TransactionActionRunner {
         kind: ExternalEntityKind,
         createdId: Long,
     ): TransactionUiState.Ready {
-        val splitLocalId = (ready.activeSheet as? ActiveSheet.CategoryBrowser)?.forSplitLocalId
-        val followUp = when (kind) {
-            ExternalEntityKind.CATEGORY -> TransactionIntent.SelectCategory(createdId, forSplitLocalId = splitLocalId)
-            ExternalEntityKind.LOCATION -> TransactionIntent.SelectLocation(createdId)
+        val withCatalog = ready.copy(catalog = refreshedCatalog)
+        return when (kind) {
+            ExternalEntityKind.LOCATION ->
+                TransactionReducer.reduce(withCatalog, TransactionIntent.SelectLocation(createdId))
+            ExternalEntityKind.CATEGORY -> {
+                val splitLocalId = (ready.activeSheet as? ActiveSheet.CategoryBrowser)?.forSplitLocalId
+                    ?: ready.activeSplitEditor?.split?.localId
+                when {
+                    splitLocalId != null -> TransactionReducer.reduce(
+                        withCatalog,
+                        TransactionIntent.SelectCategory(createdId, forSplitLocalId = splitLocalId),
+                    )
+                    ready.form.isSplitMode -> withCatalog
+                    else -> TransactionReducer.reduce(
+                        withCatalog,
+                        TransactionIntent.SelectCategory(createdId, forSplitLocalId = null),
+                    )
+                }
+            }
         }
-        return TransactionReducer.reduce(ready.copy(catalog = refreshedCatalog), followUp)
     }
 }

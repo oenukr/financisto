@@ -144,6 +144,8 @@ internal class FakeTransactionRepository(
     var pendingSaveDeferred: CompletableDeferred<Long>? = null
     var pendingCatalogDeferred: CompletableDeferred<TransactionCatalog>? = null
     var onLoadCatalog: (suspend () -> Unit)? = null
+    var failLoadCatalogAfterFirstMessage: String? = null
+    var rateHandler: (suspend (Long, Long) -> Double?)? = null
     var failSaveMessage: String? = null
     private var nextId = 101L
     private var loadCatalogCalls = 0
@@ -151,6 +153,9 @@ internal class FakeTransactionRepository(
     override suspend fun loadCatalog(editingTransactionId: Long?): TransactionCatalog {
         onLoadCatalog?.invoke()
         loadCatalogCalls++
+        if (loadCatalogCalls > 1) {
+            failLoadCatalogAfterFirstMessage?.let { throw IllegalStateException(it) }
+        }
         val deferred = pendingCatalogDeferred
         return if (deferred != null && loadCatalogCalls > 1) deferred.await() else catalog
     }
@@ -159,6 +164,7 @@ internal class FakeTransactionRepository(
 
     override suspend fun getLatestExchangeRate(fromCurrencyId: Long, toCurrencyId: Long): Double? {
         requestedRatePairs.add(fromCurrencyId to toCurrencyId)
+        rateHandler?.let { return it(fromCurrencyId, toCurrencyId) }
         return storedRates[fromCurrencyId to toCurrencyId]
     }
 
@@ -179,22 +185,28 @@ internal class FakeExchangeRatePort : ExchangeRatePort {
 
 internal class FakeDraftSessionStore : DraftSessionStore {
     val savedByDraftId = mutableMapOf<String, Long>()
+    var failMarkDraftSavedMessage: String? = null
 
     override suspend fun getSavedTransactionId(draftId: String): Long? = savedByDraftId[draftId]
 
     override suspend fun markDraftSaved(draftId: String, transactionId: Long) {
+        failMarkDraftSavedMessage?.let { throw IllegalStateException(it) }
         savedByDraftId[draftId] = transactionId
     }
 }
 
 internal class FakeReceiptMediaPort : ReceiptMediaPort {
     val deletedFiles = mutableListOf<String>()
+    var stageHandler: (suspend (String) -> String?)? = null
+    var failDeleteMessage: String? = null
 
-    override suspend fun stageFromUri(uriString: String): String = "uri_staged.jpg"
+    override suspend fun stageFromUri(uriString: String): String? =
+        stageHandler?.invoke(uriString) ?: "uri_staged.jpg"
 
     override fun resolveFilePath(fileName: String): String = "/tmp/$fileName"
 
     override suspend fun deleteStagedFile(fileName: String) {
+        failDeleteMessage?.let { throw IllegalStateException(it) }
         deletedFiles.add(fileName)
     }
 }

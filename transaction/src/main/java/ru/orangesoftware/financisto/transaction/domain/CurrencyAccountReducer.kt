@@ -33,8 +33,9 @@ internal object CurrencyAccountReducer {
         } else {
             selectSourceAccount(state, account)
         }
-        return syncRateOnCurrencyChange(
-            state.copy(form = nextForm, sheetStack = emptyList(), validationErrors = emptyList())
+        return CurrencyAmountReconciler.reconcileAfterCurrencyRoleChange(
+            previous = state,
+            next = state.copy(form = nextForm, sheetStack = emptyList(), validationErrors = emptyList()),
         )
     }
 
@@ -45,16 +46,35 @@ internal object CurrencyAccountReducer {
         val form = state.form
         val canRememberCategory = form.isFromNewBlankLaunch &&
             !state.prefs.isShowPayee &&
-            state.prefs.isRememberCategory
+            state.prefs.isRememberCategory &&
+            !form.isSplitMode
         val shouldRememberCategory = canRememberCategory &&
             form.categoryId == TransactionIds.NO_CATEGORY_ID &&
             account.lastCategoryId > 0L
+        val nextCategoryId = if (shouldRememberCategory) account.lastCategoryId else form.categoryId
+        val nextMode = resolveRememberedCategoryMode(state, shouldRememberCategory, nextCategoryId)
         val nextToId = resolveRememberedDestination(state, account)
         return form.copy(
             fromAccountId = account.id,
-            categoryId = if (shouldRememberCategory) account.lastCategoryId else form.categoryId,
+            categoryId = nextCategoryId,
+            mode = nextMode,
             toAccountId = nextToId,
         )
+    }
+
+    private fun resolveRememberedCategoryMode(
+        state: TransactionUiState.Ready,
+        shouldRememberCategory: Boolean,
+        categoryId: Long,
+    ): TransactionMode {
+        val form = state.form
+        if (!shouldRememberCategory || form.mode == TransactionMode.TRANSFER) return form.mode
+        val category = state.catalog.categories.firstOrNull { it.id == categoryId }
+        return when {
+            category == null -> form.mode
+            category.isIncome -> TransactionMode.INCOME
+            else -> TransactionMode.EXPENSE
+        }
     }
 
     private fun resolveRememberedDestination(
@@ -87,7 +107,7 @@ internal object CurrencyAccountReducer {
             secondaryAmountMinor = if (isDual) form.primaryAmountMinor else form.secondaryAmountMinor,
             secondaryAmountInput = if (isDual) form.primaryAmountInput else form.secondaryAmountInput,
         )
-        return syncRateOnCurrencyChange(state.copy(form = swappedForm, validationErrors = emptyList()))
+        return CurrencyAmountReconciler.syncRate(state.copy(form = swappedForm, validationErrors = emptyList()))
     }
 
     private fun selectCurrency(state: TransactionUiState.Ready, currencyId: Long?): TransactionUiState.Ready {
@@ -102,28 +122,9 @@ internal object CurrencyAccountReducer {
             secondaryAmountMinor = if (normalized == null) 0L else state.form.secondaryAmountMinor,
             secondaryAmountInput = if (normalized == null) "0" else state.form.secondaryAmountInput,
         )
-        return syncRateOnCurrencyChange(
-            state.copy(form = nextForm, sheetStack = emptyList(), validationErrors = emptyList())
-        )
-    }
-
-    private fun syncRateOnCurrencyChange(state: TransactionUiState.Ready): TransactionUiState.Ready {
-        val pCur = state.primaryCurrency
-        val sCur = state.secondaryCurrency
-        if (pCur == null || sCur == null || pCur.id == sCur.id) {
-            return state.copy(form = state.form.copy(exchangeRate = 0.0, exchangeRateInput = ""))
-        }
-        val nextRate = CurrencyConversionCalculator.computeRate(
-            fromMinor = state.form.primaryAmountMinor,
-            fromDecimals = pCur.decimals,
-            toMinor = state.form.secondaryAmountMinor,
-            toDecimals = sCur.decimals,
-        )
-        return state.copy(
-            form = state.form.copy(
-                exchangeRate = nextRate,
-                exchangeRateInput = CurrencyConversionCalculator.formatRate(nextRate),
-            )
+        return CurrencyAmountReconciler.reconcileAfterCurrencyRoleChange(
+            previous = state,
+            next = state.copy(form = nextForm, sheetStack = emptyList(), validationErrors = emptyList()),
         )
     }
 }

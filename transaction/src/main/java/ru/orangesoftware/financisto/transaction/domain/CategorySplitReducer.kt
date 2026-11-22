@@ -8,6 +8,7 @@ import ru.orangesoftware.financisto.transaction.model.TransactionMode
 import ru.orangesoftware.financisto.transaction.mvi.TransactionFormState
 import ru.orangesoftware.financisto.transaction.mvi.TransactionIntent
 import ru.orangesoftware.financisto.transaction.mvi.TransactionUiState
+import kotlin.math.abs
 
 internal object CategorySplitReducer {
     private const val DEFAULT_DECIMALS = 2
@@ -159,11 +160,23 @@ internal object CategorySplitReducer {
     }
 
     private fun rebalanceAdjustTotal(state: TransactionUiState.Ready): TransactionUiState.Ready {
-        val newTotal = SplitAllocationCalculator.adjustTotalMagnitude(state.form.splits)
-        val pDec = state.primaryCurrency?.decimals ?: DEFAULT_DECIMALS
-        val sDec = state.secondaryCurrency?.decimals ?: DEFAULT_DECIMALS
+        val allocatedSigned = SplitAllocationCalculator.allocatedSignedMinor(state.form.splits)
+        val newTotal = abs(allocatedSigned)
+        val nextMode = when {
+            state.form.mode == TransactionMode.TRANSFER -> state.form.mode
+            allocatedSigned > 0L -> TransactionMode.INCOME
+            allocatedSigned < 0L -> TransactionMode.EXPENSE
+            else -> state.form.mode
+        }
+        val stateWithMode = if (nextMode != state.form.mode) {
+            state.copy(form = state.form.copy(mode = nextMode))
+        } else {
+            state
+        }
+        val pDec = stateWithMode.primaryCurrency?.decimals ?: DEFAULT_DECIMALS
+        val sDec = stateWithMode.secondaryCurrency?.decimals ?: DEFAULT_DECIMALS
         val text = AmountScale.formatEditableAmount(newTotal, pDec)
-        return AmountModeReducer.applyPrimaryAmountText(state, text, pDec, sDec)
+        return AmountModeReducer.applyPrimaryAmountText(stateWithMode, text, pDec, sDec)
     }
 
     private fun rebalanceSplits(

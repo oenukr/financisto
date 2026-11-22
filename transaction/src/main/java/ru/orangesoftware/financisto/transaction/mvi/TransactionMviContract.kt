@@ -47,6 +47,7 @@ data class TransactionFormState(
     val newlyStagedPictureFiles: List<String> = emptyList(),
     val isCCardPayment: Boolean = false,
     val isFromNewBlankLaunch: Boolean = true,
+    val isDuplicateDraftConfirmed: Boolean = false,
 ) : Parcelable {
     val isEditing: Boolean get() = existingTransactionId > 0L
     val isAiDraft: Boolean get() = aiDraftId != null
@@ -100,6 +101,8 @@ sealed interface TransactionUiState {
         val validationErrors: List<String> = emptyList(),
         val isSaving: Boolean = false,
         val isFetchingRate: Boolean = false,
+        val isStagingReceipt: Boolean = false,
+        val consumedDraftTransactionId: Long? = null,
     ) : TransactionUiState {
         val activeSheet: ActiveSheet? get() = sheetStack.lastOrNull()
         val activeSplitEditor: ActiveSheet.SplitItemEditor?

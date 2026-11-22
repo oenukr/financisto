@@ -61,7 +61,10 @@ internal object MetaSheetReducer {
             is TransactionIntent.OpenStatusPicker -> state.copy(sheetStack = listOf(ActiveSheet.StatusPicker))
             is TransactionIntent.OpenCalculator -> openCalculator(state, intent)
             is TransactionIntent.DismissSheet -> state.copy(sheetStack = state.sheetStack.dropLast(1))
-            is TransactionIntent.DuplicateDraftAnyway -> state.copy(sheetStack = emptyList())
+            is TransactionIntent.DuplicateDraftAnyway -> state.copy(
+                form = state.form.copy(isDuplicateDraftConfirmed = true),
+                sheetStack = emptyList(),
+            )
             else -> state
         }
     }

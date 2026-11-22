@@ -17,16 +17,19 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import ru.orangesoftware.financisto.transaction.model.AccountOption
+import ru.orangesoftware.financisto.transaction.model.CategoryOption
 import ru.orangesoftware.financisto.transaction.model.PayeeOption
 import ru.orangesoftware.financisto.transaction.model.ProjectOption
 import ru.orangesoftware.financisto.transaction.model.SaveTransactionCommand
 import ru.orangesoftware.financisto.transaction.model.TransactionDraft
 import ru.orangesoftware.financisto.transaction.model.TransactionEditLoadResult
+import ru.orangesoftware.financisto.transaction.model.TransactionIds
 import ru.orangesoftware.financisto.transaction.model.TransactionLaunchArgs
 import ru.orangesoftware.financisto.transaction.model.TransactionMode
 import ru.orangesoftware.financisto.transaction.mvi.TransactionTestFakes.FIXED_NOW_MILLIS
 import ru.orangesoftware.financisto.transaction.mvi.TransactionTestFakes.defaultCatalog
 import ru.orangesoftware.financisto.transaction.mvi.TransactionTestFakes.fixedClock
+import ru.orangesoftware.financisto.transaction.mvi.TransactionTestFakes.multiCurrencyCatalog
 import ru.orangesoftware.financisto.transaction.mvi.TransactionTestFakes.sampleRecord
 import ru.orangesoftware.financisto.transaction.port.TransactionPorts
 
@@ -173,7 +176,7 @@ class TransactionViewModelTest {
             (consumedVm.uiState.value as TransactionUiState.Ready).activeSheet,
         )
         consumedVm.onIntent(TransactionIntent.ConfirmDiscard)
-        assertEquals(listOf("staged_a.jpg"), mediaPort.deletedFiles)
+        assertTrue(mediaPort.deletedFiles.isEmpty())
         assertTrue(consumedVm.effects.first() is TransactionEffect.CloseCancelled)
 
         val saveVm = TransactionViewModel(
@@ -196,7 +199,7 @@ class TransactionViewModelTest {
         assertTrue(saveVm.hasUnsavedUserEdits())
         saveVm.onIntent(TransactionIntent.SaveClicked)
 
-        assertEquals(listOf("staged_initial.jpg"), mediaPort.deletedFiles.drop(1))
+        assertEquals(listOf("staged_initial.jpg"), mediaPort.deletedFiles)
         assertEquals(101L, draftStore.savedByDraftId["draft-fresh"])
         assertEquals("staged_replacement.jpg", repository.savedCommands.last().attachedPicture)
     }
@@ -286,6 +289,160 @@ class TransactionViewModelTest {
 
         vm.cleanupStagedReceipts()
         assertEquals(listOf("temp_1.jpg", "temp_2.jpg"), mediaPort.deletedFiles)
+    }
+
+    @Test
+    fun consumedDraftDiscardPreservesCommittedReceiptAndDeletesReplacement() = runTest {
+        draftStore.savedByDraftId["draft-consumed-receipt"] = 88L
+        val vm = TransactionViewModel(
+            launchArgs = TransactionLaunchArgs.AiDraft(
+                TransactionDraft(
+                    draftId = "draft-consumed-receipt",
+                    mode = TransactionMode.EXPENSE,
+                    amountMinor = 1500L,
+                    fromAccountId = 1L,
+                    dateTimeMillis = FIXED_NOW_MILLIS,
+                    stagedReceiptFileName = "committed_receipt.jpg",
+                )
+            ),
+            savedStateHandle = SavedStateHandle(),
+            ports = ports,
+            ioDispatcher = testDispatcher,
+            clock = fixedClock,
+        )
+
+        val initial = vm.uiState.value as TransactionUiState.Ready
+        assertEquals("committed_receipt.jpg", initial.form.attachedPictureFileName)
+        assertTrue(initial.form.newlyStagedPictureFiles.isEmpty())
+
+        vm.onIntent(TransactionIntent.DuplicateDraftAnyway)
+        vm.onIntent(TransactionIntent.AttachCapturedPhotoFile("new_replacement.jpg"))
+        vm.onIntent(TransactionIntent.ConfirmDiscard)
+
+        assertEquals(listOf("new_replacement.jpg"), mediaPort.deletedFiles)
+        assertEquals(TransactionEffect.CloseCancelled, vm.effects.first())
+    }
+
+    @Test
+    fun consumedDraftPromptSurvivesProcessDeathAndBlocksSaveUntilConfirmed() = runTest {
+        repository.catalog = multiCurrencyCatalog()
+        repository.storedRates[1L to 2L] = 0.9
+        draftStore.savedByDraftId["draft-recreated"] = 88L
+        val draftArgs = TransactionLaunchArgs.AiDraft(
+            TransactionDraft(
+                draftId = "draft-recreated",
+                mode = TransactionMode.TRANSFER,
+                amountMinor = 10000L,
+                fromAccountId = 1L,
+                toAccountId = 2L,
+                dateTimeMillis = FIXED_NOW_MILLIS,
+            )
+        )
+        val handle = SavedStateHandle()
+        val vm1 = TransactionViewModel(draftArgs, handle, ports, testDispatcher, fixedClock)
+        assertEquals(
+            ActiveSheet.ConsumedDraftPrompt(88L),
+            (vm1.uiState.value as TransactionUiState.Ready).activeSheet,
+        )
+
+        val vm2 = TransactionViewModel(draftArgs, handle, ports, testDispatcher, fixedClock)
+        assertEquals(
+            ActiveSheet.ConsumedDraftPrompt(88L),
+            (vm2.uiState.value as TransactionUiState.Ready).activeSheet,
+        )
+
+        vm2.onIntent(TransactionIntent.DismissSheet)
+        vm2.onIntent(TransactionIntent.SaveClicked)
+        assertTrue(repository.savedCommands.isEmpty())
+        assertEquals(
+            ActiveSheet.ConsumedDraftPrompt(88L),
+            (vm2.uiState.value as TransactionUiState.Ready).activeSheet,
+        )
+
+        vm2.onIntent(TransactionIntent.DuplicateDraftAnyway)
+        assertNull((vm2.uiState.value as TransactionUiState.Ready).activeSheet)
+
+        val vm3 = TransactionViewModel(draftArgs, handle, ports, testDispatcher, fixedClock)
+        assertNull((vm3.uiState.value as TransactionUiState.Ready).activeSheet)
+        vm3.onIntent(TransactionIntent.SaveClicked)
+        assertEquals(1, repository.savedCommands.size)
+        assertEquals(TransactionEffect.SavedAndFinish(101L), vm3.effects.first())
+    }
+
+    @Test
+    fun postCommitCleanupAndRefreshFailuresNeverReportCommittedSaveAsRetryable() = runTest {
+        draftStore.failMarkDraftSavedMessage = "Prefs write failed"
+        mediaPort.failDeleteMessage = "FS busy"
+
+        val saveVm = TransactionViewModel(
+            launchArgs = TransactionLaunchArgs.AiDraft(
+                TransactionDraft(
+                    draftId = "draft-post-commit",
+                    mode = TransactionMode.EXPENSE,
+                    amountMinor = 2000L,
+                    fromAccountId = 1L,
+                    dateTimeMillis = FIXED_NOW_MILLIS,
+                    stagedReceiptFileName = "unused.jpg",
+                )
+            ),
+            savedStateHandle = SavedStateHandle(),
+            ports = ports,
+            ioDispatcher = testDispatcher,
+            clock = fixedClock,
+        )
+        saveVm.onIntent(TransactionIntent.RemoveReceipt)
+        saveVm.onIntent(TransactionIntent.SaveClicked)
+
+        assertEquals(1, repository.savedCommands.size)
+        assertEquals(TransactionEffect.SavedAndFinish(101L), saveVm.effects.first())
+
+        val saveAndNewVm = TransactionViewModel(
+            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
+            savedStateHandle = SavedStateHandle(),
+            ports = ports,
+            ioDispatcher = testDispatcher,
+            clock = fixedClock,
+        )
+        repository.failLoadCatalogAfterFirstMessage = "Catalog reload failed"
+        saveAndNewVm.onIntent(TransactionIntent.UpdatePrimaryAmount("15.00"))
+        saveAndNewVm.onIntent(TransactionIntent.SaveAndNewClicked)
+
+        assertEquals(2, repository.savedCommands.size)
+        assertTrue(saveAndNewVm.effects.first() is TransactionEffect.ShowMessage)
+        assertEquals(TransactionEffect.SavedAndFinish(102L), saveAndNewVm.effects.first())
+    }
+
+    @Test
+    fun externalCategoryCreatedFromSplitHeaderPreservesSplitMode() = runTest {
+        val vm = TransactionViewModel(
+            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
+            savedStateHandle = SavedStateHandle(),
+            ports = ports,
+            ioDispatcher = testDispatcher,
+            clock = fixedClock,
+        )
+        vm.onIntent(TransactionIntent.UpdatePrimaryAmount("50.00"))
+        vm.onIntent(TransactionIntent.ToggleSplitMode)
+        val beforeSplits = (vm.uiState.value as TransactionUiState.Ready).form.splits
+        assertEquals(1, beforeSplits.size)
+
+        repository.catalog = defaultCatalog().copy(
+            categories = defaultCatalog().categories + CategoryOption(
+                id = 88L,
+                parentId = 0L,
+                title = "Snacks",
+                fullPath = "Snacks",
+                level = 1,
+                isIncome = false,
+            )
+        )
+        vm.onIntent(TransactionIntent.ExternalEntityCreated(ExternalEntityKind.CATEGORY, 88L))
+
+        val ready = vm.uiState.value as TransactionUiState.Ready
+        assertTrue(ready.form.isSplitMode)
+        assertEquals(TransactionIds.SPLIT_CATEGORY_ID, ready.form.categoryId)
+        assertEquals(beforeSplits, ready.form.splits)
+        assertTrue(ready.catalog.categories.any { it.id == 88L })
     }
 
     private fun SaveTransactionCommand.amountCommandMinor(): Long = fromAmountMinor

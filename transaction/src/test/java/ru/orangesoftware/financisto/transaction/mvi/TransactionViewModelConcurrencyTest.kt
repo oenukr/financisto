@@ -23,12 +23,14 @@ import org.junit.Test
 import ru.orangesoftware.financisto.transaction.model.CategoryOption
 import ru.orangesoftware.financisto.transaction.model.TransactionCatalog
 import ru.orangesoftware.financisto.transaction.model.TransactionDraft
+import ru.orangesoftware.financisto.transaction.model.TransactionEditLoadResult
 import ru.orangesoftware.financisto.transaction.model.TransactionLaunchArgs
 import ru.orangesoftware.financisto.transaction.model.TransactionMode
 import ru.orangesoftware.financisto.transaction.mvi.TransactionTestFakes.FIXED_NOW_MILLIS
 import ru.orangesoftware.financisto.transaction.mvi.TransactionTestFakes.defaultCatalog
 import ru.orangesoftware.financisto.transaction.mvi.TransactionTestFakes.fixedClock
 import ru.orangesoftware.financisto.transaction.mvi.TransactionTestFakes.multiCurrencyCatalog
+import ru.orangesoftware.financisto.transaction.mvi.TransactionTestFakes.sampleRecord
 import ru.orangesoftware.financisto.transaction.port.TransactionPorts
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicReference
@@ -320,5 +322,107 @@ class TransactionViewModelConcurrencyTest {
             ioExecutor.shutdownNow()
             mainExecutor.shutdownNow()
         }
+    }
+
+    @Test
+    fun staleRateResultsForSameCurrencyPairAreRejectedAcrossFormGenerations() = runTest {
+        repository.catalog = multiCurrencyCatalog()
+        lateinit var vm: TransactionViewModel
+        exchangeRatePort.handler = { _, _ ->
+            vm.onIntent(TransactionIntent.ClearFormClicked)
+            vm.onIntent(TransactionIntent.SelectAccount(2L, isDestination = true))
+            Result.success(9.99)
+        }
+
+        vm = TransactionViewModel(
+            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L, initialMode = TransactionMode.TRANSFER),
+            savedStateHandle = SavedStateHandle(),
+            ports = ports,
+            ioDispatcher = testDispatcher,
+            clock = fixedClock,
+        )
+        vm.onIntent(TransactionIntent.SelectAccount(2L, isDestination = true))
+        vm.onIntent(TransactionIntent.UpdatePrimaryAmount("100.00"))
+        vm.onIntent(TransactionIntent.FetchLiveRate)
+
+        val afterClear = vm.uiState.value as TransactionUiState.Ready
+        assertEquals(1L, afterClear.primaryCurrency?.id)
+        assertEquals(2L, afterClear.secondaryCurrency?.id)
+        assertFalse(afterClear.isFetchingRate)
+        assertEquals(0.0, afterClear.form.exchangeRate, 1e-6)
+
+        var triggeredReset = false
+        repository.rateHandler = { _, _ ->
+            if (!triggeredReset) {
+                triggeredReset = true
+                vm.onIntent(TransactionIntent.ClearFormClicked)
+                vm.onIntent(TransactionIntent.SelectCurrency(2L))
+                7.5
+            } else {
+                null
+            }
+        }
+        vm.onIntent(TransactionIntent.SwitchMode(TransactionMode.EXPENSE))
+        vm.onIntent(TransactionIntent.SelectCurrency(2L))
+
+        val afterStoredClear = vm.uiState.value as TransactionUiState.Ready
+        assertEquals(2L, afterStoredClear.primaryCurrency?.id)
+        assertEquals(1L, afterStoredClear.secondaryCurrency?.id)
+        assertEquals(0.0, afterStoredClear.form.exchangeRate, 1e-6)
+    }
+
+    @Test
+    fun receiptStagingBlocksSaveAndDeletesOrphanedFileOnFormResetAndDiscard() = runTest {
+        val stageGate = CompletableDeferred<String?>()
+        mediaPort.stageHandler = { stageGate.await() }
+
+        val vm = TransactionViewModel(
+            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
+            savedStateHandle = SavedStateHandle(),
+            ports = ports,
+            ioDispatcher = testDispatcher,
+            clock = fixedClock,
+        )
+        vm.onIntent(TransactionIntent.UpdatePrimaryAmount("20.00"))
+        vm.onIntent(TransactionIntent.AttachReceiptFromUri("content://gallery/1"))
+        assertTrue((vm.uiState.value as TransactionUiState.Ready).isStagingReceipt)
+
+        vm.onIntent(TransactionIntent.SaveClicked)
+        assertTrue(repository.savedCommands.isEmpty())
+        assertTrue(vm.effects.first() is TransactionEffect.ShowMessage)
+
+        vm.onIntent(TransactionIntent.ClearFormClicked)
+        assertFalse((vm.uiState.value as TransactionUiState.Ready).isStagingReceipt)
+        stageGate.complete("late_staged_1.jpg")
+        assertNull((vm.uiState.value as TransactionUiState.Ready).form.attachedPictureFileName)
+
+        mediaPort.stageHandler = {
+            vm.onIntent(TransactionIntent.ClearFormClicked)
+            "orphan_on_clear.jpg"
+        }
+        vm.onIntent(TransactionIntent.AttachReceiptFromUri("content://gallery/2"))
+        assertNull((vm.uiState.value as TransactionUiState.Ready).form.attachedPictureFileName)
+        assertEquals(listOf("orphan_on_clear.jpg"), mediaPort.deletedFiles)
+
+        repository.editResult = TransactionEditLoadResult.Loaded(sampleRecord(id = 77L))
+        mediaPort.stageHandler = {
+            vm.onIntent(TransactionIntent.OpenSavedTransaction(77L))
+            "orphan_on_open_saved.jpg"
+        }
+        vm.onIntent(TransactionIntent.AttachReceiptFromUri("content://gallery/3"))
+        assertEquals(77L, (vm.uiState.value as TransactionUiState.Ready).form.existingTransactionId)
+        assertNull((vm.uiState.value as TransactionUiState.Ready).form.attachedPictureFileName)
+        assertEquals(listOf("orphan_on_clear.jpg", "orphan_on_open_saved.jpg"), mediaPort.deletedFiles)
+
+        mediaPort.stageHandler = {
+            vm.onIntent(TransactionIntent.ConfirmDiscard)
+            "orphan_on_discard.jpg"
+        }
+        vm.onIntent(TransactionIntent.AttachReceiptFromUri("content://gallery/4"))
+        assertEquals(
+            listOf("orphan_on_clear.jpg", "orphan_on_open_saved.jpg", "orphan_on_discard.jpg"),
+            mediaPort.deletedFiles,
+        )
+        assertEquals(TransactionEffect.CloseCancelled, vm.effects.first())
     }
 }

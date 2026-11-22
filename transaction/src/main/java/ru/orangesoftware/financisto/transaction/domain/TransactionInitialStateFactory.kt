@@ -79,6 +79,7 @@ object TransactionInitialStateFactory {
     fun fromAiDraft(
         draft: TransactionDraft,
         catalog: TransactionCatalog,
+        isConsumedDraft: Boolean = false,
     ): TransactionFormState {
         val splits = draft.splits.mapIndexed { index, split ->
             EditableSplit(
@@ -94,7 +95,8 @@ object TransactionInitialStateFactory {
         val secondaryMinor = resolveDraftSecondaryAmount(draft, catalog)
         val payeeTitle = draft.payeeId?.let { id -> catalog.payees.firstOrNull { it.id == id }?.title }
             ?: draft.pendingPayeeName.orEmpty()
-        val stagedList = listOfNotNull(draft.stagedReceiptFileName)
+        val stagedList = if (isConsumedDraft) emptyList() else listOfNotNull(draft.stagedReceiptFileName)
+        val persistedPicture = if (isConsumedDraft) draft.stagedReceiptFileName else null
         val base = TransactionFormState(
             aiDraftId = draft.draftId,
             mode = draft.mode,
@@ -121,6 +123,7 @@ object TransactionInitialStateFactory {
             note = draft.note,
             projectId = draft.projectId,
             attachedPictureFileName = draft.stagedReceiptFileName,
+            initialPersistedPictureFileName = persistedPicture,
             newlyStagedPictureFiles = stagedList,
             isCCardPayment = draft.isCCardPayment,
             isFromNewBlankLaunch = false,

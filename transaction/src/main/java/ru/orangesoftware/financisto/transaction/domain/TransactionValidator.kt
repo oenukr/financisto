@@ -16,6 +16,7 @@ sealed interface TransactionValidationResult {
 }
 
 object TransactionValidator {
+    private const val DEFAULT_DECIMALS = 2
 
     fun validateAndBuildCommand(
         form: TransactionFormState,
@@ -27,6 +28,7 @@ object TransactionValidator {
             errors.add("Please select a source account.")
         }
         val isDualCurrency = isDualCurrencyActive(form, fromAccount, catalog)
+        validateNumericInputs(form, catalog, isDualCurrency, errors)
         if (form.mode == TransactionMode.TRANSFER) {
             validateTransfer(form, catalog, isDualCurrency, errors)
         } else {
@@ -35,9 +37,40 @@ object TransactionValidator {
         if (errors.isNotEmpty() || fromAccount == null) {
             return TransactionValidationResult.Invalid(errors)
         }
-        return TransactionValidationResult.Valid(
-            buildCommand(form, fromAccount, isDualCurrency)
-        )
+        val command = when (form.mode) {
+            TransactionMode.TRANSFER -> buildTransferCommand(form, isDualCurrency)
+            TransactionMode.EXPENSE, TransactionMode.INCOME ->
+                buildSingleOrSplitCommand(form, fromAccount, isDualCurrency)
+        }
+        return TransactionValidationResult.Valid(command)
+    }
+
+    private fun validateNumericInputs(
+        form: TransactionFormState,
+        catalog: TransactionCatalog,
+        isDualCurrency: Boolean,
+        errors: MutableList<String>,
+    ) {
+        val (primaryCurrency, secondaryCurrency) = resolveCurrencyMeta(form, catalog)
+        val primaryDecimals = primaryCurrency?.decimals ?: DEFAULT_DECIMALS
+        val secondaryDecimals = secondaryCurrency?.decimals ?: DEFAULT_DECIMALS
+        if (form.primaryAmountInput.isNotBlank() &&
+            AmountScale.parseMinorUnits(form.primaryAmountInput, primaryDecimals) == null
+        ) {
+            errors.add("Enter a valid transaction amount.")
+        }
+        if (isDualCurrency &&
+            form.secondaryAmountInput.isNotBlank() &&
+            AmountScale.parseMinorUnits(form.secondaryAmountInput, secondaryDecimals) == null
+        ) {
+            errors.add("Enter a valid converted amount.")
+        }
+        if (isDualCurrency &&
+            form.exchangeRateInput.isNotBlank() &&
+            CurrencyConversionCalculator.parsePositiveRate(form.exchangeRateInput) == null
+        ) {
+            errors.add("Enter a valid exchange rate.")
+        }
     }
 
     private fun validateTransfer(
@@ -85,18 +118,6 @@ object TransactionValidator {
         }
         if (isDualCurrency && form.primaryAmountMinor > 0L && form.secondaryAmountMinor <= 0L) {
             errors.add("Converted account amount must be greater than zero.")
-        }
-    }
-
-    private fun buildCommand(
-        form: TransactionFormState,
-        fromAccount: AccountOption,
-        isDualCurrency: Boolean,
-    ): SaveTransactionCommand {
-        return when (form.mode) {
-            TransactionMode.TRANSFER -> buildTransferCommand(form, isDualCurrency)
-            TransactionMode.EXPENSE, TransactionMode.INCOME ->
-                buildSingleOrSplitCommand(form, fromAccount, isDualCurrency)
         }
     }
 

@@ -88,11 +88,14 @@ internal object TransactionLoader {
             return TransactionUiState.NoAccounts
         }
         val consumedTxId = ports.draftSessionStore.getSavedTransactionId(args.draft.draftId)
+        val isConsumed = consumedTxId != null
         ports.draftSessionStore.acknowledgeDraftOpened(args.draft.draftId)
-        val initialForm = restoredSnapshot
-            ?: TransactionInitialStateFactory.fromAiDraft(args.draft, catalog)
-        val currentForm = restoredForm ?: initialForm
-        val sheet = if (consumedTxId != null && restoredForm == null) {
+        val committedReceipt = args.draft.stagedReceiptFileName
+        val rawInitial = restoredSnapshot
+            ?: TransactionInitialStateFactory.fromAiDraft(args.draft, catalog, isConsumedDraft = isConsumed)
+        val initialForm = sanitizeConsumedDraftReceipt(rawInitial, committedReceipt, isConsumed)
+        val currentForm = sanitizeConsumedDraftReceipt(restoredForm ?: initialForm, committedReceipt, isConsumed)
+        val sheet = if (consumedTxId != null && !currentForm.isDuplicateDraftConfirmed) {
             ActiveSheet.ConsumedDraftPrompt(consumedTxId)
         } else {
             null
@@ -103,6 +106,19 @@ internal object TransactionLoader {
             catalog = catalog,
             prefs = prefs,
             sheetStack = listOfNotNull(sheet),
+            consumedDraftTransactionId = consumedTxId,
+        )
+    }
+
+    private fun sanitizeConsumedDraftReceipt(
+        form: TransactionFormState,
+        committedReceipt: String?,
+        isConsumed: Boolean,
+    ): TransactionFormState {
+        if (!isConsumed || committedReceipt == null) return form
+        return form.copy(
+            initialPersistedPictureFileName = form.initialPersistedPictureFileName ?: committedReceipt,
+            newlyStagedPictureFiles = form.newlyStagedPictureFiles.filterNot { it == committedReceipt },
         )
     }
 

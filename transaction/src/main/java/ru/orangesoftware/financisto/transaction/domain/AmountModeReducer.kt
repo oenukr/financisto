@@ -52,10 +52,11 @@ internal object AmountModeReducer {
         } else {
             current.toAccountId
         }
-        return state.copy(
+        val next = state.copy(
             form = current.copy(mode = targetMode, toAccountId = updatedToAccountId),
             validationErrors = emptyList(),
         )
+        return CurrencyAmountReconciler.reconcileAfterCurrencyRoleChange(previous = state, next = next)
     }
 
     fun applyPrimaryAmountText(
@@ -134,23 +135,32 @@ internal object AmountModeReducer {
         primaryDecimals: Int,
         secondaryDecimals: Int,
     ): TransactionUiState.Ready {
-        val rate = text.trim().replace(',', '.').toDoubleOrNull()?.takeIf { it > 0.0 && it.isFinite() }
-            ?: return state.copy(form = state.form.copy(exchangeRateInput = text), validationErrors = emptyList())
-        val nextSecondary = CurrencyConversionCalculator.computeTargetMinor(
-            fromMinor = state.form.primaryAmountMinor,
-            fromDecimals = primaryDecimals,
-            toDecimals = secondaryDecimals,
-            rate = rate,
-        )
-        return state.copy(
-            form = state.form.copy(
-                exchangeRateInput = text,
-                exchangeRate = rate,
-                secondaryAmountMinor = nextSecondary,
-                secondaryAmountInput = AmountScale.formatEditableAmount(nextSecondary, secondaryDecimals),
-            ),
-            validationErrors = emptyList(),
-        )
+        val rate = CurrencyConversionCalculator.parsePositiveRate(text)
+        return if (rate == null) {
+            state.copy(
+                form = state.form.copy(
+                    exchangeRateInput = text,
+                    exchangeRate = if (text.isBlank()) 0.0 else state.form.exchangeRate,
+                ),
+                validationErrors = emptyList(),
+            )
+        } else {
+            val nextSecondary = CurrencyConversionCalculator.computeTargetMinor(
+                fromMinor = state.form.primaryAmountMinor,
+                fromDecimals = primaryDecimals,
+                toDecimals = secondaryDecimals,
+                rate = rate,
+            )
+            state.copy(
+                form = state.form.copy(
+                    exchangeRateInput = text,
+                    exchangeRate = rate,
+                    secondaryAmountMinor = nextSecondary,
+                    secondaryAmountInput = AmountScale.formatEditableAmount(nextSecondary, secondaryDecimals),
+                ),
+                validationErrors = emptyList(),
+            )
+        }
     }
 
     private fun applyCalcResult(

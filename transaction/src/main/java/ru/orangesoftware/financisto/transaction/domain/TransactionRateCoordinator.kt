@@ -12,14 +12,24 @@ import ru.orangesoftware.financisto.transaction.port.TransactionPorts
 internal class TransactionRateCoordinator(
     private val scope: CoroutineScope,
     private val ports: TransactionPorts,
-    private val ioDispatcher: CoroutineDispatcher?,
     private val currentReady: () -> TransactionUiState.Ready?,
     private val publishReady: (TransactionUiState.Ready) -> Unit,
     private val sendEffect: (TransactionEffect) -> Unit,
+    private val ioDispatcher: CoroutineDispatcher? = null,
+    private val currentGeneration: () -> Long = { 0L },
 ) {
+    private data class RateRequestContext(
+        val requestId: Long,
+        val generation: Long,
+        val fromId: Long,
+        val toId: Long,
+    )
+
     private var rateJob: Job? = null
+    private var activeRequestId: Long = 0L
 
     fun cancel(clearFetchingFlag: Boolean = false) {
+        activeRequestId++
         rateJob?.cancel()
         rateJob = null
         if (clearFetchingFlag) {
@@ -34,14 +44,18 @@ internal class TransactionRateCoordinator(
         val pCur = ready.primaryCurrency ?: return
         val sCur = ready.secondaryCurrency?.takeIf { it.id != pCur.id } ?: return
         cancel()
-        val fromId = pCur.id
-        val toId = sCur.id
+        val request = RateRequestContext(
+            requestId = ++activeRequestId,
+            generation = currentGeneration(),
+            fromId = pCur.id,
+            toId = sCur.id,
+        )
         publishReady(ready.copy(isFetchingRate = true))
         rateJob = scope.launch {
             val outcome = TransactionActionRunner.runOn(ioDispatcher) {
-                ports.exchangeRatePort.fetchLiveRate(fromId, toId)
+                ports.exchangeRatePort.fetchLiveRate(request.fromId, request.toId)
             }
-            applyLiveRateOutcome(fromId, toId, outcome)
+            applyLiveRateOutcome(request, outcome)
         }
     }
 
@@ -58,21 +72,30 @@ internal class TransactionRateCoordinator(
         val pCur = base.primaryCurrency ?: return
         val sCur = base.secondaryCurrency?.takeIf { it.id != pCur.id }
         if (sCur != null && base.form.exchangeRate <= 0.0) {
-            val fromId = pCur.id
-            val toId = sCur.id
+            val request = RateRequestContext(
+                requestId = ++activeRequestId,
+                generation = currentGeneration(),
+                fromId = pCur.id,
+                toId = sCur.id,
+            )
             rateJob = scope.launch {
                 val stored = TransactionActionRunner.runOn(ioDispatcher) {
-                    ports.repository.getLatestExchangeRate(fromId, toId)
+                    ports.repository.getLatestExchangeRate(request.fromId, request.toId)
                 } ?: return@launch
-                applyStoredRate(fromId, toId, stored, syncInitialSnapshotIfUntouched)
+                applyStoredRate(request, stored, syncInitialSnapshotIfUntouched)
             }
         }
     }
 
-    private fun applyLiveRateOutcome(fromId: Long, toId: Long, outcome: Result<Double>) {
+    private fun isOwned(request: RateRequestContext): Boolean {
+        return request.requestId == activeRequestId && request.generation == currentGeneration()
+    }
+
+    private fun applyLiveRateOutcome(request: RateRequestContext, outcome: Result<Double>) {
+        if (!isOwned(request)) return
         val latest = currentReady()?.takeUnless { it.isSaving } ?: return
-        val latestPrimary = latest.primaryCurrency?.takeIf { it.id == fromId }
-        val latestSecondary = latest.secondaryCurrency?.takeIf { it.id == toId }
+        val latestPrimary = latest.primaryCurrency?.takeIf { it.id == request.fromId }
+        val latestSecondary = latest.secondaryCurrency?.takeIf { it.id == request.toId }
         if (latestPrimary == null || latestSecondary == null) {
             if (latest.isFetchingRate) {
                 publishReady(latest.copy(isFetchingRate = false))
@@ -95,15 +118,15 @@ internal class TransactionRateCoordinator(
     }
 
     private fun applyStoredRate(
-        fromId: Long,
-        toId: Long,
+        request: RateRequestContext,
         storedRate: Double,
         syncInitialSnapshotIfUntouched: Boolean,
     ) {
+        if (!isOwned(request)) return
         val latest = currentReady()?.takeUnless { it.isSaving || it.form.exchangeRate > 0.0 } ?: return
-        val latestPrimary = latest.primaryCurrency?.takeIf { it.id == fromId } ?: return
-        val latestSecondary = latest.secondaryCurrency?.takeIf { it.id == toId }
-        if (latestSecondary != null) {
+        val latestPrimary = latest.primaryCurrency?.takeIf { it.id == request.fromId }
+        val latestSecondary = latest.secondaryCurrency?.takeIf { it.id == request.toId }
+        if (latestPrimary != null && latestSecondary != null) {
             val wasUntouched = latest.form == latest.initialFormSnapshot
             val formatted = CurrencyConversionCalculator.formatRate(storedRate)
             val updated = AmountModeReducer.applyExchangeRateText(
