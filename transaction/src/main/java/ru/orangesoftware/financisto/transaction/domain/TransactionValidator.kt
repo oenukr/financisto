@@ -42,7 +42,13 @@ object TransactionValidator {
             TransactionMode.EXPENSE, TransactionMode.INCOME ->
                 buildSingleOrSplitCommand(form, fromAccount, isDualCurrency)
         }
-        return TransactionValidationResult.Valid(command)
+        return if (command != null) {
+            TransactionValidationResult.Valid(command)
+        } else {
+            TransactionValidationResult.Invalid(
+                listOf("Converted split amounts exceed the supported numeric range.")
+            )
+        }
     }
 
     private fun validateNumericInputs(
@@ -155,7 +161,7 @@ object TransactionValidator {
         form: TransactionFormState,
         fromAccount: AccountOption,
         isDualCurrency: Boolean,
-    ): SaveTransactionCommand {
+    ): SaveTransactionCommand? {
         val sign = if (form.mode == TransactionMode.INCOME) 1L else -1L
         val foreignCurrencyId = if (isDualCurrency) form.originalCurrencyId ?: 0L else 0L
         val accountAmountMinor = if (foreignCurrencyId > 0L) {
@@ -169,7 +175,7 @@ object TransactionValidator {
             foreignCurrencyId = foreignCurrencyId,
             originalFromMinor = originalFromMinor,
             accountAmountMinor = accountAmountMinor,
-        )
+        ) ?: return null
         val effectiveCategoryId = if (form.isSplitMode) {
             TransactionIds.SPLIT_CATEGORY_ID
         } else {
@@ -209,7 +215,7 @@ object TransactionValidator {
         foreignCurrencyId: Long,
         originalFromMinor: Long,
         accountAmountMinor: Long,
-    ): List<SaveSplitCommand> {
+    ): List<SaveSplitCommand>? {
         return when {
             !form.isSplitMode -> emptyList()
             foreignCurrencyId > 0L -> {
@@ -218,14 +224,16 @@ object TransactionValidator {
                     originalTotalSignedMinor = originalFromMinor,
                     accountTotalSignedMinor = accountAmountMinor,
                 )
-                form.splits.mapIndexed { index, split ->
-                    SaveSplitCommand(
-                        categoryId = split.categoryId,
-                        amountMinor = accountAmounts[index],
-                        note = split.note.trim(),
-                        projectId = split.projectId,
-                        originalFromAmountMinor = SplitAllocationCalculator.splitSignedMinor(split),
-                    )
+                accountAmounts?.let { amounts ->
+                    form.splits.mapIndexed { index, split ->
+                        SaveSplitCommand(
+                            categoryId = split.categoryId,
+                            amountMinor = amounts[index],
+                            note = split.note.trim(),
+                            projectId = split.projectId,
+                            originalFromAmountMinor = SplitAllocationCalculator.splitSignedMinor(split),
+                        )
+                    }
                 }
             }
             else -> form.splits.map { split ->

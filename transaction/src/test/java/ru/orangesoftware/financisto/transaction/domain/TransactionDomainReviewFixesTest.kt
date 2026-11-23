@@ -375,10 +375,12 @@ class TransactionDomainReviewFixesTest {
         val fourUnitIncomeSplits = (1..4).map { idx ->
             EditableSplit(localId = -idx.toLong(), categoryId = 20L, amountMinor = 1L, isIncome = true)
         }
-        val incomeAllocated = SplitAllocationCalculator.allocateAccountAmounts(
-            splits = fourUnitIncomeSplits,
-            originalTotalSignedMinor = 4L,
-            accountTotalSignedMinor = 2L,
+        val incomeAllocated = checkNotNull(
+            SplitAllocationCalculator.allocateAccountAmounts(
+                splits = fourUnitIncomeSplits,
+                originalTotalSignedMinor = 4L,
+                accountTotalSignedMinor = 2L,
+            )
         )
         assertEquals(2L, incomeAllocated.sum())
         assertTrue(incomeAllocated.all { it >= 0L })
@@ -386,10 +388,12 @@ class TransactionDomainReviewFixesTest {
         val fourUnitExpenseSplits = (1..4).map { idx ->
             EditableSplit(localId = -idx.toLong(), categoryId = 10L, amountMinor = 1L, isIncome = false)
         }
-        val expenseAllocated = SplitAllocationCalculator.allocateAccountAmounts(
-            splits = fourUnitExpenseSplits,
-            originalTotalSignedMinor = -4L,
-            accountTotalSignedMinor = -2L,
+        val expenseAllocated = checkNotNull(
+            SplitAllocationCalculator.allocateAccountAmounts(
+                splits = fourUnitExpenseSplits,
+                originalTotalSignedMinor = -4L,
+                accountTotalSignedMinor = -2L,
+            )
         )
         assertEquals(-2L, expenseAllocated.sum())
         assertTrue(expenseAllocated.all { it <= 0L })
@@ -399,15 +403,87 @@ class TransactionDomainReviewFixesTest {
             EditableSplit(localId = -2L, categoryId = 10L, amountMinor = 1L, isIncome = false),
             EditableSplit(localId = -3L, categoryId = 11L, amountMinor = 1L, isIncome = false),
         )
-        val mixedAllocated = SplitAllocationCalculator.allocateAccountAmounts(
-            splits = mixedRoundingSplits,
-            originalTotalSignedMinor = 2L,
-            accountTotalSignedMinor = 1L,
+        val mixedAllocated = checkNotNull(
+            SplitAllocationCalculator.allocateAccountAmounts(
+                splits = mixedRoundingSplits,
+                originalTotalSignedMinor = 2L,
+                accountTotalSignedMinor = 1L,
+            )
         )
         assertEquals(1L, mixedAllocated.sum())
         assertTrue(mixedAllocated[0] >= 0L)
         assertTrue(mixedAllocated[1] <= 0L)
         assertTrue(mixedAllocated[2] <= 0L)
+    }
+
+    @Test
+    fun allocateAccountAmountsReturnsNullWhenPerSplitQuotientOverflowsLong() {
+        val overflowSplits = listOf(
+            EditableSplit(localId = -1L, categoryId = 10L, amountMinor = 1_000_000_000_000L, isIncome = false),
+            EditableSplit(localId = -2L, categoryId = 20L, amountMinor = 999_999_999_999L, isIncome = true),
+        )
+        assertNull(
+            SplitAllocationCalculator.allocateAccountAmounts(
+                splits = overflowSplits,
+                originalTotalSignedMinor = -1L,
+                accountTotalSignedMinor = -1_000_000_000_000L,
+            )
+        )
+
+        val inRangeMixedSplits = listOf(
+            EditableSplit(localId = -1L, categoryId = 10L, amountMinor = 1000L, isIncome = false),
+            EditableSplit(localId = -2L, categoryId = 20L, amountMinor = 999L, isIncome = true),
+        )
+        assertEquals(
+            listOf(-100_000L, 99_900L),
+            SplitAllocationCalculator.allocateAccountAmounts(
+                splits = inRangeMixedSplits,
+                originalTotalSignedMinor = -1L,
+                accountTotalSignedMinor = -100L,
+            ),
+        )
+    }
+
+    @Test
+    fun validatorRejectsForeignCurrencySplitWhenConvertedAllocationOverflowsLong() {
+        val catalog = multiScaleCatalog()
+        val overflowForm = TransactionFormState(
+            mode = TransactionMode.EXPENSE,
+            fromAccountId = 1L,
+            originalCurrencyId = 2L,
+            primaryAmountInput = "0.01",
+            primaryAmountMinor = 1L,
+            secondaryAmountInput = "10000000000.00",
+            secondaryAmountMinor = 1_000_000_000_000L,
+            isSplitMode = true,
+            categoryId = TransactionIds.SPLIT_CATEGORY_ID,
+            splits = listOf(
+                EditableSplit(localId = -1L, categoryId = 10L, amountMinor = 1_000_000_000_000L, isIncome = false),
+                EditableSplit(localId = -2L, categoryId = 20L, amountMinor = 999_999_999_999L, isIncome = true),
+            ),
+        )
+        val overflowResult = TransactionValidator.validateAndBuildCommand(overflowForm, catalog)
+        assertTrue(overflowResult is TransactionValidationResult.Invalid)
+        assertTrue((overflowResult as TransactionValidationResult.Invalid).errors.isNotEmpty())
+
+        val validSameSignForm = TransactionFormState(
+            mode = TransactionMode.EXPENSE,
+            fromAccountId = 1L,
+            originalCurrencyId = 2L,
+            primaryAmountInput = "10.00",
+            primaryAmountMinor = 1000L,
+            secondaryAmountInput = "12.00",
+            secondaryAmountMinor = 1200L,
+            isSplitMode = true,
+            categoryId = TransactionIds.SPLIT_CATEGORY_ID,
+            splits = listOf(
+                EditableSplit(localId = -1L, categoryId = 10L, amountMinor = 700L, isIncome = false),
+                EditableSplit(localId = -2L, categoryId = 11L, amountMinor = 300L, isIncome = false),
+            ),
+        )
+        val validResult = TransactionValidator.validateAndBuildCommand(validSameSignForm, catalog)
+        val command = (validResult as TransactionValidationResult.Valid).command
+        assertEquals(command.fromAmountMinor, command.splits.sumOf { it.amountMinor })
     }
 
     private fun multiScaleCatalog(): TransactionCatalog {

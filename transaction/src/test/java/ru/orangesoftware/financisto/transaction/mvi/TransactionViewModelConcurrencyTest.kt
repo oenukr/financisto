@@ -519,4 +519,164 @@ class TransactionViewModelConcurrencyTest {
         assertEquals(12500L, currentState.form.secondaryAmountMinor)
         assertTrue(effects.isEmpty())
     }
+
+    @Test
+    fun saveStartedDuringExternalCategoryReloadWaitsAndSavesNewCategory() = runTest {
+        val catalogGate = CompletableDeferred<TransactionCatalog>()
+        repository.pendingCatalogDeferred = catalogGate
+
+        val vm = TransactionViewModel(
+            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
+            savedStateHandle = SavedStateHandle(),
+            ports = ports,
+            ioDispatcher = testDispatcher,
+            clock = fixedClock,
+        )
+        vm.onIntent(TransactionIntent.UpdatePrimaryAmount("25.00"))
+        vm.onIntent(TransactionIntent.SelectCategory(10L))
+        vm.onIntent(TransactionIntent.UpdateNote("Lunch"))
+        vm.onIntent(TransactionIntent.ExternalEntityCreated(ExternalEntityKind.CATEGORY, 55L))
+        vm.onIntent(TransactionIntent.SaveClicked)
+        vm.onIntent(TransactionIntent.SaveClicked)
+
+        val whileWaiting = vm.uiState.value as TransactionUiState.Ready
+        assertTrue(whileWaiting.isSaving)
+        assertTrue(repository.savedCommands.isEmpty())
+
+        val updatedCatalog = defaultCatalog().copy(
+            categories = defaultCatalog().categories + CategoryOption(
+                id = 55L,
+                parentId = 0L,
+                title = "Books",
+                fullPath = "Books",
+                level = 1,
+                isIncome = false,
+            )
+        )
+        catalogGate.complete(updatedCatalog)
+
+        assertEquals(1, repository.savedCommands.size)
+        val saved = repository.savedCommands.single()
+        assertEquals(55L, saved.categoryId)
+        assertEquals("Lunch", saved.note)
+        assertEquals(-2500L, saved.fromAmountMinor)
+        assertEquals(TransactionEffect.SavedAndFinish(101L), vm.effects.first())
+    }
+
+    @Test
+    fun saveAndNewStartedDuringExternalIncomeCategoryReloadAppliesModeBeforeSaving() = runTest {
+        val catalogGate = CompletableDeferred<TransactionCatalog>()
+        repository.pendingCatalogDeferred = catalogGate
+
+        val vm = TransactionViewModel(
+            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
+            savedStateHandle = SavedStateHandle(),
+            ports = ports,
+            ioDispatcher = testDispatcher,
+            clock = fixedClock,
+        )
+        vm.onIntent(TransactionIntent.UpdatePrimaryAmount("25.00"))
+        vm.onIntent(TransactionIntent.SelectCategory(10L))
+        vm.onIntent(TransactionIntent.ExternalEntityCreated(ExternalEntityKind.CATEGORY, 77L))
+        vm.onIntent(TransactionIntent.SaveAndNewClicked)
+
+        assertTrue((vm.uiState.value as TransactionUiState.Ready).isSaving)
+        assertTrue(repository.savedCommands.isEmpty())
+
+        val updatedCatalog = defaultCatalog().copy(
+            categories = defaultCatalog().categories + CategoryOption(
+                id = 77L,
+                parentId = 0L,
+                title = "Salary",
+                fullPath = "Salary",
+                level = 1,
+                isIncome = true,
+            )
+        )
+        repository.catalog = updatedCatalog
+        catalogGate.complete(updatedCatalog)
+
+        assertEquals(1, repository.savedCommands.size)
+        val saved = repository.savedCommands.single()
+        assertEquals(77L, saved.categoryId)
+        assertEquals(TransactionMode.INCOME, saved.mode)
+        assertEquals(2500L, saved.fromAmountMinor)
+        val nextReady = vm.uiState.value as TransactionUiState.Ready
+        assertFalse(nextReady.isSaving)
+        assertEquals(TransactionEffect.ShowMessage("Transaction saved"), vm.effects.first())
+    }
+
+    @Test
+    fun saveStartedDuringFailedExternalCategoryReloadAbortsAndRestoresEditableState() = runTest {
+        val catalogGate = CompletableDeferred<TransactionCatalog>()
+        repository.pendingCatalogDeferred = catalogGate
+
+        val vm = TransactionViewModel(
+            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
+            savedStateHandle = SavedStateHandle(),
+            ports = ports,
+            ioDispatcher = testDispatcher,
+            clock = fixedClock,
+        )
+        vm.onIntent(TransactionIntent.UpdatePrimaryAmount("25.00"))
+        vm.onIntent(TransactionIntent.SelectCategory(10L))
+        vm.onIntent(TransactionIntent.ExternalEntityCreated(ExternalEntityKind.CATEGORY, 55L))
+        vm.onIntent(TransactionIntent.SaveClicked)
+
+        assertTrue((vm.uiState.value as TransactionUiState.Ready).isSaving)
+        assertTrue(repository.savedCommands.isEmpty())
+
+        catalogGate.completeExceptionally(IllegalStateException("Catalog DB busy"))
+
+        assertTrue(repository.savedCommands.isEmpty())
+        val afterFail = vm.uiState.value as TransactionUiState.Ready
+        assertFalse(afterFail.isSaving)
+        assertEquals(10L, afterFail.form.categoryId)
+        assertEquals(TransactionEffect.ShowMessage("Catalog DB busy"), vm.effects.first())
+    }
+
+    @Test
+    fun saveStartedDuringExternalCategoryReloadClearsIsSavingOnPostReloadValidationError() = runTest {
+        val catalogGate = CompletableDeferred<TransactionCatalog>()
+        repository.pendingCatalogDeferred = catalogGate
+
+        val vm = TransactionViewModel(
+            launchArgs = TransactionLaunchArgs.AiDraft(
+                TransactionDraft(
+                    draftId = "draft-invalid-amt",
+                    mode = TransactionMode.EXPENSE,
+                    amountMinor = 0L,
+                    fromAccountId = 1L,
+                    dateTimeMillis = FIXED_NOW_MILLIS,
+                )
+            ),
+            savedStateHandle = SavedStateHandle(),
+            ports = ports,
+            ioDispatcher = testDispatcher,
+            clock = fixedClock,
+        )
+        vm.onIntent(TransactionIntent.ExternalEntityCreated(ExternalEntityKind.CATEGORY, 55L))
+        vm.onIntent(TransactionIntent.SaveClicked)
+
+        assertTrue((vm.uiState.value as TransactionUiState.Ready).isSaving)
+        assertTrue(repository.savedCommands.isEmpty())
+
+        val updatedCatalog = defaultCatalog().copy(
+            categories = defaultCatalog().categories + CategoryOption(
+                id = 55L,
+                parentId = 0L,
+                title = "Books",
+                fullPath = "Books",
+                level = 1,
+                isIncome = false,
+            )
+        )
+        catalogGate.complete(updatedCatalog)
+
+        assertTrue(repository.savedCommands.isEmpty())
+        val afterValidationFail = vm.uiState.value as TransactionUiState.Ready
+        assertFalse(afterValidationFail.isSaving)
+        assertEquals(55L, afterValidationFail.form.categoryId)
+        assertTrue(afterValidationFail.validationErrors.isNotEmpty())
+    }
 }

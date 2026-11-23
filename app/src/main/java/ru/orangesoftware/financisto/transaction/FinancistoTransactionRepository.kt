@@ -2,6 +2,7 @@
 package ru.orangesoftware.financisto.transaction
 
 import android.content.Context
+import android.database.sqlite.SQLiteException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -99,6 +100,9 @@ class FinancistoTransactionRepository(
             tx.isCCardPayment = if (command.isCCardPayment) 1 else 0
             tx.splits = buildSplitTransactions(command, tx.status)
             val id = db.insertOrUpdateInTransaction(tx, emptyList())
+            if (id <= 0L) {
+                throw SQLiteException("Failed to persist transaction")
+            }
             sqlDb.setTransactionSuccessful()
             id
         } finally {

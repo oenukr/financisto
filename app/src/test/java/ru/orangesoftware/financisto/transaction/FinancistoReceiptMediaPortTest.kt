@@ -258,6 +258,29 @@ class FinancistoReceiptMediaPortTest : AbstractDbTest() {
         assertEquals(beforeFiles, afterFiles)
     }
 
+    @Test
+    fun stageFromUriDeletesStagedFileWhenInputCloseThrowsIoException() = runTest {
+        val picturesDir = requireNotNull(PicturesUtil.pictureFile("probe.jpg", false).parentFile)
+        val beforeFiles = picturesDir.listFiles()?.map { it.name }.orEmpty().toSet()
+
+        val uri = Uri.parse("content://ru.orangesoftware.financisto.test/close_fail_receipt.jpg")
+        var closeCalled = false
+        val closeFailingStream = object : ByteArrayInputStream("receipt-bytes".toByteArray()) {
+            override fun close() {
+                closeCalled = true
+                throw IOException("Simulated input close failure")
+            }
+        }
+        Shadows.shadowOf(context.contentResolver).registerInputStream(uri, closeFailingStream)
+
+        val stagedName = mediaPort.stageFromUri(uri.toString())
+
+        assertTrue(closeCalled)
+        assertNull(stagedName)
+        val afterFiles = picturesDir.listFiles()?.map { it.name }.orEmpty().toSet()
+        assertEquals(beforeFiles, afterFiles)
+    }
+
     private fun partialThenFailStream(failureFactory: () -> Throwable): InputStream {
         return object : InputStream() {
             private var deliveredHeader = false

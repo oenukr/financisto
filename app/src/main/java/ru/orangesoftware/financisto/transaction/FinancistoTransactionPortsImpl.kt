@@ -319,17 +319,20 @@ class FinancistoReceiptMediaPort(
         var succeeded = false
         return try {
             val uri = uriString.toUri()
-            openReceiptStream(uri)?.use { input ->
+            val stagedName = openReceiptStream(uri)?.use { input ->
                 coroutineContext.ensureActive()
                 val createdFile = PicturesUtil.createEmptyImageFile()
                 createdFileRef.set(createdFile)
                 createdFile.outputStream().use { output ->
                     copyWithCancellationChecks(input, output, coroutineContext)
                 }
-                coroutineContext.ensureActive()
-                succeeded = true
                 createdFile.name
             }
+            if (stagedName != null) {
+                coroutineContext.ensureActive()
+                succeeded = true
+            }
+            stagedName
         } catch (e: CancellationException) {
             throw e
         } catch (e: IOException) {

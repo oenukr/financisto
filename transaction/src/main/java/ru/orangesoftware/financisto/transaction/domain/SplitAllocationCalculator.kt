@@ -7,6 +7,8 @@ import java.math.BigInteger
 import kotlin.math.abs
 
 object SplitAllocationCalculator {
+    private val MIN_LONG_BIG = BigInteger.valueOf(Long.MIN_VALUE)
+    private val MAX_LONG_BIG = BigInteger.valueOf(Long.MAX_VALUE)
 
     fun parentSignedMinor(primaryMagnitudeMinor: Long, mode: TransactionMode): Long {
         return when (mode) {
@@ -81,7 +83,7 @@ object SplitAllocationCalculator {
         splits: List<EditableSplit>,
         originalTotalSignedMinor: Long,
         accountTotalSignedMinor: Long,
-    ): List<Long> {
+    ): List<Long>? {
         return when {
             splits.isEmpty() -> emptyList()
             originalTotalSignedMinor == 0L -> List(splits.size) { index ->
@@ -95,53 +97,57 @@ object SplitAllocationCalculator {
         splits: List<EditableSplit>,
         originalTotalSignedMinor: Long,
         accountTotalSignedMinor: Long,
-    ): List<Long> {
+    ): List<Long>? {
         val denom = BigInteger.valueOf(originalTotalSignedMinor).abs()
         val numerScale = BigInteger.valueOf(accountTotalSignedMinor).abs()
-        val allocations = LongArray(splits.size)
+        val allocations = Array(splits.size) { BigInteger.ZERO }
         val remainders = Array(splits.size) { BigInteger.ZERO }
-        var baseSum = 0L
+        var baseSum = BigInteger.ZERO
 
-        splits.forEachIndexed { index, split ->
-            val product = BigInteger.valueOf(splitSignedMinor(split)).multiply(numerScale)
+        for (index in splits.indices) {
+            val product = BigInteger.valueOf(splitSignedMinor(splits[index])).multiply(numerScale)
             val divRem = product.divideAndRemainder(denom)
-            val base = divRem[0].toLong()
-            allocations[index] = base
+            val quotient = divRem[0]
+            if (quotient < MIN_LONG_BIG || quotient > MAX_LONG_BIG) return null
+            allocations[index] = quotient
             remainders[index] = divRem[1]
-            baseSum += base
+            baseSum = baseSum.add(quotient)
         }
 
-        val deficit = accountTotalSignedMinor - baseSum
-        if (deficit != 0L) {
+        val deficit = BigInteger.valueOf(accountTotalSignedMinor).subtract(baseSum)
+        if (deficit != BigInteger.ZERO) {
             distributeRoundingDeficit(allocations, remainders, deficit)
         }
-        return allocations.toList()
+        val withinRange = allocations.all { it >= MIN_LONG_BIG && it <= MAX_LONG_BIG }
+        return if (withinRange) allocations.map(BigInteger::longValueExact) else null
     }
 
     private fun distributeRoundingDeficit(
-        allocations: LongArray,
+        allocations: Array<BigInteger>,
         remainders: Array<BigInteger>,
-        deficit: Long,
+        deficit: BigInteger,
     ) {
-        val step = if (deficit > 0L) 1L else -1L
+        val stepSign = deficit.signum()
+        val step = BigInteger.valueOf(stepSign.toLong())
         val eligibleIndices = remainders.indices
             .filter { index ->
-                if (step > 0L) remainders[index] > BigInteger.ZERO else remainders[index] < BigInteger.ZERO
+                if (stepSign > 0) remainders[index] > BigInteger.ZERO else remainders[index] < BigInteger.ZERO
             }
             .sortedWith(
                 compareBy<Int> { index ->
-                    if (step > 0L) remainders[index].negate() else remainders[index]
+                    if (stepSign > 0) remainders[index].negate() else remainders[index]
                 }.thenBy { it }
             )
 
-        var remaining = abs(deficit)
+        var remaining = deficit.abs()
         for (index in eligibleIndices) {
-            if (remaining <= 0L) break
-            allocations[index] += step
-            remaining--
+            if (remaining <= BigInteger.ZERO) break
+            allocations[index] = allocations[index].add(step)
+            remaining = remaining.subtract(BigInteger.ONE)
         }
-        if (remaining > 0L) {
-            allocations[allocations.lastIndex] += step * remaining
+        if (remaining > BigInteger.ZERO) {
+            val last = allocations.lastIndex
+            allocations[last] = allocations[last].add(step.multiply(remaining))
         }
     }
 }

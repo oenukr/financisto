@@ -4,6 +4,8 @@ package ru.orangesoftware.financisto.transaction
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.database.sqlite.SQLiteDatabase
+import android.database.sqlite.SQLiteException
 import androidx.core.content.edit
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -13,6 +15,11 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
+import org.mockito.kotlin.any
+import org.mockito.kotlin.doReturn
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
+import org.mockito.kotlin.verify
 import org.robolectric.Shadows
 import ru.orangesoftware.financisto.activity.AbstractTransactionActivity
 import ru.orangesoftware.financisto.activity.TransactionActivity
@@ -534,6 +541,119 @@ class FinancistoTransactionRepositoryTest : AbstractDbTest() {
             TransactionLaunchArgs.AiDraft(newerDraft),
             TransactionEntryRouter.resolveLaunchArgs(launchedNewer),
         )
+    }
+
+    @Test
+    fun saveTransactionRollsBackPayeeProjectAndBalanceWhenParentInsertFails() = runTest {
+        val cat = CategoryBuilder.createDefaultHierarchy(db).getValue("A1")
+        val payeesBefore = db.allPayeeList.map { it.title }.toSet()
+        val projectsBefore = db.getAllProjectsList(false).map { it.title }.toSet()
+        val txCountBefore = countTransactions()
+
+        db.db().execSQL(
+            """
+            CREATE TEMP TRIGGER fail_parent_tx_insert
+            BEFORE INSERT ON transactions
+            WHEN NEW.parent_id = 0
+            BEGIN
+                SELECT RAISE(ABORT, 'parent insert failed');
+            END
+            """.trimIndent()
+        )
+        try {
+            try {
+                repository.saveTransaction(
+                    baseSaveCommand(
+                        categoryId = cat.id,
+                        pendingPayeeName = "Rollback Payee",
+                        pendingProjectName = "Rollback Project",
+                        fromAmountMinor = -1500L,
+                    )
+                )
+                fail("Expected SQLiteException when parent insert returns -1")
+            } catch (_: SQLiteException) {
+                // Expected rollback path.
+            }
+        } finally {
+            db.db().execSQL("DROP TRIGGER IF EXISTS fail_parent_tx_insert")
+        }
+
+        assertEquals(txCountBefore, countTransactions())
+        assertEquals(0L, requireNotNull(db.getAccount(cash.id)).totalAmount)
+        assertEquals(payeesBefore, db.allPayeeList.map { it.title }.toSet())
+        assertEquals(projectsBefore, db.getAllProjectsList(false).map { it.title }.toSet())
+    }
+
+    @Test
+    fun saveSplitTransactionRollsBackParentEarlierSplitsAndPayeeWhenSplitInsertFails() = runTest {
+        val categories = CategoryBuilder.createDefaultHierarchy(db)
+        val catA1 = categories.getValue("A1")
+        val catA2 = categories.getValue("A2")
+        val payeesBefore = db.allPayeeList.map { it.title }.toSet()
+        val txCountBefore = countTransactions()
+
+        db.db().execSQL(
+            """
+            CREATE TEMP TRIGGER fail_second_split_insert
+            BEFORE INSERT ON transactions
+            WHEN NEW.parent_id > 0 AND NEW.category_id = ${catA2.id}
+            BEGIN
+                SELECT RAISE(ABORT, 'split insert failed');
+            END
+            """.trimIndent()
+        )
+        try {
+            try {
+                repository.saveTransaction(
+                    baseSaveCommand(
+                        categoryId = TransactionIds.SPLIT_CATEGORY_ID,
+                        pendingPayeeName = "Split Rollback Payee",
+                        fromAmountMinor = -2000L,
+                        splits = listOf(
+                            SaveSplitCommand(catA1.id, -1200L, "First split", 0L),
+                            SaveSplitCommand(catA2.id, -800L, "Failing split", 0L),
+                        ),
+                    )
+                )
+                fail("Expected SQLiteException when split insert returns -1")
+            } catch (_: SQLiteException) {
+                // Expected rollback path.
+            }
+        } finally {
+            db.db().execSQL("DROP TRIGGER IF EXISTS fail_second_split_insert")
+        }
+
+        assertEquals(txCountBefore, countTransactions())
+        assertEquals(0L, requireNotNull(db.getAccount(cash.id)).totalAmount)
+        assertEquals(payeesBefore, db.allPayeeList.map { it.title }.toSet())
+    }
+
+    @Test
+    fun saveTransactionAbortsAndSkipsSetTransactionSuccessfulWhenInsertReturnsMinusOne() = runTest {
+        val mockSqlDb: SQLiteDatabase = mock()
+        val mockDb: ru.orangesoftware.financisto.db.DatabaseAdapter = mock {
+            on { db() } doReturn mockSqlDb
+            on { insertOrUpdateInTransaction(any(), any()) } doReturn -1L
+        }
+        val repoWithMock = FinancistoTransactionRepository(context, mockDb)
+
+        try {
+            repoWithMock.saveTransaction(baseSaveCommand(fromAmountMinor = -1000L))
+            fail("Expected SQLiteException when insertOrUpdateInTransaction returns -1")
+        } catch (_: SQLiteException) {
+            // Expected.
+        }
+
+        verify(mockSqlDb).beginTransaction()
+        verify(mockSqlDb, never()).setTransactionSuccessful()
+        verify(mockSqlDb).endTransaction()
+    }
+
+    private fun countTransactions(): Long {
+        return db.db().rawQuery("SELECT COUNT(*) FROM transactions", null).use { c ->
+            c.moveToFirst()
+            c.getLong(0)
+        }
     }
 
     private fun baseSaveCommand(
