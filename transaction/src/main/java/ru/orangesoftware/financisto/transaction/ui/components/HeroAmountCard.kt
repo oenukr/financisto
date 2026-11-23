@@ -36,6 +36,7 @@ import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -65,9 +66,11 @@ fun HeroAmountCard(
     onOpenPrimaryCalculator: () -> Unit,
     onOpenSecondaryCalculator: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val semantic = FinancistoTheme.semanticColors
     val dimens = FinancistoTheme.dimens
+    val isEnabled = enabled && model.enabled
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -76,11 +79,12 @@ fun HeroAmountCard(
         border = BorderStroke(dimens.DefaultBorderWidth, semantic.heroBorder),
     ) {
         Column(modifier = Modifier.padding(dimens.HeroPadding)) {
-            HeroCardHeaderRow(model = model, onSwitchMode = onSwitchMode)
+            HeroCardHeaderRow(model = model, enabled = isEnabled, onSwitchMode = onSwitchMode)
             Spacer(modifier = Modifier.height(12.dp))
             if (model.isDualCurrency) {
                 DualCurrencyAmountRows(
                     model = model,
+                    enabled = isEnabled,
                     onPrimaryAmountChanged = onPrimaryAmountChanged,
                     onSecondaryAmountChanged = onSecondaryAmountChanged,
                     onCycleSignOrMode = onCycleSignOrMode,
@@ -91,6 +95,7 @@ fun HeroAmountCard(
                 SingleAmountRow(
                     symbol = model.primaryCurrencySymbol,
                     amountInput = model.primaryInput,
+                    enabled = isEnabled,
                     onAmountChanged = onPrimaryAmountChanged,
                     onCycleSignOrMode = onCycleSignOrMode,
                     onOpenCalculator = onOpenPrimaryCalculator,
@@ -103,6 +108,7 @@ fun HeroAmountCard(
 @Composable
 private fun HeroCardHeaderRow(
     model: HeroAmountDisplayModel,
+    enabled: Boolean,
     onSwitchMode: (TransactionMode) -> Unit,
 ) {
     Row(
@@ -113,6 +119,7 @@ private fun HeroCardHeaderRow(
         ModeSelectorBadge(
             mode = model.mode,
             isDualCurrency = model.isDualCurrency,
+            enabled = enabled,
             onSwitchMode = onSwitchMode,
         )
         val rightLabel = when {
@@ -134,9 +141,13 @@ private fun HeroCardHeaderRow(
 private fun ModeSelectorBadge(
     mode: TransactionMode,
     isDualCurrency: Boolean,
+    enabled: Boolean,
     onSwitchMode: (TransactionMode) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
+    LaunchedEffect(enabled) {
+        if (!enabled) expanded = false
+    }
     val (bgColor, textColor, label) = resolveModeBadgeStyle(mode, isDualCurrency)
     val leadingIcon: (@Composable () -> Unit)? = if (mode == TransactionMode.TRANSFER) {
         {
@@ -153,6 +164,7 @@ private fun ModeSelectorBadge(
     Box {
         AssistChip(
             onClick = { expanded = true },
+            enabled = enabled,
             label = {
                 Text(
                     text = label,
@@ -170,7 +182,8 @@ private fun ModeSelectorBadge(
             border = null,
         )
         ModeSelectorDropdown(
-            expanded = expanded,
+            expanded = expanded && enabled,
+            enabled = enabled,
             onDismiss = { expanded = false },
             onSelectMode = { selected ->
                 expanded = false
@@ -213,20 +226,24 @@ private fun resolveModeBadgeStyle(
 @Composable
 private fun ModeSelectorDropdown(
     expanded: Boolean,
+    enabled: Boolean,
     onDismiss: () -> Unit,
     onSelectMode: (TransactionMode) -> Unit,
 ) {
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
         DropdownMenuItem(
             text = { Text(stringResource(R.string.tx_mode_expense)) },
+            enabled = enabled,
             onClick = { onSelectMode(TransactionMode.EXPENSE) },
         )
         DropdownMenuItem(
             text = { Text(stringResource(R.string.tx_mode_income)) },
+            enabled = enabled,
             onClick = { onSelectMode(TransactionMode.INCOME) },
         )
         DropdownMenuItem(
             text = { Text(stringResource(R.string.tx_mode_transfer_menu)) },
+            enabled = enabled,
             onClick = { onSelectMode(TransactionMode.TRANSFER) },
         )
     }
@@ -236,6 +253,7 @@ private fun ModeSelectorDropdown(
 private fun SingleAmountRow(
     symbol: String,
     amountInput: String,
+    enabled: Boolean,
     onAmountChanged: (String) -> Unit,
     onCycleSignOrMode: () -> Unit,
     onOpenCalculator: () -> Unit,
@@ -261,6 +279,7 @@ private fun SingleAmountRow(
             val amountState = rememberSyncedTextFieldState(amountInput, onAmountChanged)
             BasicTextField(
                 state = amountState,
+                enabled = enabled,
                 inputTransformation = DecimalInputTransformation,
                 lineLimits = TextFieldLineLimits.SingleLine,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -274,6 +293,7 @@ private fun SingleAmountRow(
         }
         AmountRowActionButtons(
             toggleIcon = Icons.Rounded.UnfoldMore,
+            enabled = enabled,
             onToggleClick = onCycleSignOrMode,
             onCalcClick = onOpenCalculator,
         )
@@ -283,6 +303,7 @@ private fun SingleAmountRow(
 @Composable
 private fun DualCurrencyAmountRows(
     model: HeroAmountDisplayModel,
+    enabled: Boolean,
     onPrimaryAmountChanged: (String) -> Unit,
     onSecondaryAmountChanged: (String) -> Unit,
     onCycleSignOrMode: () -> Unit,
@@ -303,37 +324,28 @@ private fun DualCurrencyAmountRows(
     val secondarySignColor = if (isSecondaryPositive) semantic.onIncomeContainer else semantic.onDebitContainer
 
     Column {
-        DualAmountLineHeader(
-            dotColor = primarySignColor,
-            header = primaryHeader,
-            accountLabel = model.primaryAccountLabel,
-        )
+        DualAmountLineHeader(primarySignColor, primaryHeader, model.primaryAccountLabel)
         Spacer(modifier = Modifier.height(4.dp))
         DualAmountInputRow(
             sign = if (isPrimaryPositive) "+" else "−",
             signColor = primarySignColor,
             input = model.primaryInput,
             currencyCode = model.primaryCurrencyCode,
+            enabled = enabled,
             onValueChange = onPrimaryAmountChanged,
             trailingIcon = Icons.Rounded.SwapVert,
             onTrailingClick = onCycleSignOrMode,
             onCalcClick = onOpenPrimaryCalculator,
         )
-        HorizontalDivider(
-            modifier = Modifier.padding(vertical = 10.dp),
-            color = semantic.heroBorder,
-        )
-        DualAmountLineHeader(
-            dotColor = secondarySignColor,
-            header = secondaryHeader,
-            accountLabel = model.secondaryAccountLabel,
-        )
+        HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = semantic.heroBorder)
+        DualAmountLineHeader(secondarySignColor, secondaryHeader, model.secondaryAccountLabel)
         Spacer(modifier = Modifier.height(4.dp))
         DualAmountInputRow(
             sign = if (isSecondaryPositive) "+" else "−",
             signColor = secondarySignColor,
             input = model.secondaryInput,
             currencyCode = model.secondaryCurrencyCode,
+            enabled = enabled,
             onValueChange = onSecondaryAmountChanged,
             trailingIcon = Icons.Rounded.UnfoldMore,
             onTrailingClick = onCycleSignOrMode,
@@ -384,6 +396,7 @@ private fun DualAmountInputRow(
     signColor: Color,
     input: String,
     currencyCode: String,
+    enabled: Boolean,
     onValueChange: (String) -> Unit,
     trailingIcon: ImageVector,
     onTrailingClick: () -> Unit,
@@ -408,6 +421,7 @@ private fun DualAmountInputRow(
             val inputState = rememberSyncedTextFieldState(input, onValueChange)
             BasicTextField(
                 state = inputState,
+                enabled = enabled,
                 inputTransformation = DecimalInputTransformation,
                 lineLimits = TextFieldLineLimits.SingleLine,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -427,6 +441,7 @@ private fun DualAmountInputRow(
         }
         AmountRowActionButtons(
             toggleIcon = trailingIcon,
+            enabled = enabled,
             onToggleClick = onTrailingClick,
             onCalcClick = onCalcClick,
         )
@@ -436,13 +451,14 @@ private fun DualAmountInputRow(
 @Composable
 private fun AmountRowActionButtons(
     toggleIcon: ImageVector,
+    enabled: Boolean,
     onToggleClick: () -> Unit,
     onCalcClick: () -> Unit,
 ) {
     val semantic = FinancistoTheme.semanticColors
     val dimens = FinancistoTheme.dimens
     Row(verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = onToggleClick) {
+        IconButton(onClick = onToggleClick, enabled = enabled) {
             Icon(
                 imageVector = toggleIcon,
                 contentDescription = stringResource(R.string.tx_cd_toggle_expense_income),
@@ -451,6 +467,7 @@ private fun AmountRowActionButtons(
         }
         OutlinedIconButton(
             onClick = onCalcClick,
+            enabled = enabled,
             shape = RoundedCornerShape(dimens.RadiusTile),
             border = BorderStroke(dimens.DefaultBorderWidth, semantic.cardBorder),
             colors = IconButtonDefaults.outlinedIconButtonColors(

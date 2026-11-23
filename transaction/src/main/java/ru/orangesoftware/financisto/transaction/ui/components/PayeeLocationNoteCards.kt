@@ -68,6 +68,7 @@ fun PayeeFieldCard(
     onCreatePendingPayee: (String) -> Unit,
     onClear: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val activePayeeName = remember(payees, selectedPayeeId, pendingPayeeName) {
         payees.firstOrNull { it.id == selectedPayeeId }?.title ?: pendingPayeeName
@@ -84,6 +85,7 @@ fun PayeeFieldCard(
             query = query,
             activePayeeName = activePayeeName,
             isExpanded = isExpanded,
+            enabled = enabled,
             onToggleExpand = onToggleExpand,
             onQueryChanged = onQueryChanged,
             onClear = onClear,
@@ -94,6 +96,7 @@ fun PayeeFieldCard(
                 suggestions = filtered,
                 selectedPayeeId = selectedPayeeId,
                 showCreateButton = query.trim().isNotEmpty() && !hasExactMatch,
+                enabled = enabled,
                 onSelectPayee = onSelectPayee,
                 onCreatePendingPayee = onCreatePendingPayee,
             )
@@ -106,6 +109,7 @@ private fun PayeeCardHeaderRow(
     query: String,
     activePayeeName: String?,
     isExpanded: Boolean,
+    enabled: Boolean,
     onToggleExpand: () -> Unit,
     onQueryChanged: (String) -> Unit,
     onClear: () -> Unit,
@@ -117,7 +121,7 @@ private fun PayeeCardHeaderRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(FinancistoTheme.dimens.RadiusTile))
-            .clickable(onClick = onToggleExpand),
+            .clickable(enabled = enabled, onClick = onToggleExpand),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -138,6 +142,7 @@ private fun PayeeCardHeaderRow(
                     InlineSearchInputField(
                         value = query,
                         placeholder = stringResource(R.string.tx_placeholder_search_payee),
+                        enabled = enabled,
                         onValueChanged = onQueryChanged,
                     )
                 } else {
@@ -161,6 +166,7 @@ private fun PayeeCardHeaderRow(
             clearDescription = stringResource(R.string.tx_cd_clear_payee),
             isExpanded = isExpanded,
             collapsedActionIcon = Icons.Rounded.PersonAdd,
+            enabled = enabled,
             onClear = onClear,
             onCollapse = onToggleExpand,
             onCollapsedAction = onToggleExpand,
@@ -174,6 +180,7 @@ private fun PayeeSuggestionsSection(
     suggestions: List<PayeeOption>,
     selectedPayeeId: Long,
     showCreateButton: Boolean,
+    enabled: Boolean,
     onSelectPayee: (Long) -> Unit,
     onCreatePendingPayee: (String) -> Unit,
 ) {
@@ -196,6 +203,7 @@ private fun PayeeSuggestionsSection(
                     if (payee.id == selectedPayeeId) R.string.tx_tag_selected else R.string.tx_tag_payee,
                 ),
                 isHighlighted = payee.id == selectedPayeeId,
+                enabled = enabled,
                 onClick = { onSelectPayee(payee.id) },
             )
         }
@@ -203,6 +211,7 @@ private fun PayeeSuggestionsSection(
             Spacer(modifier = Modifier.height(2.dp))
             CreateInlineSuggestionButton(
                 text = stringResource(R.string.tx_action_create_payee, query.trim()),
+                enabled = enabled,
                 onClick = { onCreatePendingPayee(query.trim()) },
             )
         }
@@ -221,6 +230,7 @@ fun LocationFieldCard(
     onClear: () -> Unit,
     onCreateNewLocation: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val selectedTitle = remember(locations, selectedLocationId) {
         locations.firstOrNull { it.id == selectedLocationId }?.title
@@ -236,6 +246,7 @@ fun LocationFieldCard(
             selectedLocationId = selectedLocationId,
             selectedTitle = selectedTitle,
             isExpanded = isExpanded,
+            enabled = enabled,
             onToggleExpand = onToggleExpand,
             onQueryChanged = onQueryChanged,
             onClear = onClear,
@@ -245,6 +256,7 @@ fun LocationFieldCard(
             LocationSuggestionsSection(
                 selectedLocationId = selectedLocationId,
                 suggestions = savedSuggestions,
+                enabled = enabled,
                 onSelectLocation = onSelectLocation,
                 onCreateNewLocation = onCreateNewLocation,
             )
@@ -258,6 +270,7 @@ private fun LocationCardHeaderRow(
     selectedLocationId: Long,
     selectedTitle: String,
     isExpanded: Boolean,
+    enabled: Boolean,
     onToggleExpand: () -> Unit,
     onQueryChanged: (String) -> Unit,
     onClear: () -> Unit,
@@ -268,7 +281,7 @@ private fun LocationCardHeaderRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(FinancistoTheme.dimens.RadiusTile))
-            .clickable(onClick = onToggleExpand),
+            .clickable(enabled = enabled, onClick = onToggleExpand),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -291,6 +304,7 @@ private fun LocationCardHeaderRow(
                     InlineSearchInputField(
                         value = query,
                         placeholder = stringResource(R.string.tx_placeholder_search_location),
+                        enabled = enabled,
                         onValueChanged = onQueryChanged,
                     )
                 } else {
@@ -310,6 +324,7 @@ private fun LocationCardHeaderRow(
             clearDescription = stringResource(R.string.tx_cd_reset_location),
             isExpanded = isExpanded,
             collapsedActionIcon = Icons.Rounded.AddLocationAlt,
+            enabled = enabled,
             onClear = onClear,
             onCollapse = onToggleExpand,
             onCollapsedAction = onCreateNewLocation,
@@ -323,16 +338,17 @@ private fun ExpandableFieldTrailingActions(
     clearDescription: String,
     isExpanded: Boolean,
     collapsedActionIcon: ImageVector,
+    enabled: Boolean,
     onClear: () -> Unit,
     onCollapse: () -> Unit,
     onCollapsedAction: () -> Unit,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         if (showClear) {
-            ClearMiniIconButton(onClick = onClear, contentDescription = clearDescription)
+            ClearMiniIconButton(onClick = onClear, contentDescription = clearDescription, enabled = enabled)
         }
         if (isExpanded) {
-            IconButton(onClick = onCollapse) {
+            IconButton(onClick = onCollapse, enabled = enabled) {
                 Icon(
                     imageVector = Icons.Rounded.ArrowDropUp,
                     contentDescription = stringResource(R.string.tx_cd_collapse),
@@ -343,6 +359,7 @@ private fun ExpandableFieldTrailingActions(
             AssistNewPill(
                 label = stringResource(R.string.tx_action_new),
                 icon = collapsedActionIcon,
+                enabled = enabled,
                 onClick = onCollapsedAction,
             )
         }
@@ -353,6 +370,7 @@ private fun ExpandableFieldTrailingActions(
 private fun LocationSuggestionsSection(
     selectedLocationId: Long,
     suggestions: List<LocationOption>,
+    enabled: Boolean,
     onSelectLocation: (Long) -> Unit,
     onCreateNewLocation: () -> Unit,
 ) {
@@ -366,6 +384,7 @@ private fun LocationSuggestionsSection(
             tagLabel = stringResource(R.string.tx_tag_nearby),
             isHighlighted = selectedLocationId == TransactionIds.CURRENT_LOCATION_ID,
             icon = Icons.Rounded.MyLocation,
+            enabled = enabled,
             onClick = { onSelectLocation(TransactionIds.CURRENT_LOCATION_ID) },
         )
         suggestions.forEach { loc ->
@@ -373,11 +392,13 @@ private fun LocationSuggestionsSection(
                 title = loc.title,
                 tagLabel = stringResource(R.string.tx_tag_saved),
                 isHighlighted = loc.id == selectedLocationId,
+                enabled = enabled,
                 onClick = { onSelectLocation(loc.id) },
             )
         }
         CreateInlineSuggestionButton(
             text = stringResource(R.string.tx_action_create_location),
+            enabled = enabled,
             onClick = onCreateNewLocation,
         )
     }
@@ -387,11 +408,13 @@ private fun LocationSuggestionsSection(
 private fun InlineSearchInputField(
     value: String,
     placeholder: String,
+    enabled: Boolean,
     onValueChanged: (String) -> Unit,
 ) {
     val queryState = rememberSyncedTextFieldState(value, onValueChanged)
     BasicTextField(
         state = queryState,
+        enabled = enabled,
         lineLimits = TextFieldLineLimits.SingleLine,
         cursorBrush = SolidColor(FinancistoTheme.semanticColors.activeBorder),
         textStyle = MaterialTheme.typography.titleSmall.copy(
@@ -420,6 +443,7 @@ fun NoteFieldCard(
     onSelectRecentNote: (String) -> Unit,
     onClear: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     FormFieldCardSurface(isActive = false, modifier = modifier) {
         Row(
@@ -442,6 +466,7 @@ fun NoteFieldCard(
                     val noteState = rememberSyncedTextFieldState(note, onNoteChanged)
                     BasicTextField(
                         state = noteState,
+                        enabled = enabled,
                         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                         textStyle = MaterialTheme.typography.bodyMedium.copy(
                             fontWeight = FontWeight.SemiBold,
@@ -465,15 +490,12 @@ fun NoteFieldCard(
                 ClearMiniIconButton(
                     onClick = onClear,
                     contentDescription = stringResource(R.string.tx_cd_clear_note),
+                    enabled = enabled,
                 )
             }
         }
         if (recentNotes.isNotEmpty()) {
-            RecentNotesChipRow(
-                currentNote = note,
-                recentNotes = recentNotes,
-                onSelectRecentNote = onSelectRecentNote,
-            )
+            RecentNotesChipRow(note, recentNotes, enabled, onSelectRecentNote)
         }
     }
 }
@@ -482,6 +504,7 @@ fun NoteFieldCard(
 private fun RecentNotesChipRow(
     currentNote: String,
     recentNotes: List<String>,
+    enabled: Boolean,
     onSelectRecentNote: (String) -> Unit,
 ) {
     val semantic = FinancistoTheme.semanticColors
@@ -504,6 +527,7 @@ private fun RecentNotesChipRow(
             FilterChip(
                 selected = recent == currentNote,
                 onClick = { onSelectRecentNote(recent) },
+                enabled = enabled,
                 label = {
                     Text(
                         text = recent,

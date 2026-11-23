@@ -18,6 +18,7 @@ import ru.orangesoftware.financisto.transaction.ui.components.ConsumedDraftAlert
 import ru.orangesoftware.financisto.transaction.ui.components.CurrencyPickerSheet
 import ru.orangesoftware.financisto.transaction.ui.components.DiscardTransactionDialog
 import ru.orangesoftware.financisto.transaction.ui.components.ProjectPickerSheet
+import ru.orangesoftware.financisto.transaction.ui.components.SplitEditorDraft
 import ru.orangesoftware.financisto.transaction.ui.components.SplitItemEditorSheet
 import ru.orangesoftware.financisto.transaction.ui.components.StatusPickerSheet
 import ru.orangesoftware.financisto.transaction.ui.components.TransactionDatePickerDialog
@@ -30,6 +31,9 @@ internal fun TransactionActiveSheetHost(
     state: TransactionUiState.Ready,
     onIntent: (TransactionIntent) -> Unit,
     onDismissAll: () -> Unit,
+    enabled: Boolean = !state.isSaving,
+    splitEditorDraft: SplitEditorDraft? = null,
+    onSplitEditorDraftChanged: (SplitEditorDraft?) -> Unit = {},
 ) {
     val sheet = state.activeSheet ?: return
     when (sheet) {
@@ -48,6 +52,8 @@ internal fun TransactionActiveSheetHost(
         is ActiveSheet.CategoryBrowser -> CategoryBrowserSheetHost(
             sheet = sheet,
             state = state,
+            splitEditorDraft = splitEditorDraft,
+            onSplitEditorDraftChanged = onSplitEditorDraftChanged,
             onIntent = onIntent,
             onDismiss = onDismissAll,
         )
@@ -70,13 +76,21 @@ internal fun TransactionActiveSheetHost(
             },
             onSave = { onIntent(TransactionIntent.SaveSplitItem(it)) },
             onDismiss = onDismissAll,
+            enabled = enabled,
+            cachedDraft = splitEditorDraft,
+            onDraftChanged = onSplitEditorDraftChanged,
         )
         is ActiveSheet.Calculator -> CalculatorBottomSheet(
             target = sheet.target,
             initialText = sheet.initialText,
             onDismiss = onDismissAll,
-            onApplyValue = {
-                onIntent(TransactionIntent.ApplyCalculatorResult(sheet.target, it, sheet.splitLocalId))
+            onApplyValue = { value ->
+                if (enabled && sheet.target == CalculatorTarget.SPLIT_AMOUNT && sheet.splitLocalId != null) {
+                    splitEditorDraft?.takeIf { it.splitLocalId == sheet.splitLocalId }?.let { draft ->
+                        onSplitEditorDraftChanged(draft.copy(forceSyncAmount = true))
+                    }
+                }
+                onIntent(TransactionIntent.ApplyCalculatorResult(sheet.target, value, sheet.splitLocalId))
             },
         )
     }
@@ -167,6 +181,8 @@ private fun TransactionPickerSheetHost(
 private fun CategoryBrowserSheetHost(
     sheet: ActiveSheet.CategoryBrowser,
     state: TransactionUiState.Ready,
+    splitEditorDraft: SplitEditorDraft?,
+    onSplitEditorDraftChanged: (SplitEditorDraft?) -> Unit,
     onIntent: (TransactionIntent) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -194,7 +210,14 @@ private fun CategoryBrowserSheetHost(
     CategoryBrowserSheet(
         categories = categories,
         selectedCategoryId = selectedCategoryId,
-        onSelect = { onIntent(TransactionIntent.SelectCategory(it, sheet.forSplitLocalId)) },
+        onSelect = { categoryId ->
+            if (!state.isSaving && sheet.forSplitLocalId != null) {
+                splitEditorDraft?.takeIf { it.splitLocalId == sheet.forSplitLocalId }?.let { draft ->
+                    onSplitEditorDraftChanged(draft.copy(forceSyncIsIncome = true))
+                }
+            }
+            onIntent(TransactionIntent.SelectCategory(categoryId, sheet.forSplitLocalId))
+        },
         onCreateCategory = { onIntent(TransactionIntent.OpenExternalCategoryCreator) },
         onDismiss = onDismiss,
     )

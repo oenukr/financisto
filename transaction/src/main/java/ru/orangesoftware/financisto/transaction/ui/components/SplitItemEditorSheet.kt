@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -15,6 +16,7 @@ import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Calculate
 import androidx.compose.material3.Button
@@ -30,12 +32,14 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -52,6 +56,41 @@ import ru.orangesoftware.financisto.transaction.model.CategoryOption
 import ru.orangesoftware.financisto.transaction.model.EditableSplit
 import ru.orangesoftware.financisto.transaction.model.ProjectOption
 
+private class SplitSyncBaseline(
+    var amountMinor: Long,
+    var note: String,
+    var isIncome: Boolean,
+    var categoryId: Long,
+    var currencyDecimals: Int,
+) {
+    fun toDraft(
+        splitLocalId: Long,
+        amountText: String,
+        noteText: String,
+        currentIsIncome: Boolean,
+    ): SplitEditorDraft = SplitEditorDraft(
+        splitLocalId = splitLocalId,
+        amountText = amountText,
+        noteText = noteText,
+        isIncome = currentIsIncome,
+        syncedAmountMinor = amountMinor,
+        syncedNote = note,
+        syncedIsIncome = isIncome,
+        syncedCategoryId = categoryId,
+        syncedCurrencyDecimals = currencyDecimals,
+    )
+
+    companion object {
+        fun fromDraft(draft: SplitEditorDraft): SplitSyncBaseline = SplitSyncBaseline(
+            amountMinor = draft.syncedAmountMinor,
+            note = draft.syncedNote,
+            isIncome = draft.syncedIsIncome,
+            categoryId = draft.syncedCategoryId,
+            currencyDecimals = draft.syncedCurrencyDecimals,
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SplitItemEditorSheet(
@@ -67,9 +106,12 @@ fun SplitItemEditorSheet(
     onSave: (EditableSplit) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    cachedDraft: SplitEditorDraft? = null,
+    onDraftChanged: (SplitEditorDraft) -> Unit = {},
 ) {
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (enabled) onDismiss() },
         containerColor = MaterialTheme.colorScheme.surface,
         modifier = modifier,
     ) {
@@ -85,7 +127,71 @@ fun SplitItemEditorSheet(
             onOpenCalculator = onOpenCalculator,
             onSave = onSave,
             onDismiss = onDismiss,
+            enabled = enabled,
+            cachedDraft = cachedDraft,
+            onDraftChanged = onDraftChanged,
         )
+    }
+}
+
+private class SplitEditorHolder(
+    val amountState: TextFieldState,
+    val noteState: TextFieldState,
+    val isIncomeState: MutableState<Boolean>,
+    val showAmountErrorState: MutableState<Boolean>,
+    private val baseline: SplitSyncBaseline,
+    private val onDraftChanged: (SplitEditorDraft) -> Unit,
+) {
+    fun publishDraft(splitLocalId: Long) {
+        onDraftChanged(
+            baseline.toDraft(
+                splitLocalId = splitLocalId,
+                amountText = amountState.text.toString(),
+                noteText = noteState.text.toString(),
+                currentIsIncome = isIncomeState.value,
+            ),
+        )
+    }
+
+    fun updateIncome(splitLocalId: Long, nextIncome: Boolean) {
+        isIncomeState.value = nextIncome
+        publishDraft(splitLocalId)
+    }
+
+    fun commitAndRun(
+        split: EditableSplit,
+        currencyDecimals: Int,
+        onUpdateDraft: (EditableSplit) -> Unit,
+        action: () -> Unit,
+    ) {
+        val noteText = noteState.text.toString()
+        val minor = parseValidSplitAmountMinor(amountState.text.toString(), currencyDecimals) ?: split.amountMinor
+        baseline.amountMinor = minor
+        baseline.note = noteText
+        baseline.isIncome = isIncomeState.value
+        publishDraft(split.localId)
+        onUpdateDraft(split.copy(amountMinor = minor, isIncome = isIncomeState.value, note = noteText))
+        action()
+    }
+
+    fun applySave(
+        split: EditableSplit,
+        currencyDecimals: Int,
+        onSave: (EditableSplit) -> Unit,
+    ) {
+        val parsedMinor = parseValidSplitAmountMinor(amountState.text.toString(), currencyDecimals)
+        if (parsedMinor == null) {
+            showAmountErrorState.value = true
+        } else {
+            showAmountErrorState.value = false
+            onSave(
+                split.copy(
+                    amountMinor = parsedMinor,
+                    isIncome = isIncomeState.value,
+                    note = noteState.text.toString(),
+                ),
+            )
+        }
     }
 }
 
@@ -103,83 +209,172 @@ fun SplitItemEditorSheetContent(
     onSave: (EditableSplit) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    cachedDraft: SplitEditorDraft? = null,
+    onDraftChanged: (SplitEditorDraft) -> Unit = {},
 ) {
-    val amountState = rememberTextFieldState(
-        initialText = AmountScale.formatEditableAmount(split.amountMinor, currencyDecimals),
-    )
-    var isIncome by remember(split.localId, split.isIncome) { mutableStateOf(split.isIncome) }
-    var showAmountError by remember(split.localId, split.amountMinor) { mutableStateOf(false) }
-    val noteState = rememberTextFieldState(initialText = split.note)
-    SyncSplitEditorFieldsEffect(split, currencyDecimals, amountState, noteState) {
-        showAmountError = false
-    }
+    key(split.localId) {
+        val holder = rememberSplitEditorHolder(
+            split = split,
+            currencyDecimals = currencyDecimals,
+            cachedDraft = cachedDraft,
+            onDraftChanged = onDraftChanged,
+        )
+        val selectedCategory = remember(categories, split.categoryId) {
+            categories.firstOrNull { it.id == split.categoryId }
+        }
+        val selectedProject = remember(projects, split.projectId) {
+            projects.firstOrNull { it.id == split.projectId && it.id > 0L }
+        }
 
-    val selectedCategory = remember(categories, split.categoryId) {
-        categories.firstOrNull { it.id == split.categoryId }
-    }
-    val selectedProject = remember(projects, split.projectId) {
-        projects.firstOrNull { it.id == split.projectId && it.id > 0L }
-    }
-    val commitDraftAndRun = { action: () -> Unit ->
-        val minor = parseValidSplitAmountMinor(amountState.text.toString(), currencyDecimals) ?: split.amountMinor
-        onUpdateDraft(split.copy(amountMinor = minor, isIncome = isIncome, note = noteState.text.toString()))
-        action()
-    }
-    val onApplyClick = {
-        val parsedMinor = parseValidSplitAmountMinor(amountState.text.toString(), currencyDecimals)
-        if (parsedMinor == null) {
-            showAmountError = true
-        } else {
-            showAmountError = false
-            onSave(split.copy(amountMinor = parsedMinor, isIncome = isIncome, note = noteState.text.toString()))
+        Column(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Column(
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                SplitEditorHeaderAndMode(
+                    isNew = isNew,
+                    isIncome = holder.isIncomeState.value,
+                    enabled = enabled,
+                    onIncomeChanged = { holder.updateIncome(split.localId, it) },
+                )
+                SplitEditorFormFields(
+                    categoryName = selectedCategory?.fullPath
+                        ?: stringResource(R.string.tx_placeholder_uncategorized),
+                    projectName = selectedProject?.title ?: stringResource(R.string.tx_placeholder_no_project),
+                    amountState = holder.amountState,
+                    showAmountError = holder.showAmountErrorState.value,
+                    noteState = holder.noteState,
+                    enabled = enabled,
+                    onPickCategory = { holder.commitAndRun(split, currencyDecimals, onUpdateDraft, onPickCategory) },
+                    onOpenCalculator = {
+                        holder.commitAndRun(split, currencyDecimals, onUpdateDraft, onOpenCalculator)
+                    },
+                    onPickProject = { holder.commitAndRun(split, currencyDecimals, onUpdateDraft, onPickProject) },
+                )
+            }
+            SplitEditorActionButtons(
+                enabled = enabled,
+                onDismiss = onDismiss,
+                onApply = { holder.applySave(split, currencyDecimals, onSave) },
+            )
+            Spacer(modifier = Modifier.height(12.dp))
         }
     }
+}
 
-    Column(
-        modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        SplitEditorHeaderAndMode(isNew = isNew, isIncome = isIncome, onIncomeChanged = { isIncome = it })
-        SplitEditorFormFields(
-            categoryName = selectedCategory?.fullPath ?: stringResource(R.string.tx_placeholder_uncategorized),
-            projectName = selectedProject?.title ?: stringResource(R.string.tx_placeholder_no_project),
-            amountState = amountState,
-            showAmountError = showAmountError,
-            noteState = noteState,
-            onPickCategory = { commitDraftAndRun(onPickCategory) },
-            onOpenCalculator = { commitDraftAndRun(onOpenCalculator) },
-            onPickProject = { commitDraftAndRun(onPickProject) },
-        )
-        SplitEditorActionButtons(onDismiss = onDismiss, onApply = onApplyClick)
-        Spacer(modifier = Modifier.height(12.dp))
+@Composable
+private fun rememberSplitEditorHolder(
+    split: EditableSplit,
+    currencyDecimals: Int,
+    cachedDraft: SplitEditorDraft?,
+    onDraftChanged: (SplitEditorDraft) -> Unit,
+): SplitEditorHolder {
+    val initialDraft = remember(split.localId) {
+        SplitEditorDraft.resolve(split, currencyDecimals, cachedDraft)
     }
+    val baseline = remember(split.localId) { SplitSyncBaseline.fromDraft(initialDraft) }
+    val amountState = rememberTextFieldState(initialText = initialDraft.amountText)
+    val noteState = rememberTextFieldState(initialText = initialDraft.noteText)
+    val isIncomeState = remember(split.localId) { mutableStateOf(initialDraft.isIncome) }
+    val showAmountErrorState = remember(split.localId, split.amountMinor) { mutableStateOf(false) }
+    val latestOnDraftChanged by rememberUpdatedState(onDraftChanged)
+    val holder = remember(split.localId, amountState, noteState, isIncomeState, showAmountErrorState) {
+        SplitEditorHolder(
+            amountState = amountState,
+            noteState = noteState,
+            isIncomeState = isIncomeState,
+            showAmountErrorState = showAmountErrorState,
+            baseline = baseline,
+            onDraftChanged = { latestOnDraftChanged(it) },
+        )
+    }
+    SyncSplitEditorFieldsEffect(
+        split = split,
+        currencyDecimals = currencyDecimals,
+        baseline = baseline,
+        amountState = amountState,
+        noteState = noteState,
+        forceSyncAmount = cachedDraft?.splitLocalId == split.localId && cachedDraft.forceSyncAmount,
+        forceSyncIsIncome = cachedDraft?.splitLocalId == split.localId && cachedDraft.forceSyncIsIncome,
+        onSyncIncome = { isIncomeState.value = it },
+        onAmountTextEdited = { showAmountErrorState.value = false },
+        onPublishDraft = { holder.publishDraft(split.localId) },
+    )
+    return holder
 }
 
 @Composable
 private fun SyncSplitEditorFieldsEffect(
     split: EditableSplit,
     currencyDecimals: Int,
+    baseline: SplitSyncBaseline,
     amountState: TextFieldState,
     noteState: TextFieldState,
+    forceSyncAmount: Boolean,
+    forceSyncIsIncome: Boolean,
+    onSyncIncome: (Boolean) -> Unit,
     onAmountTextEdited: () -> Unit,
+    onPublishDraft: () -> Unit,
 ) {
+    val latestOnSyncIncome by rememberUpdatedState(onSyncIncome)
     val latestOnAmountTextEdited by rememberUpdatedState(onAmountTextEdited)
-    LaunchedEffect(split.localId, split.amountMinor, currencyDecimals) {
-        val updatedAmount = AmountScale.formatEditableAmount(split.amountMinor, currencyDecimals)
-        if (amountState.text.toString() != updatedAmount) {
-            amountState.setTextAndPlaceCursorAtEnd(updatedAmount)
+    val latestOnPublishDraft by rememberUpdatedState(onPublishDraft)
+
+    LaunchedEffect(split.localId, split.amountMinor, currencyDecimals, forceSyncAmount) {
+        val changed = forceSyncAmount ||
+            split.amountMinor != baseline.amountMinor ||
+            currencyDecimals != baseline.currencyDecimals
+        if (changed) {
+            val updatedAmount = AmountScale.formatEditableAmount(split.amountMinor, currencyDecimals)
+            if (amountState.text.toString() != updatedAmount) {
+                amountState.setTextAndPlaceCursorAtEnd(updatedAmount)
+            }
+            baseline.amountMinor = split.amountMinor
+            baseline.currencyDecimals = currencyDecimals
+            latestOnPublishDraft()
         }
     }
     LaunchedEffect(split.localId, split.note) {
-        if (noteState.text.toString() != split.note) {
-            noteState.setTextAndPlaceCursorAtEnd(split.note)
+        if (split.note != baseline.note) {
+            if (noteState.text.toString() != split.note) {
+                noteState.setTextAndPlaceCursorAtEnd(split.note)
+            }
+            baseline.note = split.note
+            latestOnPublishDraft()
         }
+    }
+    LaunchedEffect(split.localId, split.isIncome, split.categoryId, forceSyncIsIncome) {
+        val changed = forceSyncIsIncome ||
+            split.isIncome != baseline.isIncome ||
+            split.categoryId != baseline.categoryId
+        if (changed) {
+            latestOnSyncIncome(split.isIncome)
+            baseline.isIncome = split.isIncome
+            baseline.categoryId = split.categoryId
+            latestOnPublishDraft()
+        }
+    }
+    LaunchedEffect(amountState, noteState) {
+        snapshotFlow { amountState.text.toString() to noteState.text.toString() }
+            .distinctUntilChanged()
+            .collect { latestOnPublishDraft() }
     }
     LaunchedEffect(amountState) {
         snapshotFlow { amountState.text.toString() }
             .distinctUntilChanged()
             .drop(1)
             .collect { latestOnAmountTextEdited() }
+    }
+    DisposableEffect(split.localId) {
+        onDispose { latestOnPublishDraft() }
     }
 }
 
@@ -197,6 +392,7 @@ private fun parseValidSplitAmountMinor(rawInput: String, decimals: Int): Long? {
 private fun SplitEditorHeaderAndMode(
     isNew: Boolean,
     isIncome: Boolean,
+    enabled: Boolean,
     onIncomeChanged: (Boolean) -> Unit,
 ) {
     Text(
@@ -209,11 +405,13 @@ private fun SplitEditorHeaderAndMode(
         FilterChip(
             selected = !isIncome,
             onClick = { onIncomeChanged(false) },
+            enabled = enabled,
             label = { Text(stringResource(R.string.tx_chip_expense)) },
         )
         FilterChip(
             selected = isIncome,
             onClick = { onIncomeChanged(true) },
+            enabled = enabled,
             label = { Text(stringResource(R.string.tx_chip_income)) },
         )
     }
@@ -226,6 +424,7 @@ private fun SplitEditorFormFields(
     amountState: TextFieldState,
     showAmountError: Boolean,
     noteState: TextFieldState,
+    enabled: Boolean,
     onPickCategory: () -> Unit,
     onOpenCalculator: () -> Unit,
     onPickProject: () -> Unit,
@@ -233,10 +432,12 @@ private fun SplitEditorFormFields(
     SplitFieldPickerRow(
         label = stringResource(R.string.tx_label_category),
         value = categoryName,
+        enabled = enabled,
         onClick = onPickCategory,
     )
     OutlinedTextField(
         state = amountState,
+        enabled = enabled,
         inputTransformation = DecimalInputTransformation,
         label = { Text(stringResource(R.string.tx_label_amount)) },
         isError = showAmountError,
@@ -248,7 +449,7 @@ private fun SplitEditorFormFields(
         lineLimits = TextFieldLineLimits.SingleLine,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         trailingIcon = {
-            IconButton(onClick = onOpenCalculator) {
+            IconButton(onClick = onOpenCalculator, enabled = enabled) {
                 Icon(
                     imageVector = Icons.Rounded.Calculate,
                     contentDescription = stringResource(R.string.tx_cd_calculator),
@@ -259,6 +460,7 @@ private fun SplitEditorFormFields(
     )
     OutlinedTextField(
         state = noteState,
+        enabled = enabled,
         label = { Text(stringResource(R.string.tx_label_note)) },
         lineLimits = TextFieldLineLimits.SingleLine,
         modifier = Modifier.fillMaxWidth(),
@@ -266,6 +468,7 @@ private fun SplitEditorFormFields(
     SplitFieldPickerRow(
         label = stringResource(R.string.tx_label_project),
         value = projectName,
+        enabled = enabled,
         onClick = onPickProject,
     )
 }
@@ -274,10 +477,12 @@ private fun SplitEditorFormFields(
 private fun SplitFieldPickerRow(
     label: String,
     value: String,
+    enabled: Boolean,
     onClick: () -> Unit,
 ) {
     Surface(
         onClick = onClick,
+        enabled = enabled,
         shape = RoundedCornerShape(FinancistoTheme.dimens.RadiusTile),
         color = FinancistoTheme.semanticColors.pillSurface,
         modifier = Modifier.fillMaxWidth(),
@@ -299,15 +504,22 @@ private fun SplitFieldPickerRow(
 
 @Composable
 private fun SplitEditorActionButtons(
+    enabled: Boolean,
     onDismiss: () -> Unit,
     onApply: () -> Unit,
 ) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        OutlinedButton(onClick = onDismiss, shape = CircleShape, modifier = Modifier.weight(1f)) {
+        OutlinedButton(
+            onClick = onDismiss,
+            enabled = enabled,
+            shape = CircleShape,
+            modifier = Modifier.weight(1f),
+        ) {
             Text(stringResource(R.string.tx_action_cancel))
         }
         Button(
             onClick = onApply,
+            enabled = enabled,
             shape = CircleShape,
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary,

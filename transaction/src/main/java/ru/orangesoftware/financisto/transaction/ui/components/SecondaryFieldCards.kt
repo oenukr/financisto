@@ -66,6 +66,7 @@ fun ProjectFieldCard(
     onOpenPicker: () -> Unit,
     onClear: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val activeTitle = remember(projects, selectedProjectId, pendingProjectName) {
         pendingProjectName ?: projects.firstOrNull { it.id == selectedProjectId && it.id > 0L }?.title
@@ -75,6 +76,7 @@ fun ProjectFieldCard(
         isActive = false,
         modifier = modifier,
         onClick = onOpenPicker,
+        enabled = enabled,
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -95,7 +97,7 @@ fun ProjectFieldCard(
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     if (activeTitle != null) {
-                        ProjectSelectedChip(title = activeTitle, onClear = onClear)
+                        ProjectSelectedChip(title = activeTitle, enabled = enabled, onClear = onClear)
                     } else {
                         Text(
                             text = stringResource(R.string.tx_placeholder_no_project),
@@ -109,6 +111,7 @@ fun ProjectFieldCard(
                 AssistNewPill(
                     label = stringResource(R.string.tx_action_select),
                     icon = Icons.Rounded.CreateNewFolder,
+                    enabled = enabled,
                     onClick = onOpenPicker,
                 )
                 Icon(
@@ -124,6 +127,7 @@ fun ProjectFieldCard(
 @Composable
 private fun ProjectSelectedChip(
     title: String,
+    enabled: Boolean,
     onClear: () -> Unit,
 ) {
     val semantic = FinancistoTheme.semanticColors
@@ -131,6 +135,7 @@ private fun ProjectSelectedChip(
     InputChip(
         selected = true,
         onClick = onClear,
+        enabled = enabled,
         label = {
             Text(
                 text = title,
@@ -154,7 +159,7 @@ private fun ProjectSelectedChip(
             selectedTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
         ),
         border = InputChipDefaults.inputChipBorder(
-            enabled = true,
+            enabled = enabled,
             selected = true,
             selectedBorderColor = semantic.heroBorder,
             selectedBorderWidth = dimens.DefaultBorderWidth,
@@ -171,12 +176,14 @@ fun ReceiptAttachmentCard(
     onBrowseClick: () -> Unit,
     onRemoveClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val receiptFile = remember(resolvedFilePath) { resolvedFilePath?.let(::File) }
 
     FormFieldCardSurface(isActive = false, modifier = modifier) {
         ReceiptAttachmentHeaderRow(
             attachedFileName = attachedFileName,
+            enabled = enabled,
             onCameraClick = onCameraClick,
             onBrowseClick = onBrowseClick,
             onRemoveClick = onRemoveClick,
@@ -199,6 +206,7 @@ fun ReceiptAttachmentCard(
 @Composable
 private fun ReceiptAttachmentHeaderRow(
     attachedFileName: String?,
+    enabled: Boolean,
     onCameraClick: () -> Unit,
     onBrowseClick: () -> Unit,
     onRemoveClick: () -> Unit,
@@ -232,6 +240,7 @@ private fun ReceiptAttachmentHeaderRow(
         }
         ReceiptAttachmentActions(
             hasAttachment = attachedFileName != null,
+            enabled = enabled,
             onCameraClick = onCameraClick,
             onBrowseClick = onBrowseClick,
             onRemoveClick = onRemoveClick,
@@ -242,6 +251,7 @@ private fun ReceiptAttachmentHeaderRow(
 @Composable
 private fun ReceiptAttachmentActions(
     hasAttachment: Boolean,
+    enabled: Boolean,
     onCameraClick: () -> Unit,
     onBrowseClick: () -> Unit,
     onRemoveClick: () -> Unit,
@@ -251,6 +261,7 @@ private fun ReceiptAttachmentActions(
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         OutlinedButton(
             onClick = onCameraClick,
+            enabled = enabled,
             shape = CircleShape,
             border = buttonBorder,
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
@@ -264,6 +275,7 @@ private fun ReceiptAttachmentActions(
         }
         OutlinedButton(
             onClick = onBrowseClick,
+            enabled = enabled,
             shape = CircleShape,
             border = buttonBorder,
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
@@ -279,6 +291,7 @@ private fun ReceiptAttachmentActions(
             ClearMiniIconButton(
                 onClick = onRemoveClick,
                 contentDescription = stringResource(R.string.tx_cd_remove_attachment),
+                enabled = enabled,
             )
         }
     }
@@ -289,6 +302,7 @@ fun CreditCardPaymentCard(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val cardShape = RoundedCornerShape(FinancistoTheme.dimens.RadiusFormCard)
     FormFieldCardSurface(
@@ -298,6 +312,7 @@ fun CreditCardPaymentCard(
             .clip(cardShape)
             .toggleable(
                 value = checked,
+                enabled = enabled,
                 role = Role.Checkbox,
                 onValueChange = onCheckedChange,
             ),
@@ -329,6 +344,7 @@ fun CreditCardPaymentCard(
             Checkbox(
                 checked = checked,
                 onCheckedChange = null,
+                enabled = enabled,
                 colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary),
             )
         }

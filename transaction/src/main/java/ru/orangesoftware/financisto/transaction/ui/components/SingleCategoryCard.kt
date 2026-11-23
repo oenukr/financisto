@@ -62,6 +62,7 @@ fun SingleCategoryCard(
     onCreateCategoryClick: () -> Unit,
     onEnableSplitClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val selected = remember(categories, selectedCategoryId) {
         categories.firstOrNull { it.id == selectedCategoryId }
@@ -77,6 +78,7 @@ fun SingleCategoryCard(
             selected = selected,
             isExpanded = isExpanded,
             allowSplit = allowSplit,
+            enabled = enabled,
             onToggleExpand = onToggleExpand,
             onClearCategory = onClearCategory,
             onEnableSplitClick = onEnableSplitClick,
@@ -87,6 +89,7 @@ fun SingleCategoryCard(
                     suggestions = suggestions,
                     selectedCategoryId = selectedCategoryId,
                     allowSplit = allowSplit,
+                    enabled = enabled,
                     onSelectCategory = onSelectCategory,
                     onBrowseAllClick = onBrowseAllClick,
                     onCreateCategoryClick = onCreateCategoryClick,
@@ -102,6 +105,7 @@ private fun SingleCategoryHeaderRow(
     selected: CategoryOption?,
     isExpanded: Boolean,
     allowSplit: Boolean,
+    enabled: Boolean,
     onToggleExpand: () -> Unit,
     onClearCategory: () -> Unit,
     onEnableSplitClick: () -> Unit,
@@ -112,7 +116,7 @@ private fun SingleCategoryHeaderRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(FinancistoTheme.dimens.RadiusTile))
-            .clickable(onClick = onToggleExpand),
+            .clickable(enabled = enabled, onClick = onToggleExpand),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -154,6 +158,7 @@ private fun SingleCategoryHeaderRow(
         SingleCategoryHeaderActions(
             hasSelection = selected != null,
             allowSplit = allowSplit,
+            enabled = enabled,
             onClearCategory = onClearCategory,
             onEnableSplitClick = onEnableSplitClick,
             onToggleExpand = onToggleExpand,
@@ -165,6 +170,7 @@ private fun SingleCategoryHeaderRow(
 private fun SingleCategoryHeaderActions(
     hasSelection: Boolean,
     allowSplit: Boolean,
+    enabled: Boolean,
     onClearCategory: () -> Unit,
     onEnableSplitClick: () -> Unit,
     onToggleExpand: () -> Unit,
@@ -174,10 +180,11 @@ private fun SingleCategoryHeaderActions(
             ClearMiniIconButton(
                 onClick = onClearCategory,
                 contentDescription = stringResource(R.string.tx_cd_clear_category),
+                enabled = enabled,
             )
         }
         if (allowSplit) {
-            IconButton(onClick = onEnableSplitClick) {
+            IconButton(onClick = onEnableSplitClick, enabled = enabled) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.CallSplit,
                     contentDescription = stringResource(R.string.tx_cd_split_transaction),
@@ -186,7 +193,7 @@ private fun SingleCategoryHeaderActions(
                 )
             }
         }
-        IconButton(onClick = onToggleExpand) {
+        IconButton(onClick = onToggleExpand, enabled = enabled) {
             Icon(
                 imageVector = Icons.Rounded.ArrowDropDown,
                 contentDescription = stringResource(R.string.tx_cd_category_suggestions),
@@ -201,6 +208,7 @@ private fun SingleCategoryExpandedPanel(
     suggestions: List<CategoryOption>,
     selectedCategoryId: Long,
     allowSplit: Boolean,
+    enabled: Boolean,
     onSelectCategory: (Long) -> Unit,
     onBrowseAllClick: () -> Unit,
     onCreateCategoryClick: () -> Unit,
@@ -221,6 +229,7 @@ private fun SingleCategoryExpandedPanel(
         )
         TextButton(
             onClick = onBrowseAllClick,
+            enabled = enabled,
             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
         ) {
             Text(
@@ -236,6 +245,7 @@ private fun SingleCategoryExpandedPanel(
             CategorySuggestionItemRow(
                 category = cat,
                 isCurrent = cat.id == selectedCategoryId,
+                enabled = enabled,
                 onClick = { onSelectCategory(cat.id) },
             )
         }
@@ -243,6 +253,7 @@ private fun SingleCategoryExpandedPanel(
     Spacer(modifier = Modifier.height(8.dp))
     SingleCategoryActionRow(
         allowSplit = allowSplit,
+        enabled = enabled,
         onCreateCategoryClick = onCreateCategoryClick,
         onEnableSplitClick = onEnableSplitClick,
     )
@@ -252,6 +263,7 @@ private fun SingleCategoryExpandedPanel(
 private fun CategorySuggestionItemRow(
     category: CategoryOption,
     isCurrent: Boolean,
+    enabled: Boolean,
     onClick: () -> Unit,
 ) {
     val semantic = FinancistoTheme.semanticColors
@@ -265,7 +277,7 @@ private fun CategorySuggestionItemRow(
             .defaultMinSize(minHeight = 48.dp)
             .clip(itemShape)
             .background(bgColor)
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
@@ -302,30 +314,26 @@ private fun CategorySuggestionItemRow(
 @Composable
 private fun SingleCategoryActionRow(
     allowSplit: Boolean,
+    enabled: Boolean,
     onCreateCategoryClick: () -> Unit,
     onEnableSplitClick: () -> Unit,
 ) {
     val semantic = FinancistoTheme.semanticColors
     val buttonShape = RoundedCornerShape(FinancistoTheme.dimens.RadiusTile)
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
+    val padding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         FilledTonalButton(
             onClick = onCreateCategoryClick,
+            enabled = enabled,
             shape = buttonShape,
             colors = ButtonDefaults.filledTonalButtonColors(
                 containerColor = semantic.topChipBackground,
                 contentColor = semantic.chipText,
             ),
-            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+            contentPadding = padding,
             modifier = Modifier.weight(1f),
         ) {
-            Icon(
-                imageVector = Icons.Rounded.Add,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-            )
+            Icon(imageVector = Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(16.dp))
             Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = stringResource(R.string.tx_action_new_category),
@@ -338,12 +346,13 @@ private fun SingleCategoryActionRow(
         if (allowSplit) {
             FilledTonalButton(
                 onClick = onEnableSplitClick,
+                enabled = enabled,
                 shape = buttonShape,
                 colors = ButtonDefaults.filledTonalButtonColors(
                     containerColor = semantic.primaryTonal,
                     contentColor = semantic.activeBorder,
                 ),
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                contentPadding = padding,
                 modifier = Modifier.weight(1f),
             ) {
                 Icon(

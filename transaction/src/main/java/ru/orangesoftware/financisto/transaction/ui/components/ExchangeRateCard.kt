@@ -56,6 +56,7 @@ fun ExchangeRateCard(
     onSyncRateClick: () -> Unit,
     onOpenRateCalculator: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val semantic = FinancistoTheme.semanticColors
     val dimens = FinancistoTheme.dimens
@@ -69,6 +70,7 @@ fun ExchangeRateCard(
         Column(modifier = Modifier.padding(dimens.CardPadding)) {
             ExchangeRateHeaderRow(
                 isFetchingRate = isFetchingRate,
+                enabled = enabled,
                 onSyncRateClick = onSyncRateClick,
             )
             Spacer(modifier = Modifier.height(6.dp))
@@ -77,6 +79,7 @@ fun ExchangeRateCard(
                 fromCode = fromCode,
                 toCode = toCode,
                 isFetchingRate = isFetchingRate,
+                enabled = enabled,
                 onRateInputChange = onRateInputChange,
                 onSyncRateClick = onSyncRateClick,
                 onOpenRateCalculator = onOpenRateCalculator,
@@ -106,6 +109,7 @@ fun ExchangeRateCard(
 @Composable
 private fun ExchangeRateHeaderRow(
     isFetchingRate: Boolean,
+    enabled: Boolean,
     onSyncRateClick: () -> Unit,
 ) {
     Row(
@@ -132,7 +136,7 @@ private fun ExchangeRateHeaderRow(
         }
         TextButton(
             onClick = onSyncRateClick,
-            enabled = !isFetchingRate,
+            enabled = enabled && !isFetchingRate,
             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
         ) {
             if (isFetchingRate) {
@@ -166,6 +170,7 @@ private fun RateInputBox(
     fromCode: String,
     toCode: String,
     isFetchingRate: Boolean,
+    enabled: Boolean,
     onRateInputChange: (String) -> Unit,
     onSyncRateClick: () -> Unit,
     onOpenRateCalculator: () -> Unit,
@@ -193,6 +198,7 @@ private fun RateInputBox(
                 val rateState = rememberSyncedTextFieldState(rateInput, onRateInputChange)
                 BasicTextField(
                     state = rateState,
+                    enabled = enabled,
                     inputTransformation = DecimalInputTransformation,
                     lineLimits = TextFieldLineLimits.SingleLine,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -213,6 +219,7 @@ private fun RateInputBox(
         }
         RateInputActionButtons(
             isFetchingRate = isFetchingRate,
+            enabled = enabled,
             onSyncRateClick = onSyncRateClick,
             onOpenRateCalculator = onOpenRateCalculator,
         )
@@ -222,6 +229,7 @@ private fun RateInputBox(
 @Composable
 private fun RateInputActionButtons(
     isFetchingRate: Boolean,
+    enabled: Boolean,
     onSyncRateClick: () -> Unit,
     onOpenRateCalculator: () -> Unit,
 ) {
@@ -232,7 +240,7 @@ private fun RateInputActionButtons(
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         FilledTonalIconButton(
             onClick = onSyncRateClick,
-            enabled = !isFetchingRate,
+            enabled = enabled && !isFetchingRate,
             shape = RoundedCornerShape(8.dp),
             colors = iconButtonColors,
         ) {
@@ -244,6 +252,7 @@ private fun RateInputActionButtons(
         }
         FilledTonalIconButton(
             onClick = onOpenRateCalculator,
+            enabled = enabled,
             shape = RoundedCornerShape(8.dp),
             colors = iconButtonColors,
         ) {

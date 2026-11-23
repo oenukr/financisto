@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
@@ -34,14 +35,25 @@ fun TransactionDatePickerDialog(
     modifier: Modifier = Modifier,
 ) {
     val systemZone = remember { TimeZone.currentSystemDefault() }
-    val initialUtcDateMillis = remember(dateTimeMillis, systemZone) {
+    val storedDate = remember(dateTimeMillis, systemZone) {
         Instant.fromEpochMilliseconds(dateTimeMillis)
             .toLocalDateTime(systemZone)
             .date
+    }
+    val initialUtcDateMillis = remember(storedDate) {
+        storedDate
             .atStartOfDayIn(TimeZone.UTC)
             .toEpochMilliseconds()
     }
-    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialUtcDateMillis)
+    val yearRange = remember(storedDate.year) {
+        val minYear = minOf(DatePickerDefaults.YearRange.first, storedDate.year)
+        val maxYear = maxOf(DatePickerDefaults.YearRange.last, storedDate.year)
+        minYear..maxYear
+    }
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = initialUtcDateMillis,
+        yearRange = yearRange,
+    )
 
     DatePickerDialog(
         modifier = modifier,

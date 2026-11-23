@@ -35,6 +35,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,9 +69,9 @@ fun SplitCategoryCard(
     projects: List<ProjectOption>,
     callbacks: SplitCategoryCallbacks,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val semantic = FinancistoTheme.semanticColors
-    val dimens = FinancistoTheme.dimens
     val parentSigned = SplitAllocationCalculator.parentSignedMinor(totalMagnitudeMinor, mode)
     val unsplitSigned = SplitAllocationCalculator.unsplitSignedMinor(parentSigned, splits)
     val categoryById = remember(categories) { categories.associateBy { it.id } }
@@ -79,6 +80,7 @@ fun SplitCategoryCard(
     FormFieldCardSurface(isActive = false, modifier = modifier) {
         SplitCardHeader(
             splitCount = splits.size,
+            enabled = enabled,
             onExitSplitMode = callbacks.onExitSplitMode,
             onCreateCategoryClick = callbacks.onCreateCategoryClick,
         )
@@ -89,6 +91,7 @@ fun SplitCategoryCard(
             currencyDecimals = currencyDecimals,
             canRebalance = splits.isNotEmpty(),
             canCollapseSingle = splits.size == 1,
+            enabled = enabled,
             callbacks = callbacks,
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -101,22 +104,27 @@ fun SplitCategoryCard(
                     projectTitle = projectById[split.projectId]?.title,
                     currencySymbol = currencySymbol,
                     currencyDecimals = currencyDecimals,
+                    enabled = enabled,
                     onClick = { callbacks.onEditSplitClick(split.localId) },
                     onRemove = { callbacks.onRemoveSplitClick(split.localId) },
                 )
             }
         }
         Spacer(modifier = Modifier.height(8.dp))
-        AddSplitItemButton(onClick = callbacks.onAddSplitClick)
+        AddSplitItemButton(onClick = callbacks.onAddSplitClick, enabled = enabled)
     }
 }
 
 @Composable
-private fun AddSplitItemButton(onClick: () -> Unit) {
+private fun AddSplitItemButton(
+    onClick: () -> Unit,
+    enabled: Boolean,
+) {
     val semantic = FinancistoTheme.semanticColors
     val dimens = FinancistoTheme.dimens
     OutlinedButton(
         onClick = onClick,
+        enabled = enabled,
         shape = RoundedCornerShape(dimens.RadiusTile),
         border = BorderStroke(dimens.DefaultBorderWidth, MaterialTheme.colorScheme.primaryContainer),
         colors = ButtonDefaults.outlinedButtonColors(
@@ -138,6 +146,7 @@ private fun AddSplitItemButton(onClick: () -> Unit) {
 @Composable
 private fun SplitCardHeader(
     splitCount: Int,
+    enabled: Boolean,
     onExitSplitMode: () -> Unit,
     onCreateCategoryClick: () -> Unit,
 ) {
@@ -171,10 +180,12 @@ private fun SplitCardHeader(
             ClearMiniIconButton(
                 onClick = onExitSplitMode,
                 contentDescription = stringResource(R.string.tx_cd_exit_split_mode),
+                enabled = enabled,
             )
             AssistNewPill(
                 label = stringResource(R.string.tx_action_new),
                 icon = Icons.Rounded.Add,
+                enabled = enabled,
                 onClick = onCreateCategoryClick,
             )
         }
@@ -215,6 +226,7 @@ private fun SplitAllocationStatusBar(
     currencyDecimals: Int,
     canRebalance: Boolean,
     canCollapseSingle: Boolean,
+    enabled: Boolean,
     callbacks: SplitCategoryCallbacks,
 ) {
     val semantic = FinancistoTheme.semanticColors
@@ -259,7 +271,7 @@ private fun SplitAllocationStatusBar(
             )
         }
         if (canRebalance) {
-            SplitRebalanceMenu(canCollapseSingle = canCollapseSingle, callbacks = callbacks)
+            SplitRebalanceMenu(canCollapseSingle = canCollapseSingle, enabled = enabled, callbacks = callbacks)
         }
     }
 }
@@ -267,19 +279,22 @@ private fun SplitAllocationStatusBar(
 @Composable
 private fun SplitRebalanceMenu(
     canCollapseSingle: Boolean,
+    enabled: Boolean,
     callbacks: SplitCategoryCallbacks,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
+    LaunchedEffect(enabled) { if (!enabled) menuExpanded = false }
+    val runAction: (() -> Unit) -> Unit = { action ->
+        menuExpanded = false
+        action()
+    }
     Box {
         TextButton(
             onClick = { menuExpanded = true },
+            enabled = enabled,
             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
         ) {
-            Icon(
-                imageVector = Icons.Rounded.Balance,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-            )
+            Icon(imageVector = Icons.Rounded.Balance, contentDescription = null, modifier = Modifier.size(16.dp))
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = stringResource(R.string.tx_action_rebalance),
@@ -287,35 +302,27 @@ private fun SplitRebalanceMenu(
                 fontWeight = FontWeight.SemiBold,
             )
         }
-        DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+        DropdownMenu(expanded = menuExpanded && enabled, onDismissRequest = { menuExpanded = false }) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.tx_rebalance_adjust_total)) },
-                onClick = {
-                    menuExpanded = false
-                    callbacks.onAdjustTotal()
-                },
+                enabled = enabled,
+                onClick = { runAction(callbacks.onAdjustTotal) },
             )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.tx_rebalance_distribute_evenly)) },
-                onClick = {
-                    menuExpanded = false
-                    callbacks.onDistributeEvenly()
-                },
+                enabled = enabled,
+                onClick = { runAction(callbacks.onDistributeEvenly) },
             )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.tx_rebalance_adjust_last)) },
-                onClick = {
-                    menuExpanded = false
-                    callbacks.onAdjustLast()
-                },
+                enabled = enabled,
+                onClick = { runAction(callbacks.onAdjustLast) },
             )
             if (canCollapseSingle) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.tx_rebalance_collapse_single)) },
-                    onClick = {
-                        menuExpanded = false
-                        callbacks.onCollapseSingleSplit()
-                    },
+                    enabled = enabled,
+                    onClick = { runAction(callbacks.onCollapseSingleSplit) },
                 )
             }
         }
@@ -330,6 +337,7 @@ private fun SplitItemRow(
     projectTitle: String?,
     currencySymbol: String,
     currencyDecimals: Int,
+    enabled: Boolean,
     onClick: () -> Unit,
     onRemove: () -> Unit,
 ) {
@@ -350,6 +358,7 @@ private fun SplitItemRow(
 
     Surface(
         onClick = onClick,
+        enabled = enabled,
         shape = RoundedCornerShape(dimens.RadiusTile),
         color = semantic.pillSurface,
         border = BorderStroke(dimens.DefaultBorderWidth, semantic.heroBorder),
@@ -370,12 +379,7 @@ private fun SplitItemRow(
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = AmountScale.formatDisplayAmount(
-                        minorUnits = signedAmount,
-                        decimals = currencyDecimals,
-                        symbol = currencySymbol,
-                        includeSign = true,
-                    ),
+                    text = AmountScale.formatDisplayAmount(signedAmount, currencyDecimals, currencySymbol, true),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = amountBadgeFg,
@@ -386,6 +390,7 @@ private fun SplitItemRow(
                 ClearMiniIconButton(
                     onClick = onRemove,
                     contentDescription = stringResource(R.string.tx_cd_remove_split),
+                    enabled = enabled,
                 )
             }
         }

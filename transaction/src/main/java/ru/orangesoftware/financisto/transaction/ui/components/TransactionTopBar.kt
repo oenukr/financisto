@@ -28,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -73,6 +74,7 @@ fun TransactionTopBar(
     onClearFormClick: () -> Unit,
     onOpenLegacyClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val configuration = LocalConfiguration.current
     val locale = remember(configuration) { configuration.locales[0] ?: Locale.getDefault() }
@@ -91,7 +93,7 @@ fun TransactionTopBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        IconButton(onClick = onBackClick) {
+        IconButton(onClick = onBackClick, enabled = enabled) {
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                 contentDescription = stringResource(R.string.tx_cd_back),
@@ -108,6 +110,7 @@ fun TransactionTopBar(
                 lineOne = dateParts.first,
                 lineTwo = dateParts.second,
                 actionLabel = stringResource(R.string.tx_cd_select_date),
+                enabled = enabled,
                 onClick = onDateClick,
             )
             TwoLineMetaChip(
@@ -115,11 +118,13 @@ fun TransactionTopBar(
                 lineOne = timeParts.first,
                 lineTwo = timeParts.second,
                 actionLabel = stringResource(R.string.tx_cd_select_time),
+                enabled = enabled,
                 onClick = onTimeClick,
             )
-            StatusChip(status = status, onClick = onStatusClick)
+            StatusChip(status = status, enabled = enabled, onClick = onStatusClick)
         }
         TopBarOverflowMenu(
+            enabled = enabled,
             onClearFormClick = onClearFormClick,
             onOpenLegacyClick = onOpenLegacyClick,
         )
@@ -128,12 +133,16 @@ fun TransactionTopBar(
 
 @Composable
 private fun TopBarOverflowMenu(
+    enabled: Boolean,
     onClearFormClick: () -> Unit,
     onOpenLegacyClick: (() -> Unit)?,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
+    LaunchedEffect(enabled) {
+        if (!enabled) menuExpanded = false
+    }
     Box {
-        IconButton(onClick = { menuExpanded = true }) {
+        IconButton(onClick = { menuExpanded = true }, enabled = enabled) {
             Icon(
                 imageVector = Icons.Rounded.MoreVert,
                 contentDescription = stringResource(R.string.tx_cd_more_options),
@@ -141,11 +150,12 @@ private fun TopBarOverflowMenu(
             )
         }
         DropdownMenu(
-            expanded = menuExpanded,
+            expanded = menuExpanded && enabled,
             onDismissRequest = { menuExpanded = false },
         ) {
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.tx_menu_clear_form)) },
+                enabled = enabled,
                 onClick = {
                     menuExpanded = false
                     onClearFormClick()
@@ -154,6 +164,7 @@ private fun TopBarOverflowMenu(
             if (onOpenLegacyClick != null) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.tx_menu_open_legacy)) },
+                    enabled = enabled,
                     onClick = {
                         menuExpanded = false
                         onOpenLegacyClick()
@@ -170,6 +181,7 @@ private fun TwoLineMetaChip(
     lineOne: String,
     lineTwo: String,
     actionLabel: String,
+    enabled: Boolean,
     onClick: () -> Unit,
 ) {
     val semantic = FinancistoTheme.semanticColors
@@ -177,6 +189,7 @@ private fun TwoLineMetaChip(
     val description = if (lineTwo.isNotEmpty()) "$actionLabel: $lineOne $lineTwo" else "$actionLabel: $lineOne"
     Surface(
         onClick = onClick,
+        enabled = enabled,
         shape = RoundedCornerShape(dimens.RadiusPill),
         color = semantic.topChipBackground,
         modifier = Modifier.semantics { contentDescription = description },
@@ -216,6 +229,7 @@ private fun TwoLineMetaChip(
 @Composable
 private fun StatusChip(
     status: TransactionStatusOption,
+    enabled: Boolean,
     onClick: () -> Unit,
 ) {
     val semantic = FinancistoTheme.semanticColors
@@ -231,6 +245,7 @@ private fun StatusChip(
 
     AssistChip(
         onClick = onClick,
+        enabled = enabled,
         label = {
             Text(
                 text = labelText,

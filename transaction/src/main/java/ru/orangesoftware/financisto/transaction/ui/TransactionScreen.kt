@@ -16,7 +16,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -54,6 +60,7 @@ import ru.orangesoftware.financisto.transaction.ui.components.SingleAccountAndCu
 import ru.orangesoftware.financisto.transaction.ui.components.SingleCategoryCard
 import ru.orangesoftware.financisto.transaction.ui.components.SplitCategoryCallbacks
 import ru.orangesoftware.financisto.transaction.ui.components.SplitCategoryCard
+import ru.orangesoftware.financisto.transaction.ui.components.SplitEditorDraft
 import ru.orangesoftware.financisto.transaction.ui.components.TransactionBottomBar
 import ru.orangesoftware.financisto.transaction.ui.components.TransactionTopBar
 import ru.orangesoftware.financisto.transaction.ui.components.TransferAccountsGroupCard
@@ -68,6 +75,8 @@ fun TransactionScreen(
     onCloseRequested: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val (splitEditorDraft, onSplitEditorDraftChanged) = rememberSplitEditorDraftState(uiState)
+
     FinancistoTheme {
         when (uiState) {
             is TransactionUiState.Loading,
@@ -96,8 +105,41 @@ fun TransactionScreen(
                 state = uiState,
                 resolveReceiptPath = resolveReceiptPath,
                 onIntent = onIntent,
+                splitEditorDraft = splitEditorDraft,
+                onSplitEditorDraftChanged = onSplitEditorDraftChanged,
                 modifier = modifier,
             )
+        }
+    }
+}
+
+@Composable
+private fun rememberSplitEditorDraftState(
+    uiState: TransactionUiState,
+): Pair<SplitEditorDraft?, (SplitEditorDraft?) -> Unit> {
+    var splitEditorDraft by rememberSaveable { mutableStateOf<SplitEditorDraft?>(null) }
+    val activeSplitLocalId = (uiState as? TransactionUiState.Ready)?.activeSplitEditor?.split?.localId
+    val shouldClearSplitDraft = when (uiState) {
+        is TransactionUiState.PinLockedMask,
+        is TransactionUiState.Loading,
+        -> false
+        is TransactionUiState.Ready -> activeSplitLocalId == null
+        is TransactionUiState.NotFound,
+        is TransactionUiState.NoAccounts,
+        is TransactionUiState.LoadError,
+        is TransactionUiState.LegacyRedirecting,
+        -> true
+    }
+    val latestShouldClear by rememberUpdatedState(shouldClearSplitDraft)
+    LaunchedEffect(shouldClearSplitDraft, activeSplitLocalId) {
+        val switchedSplit = activeSplitLocalId != null && splitEditorDraft?.splitLocalId != activeSplitLocalId
+        if (shouldClearSplitDraft || switchedSplit) {
+            splitEditorDraft = null
+        }
+    }
+    return splitEditorDraft to { draft ->
+        if (!latestShouldClear) {
+            splitEditorDraft = draft
         }
     }
 }
@@ -108,6 +150,8 @@ private fun ReadyTransactionContent(
     resolveReceiptPath: (String) -> String?,
     onIntent: (TransactionIntent) -> Unit,
     modifier: Modifier = Modifier,
+    splitEditorDraft: SplitEditorDraft? = null,
+    onSplitEditorDraftChanged: (SplitEditorDraft?) -> Unit = {},
 ) {
     val navigationEventState = rememberNavigationEventState(currentInfo = NavigationEventInfo.None)
     NavigationBackHandler(
@@ -153,6 +197,9 @@ private fun ReadyTransactionContent(
         state = state,
         onIntent = onIntent,
         onDismissAll = { onIntent(TransactionIntent.DismissSheet) },
+        enabled = !state.isSaving,
+        splitEditorDraft = splitEditorDraft,
+        onSplitEditorDraftChanged = onSplitEditorDraftChanged,
     )
 }
 
@@ -176,6 +223,7 @@ private fun ReadyTopBar(
             } else {
                 { onIntent(TransactionIntent.OpenInLegacyClicked) }
             },
+            enabled = !state.isSaving,
         )
     }
 }
@@ -188,6 +236,7 @@ private fun TransactionFormScrollBody(
     modifier: Modifier = Modifier,
 ) {
     val form = state.form
+    val isEditable = !state.isSaving
     val primaryCurrency = state.primaryCurrency
     val secondaryCurrency = state.secondaryCurrency
     val dimens = FinancistoTheme.dimens
@@ -212,6 +261,7 @@ private fun TransactionFormScrollBody(
             onOpenSecondaryCalculator = {
                 onIntent(TransactionIntent.OpenCalculator(CalculatorTarget.SECONDARY_AMOUNT))
             },
+            enabled = isEditable,
         )
         CapturedAnimatedVisibility(
             visible = state.isDualCurrency && primaryCurrency != null && secondaryCurrency != null,
@@ -228,6 +278,7 @@ private fun TransactionFormScrollBody(
                     onOpenRateCalculator = {
                         onIntent(TransactionIntent.OpenCalculator(CalculatorTarget.EXCHANGE_RATE))
                     },
+                    enabled = isEditable,
                 )
             }
         }
@@ -266,6 +317,7 @@ private fun buildHeroAmountModel(state: TransactionUiState.Ready): HeroAmountDis
         secondaryCurrencyCode = secondaryCurrency?.code.orEmpty(),
         secondaryCurrencySymbol = secondaryCurrency?.symbol ?: secondaryCurrency?.code.orEmpty(),
         secondaryAccountLabel = secondaryLabel,
+        enabled = !state.isSaving,
     )
 }
 
@@ -275,6 +327,7 @@ private fun TransactionAccountsSection(
     onIntent: (TransactionIntent) -> Unit,
 ) {
     val form = state.form
+    val isEditable = !state.isSaving
     if (form.mode == TransactionMode.TRANSFER) {
         val inMinor = if (state.isDualCurrency) form.secondaryAmountMinor else form.primaryAmountMinor
         TransferAccountsGroupCard(
@@ -285,6 +338,7 @@ private fun TransactionAccountsSection(
             onFromAccountClick = { onIntent(TransactionIntent.OpenAccountPicker(isDestination = false)) },
             onToAccountClick = { onIntent(TransactionIntent.OpenAccountPicker(isDestination = true)) },
             onSwapClick = { onIntent(TransactionIntent.SwapTransferAccounts) },
+            enabled = isEditable,
         )
     } else {
         val showCurrency = state.prefs.isShowCurrency || form.originalCurrencyId != null
@@ -297,6 +351,7 @@ private fun TransactionAccountsSection(
             showCurrencySelector = showCurrency,
             onAccountClick = { onIntent(TransactionIntent.OpenAccountPicker(isDestination = false)) },
             onCurrencyClick = { onIntent(TransactionIntent.OpenCurrencyPicker) },
+            enabled = isEditable,
         )
     }
 }
@@ -327,6 +382,7 @@ private fun TransactionPrimaryDetailsSection(
             onSelectPayee = { onIntent(TransactionIntent.SelectPayee(it)) },
             onCreatePendingPayee = { onIntent(TransactionIntent.CreatePendingPayee(it)) },
             onClear = { onIntent(TransactionIntent.ClearPayee) },
+            enabled = !state.isSaving,
         )
     }
     if (form.mode != TransactionMode.TRANSFER) {
@@ -347,6 +403,7 @@ private fun TransactionCategoryCardSlot(
     onIntent: (TransactionIntent) -> Unit,
 ) {
     val form = state.form
+    val isEditable = !state.isSaving
     if (form.isSplitMode) {
         val callbacks = remember(onIntent) {
             SplitCategoryCallbacks(
@@ -370,6 +427,7 @@ private fun TransactionCategoryCardSlot(
             categories = state.catalog.categories,
             projects = state.catalog.projects,
             callbacks = callbacks,
+            enabled = isEditable,
         )
     } else {
         SingleCategoryCard(
@@ -384,6 +442,7 @@ private fun TransactionCategoryCardSlot(
             onBrowseAllClick = { onIntent(TransactionIntent.OpenCategoryBrowser()) },
             onCreateCategoryClick = { onIntent(TransactionIntent.OpenExternalCategoryCreator) },
             onEnableSplitClick = { onIntent(TransactionIntent.ToggleSplitMode) },
+            enabled = isEditable,
         )
     }
 }
@@ -395,6 +454,7 @@ private fun TransactionSecondaryDetailsSection(
     onIntent: (TransactionIntent) -> Unit,
 ) {
     val form = state.form
+    val isEditable = !state.isSaving
     LocationFieldCard(
         query = form.locationQuery,
         selectedLocationId = form.locationId,
@@ -405,6 +465,7 @@ private fun TransactionSecondaryDetailsSection(
         onSelectLocation = { onIntent(TransactionIntent.SelectLocation(it)) },
         onClear = { onIntent(TransactionIntent.ClearLocation) },
         onCreateNewLocation = { onIntent(TransactionIntent.OpenExternalLocationCreator) },
+        enabled = isEditable,
     )
     if (state.prefs.isShowNote || form.note.isNotBlank()) {
         NoteFieldCard(
@@ -413,6 +474,7 @@ private fun TransactionSecondaryDetailsSection(
             onNoteChanged = { onIntent(TransactionIntent.UpdateNote(it)) },
             onSelectRecentNote = { onIntent(TransactionIntent.SelectRecentNote(it)) },
             onClear = { onIntent(TransactionIntent.ClearNote) },
+            enabled = isEditable,
         )
     }
     if (!form.isSplitMode) {
@@ -422,6 +484,7 @@ private fun TransactionSecondaryDetailsSection(
             projects = state.catalog.projects,
             onOpenPicker = { onIntent(TransactionIntent.OpenProjectPicker()) },
             onClear = { onIntent(TransactionIntent.ClearProject) },
+            enabled = isEditable,
         )
     }
     if (state.prefs.isShowTakePicture || form.attachedPictureFileName != null) {
@@ -431,12 +494,14 @@ private fun TransactionSecondaryDetailsSection(
             onCameraClick = { onIntent(TransactionIntent.RequestCameraPhoto) },
             onBrowseClick = { onIntent(TransactionIntent.RequestGalleryPhoto) },
             onRemoveClick = { onIntent(TransactionIntent.RemoveReceipt) },
+            enabled = isEditable,
         )
     }
     if (state.prefs.isShowIsCCardPayment || form.isCCardPayment) {
         CreditCardPaymentCard(
             checked = form.isCCardPayment,
             onCheckedChange = { onIntent(TransactionIntent.ToggleCCardPayment(it)) },
+            enabled = isEditable,
         )
     }
 }

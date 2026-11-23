@@ -61,6 +61,7 @@ fun SingleAccountAndCurrencyPills(
     onAccountClick: () -> Unit,
     onCurrencyClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     Column(
         modifier = modifier,
@@ -70,6 +71,7 @@ fun SingleAccountAndCurrencyPills(
             icon = Icons.Rounded.AccountBalanceWallet,
             prefix = stringResource(R.string.tx_label_account_prefix),
             value = account?.title ?: stringResource(R.string.tx_placeholder_select_account),
+            enabled = enabled,
             onClick = onAccountClick,
         )
         if (showCurrencySelector) {
@@ -87,6 +89,7 @@ fun SingleAccountAndCurrencyPills(
                 icon = Icons.Rounded.Payments,
                 prefix = stringResource(R.string.tx_label_currency_prefix),
                 value = currencyLabel,
+                enabled = enabled,
                 onClick = onCurrencyClick,
             )
         }
@@ -103,6 +106,7 @@ fun TransferAccountsGroupCard(
     onToAccountClick: () -> Unit,
     onSwapClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val semantic = FinancistoTheme.semanticColors
     val dimens = FinancistoTheme.dimens
@@ -119,14 +123,16 @@ fun TransferAccountsGroupCard(
                 account = fromAccount,
                 deltaMinor = if (outAmountMinor > 0L) -outAmountMinor else null,
                 isDestination = false,
+                enabled = enabled,
                 onClick = onFromAccountClick,
             )
-            SwapConduitRow(onSwapClick = onSwapClick)
+            SwapConduitRow(onSwapClick = onSwapClick, enabled = enabled)
             TransferAccountRow(
                 label = stringResource(R.string.tx_label_to_account),
                 account = toAccount,
                 deltaMinor = if (inAmountMinor > 0L) inAmountMinor else null,
                 isDestination = true,
+                enabled = enabled,
                 onClick = onToAccountClick,
             )
         }
@@ -138,12 +144,14 @@ private fun CompactSelectorPill(
     icon: ImageVector,
     prefix: String,
     value: String,
+    enabled: Boolean,
     onClick: () -> Unit,
 ) {
     val semantic = FinancistoTheme.semanticColors
     val dimens = FinancistoTheme.dimens
     Surface(
         onClick = onClick,
+        enabled = enabled,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(dimens.RadiusPill),
         color = semantic.pillSurface,
@@ -200,6 +208,7 @@ private fun TransferAccountRow(
     account: AccountOption?,
     deltaMinor: Long?,
     isDestination: Boolean,
+    enabled: Boolean,
     onClick: () -> Unit,
 ) {
     val dimens = FinancistoTheme.dimens
@@ -219,7 +228,7 @@ private fun TransferAccountRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(dimens.RadiusPill))
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -322,7 +331,10 @@ private fun TransferAccountTrailing(
 }
 
 @Composable
-private fun SwapConduitRow(onSwapClick: () -> Unit) {
+private fun SwapConduitRow(
+    onSwapClick: () -> Unit,
+    enabled: Boolean,
+) {
     val semantic = FinancistoTheme.semanticColors
     val dimens = FinancistoTheme.dimens
     Box(
@@ -347,6 +359,7 @@ private fun SwapConduitRow(onSwapClick: () -> Unit) {
         }
         Surface(
             onClick = onSwapClick,
+            enabled = enabled,
             shape = CircleShape,
             color = MaterialTheme.colorScheme.surface,
             border = BorderStroke(dimens.DefaultBorderWidth, semantic.heroBorder),

@@ -96,6 +96,7 @@ fun FormFieldCardSurface(
     isActive: Boolean,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    enabled: Boolean = true,
     contentModifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
@@ -109,6 +110,7 @@ fun FormFieldCardSurface(
     if (onClick != null) {
         Surface(
             onClick = onClick,
+            enabled = enabled,
             modifier = modifier.fillMaxWidth(),
             shape = shape,
             color = MaterialTheme.colorScheme.surface,
@@ -281,11 +283,13 @@ fun AssistNewPill(
     icon: ImageVector,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val semantic = FinancistoTheme.semanticColors
     val dimens = FinancistoTheme.dimens
     AssistChip(
         onClick = onClick,
+        enabled = enabled,
         label = {
             Text(
                 text = label,
@@ -320,6 +324,7 @@ fun SuggestionOptionRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     icon: ImageVector = Icons.Rounded.History,
+    enabled: Boolean = true,
 ) {
     val semantic = FinancistoTheme.semanticColors
     val rowShape = RoundedCornerShape(FinancistoTheme.dimens.RadiusTile)
@@ -331,7 +336,7 @@ fun SuggestionOptionRow(
             .defaultMinSize(minHeight = 48.dp)
             .clip(rowShape)
             .background(bgColor)
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -375,10 +380,12 @@ fun CreateInlineSuggestionButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val semantic = FinancistoTheme.semanticColors
     FilledTonalButton(
         onClick = onClick,
+        enabled = enabled,
         shape = RoundedCornerShape(FinancistoTheme.dimens.RadiusTile),
         colors = ButtonDefaults.filledTonalButtonColors(
             containerColor = semantic.primaryTonal,
@@ -409,8 +416,9 @@ fun ClearMiniIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     contentDescription: String = stringResource(R.string.tx_cd_clear),
+    enabled: Boolean = true,
 ) {
-    IconButton(onClick = onClick, modifier = modifier) {
+    IconButton(onClick = onClick, enabled = enabled, modifier = modifier) {
         Icon(
             imageVector = Icons.Rounded.Close,
             contentDescription = contentDescription,
