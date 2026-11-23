@@ -1,12 +1,29 @@
-# .coderabbit.yaml
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
 reviews:
   path_instructions:
+    - path: "shared/**"
+      instructions: |
+        We are migrating to KMP with a 'shared-logic-first' approach using Koin.
+        - **DI Integrity**: Ensure all new shared logic uses `org.koin.core.module.Module`.
+        - Flag any accidental Hilt or Dagger imports in the `shared` module.
+        - Verify that `factory` is used for stateless logic and `single` for long-lived state.
+
     - path: "shared/src/commonMain/**"
-      instructions: "This is shared business logic. NO Android dependencies allowed. Use Koin's `get()` for injection."
+      instructions: |
+        This is shared business logic.
+        - **KMP Purity**: NO Android/Java dependencies allowed. Block any imports from `android.*`, `java.*`, or `androidx.compose.ui.platform.*` (which is Android-specific).
+        - **DI & ViewModels**: Use Koin's `get()` for injection. Prefer `koin-viewmodel` in `commonMain` where possible to keep logic platform-agnostic.
+
     - path: "androidApp/src/main/res/layout/**"
-      instructions: "Legacy XML layout. If the changes are significant, suggest migrating this component to Jetpack Compose."
+      instructions: |
+        Legacy XML layout.
+        - If the change is small, suggest using a `ComposeView` instead.
+        - If the changes are significant, suggest migrating this component fully to Jetpack Compose.
+
     - path: "**/di/**"
-      instructions: "Check for proper Koin module definitions. Ensure `includes()` is used to link shared modules into platform modules."
+      instructions: |
+        Check for proper Koin module definitions. Ensure `includes()` is used to link shared modules into platform modules.
 
   tools:
     github-checks:
@@ -25,11 +42,5 @@ chat:
   auto_reply: true
 
 knowledge_base:
-  code_guidelines: |
-    We are migrating to KMP with a 'shared-logic-first' approach using Koin.
-    1. **DI Integrity**: Ensure all new shared logic uses `org.koin.core.module.Module`. 
-       - Flag any accidental Hilt or Dagger imports in the `shared` module.
-       - Verify that `factory` is used for stateless logic and `single` for long-lived state.
-    2. **KMP Purity**: In `commonMain`, block any imports from `android.*`, `java.*`, or `androidx.compose.ui.platform.*` (which is Android-specific).
-    3. **Compose Migration**: If a PR touches an XML file, suggest if the change is small enough to be a `ComposeView` instead. 
-    4. **Shared ViewModels**: Prefer `koin-viewmodel` in `commonMain` where possible to keep the logic platform-agnostic.
+  code_guidelines:
+    enabled: true
