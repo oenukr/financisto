@@ -141,22 +141,22 @@ internal object FinancistoTransactionMapper {
     }
 
     fun queryRecentNotes(db: DatabaseAdapter): List<String> {
-        val sqlDb = try {
-            db.db()
+        return try {
+            val sqlDb = db.db()
+            val notes = mutableListOf<String>()
+            sqlDb.rawQuery(RECENT_NOTES_SQL, arrayOf(RECENT_NOTES_LIMIT.toString())).use { cursor ->
+                while (cursor.moveToNext()) {
+                    cursor.getString(0)?.trim()?.takeIf { it.isNotEmpty() }?.let(notes::add)
+                }
+            }
+            notes
         } catch (e: SQLiteException) {
-            Timber.w(e, "Failed to open database for recent notes")
-            null
+            Timber.w(e, "Failed to query recent notes")
+            emptyList()
         } catch (e: IllegalStateException) {
             Timber.w(e, "Database unavailable for recent notes")
-            null
-        } ?: return emptyList()
-        val notes = mutableListOf<String>()
-        sqlDb.rawQuery(RECENT_NOTES_SQL, arrayOf(RECENT_NOTES_LIMIT.toString())).use { cursor ->
-            while (cursor.moveToNext()) {
-                cursor.getString(0)?.trim()?.takeIf { it.isNotEmpty() }?.let(notes::add)
-            }
+            emptyList()
         }
-        return notes
     }
 
     fun toOption(status: TransactionStatus): TransactionStatusOption = when (status) {

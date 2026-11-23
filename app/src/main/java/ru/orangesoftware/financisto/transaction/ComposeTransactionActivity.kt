@@ -23,6 +23,7 @@ import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import org.koin.core.parameter.parametersOf
+import ru.orangesoftware.financisto.R
 import ru.orangesoftware.financisto.activity.CategoryActivity
 import ru.orangesoftware.financisto.activity.LocationActivity
 import ru.orangesoftware.financisto.db.DatabaseAdapter
@@ -137,19 +138,19 @@ class ComposeTransactionActivity : ComponentActivity() {
                 resolveReceiptPath = receiptMediaPort::resolveFilePath,
                 onIntent = viewModel::onIntent,
                 onCloseRequested = {
-                    setResult(RESULT_CANCELED)
-                    finish()
+                    if ((viewModel.uiState.value as? TransactionUiState.Ready)?.isSaving != true) {
+                        setResult(RESULT_CANCELED)
+                        finish()
+                    }
                 },
             )
             val promptDraft = pendingAiDraftPrompt
+            val isSaving = (uiState as? TransactionUiState.Ready)?.isSaving == true
             if (promptDraft != null && uiState !is TransactionUiState.PinLockedMask) {
                 PendingAiDraftDialog(
+                    isSwitchEnabled = !isSaving,
                     onSwitchToDraft = {
-                        pendingAiDraftPrompt = null
-                        draftSessionStore.clearPendingAutoOpenDraft(promptDraft.draftId)
-                        viewModel.cleanupStagedReceipts()
-                        startActivity(TransactionEntryRouter.createAiDraftReplacementIntent(this, promptDraft))
-                        finish()
+                        trySwitchToPendingAiDraft(promptDraft, draftSessionStore)
                     },
                     onKeepEditing = {
                         pendingAiDraftPrompt = null
@@ -234,11 +235,7 @@ class ComposeTransactionActivity : ComponentActivity() {
                     }
                 }
                 IncomingDraftResolution.REPLACE_IMMEDIATELY -> {
-                    pendingAiDraftPrompt = null
-                    draftSessionStore.clearPendingAutoOpenDraft(incomingDraft.draftId)
-                    viewModel.cleanupStagedReceipts()
-                    startActivity(TransactionEntryRouter.createAiDraftReplacementIntent(this, incomingDraft))
-                    finish()
+                    trySwitchToPendingAiDraft(incomingDraft, draftSessionStore)
                 }
             }
         }
@@ -260,7 +257,7 @@ class ComposeTransactionActivity : ComponentActivity() {
                     Timber.w("Ignoring legacy editor launch for unsupported AI draft")
                     Toast.makeText(
                         this,
-                        "AI transaction drafts can only be reviewed in this editor",
+                        getString(R.string.tx_notice_ai_draft_legacy_unsupported),
                         Toast.LENGTH_SHORT,
                     ).show()
                 } else {
@@ -279,15 +276,23 @@ class ComposeTransactionActivity : ComponentActivity() {
                 locationCreatorLauncher.launch(Intent(this, LocationActivity::class.java))
             is TransactionEffect.LaunchCameraCapture -> {
                 val targetFile = createCameraCaptureFile(ioDispatcher)
-                if (targetFile != null) {
+                if (targetFile == null) {
+                    Toast.makeText(
+                        this,
+                        getString(R.string.tx_error_camera_capture_unavailable),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                } else {
                     pendingCameraFileName = targetFile.name
                     if (!launchCameraCaptureUri(this, targetFile, cameraLauncher::launch)) {
                         pendingCameraFileName = null
                         receiptMediaPort.deleteStagedFile(targetFile.name)
-                        Toast.makeText(this, "Unable to prepare camera capture", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this,
+                            getString(R.string.tx_error_camera_capture_unavailable),
+                            Toast.LENGTH_SHORT,
+                        ).show()
                     }
-                } else {
-                    Toast.makeText(this, "Unable to prepare camera capture", Toast.LENGTH_SHORT).show()
                 }
             }
             is TransactionEffect.LaunchGalleryPick -> galleryLauncher.launch("image/*")

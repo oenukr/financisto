@@ -1,13 +1,21 @@
 // SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.transaction
 
+import android.app.Activity
 import android.content.Context
 import android.os.Bundle
 import androidx.core.content.edit
 import androidx.lifecycle.SavedStateHandle
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.Runnable
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -18,12 +26,15 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 import org.koin.core.context.GlobalContext
+import org.koin.dsl.module
 import org.robolectric.Robolectric
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.shadows.ShadowLooper
 import org.robolectric.shadows.ShadowToast
+import ru.orangesoftware.financisto.R
 import ru.orangesoftware.financisto.db.AbstractDbTest
 import ru.orangesoftware.financisto.model.Account
 import ru.orangesoftware.financisto.test.AccountBuilder
@@ -47,6 +58,8 @@ import ru.orangesoftware.financisto.transaction.port.TransactionPorts
 import ru.orangesoftware.financisto.transaction.port.TransactionPreferencesPort
 import ru.orangesoftware.financisto.transaction.port.TransactionRepository
 import ru.orangesoftware.financisto.utils.CurrencyCache
+import java.io.File
+import kotlin.coroutines.CoroutineContext
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -152,8 +165,68 @@ class ComposeTransactionActivityBehaviorTest : AbstractDbTest() {
 
         assertFalse(activity.isFinishing)
         assertNull(shadowOf(activity).nextStartedActivity)
-        assertNotNull(ShadowToast.getTextOfLatestToast())
+        assertEquals(
+            context.getString(R.string.tx_notice_ai_draft_legacy_unsupported),
+            ShadowToast.getTextOfLatestToast(),
+        )
         controller.destroy()
+    }
+
+    @Test
+    fun trySwitchToPendingAiDraftIsBlockedWhileSaveIsInFlight() {
+        val draftOne = sampleDraft("draft-saving-1", amountMinor = 1500L, note = "Coffee")
+        val draftTwo = sampleDraft("draft-saving-2", amountMinor = 4200L, note = "Dinner")
+        val saveGate = CompletableDeferred<Long>()
+        val catalogGate = CompletableDeferred<Unit>().apply { complete(Unit) }
+        val draftStore = FinancistoDraftSessionStore(context)
+        val portsOverride = module {
+            single {
+                fakePorts(
+                    catalogGate = catalogGate,
+                    mediaPort = FakeReceiptMediaPort(),
+                    saveGate = saveGate,
+                    accountId = account.id,
+                )
+            }
+        }
+        val koin = GlobalContext.get()
+        koin.loadModules(listOf(portsOverride), allowOverride = true)
+        try {
+            val controller = Robolectric.buildActivity(
+                ComposeTransactionActivity::class.java,
+                TransactionEntryRouter.createAiDraftIntent(context, draftOne),
+            ).setup()
+            val activity = controller.get()
+            awaitReady(activity)
+
+            activity.viewModel.onIntent(TransactionIntent.SaveClicked)
+            ShadowLooper.idleMainLooper()
+            assertTrue((activity.viewModel.uiState.value as TransactionUiState.Ready).isSaving)
+
+            draftStore.savePendingDraft(draftTwo)
+            controller.newIntent(TransactionEntryRouter.createAiDraftIntent(context, draftTwo))
+            ShadowLooper.idleMainLooper()
+            assertEquals(draftTwo, activity.pendingAiDraftPrompt)
+
+            assertFalse(activity.trySwitchToPendingAiDraft(draftTwo, draftStore))
+            assertFalse(activity.isFinishing)
+            assertEquals(draftTwo, activity.pendingAiDraftPrompt)
+            assertEquals(draftTwo, draftStore.peekPendingAutoOpenDraft())
+            assertNull(shadowOf(activity).nextStartedActivity)
+
+            saveGate.complete(42L)
+            val deadline = System.currentTimeMillis() + 3_000L
+            while (!activity.isFinishing && System.currentTimeMillis() < deadline) {
+                ShadowLooper.idleMainLooper()
+                Thread.sleep(10L)
+            }
+            ShadowLooper.idleMainLooper()
+            assertTrue(activity.isFinishing)
+            assertEquals(Activity.RESULT_OK, shadowOf(activity).resultCode)
+            controller.destroy()
+        } finally {
+            koin.unloadModules(listOf(portsOverride))
+        }
     }
 
     @Test
@@ -252,6 +325,165 @@ class ComposeTransactionActivityBehaviorTest : AbstractDbTest() {
         }
     }
 
+    @Test
+    fun dispatchIntentWhenReadyQueuesPhotoWhileSavingAndDispatchesAfterFailedSave() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        try {
+            val catalogGate = CompletableDeferred<Unit>().apply { complete(Unit) }
+            val saveGate = CompletableDeferred<Long>()
+            val fakeMediaPort = FakeReceiptMediaPort()
+            val viewModel = TransactionViewModel(
+                launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
+                savedStateHandle = SavedStateHandle(),
+                ports = fakePorts(catalogGate, fakeMediaPort, saveGate = saveGate),
+                ioDispatcher = dispatcher,
+                clock = FixedClock(1_700_000_000_000L),
+            )
+            advanceUntilIdle()
+            viewModel.onIntent(TransactionIntent.UpdatePrimaryAmount("12.00"))
+            viewModel.onIntent(TransactionIntent.SaveClicked)
+            advanceUntilIdle()
+            assertTrue((viewModel.uiState.value as TransactionUiState.Ready).isSaving)
+
+            dispatchIntentWhenReady(
+                scope = this,
+                viewModel = viewModel,
+                receiptMediaPort = fakeMediaPort,
+                intent = TransactionIntent.AttachCapturedPhotoFile("retry_photo.jpg"),
+            )
+            advanceUntilIdle()
+            assertNull((viewModel.uiState.value as TransactionUiState.Ready).form.attachedPictureFileName)
+            assertTrue(fakeMediaPort.deletedFiles.isEmpty())
+
+            saveGate.completeExceptionally(IllegalStateException("Save failed"))
+            advanceUntilIdle()
+
+            val ready = viewModel.uiState.value as TransactionUiState.Ready
+            assertFalse(ready.isSaving)
+            assertEquals("retry_photo.jpg", ready.form.attachedPictureFileName)
+            assertTrue(fakeMediaPort.deletedFiles.isEmpty())
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun dispatchIntentWhenReadyDeletesQueuedPhotoWhenSaveAndNewResetsForm() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        try {
+            val catalogGate = CompletableDeferred<Unit>().apply { complete(Unit) }
+            val saveGate = CompletableDeferred<Long>()
+            val fakeMediaPort = FakeReceiptMediaPort()
+            val viewModel = TransactionViewModel(
+                launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
+                savedStateHandle = SavedStateHandle(),
+                ports = fakePorts(catalogGate, fakeMediaPort, saveGate = saveGate),
+                ioDispatcher = dispatcher,
+                clock = FixedClock(1_700_000_000_000L),
+            )
+            advanceUntilIdle()
+            viewModel.onIntent(TransactionIntent.UpdatePrimaryAmount("25.00"))
+            viewModel.onIntent(TransactionIntent.SaveAndNewClicked)
+            advanceUntilIdle()
+            assertTrue((viewModel.uiState.value as TransactionUiState.Ready).isSaving)
+
+            dispatchIntentWhenReady(
+                scope = this,
+                viewModel = viewModel,
+                receiptMediaPort = fakeMediaPort,
+                intent = TransactionIntent.AttachCapturedPhotoFile("stale_form_photo.jpg"),
+            )
+            advanceUntilIdle()
+
+            saveGate.complete(101L)
+            advanceUntilIdle()
+
+            val ready = viewModel.uiState.value as TransactionUiState.Ready
+            assertFalse(ready.isSaving)
+            assertEquals(0L, ready.form.primaryAmountMinor)
+            assertNull(ready.form.attachedPictureFileName)
+            assertEquals(listOf("stale_form_photo.jpg"), fakeMediaPort.deletedFiles)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun dispatchIntentWhenReadyDeletesQueuedPhotoWhenScopeCancelsDuringSaveFinish() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        Dispatchers.setMain(dispatcher)
+        try {
+            val catalogGate = CompletableDeferred<Unit>().apply { complete(Unit) }
+            val saveGate = CompletableDeferred<Long>()
+            val fakeMediaPort = FakeReceiptMediaPort()
+            val viewModel = TransactionViewModel(
+                launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
+                savedStateHandle = SavedStateHandle(),
+                ports = fakePorts(catalogGate, fakeMediaPort, saveGate = saveGate),
+                ioDispatcher = dispatcher,
+                clock = FixedClock(1_700_000_000_000L),
+            )
+            advanceUntilIdle()
+            viewModel.onIntent(TransactionIntent.UpdatePrimaryAmount("30.00"))
+            viewModel.onIntent(TransactionIntent.SaveClicked)
+            advanceUntilIdle()
+
+            val activityScope = CoroutineScope(Job() + dispatcher)
+            dispatchIntentWhenReady(
+                scope = activityScope,
+                viewModel = viewModel,
+                receiptMediaPort = fakeMediaPort,
+                intent = TransactionIntent.AttachCapturedPhotoFile("closing_photo.jpg"),
+            )
+            advanceUntilIdle()
+            assertTrue(fakeMediaPort.deletedFiles.isEmpty())
+
+            saveGate.complete(102L)
+            activityScope.cancel()
+            advanceUntilIdle()
+
+            assertEquals(listOf("closing_photo.jpg"), fakeMediaPort.deletedFiles)
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun createCameraCaptureFileDeletesLeakedFileOnCancellationBeforeResumption() = runTest {
+        val callerDispatcher = ManualQueueDispatcher()
+        val ioDispatcher = ManualQueueDispatcher()
+        val tempFile = File.createTempFile("camera_cancel_test", ".jpg", context.cacheDir)
+        tempFile.delete()
+
+        var caughtCancellation = false
+        val captureJob = launch(callerDispatcher) {
+            try {
+                createCameraCaptureFile(ioDispatcher) {
+                    tempFile.writeBytes(byteArrayOf(0x01))
+                    tempFile
+                }
+                fail("Expected CancellationException")
+            } catch (e: CancellationException) {
+                caughtCancellation = true
+                throw e
+            }
+        }
+
+        callerDispatcher.runAll()
+        ioDispatcher.runAll()
+        assertTrue(tempFile.exists())
+
+        captureJob.cancel(CancellationException("Activity cancelled before resumption"))
+        callerDispatcher.runAll()
+        ioDispatcher.runAll()
+        callerDispatcher.runAll()
+
+        assertTrue(caughtCancellation)
+        assertFalse(tempFile.exists())
+    }
+
     private fun awaitReady(activity: ComposeTransactionActivity) {
         val deadline = System.currentTimeMillis() + 3_000L
         while (activity.viewModel.uiState.value !is TransactionUiState.Ready &&
@@ -282,11 +514,13 @@ class ComposeTransactionActivityBehaviorTest : AbstractDbTest() {
         catalogGate: CompletableDeferred<Unit>,
         mediaPort: ReceiptMediaPort,
         includeAccount: Boolean = true,
+        saveGate: CompletableDeferred<Long>? = null,
+        accountId: Long = 1L,
     ): TransactionPorts {
         val accounts = if (includeAccount) {
             listOf(
                 AccountOption(
-                    id = 1L,
+                    id = accountId,
                     title = "Cash",
                     typeLabel = "CASH",
                     currencyId = 1L,
@@ -315,7 +549,8 @@ class ComposeTransactionActivityBehaviorTest : AbstractDbTest() {
 
                 override suspend fun getLatestExchangeRate(fromCurrencyId: Long, toCurrencyId: Long): Double? = null
 
-                override suspend fun saveTransaction(command: SaveTransactionCommand): Long = 1L
+                override suspend fun saveTransaction(command: SaveTransactionCommand): Long =
+                    saveGate?.await() ?: 1L
             },
             preferencesPort = object : TransactionPreferencesPort {
                 override fun readFormPreferences(): TransactionFormPreferences = TransactionFormPreferences()
@@ -345,5 +580,19 @@ class ComposeTransactionActivityBehaviorTest : AbstractDbTest() {
 
     private class FixedClock(private val epochMillis: Long) : Clock {
         override fun now(): Instant = Instant.fromEpochMilliseconds(epochMillis)
+    }
+
+    private class ManualQueueDispatcher : CoroutineDispatcher() {
+        private val queue = ArrayDeque<Runnable>()
+
+        override fun dispatch(context: CoroutineContext, block: Runnable) {
+            queue.addLast(block)
+        }
+
+        fun runAll() {
+            while (queue.isNotEmpty()) {
+                queue.removeFirst().run()
+            }
+        }
     }
 }

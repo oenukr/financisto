@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.transaction
 
+import android.app.Application
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.edit
@@ -10,7 +11,9 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
+import org.robolectric.Shadows
 import ru.orangesoftware.financisto.activity.AbstractTransactionActivity
 import ru.orangesoftware.financisto.activity.TransactionActivity
 import ru.orangesoftware.financisto.activity.TransferActivity
@@ -200,6 +203,47 @@ class FinancistoTransactionRepositoryTest : AbstractDbTest() {
     }
 
     @Test
+    fun saveTransactionRejectsDeletedExistingTransactionWithoutCreatingEntitiesOrInserting() = runTest {
+        val cat = CategoryBuilder.createDefaultHierarchy(db).getValue("A1")
+        val existingId = repository.saveTransaction(
+            baseSaveCommand(categoryId = cat.id, fromAmountMinor = -1500L, note = "To be deleted")
+        )
+        db.deleteTransaction(existingId)
+
+        val payeesBefore = db.allPayeeList.map { it.title }.toSet()
+        val projectsBefore = db.getAllProjectsList(false).map { it.title }.toSet()
+        val txCountBefore = db.db().rawQuery("SELECT COUNT(*) FROM transactions", null).use { c ->
+            c.moveToFirst()
+            c.getLong(0)
+        }
+
+        try {
+            repository.saveTransaction(
+                baseSaveCommand(
+                    existingTransactionId = existingId,
+                    categoryId = cat.id,
+                    pendingPayeeName = "Ghost Payee",
+                    pendingProjectName = "Ghost Project",
+                    fromAmountMinor = -2200L,
+                    note = "Edited after delete",
+                )
+            )
+            fail("Expected IllegalStateException when saving edit for deleted transaction")
+        } catch (expected: IllegalStateException) {
+            assertEquals("Transaction $existingId no longer exists", expected.message)
+        }
+
+        assertEquals(payeesBefore, db.allPayeeList.map { it.title }.toSet())
+        assertEquals(projectsBefore, db.getAllProjectsList(false).map { it.title }.toSet())
+        val txCountAfter = db.db().rawQuery("SELECT COUNT(*) FROM transactions", null).use { c ->
+            c.moveToFirst()
+            c.getLong(0)
+        }
+        assertEquals(txCountBefore, txCountAfter)
+        assertEquals(0L, requireNotNull(db.getAccount(cash.id)).totalAmount)
+    }
+
+    @Test
     fun saveAndReloadForeignCurrencySplitsPreservesOriginalAndExactAccountAmounts() = runTest {
         val eur = CurrencyBuilder.withDb(db).name("EUR").title("Euro").symbol("€").create()
         val categories = CategoryBuilder.createDefaultHierarchy(db)
@@ -249,7 +293,7 @@ class FinancistoTransactionRepositoryTest : AbstractDbTest() {
 
         // 3 equal €10.00 splits (€30.00 total) converting to $31.00:
         // naive per-split rounding yields -$10.33 * 3 = -$30.99 (1-cent drift).
-        // Remainder absorption must persist -$10.33, -$10.33, -$10.34 summing to exact -$31.00.
+        // Largest-remainder allocation must persist -$10.34, -$10.33, -$10.33 summing to exact -$31.00.
         val form = TransactionFormState(
             mode = TransactionMode.EXPENSE,
             fromAccountId = cash.id,
@@ -278,7 +322,7 @@ class FinancistoTransactionRepositoryTest : AbstractDbTest() {
         assertEquals(-3100L, persistedParent.fromAmount)
         assertEquals(-3000L, persistedParent.originalFromAmount)
         assertEquals(listOf(-1000L, -1000L, -1000L), persistedSplits.map { it.originalFromAmount })
-        assertEquals(listOf(-1033L, -1033L, -1034L), persistedSplits.map { it.fromAmount })
+        assertEquals(listOf(-1034L, -1033L, -1033L), persistedSplits.map { it.fromAmount })
         assertEquals(persistedParent.fromAmount, persistedSplits.sumOf { it.fromAmount })
     }
 
@@ -458,18 +502,37 @@ class FinancistoTransactionRepositoryTest : AbstractDbTest() {
         store.clearPendingDraft(pendingDraft.draftId)
         assertNull(store.consumePendingAutoOpenDraft())
 
+        val shadowApp = Shadows.shadowOf(context as Application)
+        while (shadowApp.nextStartedActivity != null) {
+            // Drain any prior started activities from setup.
+        }
+
         store.savePendingDraft(pendingDraft)
         assertTrue(TransactionEntryRouter.launchPendingAiDraftIfPresent(context, draftSessionStore = store))
+        val firstLaunched = shadowApp.nextStartedActivity
+        assertNotNull(firstLaunched)
+        assertEquals(
+            TransactionLaunchArgs.AiDraft(pendingDraft),
+            TransactionEntryRouter.resolveLaunchArgs(firstLaunched),
+        )
         assertFalse(TransactionEntryRouter.launchPendingAiDraftIfPresent(context, draftSessionStore = store))
+        assertNull(shadowApp.nextStartedActivity)
 
         store.savePendingDraft(pendingDraft)
         assertFalse(
             TransactionEntryRouter.launchPendingAiDraftIfPresent(context, pendingDraft.draftId, store)
         )
+        assertNull(shadowApp.nextStartedActivity)
         val newerDraft = pendingDraft.copy(draftId = "draft-router-newer", amountMinor = 1500L)
         store.savePendingDraft(newerDraft)
         assertTrue(
             TransactionEntryRouter.launchPendingAiDraftIfPresent(context, pendingDraft.draftId, store)
+        )
+        val launchedNewer = shadowApp.nextStartedActivity
+        assertNotNull(launchedNewer)
+        assertEquals(
+            TransactionLaunchArgs.AiDraft(newerDraft),
+            TransactionEntryRouter.resolveLaunchArgs(launchedNewer),
         )
     }
 

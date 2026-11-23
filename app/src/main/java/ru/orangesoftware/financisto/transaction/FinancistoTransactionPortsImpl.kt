@@ -1,18 +1,22 @@
 // SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.transaction
 
+import android.content.ContentResolver
 import android.content.Context
+import android.database.sqlite.SQLiteException
 import android.net.Uri
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import org.json.JSONException
 import ru.orangesoftware.financisto.datetime.DateUtils
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.transaction.model.TransactionDraft
@@ -29,6 +33,7 @@ import java.io.File
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.CoroutineContext
 
 class FinancistoTransactionPreferencesPort(
@@ -116,6 +121,8 @@ class FinancistoDraftSessionStore(
     override suspend fun markDraftSaved(draftId: String, transactionId: Long) {
         withContext(ioDispatcher) {
             synchronized(lock) {
+                val editor = prefs.edit()
+                var hasChanges = false
                 if (transactionId > 0L) {
                     val existing = prefs.getString(KEY_SAVED_DRAFTS, null)
                         ?.let(DraftSessionCodec::decodeHistory)
@@ -123,9 +130,24 @@ class FinancistoDraftSessionStore(
                     val retained = existing.filterNot { it.draftId == draftId }
                     val updated = (retained + SavedDraftEntry(draftId = draftId, transactionId = transactionId))
                         .takeLast(MAX_SAVED_DRAFTS)
-                    prefs.edit { putString(KEY_SAVED_DRAFTS, DraftSessionCodec.encodeHistory(updated)) }
+                    editor.putString(KEY_SAVED_DRAFTS, DraftSessionCodec.encodeHistory(updated))
+                    hasChanges = true
                 }
-                removePendingIfMatchingLocked(draftId)
+                val shouldClearPending = prefs.getString(KEY_PENDING_DRAFT, null)?.let { pendingRaw ->
+                    val pending = DraftSessionCodec.decodeDraft(pendingRaw)
+                    pending == null || pending.draftId == draftId
+                } == true
+                if (shouldClearPending) {
+                    editor.remove(KEY_PENDING_DRAFT)
+                    hasChanges = true
+                }
+                if (hasChanges && !editor.commit()) {
+                    Timber.e(
+                        "Failed to persist saved state for AI draft %s (transaction %d)",
+                        draftId,
+                        transactionId,
+                    )
+                }
             }
         }
     }
@@ -142,9 +164,15 @@ class FinancistoDraftSessionStore(
         }
     }
 
-    fun savePendingDraft(draft: TransactionDraft) {
-        synchronized(lock) {
-            prefs.edit(commit = true) { putString(KEY_PENDING_DRAFT, DraftSessionCodec.encodeDraft(draft)) }
+    fun savePendingDraft(draft: TransactionDraft): Boolean {
+        return synchronized(lock) {
+            val committed = prefs.edit()
+                .putString(KEY_PENDING_DRAFT, DraftSessionCodec.encodeDraft(draft))
+                .commit()
+            if (!committed) {
+                Timber.e("Failed to persist pending AI transaction draft: %s", draft.draftId)
+            }
+            committed
         }
     }
 
@@ -198,30 +226,50 @@ class FinancistoExchangeRatePort(
     override suspend fun fetchLiveRate(fromCurrencyId: Long, toCurrencyId: Long): Result<Double> =
         withContext(ioDispatcher) {
             try {
-                val fromCur = CurrencyCache.getCurrency(db, fromCurrencyId)
-                val toCur = CurrencyCache.getCurrency(db, toCurrencyId)
-                when {
-                    fromCur == null -> Result.failure(IllegalArgumentException("Source currency not found"))
-                    toCur == null -> Result.failure(IllegalArgumentException("Target currency not found"))
-                    else -> {
-                        val provider = MyPreferences.createExchangeRatesProvider(context)
-                        val rate = provider.getRate(fromCur, toCur)
-                        if (rate.isOk && rate.rate > 0.0) {
-                            Result.success(rate.rate)
-                        } else {
-                            val msg = rate.errorMessage?.ifBlank { null } ?: "Unable to fetch rate"
-                            Timber.w("Exchange rate fetch failed (%s -> %s): %s", fromCur.name, toCur.name, msg)
-                            Result.failure(IllegalStateException(msg))
-                        }
-                    }
-                }
+                resolveAndFetchRate(fromCurrencyId, toCurrencyId)
             } catch (e: CancellationException) {
                 throw e
-            } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
-                Timber.w(e, "Failed to fetch live exchange rate (%d -> %d)", fromCurrencyId, toCurrencyId)
-                Result.failure(e)
+            } catch (e: IOException) {
+                logAndFail(fromCurrencyId, toCurrencyId, e)
+            } catch (e: JSONException) {
+                logAndFail(fromCurrencyId, toCurrencyId, e)
+            } catch (e: SQLiteException) {
+                logAndFail(fromCurrencyId, toCurrencyId, e)
+            } catch (e: SecurityException) {
+                logAndFail(fromCurrencyId, toCurrencyId, e)
+            } catch (e: IllegalArgumentException) {
+                logAndFail(fromCurrencyId, toCurrencyId, e)
+            } catch (e: IllegalStateException) {
+                logAndFail(fromCurrencyId, toCurrencyId, e)
+            } catch (e: UnsupportedOperationException) {
+                logAndFail(fromCurrencyId, toCurrencyId, e)
             }
         }
+
+    private fun resolveAndFetchRate(fromCurrencyId: Long, toCurrencyId: Long): Result<Double> {
+        val fromCur = CurrencyCache.getCurrency(db, fromCurrencyId)
+        val toCur = CurrencyCache.getCurrency(db, toCurrencyId)
+        return when {
+            fromCur == null -> Result.failure(IllegalArgumentException("Source currency not found"))
+            toCur == null -> Result.failure(IllegalArgumentException("Target currency not found"))
+            else -> {
+                val provider = MyPreferences.createExchangeRatesProvider(context)
+                val rate = provider.getRate(fromCur, toCur)
+                if (rate.isOk && rate.rate > 0.0) {
+                    Result.success(rate.rate)
+                } else {
+                    val msg = rate.errorMessage?.ifBlank { null } ?: "Unable to fetch rate"
+                    Timber.w("Exchange rate fetch failed (%s -> %s): %s", fromCur.name, toCur.name, msg)
+                    Result.failure(IllegalStateException(msg))
+                }
+            }
+        }
+    }
+
+    private fun logAndFail(fromCurrencyId: Long, toCurrencyId: Long, error: Exception): Result<Double> {
+        Timber.w(error, "Failed to fetch live exchange rate (%d -> %d)", fromCurrencyId, toCurrencyId)
+        return Result.failure(error)
+    }
 }
 
 class FinancistoReceiptMediaPort(
@@ -229,28 +277,19 @@ class FinancistoReceiptMediaPort(
     @Suppress("InjectDispatcher")
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ReceiptMediaPort {
-    override suspend fun stageFromUri(uriString: String): String? = withContext(ioDispatcher) {
-        var targetFile: File? = null
-        try {
-            val uri = uriString.toUri()
-            val inputStream = openReceiptStream(uri)
-            inputStream?.use { input ->
-                coroutineContext.ensureActive()
-                val createdFile = PicturesUtil.createEmptyImageFile()
-                targetFile = createdFile
-                createdFile.outputStream().use { output ->
-                    copyWithCancellationChecks(input, output, coroutineContext)
-                }
-                coroutineContext.ensureActive()
-                createdFile.name
+    override suspend fun stageFromUri(uriString: String): String? {
+        val createdFileRef = AtomicReference<File?>(null)
+        return try {
+            withContext(ioDispatcher) {
+                copyReceiptFromUri(uriString, createdFileRef, coroutineContext)
             }
         } catch (e: CancellationException) {
-            deleteFileQuietly(targetFile)
+            createdFileRef.getAndSet(null)?.let { leakedFile ->
+                withContext(NonCancellable + ioDispatcher) {
+                    deleteFileQuietly(leakedFile)
+                }
+            }
             throw e
-        } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
-            deleteFileQuietly(targetFile)
-            Timber.w(e, "Failed to stage receipt image from URI: %s", uriString)
-            null
         }
     }
 
@@ -266,10 +305,51 @@ class FinancistoReceiptMediaPort(
                 if (file.exists() && !file.delete()) {
                     Timber.w("Failed to delete staged receipt file: %s", file.absolutePath)
                 }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
-                Timber.w(e, "Error deleting staged receipt file: %s", fileName)
+            } catch (e: SecurityException) {
+                Timber.w(e, "No permission to delete staged receipt file: %s", fileName)
+            }
+        }
+    }
+
+    private fun copyReceiptFromUri(
+        uriString: String,
+        createdFileRef: AtomicReference<File?>,
+        coroutineContext: CoroutineContext,
+    ): String? {
+        var succeeded = false
+        return try {
+            val uri = uriString.toUri()
+            openReceiptStream(uri)?.use { input ->
+                coroutineContext.ensureActive()
+                val createdFile = PicturesUtil.createEmptyImageFile()
+                createdFileRef.set(createdFile)
+                createdFile.outputStream().use { output ->
+                    copyWithCancellationChecks(input, output, coroutineContext)
+                }
+                coroutineContext.ensureActive()
+                succeeded = true
+                createdFile.name
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: IOException) {
+            Timber.w(e, "Failed to stage receipt image from URI: %s", uriString)
+            null
+        } catch (e: SecurityException) {
+            Timber.w(e, "No permission to stage receipt image from URI: %s", uriString)
+            null
+        } catch (e: IllegalArgumentException) {
+            Timber.w(e, "Invalid receipt URI: %s", uriString)
+            null
+        } catch (e: IllegalStateException) {
+            Timber.w(e, "Unexpected provider state while staging receipt URI: %s", uriString)
+            null
+        } catch (e: UnsupportedOperationException) {
+            Timber.w(e, "Unsupported receipt URI: %s", uriString)
+            null
+        } finally {
+            if (!succeeded) {
+                deleteFileQuietly(createdFileRef.getAndSet(null))
             }
         }
     }
@@ -286,9 +366,14 @@ class FinancistoReceiptMediaPort(
         } catch (e: UnsupportedOperationException) {
             Timber.d(e, "ContentResolver unsupported for receipt URI: %s", uri)
             null
+        } catch (e: IllegalArgumentException) {
+            Timber.d(e, "ContentResolver rejected receipt URI: %s", uri)
+            null
         }
-        return contentStream ?: uri.path?.takeIf { it.isNotBlank() }?.let { path ->
-            File(path).inputStream()
+        return contentStream ?: if (uri.scheme.equals(ContentResolver.SCHEME_FILE, ignoreCase = true)) {
+            uri.path?.takeIf { it.isNotBlank() }?.let { path -> File(path).inputStream() }
+        } else {
+            null
         }
     }
 

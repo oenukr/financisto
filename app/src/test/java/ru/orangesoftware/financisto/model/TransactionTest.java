@@ -238,6 +238,50 @@ public class TransactionTest extends AbstractDbTest {
         assertSplit(splits.get(1), t.originalCurrencyId, 40, 48);
     }
 
+    @Test
+    public void should_duplicate_foreign_currency_splits_with_multiplier() {
+        Transaction oneToOne = TransactionBuilder.withDb(db).account(a1).category(CategoryBuilder.split(db))
+                .amount(-100).originalAmount(a2.currency, -100)
+                .withSplit(categories.get("A1"), -60)
+                .withSplit(categories.get("A2"), -40)
+                .create();
+
+        long duplicatedOneToOneId = db.duplicateTransactionWithMultiplier(oneToOne.id, 2);
+        Transaction duplicatedOneToOne = db.getTransaction(duplicatedOneToOneId);
+        assertEquals(a2.currency.id, duplicatedOneToOne.originalCurrencyId);
+        assertEquals(-200, duplicatedOneToOne.fromAmount);
+        assertEquals(-200, duplicatedOneToOne.originalFromAmount);
+        List<Transaction> duplicatedOneToOneSplits = db.getSplitsForTransaction(duplicatedOneToOneId);
+        assertEquals(2, duplicatedOneToOneSplits.size());
+        assertSplit(duplicatedOneToOneSplits.get(0), a2.currency.id, -120, -120);
+        assertSplit(duplicatedOneToOneSplits.get(1), a2.currency.id, -80, -80);
+
+        Transaction rated = TransactionBuilder.withDb(db).account(a1).category(CategoryBuilder.split(db))
+                .amount(-120).originalAmount(a2.currency, -100)
+                .withSplit(categories.get("A1"), -60)
+                .withSplit(categories.get("A2"), -40)
+                .create();
+
+        long duplicatedRatedId = db.duplicateTransactionWithMultiplier(rated.id, 2);
+        Transaction duplicatedRated = db.getTransaction(duplicatedRatedId);
+        assertEquals(a2.currency.id, duplicatedRated.originalCurrencyId);
+        assertEquals(-240, duplicatedRated.fromAmount);
+        assertEquals(-200, duplicatedRated.originalFromAmount);
+        List<Transaction> duplicatedRatedSplits = db.getSplitsForTransaction(duplicatedRatedId);
+        assertEquals(2, duplicatedRatedSplits.size());
+        assertSplit(duplicatedRatedSplits.get(0), a2.currency.id, -120, -144);
+        assertSplit(duplicatedRatedSplits.get(1), a2.currency.id, -80, -96);
+
+        long plainDuplicateId = db.duplicateTransaction(rated.id);
+        Transaction plainDuplicate = db.getTransaction(plainDuplicateId);
+        assertEquals(-120, plainDuplicate.fromAmount);
+        assertEquals(-100, plainDuplicate.originalFromAmount);
+        List<Transaction> plainDuplicateSplits = db.getSplitsForTransaction(plainDuplicateId);
+        assertEquals(2, plainDuplicateSplits.size());
+        assertSplit(plainDuplicateSplits.get(0), a2.currency.id, -60, -72);
+        assertSplit(plainDuplicateSplits.get(1), a2.currency.id, -40, -48);
+    }
+
     private void assertSplit(Transaction split, long originalCurrencyId, long originalAmount, long accountAmount) {
         assertEquals(originalCurrencyId, split.originalCurrencyId);
         assertEquals(originalAmount, split.originalFromAmount);

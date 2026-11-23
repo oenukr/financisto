@@ -2,22 +2,33 @@
 package ru.orangesoftware.financisto.app
 
 import android.app.Application
+import android.content.ContentResolver
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
+import android.content.SharedPreferences
 import android.net.Uri
 import androidx.core.content.IntentCompat
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.koin.core.context.GlobalContext
+import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.anyInt
+import org.mockito.ArgumentMatchers.anyString
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.`when`
 import org.robolectric.Shadows
 import ru.orangesoftware.financisto.appfunctions.AppFunctionDatabase
 import ru.orangesoftware.financisto.appfunctions.AppFunctionTransactionDraft
 import ru.orangesoftware.financisto.appfunctions.TransactionSplit
 import ru.orangesoftware.financisto.db.AbstractDbTest
+import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.model.Account
 import ru.orangesoftware.financisto.model.Category
 import ru.orangesoftware.financisto.model.CategoryEntity
@@ -284,6 +295,101 @@ class AppFunctionDatabaseImplTest : AbstractDbTest() {
         assertEquals(aiDraft, draftStore.consumePendingAutoOpenDraft())
         assertNull(draftStore.consumePendingAutoOpenDraft())
     }
+
+    @Test
+    fun testCreateTransactionReviewPendingIntentDistinguishesHashCollidingDraftIds() {
+        val draftIdA = "00000000-0000-4000-8000-00000500c004"
+        val draftIdB = "00000000-0000-4000-8000-000000510170"
+        assertEquals(draftIdA.hashCode(), draftIdB.hashCode())
+
+        val pendingA = appDb.createTransactionReviewPendingIntent(
+            sampleAppFunctionDraft(draftId = draftIdA, amount = -1000L, note = "Draft A")
+        )
+        val pendingB = appDb.createTransactionReviewPendingIntent(
+            sampleAppFunctionDraft(draftId = draftIdB, amount = -2000L, note = "Draft B")
+        )
+
+        val intentA = Shadows.shadowOf(pendingA).savedIntent
+        val intentB = Shadows.shadowOf(pendingB).savedIntent
+        assertEquals("financisto://ai-draft/$draftIdA", intentA.data?.toString())
+        assertEquals("financisto://ai-draft/$draftIdB", intentB.data?.toString())
+        assertNotEquals(intentA.data, intentB.data)
+        assertFalse(intentA.filterEquals(intentB))
+
+        val argsA = TransactionEntryRouter.resolveLaunchArgs(intentA) as TransactionLaunchArgs.AiDraft
+        val argsB = TransactionEntryRouter.resolveLaunchArgs(intentB) as TransactionLaunchArgs.AiDraft
+        assertEquals(draftIdA, argsA.draft.draftId)
+        assertEquals(draftIdB, argsB.draft.draftId)
+
+        val updatedA = appDb.createTransactionReviewPendingIntent(
+            sampleAppFunctionDraft(draftId = draftIdA, amount = -1500L, note = "Draft A Updated")
+        )
+        assertTrue(intentA.filterEquals(Shadows.shadowOf(updatedA).savedIntent))
+    }
+
+    @Test
+    fun testSaveReceiptPictureRejectsFailingContentUriWithoutReadingLocalFile() {
+        val localSecret = File.createTempFile("secret_receipt", ".txt", context.cacheDir).apply {
+            writeText("sensitive-data")
+        }
+        val picturesDir = requireNotNull(PicturesUtil.pictureFile("probe.jpg", false).parentFile)
+        val beforeFiles = picturesDir.listFiles()?.map { it.name }.orEmpty().toSet()
+        try {
+            val failingResolver = mock(ContentResolver::class.java)
+            `when`(failingResolver.openInputStream(any())).thenThrow(SecurityException("Denied"))
+            val wrappedContext = object : ContextWrapper(context) {
+                override fun getContentResolver(): ContentResolver = failingResolver
+            }
+            val guardedAppDb = AppFunctionDatabaseImpl(DatabaseAdapter(wrappedContext), draftStore)
+
+            val contentUri = Uri.parse("content://ru.orangesoftware.financisto.test${localSecret.absolutePath}")
+            assertNull(guardedAppDb.saveReceiptPicture(contentUri))
+            assertNull(appDb.saveReceiptPicture(contentUri))
+            val afterFiles = picturesDir.listFiles()?.map { it.name }.orEmpty().toSet()
+            assertEquals(beforeFiles, afterFiles)
+        } finally {
+            localSecret.delete()
+        }
+    }
+
+    @Test
+    fun testCreateTransactionReviewPendingIntentReturnsPendingIntentWhenFallbackCommitFails() {
+        val mockContext = mock(Context::class.java)
+        val mockPrefs = mock(SharedPreferences::class.java)
+        val mockEditor = mock(SharedPreferences.Editor::class.java)
+        `when`(mockContext.getSharedPreferences(anyString(), anyInt())).thenReturn(mockPrefs)
+        `when`(mockPrefs.edit()).thenReturn(mockEditor)
+        `when`(mockEditor.putString(anyString(), anyString())).thenReturn(mockEditor)
+        `when`(mockEditor.commit()).thenReturn(false)
+
+        val failingStore = FinancistoDraftSessionStore(mockContext)
+        val appDbWithFailingStore = AppFunctionDatabaseImpl(db, failingStore)
+        val pendingIntent = appDbWithFailingStore.createTransactionReviewPendingIntent(
+            sampleAppFunctionDraft(draftId = "draft-commit-fail", amount = -1000L, note = "Fallback fail")
+        )
+        assertNotNull(pendingIntent)
+        val savedIntent = Shadows.shadowOf(pendingIntent).savedIntent
+        assertEquals("financisto://ai-draft/draft-commit-fail", savedIntent.data?.toString())
+    }
+
+    private fun sampleAppFunctionDraft(
+        draftId: String,
+        amount: Long,
+        note: String,
+    ): AppFunctionTransactionDraft = AppFunctionTransactionDraft(
+        draftId = draftId,
+        fromAccountId = account1.id,
+        toAccountId = null,
+        categoryId = null,
+        payeeId = null,
+        payeeName = null,
+        amount = amount,
+        toAmount = null,
+        isIncome = false,
+        note = note,
+        dateTime = 1_700_000_000_000L,
+        attachedPicture = null,
+    )
 
     @Test
     fun testKoinResolvesAppFunctionDatabaseAndTransactionPorts() {

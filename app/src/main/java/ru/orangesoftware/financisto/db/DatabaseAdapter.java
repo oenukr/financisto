@@ -289,6 +289,9 @@ public class DatabaseAdapter extends MyEntityManager {
             if (multiplier > 1) {
                 transaction.fromAmount *= multiplier;
                 transaction.toAmount *= multiplier;
+                if (transaction.originalFromAmount != 0) {
+                    transaction.originalFromAmount *= multiplier;
+                }
             }
             long transactionId = insertTransaction(transaction);
             Map<Long, String> attributesMap = getAllAttributesForTransaction(id);
@@ -308,6 +311,9 @@ public class DatabaseAdapter extends MyEntityManager {
             if (multiplier > 1) {
                 for (Transaction split : splits) {
                     split.fromAmount *= multiplier;
+                    if (split.originalFromAmount != 0) {
+                        split.originalFromAmount *= multiplier;
+                    }
                     split.remoteKey = null;
                 }
             }

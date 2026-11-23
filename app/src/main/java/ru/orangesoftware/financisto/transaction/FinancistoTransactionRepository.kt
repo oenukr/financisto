@@ -71,28 +71,42 @@ class FinancistoTransactionRepository(
 
     override suspend fun saveTransaction(command: SaveTransactionCommand): Long = withContext(ioDispatcher) {
         val isNew = command.existingTransactionId <= 0L
-        val tx = if (isNew) Transaction() else loadNormalizedParent(command.existingTransactionId) ?: Transaction()
-        tx.isTemplate = 0
-        tx.fromAccountId = command.fromAccountId
-        tx.toAccountId = if (command.mode == TransactionMode.TRANSFER) command.toAccountId else 0L
-        tx.categoryId = command.categoryId
-        tx.payeeId = resolveOrCreatePayee(command.payeeId, command.pendingPayeeName)
-        tx.projectId = resolveOrCreateProject(command.projectId, command.pendingProjectName)
-        tx.locationId = command.locationId
-        tx.fromAmount = command.fromAmountMinor
-        tx.toAmount = if (command.mode == TransactionMode.TRANSFER) command.toAmountMinor else 0L
-        tx.originalCurrencyId = command.originalCurrencyId
-        tx.originalFromAmount = command.originalFromAmountMinor
-        tx.note = command.note
-        tx.dateTime = command.dateTimeMillis
-        tx.status = FinancistoTransactionMapper.toDomainStatus(command.status)
-        tx.attachedPicture = command.attachedPicture
-        tx.isCCardPayment = if (command.isCCardPayment) 1 else 0
-        tx.splits = buildSplitTransactions(command, tx.status)
-        val savedId = db.insertOrUpdate(tx, emptyList())
+        val sqlDb = db.db()
+        sqlDb.beginTransaction()
+        val savedId = try {
+            val tx = if (isNew) {
+                Transaction()
+            } else {
+                checkNotNull(loadNormalizedParent(command.existingTransactionId)) {
+                    "Transaction ${command.existingTransactionId} no longer exists"
+                }
+            }
+            tx.isTemplate = 0
+            tx.fromAccountId = command.fromAccountId
+            tx.toAccountId = if (command.mode == TransactionMode.TRANSFER) command.toAccountId else 0L
+            tx.categoryId = command.categoryId
+            tx.payeeId = resolveOrCreatePayee(command.payeeId, command.pendingPayeeName)
+            tx.projectId = resolveOrCreateProject(command.projectId, command.pendingProjectName)
+            tx.locationId = command.locationId
+            tx.fromAmount = command.fromAmountMinor
+            tx.toAmount = if (command.mode == TransactionMode.TRANSFER) command.toAmountMinor else 0L
+            tx.originalCurrencyId = command.originalCurrencyId
+            tx.originalFromAmount = command.originalFromAmountMinor
+            tx.note = command.note
+            tx.dateTime = command.dateTimeMillis
+            tx.status = FinancistoTransactionMapper.toDomainStatus(command.status)
+            tx.attachedPicture = command.attachedPicture
+            tx.isCCardPayment = if (command.isCCardPayment) 1 else 0
+            tx.splits = buildSplitTransactions(command, tx.status)
+            val id = db.insertOrUpdateInTransaction(tx, emptyList())
+            sqlDb.setTransactionSuccessful()
+            id
+        } finally {
+            sqlDb.endTransaction()
+        }
         if (savedId > 0L) {
             if (isNew) {
-                MyPreferences.setLastAccount(context, tx.fromAccountId)
+                MyPreferences.setLastAccount(context, command.fromAccountId)
             }
             AccountWidget.updateWidgets(context)
         }

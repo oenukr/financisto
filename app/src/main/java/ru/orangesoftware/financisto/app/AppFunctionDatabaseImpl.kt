@@ -2,9 +2,11 @@
 package ru.orangesoftware.financisto.app
 
 import android.app.PendingIntent
+import android.content.ContentResolver
 import android.database.sqlite.SQLiteException
 import android.media.ExifInterface
 import android.net.Uri
+import androidx.core.net.toUri
 import ru.orangesoftware.financisto.appfunctions.AccountInfo
 import ru.orangesoftware.financisto.appfunctions.AppFunctionDatabase
 import ru.orangesoftware.financisto.appfunctions.AppFunctionTransactionDraft
@@ -122,6 +124,14 @@ class AppFunctionDatabaseImpl(
             deletePartialReceipt(targetFile)
             Timber.w(e, "No permission to read receipt picture URI: %s", uri)
             null
+        } catch (e: UnsupportedOperationException) {
+            deletePartialReceipt(targetFile)
+            Timber.w(e, "Unsupported receipt picture URI: %s", uri)
+            null
+        } catch (e: IllegalArgumentException) {
+            deletePartialReceipt(targetFile)
+            Timber.w(e, "Invalid receipt picture URI: %s", uri)
+            null
         }
     }
 
@@ -173,8 +183,12 @@ class AppFunctionDatabaseImpl(
         )
         // Save as pending auto-open fallback when the user switches to Financisto manually;
         // the AppFunctions host invokes the returned PendingIntent as the primary launch channel.
-        draftSessionStore.savePendingDraft(uiDraft)
-        val intent = TransactionEntryRouter.createAiDraftIntent(context, uiDraft)
+        if (!draftSessionStore.savePendingDraft(uiDraft)) {
+            Timber.w("Failed to save pending auto-open fallback for AI draft: %s", uiDraft.draftId)
+        }
+        val intent = TransactionEntryRouter.createAiDraftIntent(context, uiDraft).apply {
+            data = "financisto://ai-draft/${Uri.encode(draft.draftId)}".toUri()
+        }
         return PendingIntent.getActivity(
             context,
             draft.draftId.hashCode(),
@@ -195,9 +209,14 @@ class AppFunctionDatabaseImpl(
         } catch (e: UnsupportedOperationException) {
             Timber.d(e, "ContentResolver unsupported for URI: %s", uri)
             null
+        } catch (e: IllegalArgumentException) {
+            Timber.d(e, "ContentResolver rejected URI: %s", uri)
+            null
         }
         val path = uri.path
-        return contentResolverStream ?: if (!path.isNullOrBlank()) {
+        return contentResolverStream ?: if (
+            uri.scheme.equals(ContentResolver.SCHEME_FILE, ignoreCase = true) && !path.isNullOrBlank()
+        ) {
             try {
                 File(path).inputStream()
             } catch (e: IOException) {
