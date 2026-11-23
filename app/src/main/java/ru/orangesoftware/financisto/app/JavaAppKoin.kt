@@ -37,6 +37,17 @@ import ru.orangesoftware.financisto.persistance.PreferencesStore
 import ru.orangesoftware.financisto.rates.FreeCurrencyRateDownloader
 import ru.orangesoftware.financisto.rates.OpenExchangeRatesDownloader
 import ru.orangesoftware.financisto.rates.WebserviceXConversionRateDownloader
+import ru.orangesoftware.financisto.transaction.FinancistoDraftSessionStore
+import ru.orangesoftware.financisto.transaction.FinancistoExchangeRatePort
+import ru.orangesoftware.financisto.transaction.FinancistoReceiptMediaPort
+import ru.orangesoftware.financisto.transaction.FinancistoTransactionPreferencesPort
+import ru.orangesoftware.financisto.transaction.FinancistoTransactionRepository
+import ru.orangesoftware.financisto.transaction.di.transactionModule
+import ru.orangesoftware.financisto.transaction.port.DraftSessionStore
+import ru.orangesoftware.financisto.transaction.port.ExchangeRatePort
+import ru.orangesoftware.financisto.transaction.port.ReceiptMediaPort
+import ru.orangesoftware.financisto.transaction.port.TransactionPreferencesPort
+import ru.orangesoftware.financisto.transaction.port.TransactionRepository
 import ru.orangesoftware.financisto.utils.Logger
 import ru.orangesoftware.financisto.utils.TimberLogger
 import ru.orangesoftware.financisto.utils.TimberTree
@@ -112,6 +123,14 @@ val viewModelModule = module {
     viewModelOf(::MonthlyViewViewModel)
 }
 
+val transactionPortsModule = module {
+    singleOf(::FinancistoTransactionRepository) { bind<TransactionRepository>() }
+    singleOf(::FinancistoTransactionPreferencesPort) { bind<TransactionPreferencesPort>() }
+    singleOf(::FinancistoDraftSessionStore) { bind<DraftSessionStore>() }
+    singleOf(::FinancistoExchangeRatePort) { bind<ExchangeRatePort>() }
+    singleOf(::FinancistoReceiptMediaPort) { bind<ReceiptMediaPort>() }
+}
+
 val modules = listOf(
     storage,
     eventBus,
@@ -123,6 +142,8 @@ val modules = listOf(
     exchangeRates,
     coroutineModule,
     viewModelModule,
+    transactionPortsModule,
+    transactionModule,
 )
 
 // Start

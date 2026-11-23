@@ -28,7 +28,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -64,6 +63,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.MutableCreationExtras
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.core.designsystem.theme.FinancistoTheme
 import ru.orangesoftware.financisto.db.DatabaseHelper.ReportColumns
 import ru.orangesoftware.financisto.filter.Criteria
 import ru.orangesoftware.financisto.filter.WhereFilter
@@ -89,7 +89,6 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
         super.attachBaseContext(MyPreferences.switchLocale(newBase))
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -154,7 +153,7 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
             var maxAmount by remember { mutableLongStateOf(0L) }
             var maxAmountWidth by remember { mutableLongStateOf(0L) }
 
-            MaterialTheme {
+            FinancistoTheme {
                 Scaffold(
                     snackbarHost = {
                         SnackbarHost(hostState = snackbarHostState)
@@ -233,7 +232,6 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun ReportTopBar(
         modifier: Modifier = Modifier,
@@ -256,7 +254,6 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
         )
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun ReportBottomBar(
         modifier: Modifier = Modifier,
@@ -374,7 +371,6 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun PieChartIconButton(
         modifier: Modifier = Modifier,
@@ -392,7 +388,6 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
         }
     }
 
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun IncomeExpenseIconButton(
         modifier: Modifier = Modifier,

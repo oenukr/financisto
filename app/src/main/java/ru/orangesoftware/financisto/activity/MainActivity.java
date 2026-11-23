@@ -27,6 +27,7 @@ import ru.orangesoftware.financisto.bus.SwitchToMenuTabEvent;
 import ru.orangesoftware.financisto.db.DatabaseAdapter;
 import ru.orangesoftware.financisto.db.DatabaseHelper;
 import ru.orangesoftware.financisto.dialog.WebViewDialog;
+import ru.orangesoftware.financisto.transaction.TransactionEntryRouter;
 import ru.orangesoftware.financisto.utils.CurrencyCache;
 import ru.orangesoftware.financisto.utils.Logger;
 import ru.orangesoftware.financisto.utils.MyPreferences;
@@ -84,6 +85,7 @@ public class MainActivity extends TabActivity implements TabHost.OnTabChangeList
         PinProtection.unlock(this);
         if (PinProtection.isUnlocked()) {
             WebViewDialog.checkVersionAndShowWhatsNewIfNeeded(this);
+            TransactionEntryRouter.launchPendingAiDraftIfPresent(this);
         }
     }
 

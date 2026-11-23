@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.appfunctions
 
+import android.app.PendingIntent
+import android.content.Context
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.net.Uri
@@ -12,6 +14,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -20,10 +23,10 @@ import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
 import org.koin.dsl.module
 import org.mockito.kotlin.any
-import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import ru.orangesoftware.financisto.app.AppFunctionDatabaseImpl
@@ -33,10 +36,14 @@ import ru.orangesoftware.financisto.model.Category
 import ru.orangesoftware.financisto.model.CategoryEntity
 import ru.orangesoftware.financisto.model.CategoryTree
 import ru.orangesoftware.financisto.model.Currency
-import ru.orangesoftware.financisto.model.Transaction
+import ru.orangesoftware.financisto.transaction.FinancistoDraftSessionStore
 import java.lang.reflect.Field
 import java.time.LocalDateTime
 import java.time.ZoneId
+import kotlin.time.Clock
+import kotlin.time.Instant
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 class TransactionAppFunctionsTest {
 
@@ -58,10 +65,11 @@ class TransactionAppFunctionsTest {
     }
 
     @Test
-    fun testAddTransactionExpense() {
+    fun testOpenDraftExpense() {
         runBlocking {
-            stubInsert(db, txId = 1000L, fromAccountId = 1L, categoryId = 10L, payeeId = 100L, amount = -1550L)
-            val result = appFunctions.addTransaction(
+            val reviewIntent: PendingIntent = mock()
+            whenever(db.createTransactionReviewPendingIntent(any())).thenReturn(reviewIntent)
+            val result = appFunctions.openDraft(
                 amount = 15.50,
                 accountName = "Cash",
                 categoryName = "Food",
@@ -69,112 +77,127 @@ class TransactionAppFunctionsTest {
                 note = "Coffee",
                 isIncome = false,
             )
-            assertEquals(1000L, result.transactionId)
-            assertEquals("Cash", result.accountName)
-            assertEquals("Food", result.categoryPath)
-            assertTrue(result.splitCategoryPaths.isEmpty())
-            assertEquals("Starbucks", result.payeeName)
-            assertNull(result.attachedPictureFileName)
+            val draft = captureDraft(db)
+            assertTrue(draft.draftId.isNotBlank())
+            assertSame(reviewIntent, result)
+            assertEquals(1L, draft.fromAccountId)
+            assertEquals(10L, draft.categoryId)
+            assertEquals(100L, draft.payeeId)
+            assertEquals("Starbucks", draft.payeeName)
+            assertEquals(-1550L, draft.amount)
+            assertFalse(draft.isIncome)
+            assertEquals("Coffee", draft.note)
+            assertNull(draft.attachedPicture)
         }
     }
 
     @Test
-    fun testAddTransactionIncome() {
+    fun testOpenDraftIncome() {
         runBlocking {
-            stubInsert(db, 1001L, fromAccountId = 2L, categoryId = 40L, payeeId = 0L, amount = 50000L, note = "Pay")
-            val result = appFunctions.addTransaction(
+            val reviewIntent: PendingIntent = mock()
+            whenever(db.createTransactionReviewPendingIntent(any())).thenReturn(reviewIntent)
+            val result = appFunctions.openDraft(
                 amount = 500.00,
                 accountName = "Card",
                 categoryName = "Salary",
                 note = "Pay",
                 isIncome = true,
             )
-            assertEquals(1001L, result.transactionId)
-            assertEquals("Card", result.accountName)
-            assertEquals("Salary", result.categoryPath)
+            val draft = captureDraft(db)
+            assertSame(reviewIntent, result)
+            assertEquals(2L, draft.fromAccountId)
+            assertEquals(40L, draft.categoryId)
+            assertEquals(50000L, draft.amount)
+            assertTrue(draft.isIncome)
+            assertEquals("Pay", draft.note)
         }
     }
 
     @Test
-    fun testAddTransactionTransfer() {
+    fun testOpenDraftTransfer() {
         runBlocking {
-            stubInsert(
-                db = db,
-                txId = 1002L,
-                fromAccountId = 1L,
-                toAccountId = 2L,
-                categoryId = 0L,
-                payeeId = 0L,
-                amount = -5000L,
-                toAmount = 5000L,
-                note = "ATM",
-            )
-            val result = appFunctions.addTransaction(50.00, "Cash", note = "ATM", toAccountName = "Card")
-            assertEquals(1002L, result.transactionId)
-            assertEquals("Cash", result.accountName)
-            assertNull(result.categoryPath)
+            val reviewIntent: PendingIntent = mock()
+            whenever(db.createTransactionReviewPendingIntent(any())).thenReturn(reviewIntent)
+            val result = appFunctions.openDraft(50.00, "Cash", note = "ATM", toAccountName = "Card")
+            val draft = captureDraft(db)
+            assertSame(reviewIntent, result)
+            assertEquals(1L, draft.fromAccountId)
+            assertEquals(2L, draft.toAccountId)
+            assertEquals(0L, draft.categoryId)
+            assertEquals(-5000L, draft.amount)
+            assertEquals(5000L, draft.toAmount)
+            assertFalse(draft.isIncome)
+            assertEquals("ATM", draft.note)
         }
     }
 
     @Test
-    fun testAddTransactionCreatePayee() {
+    fun testOpenDraftDefersNewPayeeCreation() {
         runBlocking {
-            whenever(db.createPayee("McDonalds")).thenReturn(200L)
-            stubInsert(db, 1003L, fromAccountId = 1L, categoryId = 0L, payeeId = 200L, amount = -2500L, note = "Lunch")
-            val result = appFunctions.addTransaction(
+            appFunctions.openDraft(
                 amount = 25.00,
                 accountName = "Cash",
                 payeeName = "McDonalds",
                 note = "Lunch",
                 isIncome = false,
             )
-            assertEquals(1003L, result.transactionId)
-            assertEquals("McDonalds", result.payeeName)
-            verify(db).createPayee("McDonalds")
+            val draft = captureDraft(db)
+            assertEquals(1L, draft.fromAccountId)
+            assertEquals(0L, draft.categoryId)
+            assertNull(draft.payeeId)
+            assertEquals("McDonalds", draft.payeeName)
+            assertEquals(-2500L, draft.amount)
+            assertEquals("Lunch", draft.note)
         }
     }
 
     @Test
-    fun testAddTransactionAutoClassifiesCategoryWhenNull() {
+    fun testOpenDraftAutoClassifiesCategoryWhenNull() {
         runBlocking {
-            stubInsert(db, txId = 1004L, categoryId = 11L, payeeId = 0L, amount = -1800L, note = "Fresh milk and bread")
-            stubInsert(db, txId = 1005L, categoryId = 10L, payeeId = 100L, amount = -1550L, note = "Coffee")
+            val reviewIntent: PendingIntent = mock()
+            whenever(db.createTransactionReviewPendingIntent(any())).thenReturn(reviewIntent)
 
-            val byNoteResult = appFunctions.addTransaction(
+            val byNoteResult = appFunctions.openDraft(
                 amount = 18.00,
                 accountName = "Cash",
                 note = "Fresh milk and bread",
                 isIncome = false,
             )
-            assertEquals(1004L, byNoteResult.transactionId)
-            assertEquals("Food > Groceries", byNoteResult.categoryPath)
+            assertSame(reviewIntent, byNoteResult)
 
-            val byPayeeResult = appFunctions.addTransaction(
+            val byPayeeResult = appFunctions.openDraft(
                 amount = 15.50,
                 accountName = "Cash",
                 payeeName = "Starbucks",
                 note = "Coffee",
                 isIncome = false,
             )
-            assertEquals(1005L, byPayeeResult.transactionId)
-            assertEquals("Food", byPayeeResult.categoryPath)
+            assertSame(reviewIntent, byPayeeResult)
+
+            val captor = argumentCaptor<AppFunctionTransactionDraft>()
+            verify(db, times(2)).createTransactionReviewPendingIntent(captor.capture())
+            assertEquals(11L, captor.firstValue.categoryId)
+            assertEquals(-1800L, captor.firstValue.amount)
+            assertEquals(10L, captor.secondValue.categoryId)
+            assertEquals(100L, captor.secondValue.payeeId)
+            assertEquals(-1550L, captor.secondValue.amount)
         }
     }
 
     @Test
-    fun testAddTransactionAccountNotFoundThrowsElementNotFoundWithAvailableAccounts() {
+    fun testOpenDraftAccountNotFoundThrowsElementNotFoundWithAvailableAccounts() {
         val ex = assertThrows(AppFunctionElementNotFoundException::class.java) {
-            runBlocking { appFunctions.addTransaction(amount = 25.00, accountName = "UnknownAccount", note = "Lunch") }
+            runBlocking { appFunctions.openDraft(amount = 25.00, accountName = "UnknownAccount", note = "Lunch") }
         }
         assertTrue(ex.message.orEmpty().contains("Cash"))
         assertTrue(ex.message.orEmpty().contains("Card"))
     }
 
     @Test
-    fun testAddTransactionCategoryNotFoundThrowsElementNotFoundWithAvailableCategories() {
+    fun testOpenDraftCategoryNotFoundThrowsElementNotFoundWithAvailableCategories() {
         val ex = assertThrows(AppFunctionElementNotFoundException::class.java) {
             runBlocking {
-                appFunctions.addTransaction(
+                appFunctions.openDraft(
                     amount = 25.00,
                     accountName = "Cash",
                     categoryName = "NonExistentCategory",
@@ -187,10 +210,9 @@ class TransactionAppFunctionsTest {
     }
 
     @Test
-    fun testAddTransactionFuzzyMatching() {
+    fun testOpenDraftFuzzyMatching() {
         runBlocking {
-            stubInsert(db, txId = 1000L, fromAccountId = 1L, categoryId = 10L, payeeId = 100L, amount = -1550L)
-            val result = appFunctions.addTransaction(
+            appFunctions.openDraft(
                 amount = 15.50,
                 accountName = "Csh!",
                 categoryName = "food",
@@ -198,18 +220,19 @@ class TransactionAppFunctionsTest {
                 note = "Coffee",
                 isIncome = false,
             )
-            assertEquals(1000L, result.transactionId)
-            assertEquals("Cash", result.accountName)
-            assertEquals("Food", result.categoryPath)
-            assertEquals("Starbucks", result.payeeName)
+            val draft = captureDraft(db)
+            assertEquals(1L, draft.fromAccountId)
+            assertEquals(10L, draft.categoryId)
+            assertEquals(100L, draft.payeeId)
+            assertEquals("Starbucks", draft.payeeName)
+            assertEquals(-1550L, draft.amount)
         }
     }
 
     @Test
-    fun testAddTransactionNegativeAmountExpense() {
+    fun testOpenDraftNegativeAmountExpense() {
         runBlocking {
-            stubInsert(db, txId = 1000L, fromAccountId = 1L, categoryId = 10L, payeeId = 100L, amount = -1550L)
-            val result = appFunctions.addTransaction(
+            appFunctions.openDraft(
                 amount = -15.50,
                 accountName = "Cash",
                 categoryName = "Food",
@@ -217,75 +240,59 @@ class TransactionAppFunctionsTest {
                 note = "Coffee",
                 isIncome = false,
             )
-            assertEquals(1000L, result.transactionId)
+            val draft = captureDraft(db)
+            assertEquals(-1550L, draft.amount)
         }
     }
 
     @Test
-    fun testAddTransactionNegativeAmountTransfer() {
+    fun testOpenDraftNegativeAmountTransfer() {
         runBlocking {
-            stubInsert(
-                db = db,
-                txId = 1002L,
-                fromAccountId = 1L,
-                toAccountId = 2L,
-                categoryId = 0L,
-                payeeId = 0L,
-                amount = -5000L,
-                toAmount = 5000L,
-                note = "ATM",
-            )
-            val result = appFunctions.addTransaction(-50.00, "Cash", note = "ATM", toAccountName = "Card")
-            assertEquals(1002L, result.transactionId)
+            appFunctions.openDraft(-50.00, "Cash", note = "ATM", toAccountName = "Card")
+            val draft = captureDraft(db)
+            assertEquals(1L, draft.fromAccountId)
+            assertEquals(2L, draft.toAccountId)
+            assertEquals(-5000L, draft.amount)
+            assertEquals(5000L, draft.toAmount)
+            assertEquals("ATM", draft.note)
         }
     }
 
     @Test
-    fun testAddTransactionShortQueryNoFuzzyMatch() {
+    fun testOpenDraftShortQueryNoFuzzyMatch() {
         whenever(db.getAccounts()).thenReturn(listOf(AccountInfo(1L, "Cash"), AccountInfo(3L, "C")))
         assertThrows(AppFunctionElementNotFoundException::class.java) {
-            runBlocking { appFunctions.addTransaction(amount = 10.0, accountName = "B", isIncome = false) }
+            runBlocking { appFunctions.openDraft(amount = 10.0, accountName = "B", isIncome = false) }
         }
     }
 
     @Test
-    fun testAddTransactionInvalidAmountThrowsInvalidArgument() {
+    fun testOpenDraftInvalidAmountThrowsInvalidArgument() {
         assertThrows(AppFunctionInvalidArgumentException::class.java) {
-            runBlocking { appFunctions.addTransaction(amount = 0.0, accountName = "Cash") }
+            runBlocking { appFunctions.openDraft(amount = 0.0, accountName = "Cash") }
         }
         assertThrows(AppFunctionInvalidArgumentException::class.java) {
-            runBlocking { appFunctions.addTransaction(amount = Double.NaN, accountName = "Cash") }
-        }
-    }
-
-    @Test
-    fun testAddTransactionTransferSameAccountThrowsInvalidArgument() {
-        assertThrows(AppFunctionInvalidArgumentException::class.java) {
-            runBlocking { appFunctions.addTransaction(amount = 20.0, accountName = "Cash", toAccountName = "Cash") }
+            runBlocking { appFunctions.openDraft(amount = Double.NaN, accountName = "Cash") }
         }
     }
 
     @Test
-    fun testAddTransactionWithReceiptDateTimeAndImageAttachment() {
+    fun testOpenDraftTransferSameAccountThrowsInvalidArgument() {
+        assertThrows(AppFunctionInvalidArgumentException::class.java) {
+            runBlocking { appFunctions.openDraft(amount = 20.0, accountName = "Cash", toAccountName = "Cash") }
+        }
+    }
+
+    @Test
+    fun testOpenDraftWithReceiptDateTimeAndImageAttachment() {
         runBlocking {
             val mockUri: Uri = mock()
             val receiptDate = LocalDateTime.of(2026, 11, 5, 14, 30, 0)
             val expectedMillis = receiptDate.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
             whenever(db.saveReceiptPicture(mockUri)).thenReturn("20261105143000.jpg")
-            stubInsert(
-                db = db,
-                txId = 1050L,
-                fromAccountId = 2L,
-                categoryId = 11L,
-                payeeId = null,
-                amount = -4275L,
-                note = "Weekly groceries",
-                dateTime = expectedMillis,
-                attachedPicture = "20261105143000.jpg",
-            )
 
-            val result = appFunctions.addTransaction(
+            appFunctions.openDraft(
                 amount = 42.75,
                 accountName = "Card",
                 categoryName = "Food > Groceries",
@@ -296,16 +303,19 @@ class TransactionAppFunctionsTest {
                 receiptImageUri = mockUri,
             )
 
-            assertEquals(1050L, result.transactionId)
-            assertEquals("Card", result.accountName)
-            assertEquals("Food > Groceries", result.categoryPath)
-            assertEquals(receiptDate, result.transactionDateTime)
-            assertEquals("20261105143000.jpg", result.attachedPictureFileName)
+            val draft = captureDraft(db)
+            assertEquals(2L, draft.fromAccountId)
+            assertEquals(11L, draft.categoryId)
+            assertNull(draft.payeeId)
+            assertEquals(-4275L, draft.amount)
+            assertEquals("Weekly groceries", draft.note)
+            assertEquals(expectedMillis, draft.dateTime)
+            assertEquals("20261105143000.jpg", draft.attachedPicture)
         }
     }
 
     @Test
-    fun testAddTransactionWithSplitCategoriesGroceriesAndGifts() {
+    fun testOpenDraftWithSplitCategoriesGroceriesAndGifts() {
         runBlocking {
             val receiptDate = LocalDateTime.of(2026, 11, 6, 18, 15, 0)
             val expectedMillis = receiptDate.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
@@ -313,19 +323,8 @@ class TransactionAppFunctionsTest {
                 TransactionSplit(categoryId = 11L, amount = -3500L, note = "Milk and bread"),
                 TransactionSplit(categoryId = 30L, amount = -2500L, note = "Birthday gift"),
             )
-            stubInsert(
-                db = db,
-                txId = 2000L,
-                fromAccountId = 2L,
-                categoryId = -1L,
-                payeeId = 0L,
-                amount = -6000L,
-                note = "Supermarket checkout",
-                dateTime = expectedMillis,
-                splits = expectedSplits,
-            )
 
-            val result = appFunctions.addTransaction(
+            appFunctions.openDraft(
                 amount = 60.00,
                 accountName = "Card",
                 note = "Supermarket checkout",
@@ -337,32 +336,26 @@ class TransactionAppFunctionsTest {
                 ),
             )
 
-            assertEquals(2000L, result.transactionId)
-            assertEquals("<SPLIT_CATEGORY>", result.categoryPath)
-            assertEquals(listOf("Food > Groceries", "Gifts"), result.splitCategoryPaths)
+            val draft = captureDraft(db)
+            assertEquals(2L, draft.fromAccountId)
+            assertEquals(-1L, draft.categoryId)
+            assertEquals(-6000L, draft.amount)
+            assertEquals("Supermarket checkout", draft.note)
+            assertEquals(expectedMillis, draft.dateTime)
+            assertEquals(expectedSplits, draft.splits)
         }
     }
 
     @Test
-    fun testAddTransactionSplitInfersCategoryFromNoteAndAdjustsOneCentRounding() {
+    fun testOpenDraftSplitInfersCategoryFromNoteAndAdjustsOneCentRounding() {
         runBlocking {
             val expectedSplits = listOf(
                 TransactionSplit(categoryId = 11L, amount = -3333L, note = "Fresh milk and bread"),
                 TransactionSplit(categoryId = 30L, amount = -3333L, note = "Birthday gift toy"),
                 TransactionSplit(categoryId = 20L, amount = -3334L, note = "Monthly rent share"),
             )
-            stubInsert(
-                db = db,
-                txId = 2001L,
-                fromAccountId = 1L,
-                categoryId = -1L,
-                payeeId = 0L,
-                amount = -10000L,
-                note = "",
-                splits = expectedSplits,
-            )
 
-            val result = appFunctions.addTransaction(
+            appFunctions.openDraft(
                 amount = 100.00,
                 accountName = "Cash",
                 splits = listOf(
@@ -372,16 +365,19 @@ class TransactionAppFunctionsTest {
                 ),
             )
 
-            assertEquals(2001L, result.transactionId)
-            assertEquals(listOf("Food > Groceries", "Gifts", "Rent"), result.splitCategoryPaths)
+            val draft = captureDraft(db)
+            assertEquals(1L, draft.fromAccountId)
+            assertEquals(-1L, draft.categoryId)
+            assertEquals(-10000L, draft.amount)
+            assertEquals(expectedSplits, draft.splits)
         }
     }
 
     @Test
-    fun testAddTransactionSplitAmountMismatchThrowsInvalidArgument() {
+    fun testOpenDraftSplitAmountMismatchThrowsInvalidArgument() {
         assertThrows(AppFunctionInvalidArgumentException::class.java) {
             runBlocking {
-                appFunctions.addTransaction(
+                appFunctions.openDraft(
                     amount = 60.00,
                     accountName = "Card",
                     splits = listOf(
@@ -394,10 +390,10 @@ class TransactionAppFunctionsTest {
     }
 
     @Test
-    fun testAddTransactionSplitWithTransferThrowsInvalidArgument() {
+    fun testOpenDraftSplitWithTransferThrowsInvalidArgument() {
         assertThrows(AppFunctionInvalidArgumentException::class.java) {
             runBlocking {
-                appFunctions.addTransaction(
+                appFunctions.openDraft(
                     amount = 60.00,
                     accountName = "Cash",
                     toAccountName = "Card",
@@ -526,18 +522,10 @@ class TransactionAppFunctionsTest {
                 TransactionSplit(categoryId = 101L, amount = -12000L, note = "Молоко та сметана"),
                 TransactionSplit(categoryId = 102L, amount = -38000L, note = "Святковий подарунок"),
             )
-            stubInsert(
-                db = db,
-                txId = 3001L,
-                fromAccountId = 2L,
-                categoryId = -1L,
-                payeeId = 300L,
-                amount = -50000L,
-                note = "Чек Сільпо",
-                splits = expectedSplits,
-            )
 
-            val txResult = appFunctions.addTransaction(
+            val reviewIntent: PendingIntent = mock()
+            whenever(db.createTransactionReviewPendingIntent(any())).thenReturn(reviewIntent)
+            val txResult = appFunctions.openDraft(
                 amount = 500.0,
                 accountName = "Card",
                 payeeName = "Сільпо",
@@ -547,8 +535,14 @@ class TransactionAppFunctionsTest {
                     TransactionSplitInput(amount = 380.0, categoryName = null, note = "Святковий подарунок"),
                 ),
             )
-            assertEquals(3001L, txResult.transactionId)
-            assertEquals(listOf("Їжа > Продукти", "Подарунки"), txResult.splitCategoryPaths)
+            val draft = captureDraft(db)
+            assertSame(reviewIntent, txResult)
+            assertEquals(2L, draft.fromAccountId)
+            assertEquals(-1L, draft.categoryId)
+            assertEquals(300L, draft.payeeId)
+            assertEquals(-50000L, draft.amount)
+            assertEquals("Чек Сільпо", draft.note)
+            assertEquals(expectedSplits, draft.splits)
         }
     }
 
@@ -623,23 +617,21 @@ class TransactionAppFunctionsTest {
             assertEquals("Salary", prepIncome.suggestedCategory?.fullPath)
             assertEquals("HIGH", prepIncome.categoryConfidence)
 
-            stubInsert(
-                db = db,
-                txId = 1099L,
-                fromAccountId = 1L,
-                categoryId = 0L,
-                payeeId = 0L,
-                amount = -2000L,
-                note = "Salary",
-            )
-            val addExpenseDefault = appFunctions.addTransaction(
+            val reviewIntent: PendingIntent = mock()
+            whenever(db.createTransactionReviewPendingIntent(any())).thenReturn(reviewIntent)
+            val addExpenseDefault = appFunctions.openDraft(
                 amount = 20.0,
                 accountName = "Cash",
                 note = "Salary",
                 isIncome = null,
             )
-            assertEquals(1099L, addExpenseDefault.transactionId)
-            assertNull(addExpenseDefault.categoryPath)
+            val draft = captureDraft(db)
+            assertSame(reviewIntent, addExpenseDefault)
+            assertEquals(1L, draft.fromAccountId)
+            assertEquals(0L, draft.categoryId)
+            assertEquals(-2000L, draft.amount)
+            assertFalse(draft.isIncome)
+            assertEquals("Salary", draft.note)
         }
     }
 }
@@ -649,36 +641,21 @@ class CategoryClassifierAndDatabaseAdapterTest {
     @Test
     fun testAppFunctionDatabaseImplWithMockAdapterAndExifParser() {
         val mockAdapter = createMockDatabaseAdapter()
-        val impl = AppFunctionDatabaseImpl(mockAdapter)
+        val mockContext: Context = mock()
+        whenever(mockContext.getSharedPreferences(any(), any())).thenReturn(mock())
+        val impl = AppFunctionDatabaseImpl(mockAdapter, FinancistoDraftSessionStore(mockContext))
 
         val accounts = impl.getAccounts()
         assertEquals(1, accounts.size)
         assertEquals("Checking", accounts[0].title)
         assertEquals("USD", accounts[0].currencyCode)
+        assertEquals(1L, accounts[0].currencyId)
 
         val categories = impl.getCategories()
         assertEquals(2, categories.size)
         assertEquals("Food", categories[0].fullPath)
         assertEquals("Food > Groceries", categories[1].fullPath)
         assertEquals(10L, categories[1].parentId)
-
-        val txId = impl.insertOrUpdateTransaction(
-            fromAccountId = 1L,
-            toAccountId = null,
-            categoryId = null,
-            payeeId = 5L,
-            amount = -5000L,
-            toAmount = null,
-            note = "Split test",
-            dateTime = 123456L,
-            attachedPicture = "pic.jpg",
-            splits = listOf(TransactionSplit(categoryId = 11L, amount = -5000L, note = "Item")),
-        )
-        assertEquals(777L, txId)
-        val captor = argumentCaptor<Transaction>()
-        verify(mockAdapter).insertOrUpdate(captor.capture())
-        assertEquals(Category.SPLIT_CATEGORY_ID, captor.firstValue.categoryId)
-        assertEquals(1, captor.firstValue.splits.size)
 
         assertEquals(
             LocalDateTime.of(2026, 11, 5, 14, 30, 15),
@@ -777,30 +754,27 @@ class CategoryClassifierAndDatabaseAdapterTest {
                 assertFalse(uniquePrep.requiresAccountSelection)
 
                 val srcEx = assertThrows(AppFunctionInvalidArgumentException::class.java) {
-                    runBlocking { service.addTransaction(amount = 10.0, accountName = "Card") }
+                    runBlocking { service.openDraft(amount = 10.0, accountName = "Card") }
                 }
                 assertTrue(srcEx.message.orEmpty().contains("Card 1"))
                 assertTrue(srcEx.message.orEmpty().contains("Card 2"))
 
                 val dstEx = assertThrows(AppFunctionInvalidArgumentException::class.java) {
-                    runBlocking { service.addTransaction(amount = 10.0, accountName = "Cash", toAccountName = "Card") }
+                    runBlocking {
+                        service.openDraft(amount = 10.0, accountName = "Cash", toAccountName = "Card")
+                    }
                 }
                 assertTrue(dstEx.message.orEmpty().contains("Card 1"))
 
-                stubInsert(
-                    db = db,
-                    txId = 5001L,
-                    fromAccountId = 1L,
-                    toAccountId = 3L,
-                    categoryId = 0L,
-                    payeeId = 0L,
-                    amount = -1500L,
-                    toAmount = 1500L,
-                    note = "",
-                )
-                val transfer = service.addTransaction(amount = 15.0, accountName = "Csh", toAccountName = "Card 2")
-                assertEquals(5001L, transfer.transactionId)
-                assertEquals("Cash", transfer.accountName)
+                val reviewIntent: PendingIntent = mock()
+                whenever(db.createTransactionReviewPendingIntent(any())).thenReturn(reviewIntent)
+                val transfer = service.openDraft(amount = 15.0, accountName = "Csh", toAccountName = "Card 2")
+                val draft = captureDraft(db)
+                assertSame(reviewIntent, transfer)
+                assertEquals(1L, draft.fromAccountId)
+                assertEquals(3L, draft.toAccountId)
+                assertEquals(-1500L, draft.amount)
+                assertEquals(1500L, draft.toAmount)
             }
         } finally {
             stopKoin()
@@ -817,11 +791,11 @@ class CategoryClassifierAndDatabaseAdapterTest {
         try {
             val service = TransactionAppFunctionService()
             assertThrows(AppFunctionInvalidArgumentException::class.java) {
-                runBlocking { service.addTransaction(amount = 10.125, accountName = "Cash") }
+                runBlocking { service.openDraft(amount = 10.125, accountName = "Cash") }
             }
             assertThrows(AppFunctionInvalidArgumentException::class.java) {
                 runBlocking {
-                    service.addTransaction(
+                    service.openDraft(
                         amount = 10.01,
                         accountName = "Cash",
                         splits = listOf(
@@ -861,7 +835,7 @@ class CategoryClassifierAndDatabaseAdapterTest {
             val service = TransactionAppFunctionService()
             assertThrows(AppFunctionInvalidArgumentException::class.java) {
                 runBlocking {
-                    service.addTransaction(
+                    service.openDraft(
                         amount = 0.01,
                         accountName = "Cash",
                         splits = listOf(
@@ -875,18 +849,10 @@ class CategoryClassifierAndDatabaseAdapterTest {
                 TransactionSplit(categoryId = 10L, amount = -99L, note = "Lunch"),
                 TransactionSplit(categoryId = 30L, amount = -1L, note = "Bag"),
             )
-            stubInsert(
-                db = db,
-                txId = 5002L,
-                fromAccountId = 1L,
-                categoryId = -1L,
-                payeeId = 0L,
-                amount = -100L,
-                note = "",
-                splits = expectedSplits,
-            )
+            val reviewIntent: PendingIntent = mock()
+            whenever(db.createTransactionReviewPendingIntent(any())).thenReturn(reviewIntent)
             val adjustedResult = runBlocking {
-                service.addTransaction(
+                service.openDraft(
                     amount = 1.00,
                     accountName = "Cash",
                     splits = listOf(
@@ -895,20 +861,23 @@ class CategoryClassifierAndDatabaseAdapterTest {
                     ),
                 )
             }
-            assertEquals(5002L, adjustedResult.transactionId)
+            val draft = captureDraft(db)
+            assertSame(reviewIntent, adjustedResult)
+            assertEquals(-100L, draft.amount)
+            assertEquals(expectedSplits, draft.splits)
         } finally {
             stopKoin()
         }
     }
 
     @Test
-    fun testAddTransactionAccountIdsResolveDuplicatesAndPreserveNameAmbiguity() {
+    fun testOpenDraftAccountIdsResolveDuplicatesAndPreserveNameAmbiguity() {
         val db: AppFunctionDatabase = mock()
         setupDefaultFixtures(db)
         whenever(db.getAccounts()).thenReturn(
             listOf(
-                AccountInfo(id = 10L, title = "Wallet", currencyCode = "USD", type = "CASH"),
-                AccountInfo(id = 11L, title = "Wallet", currencyCode = "EUR", type = "CASH"),
+                AccountInfo(id = 10L, title = "Wallet", currencyCode = "USD", type = "CASH", currencyId = 1L),
+                AccountInfo(id = 11L, title = "Wallet", currencyCode = "EUR", type = "CASH", currencyId = 2L),
             )
         )
         ensureBundleEmptyInitialized()
@@ -917,43 +886,87 @@ class CategoryClassifierAndDatabaseAdapterTest {
         try {
             val service = TransactionAppFunctionService()
             val dupEx = assertThrows(AppFunctionInvalidArgumentException::class.java) {
-                runBlocking { service.addTransaction(amount = 10.0, accountName = "Wallet") }
+                runBlocking { service.openDraft(amount = 10.0, accountName = "Wallet") }
             }
             assertTrue(dupEx.message.orEmpty().contains("id=10"))
             assertTrue(dupEx.message.orEmpty().contains("id=11"))
             assertThrows(AppFunctionElementNotFoundException::class.java) {
-                runBlocking { service.addTransaction(amount = 10.0, accountId = 999L) }
+                runBlocking { service.openDraft(amount = 10.0, accountId = 999L) }
             }
             assertThrows(AppFunctionInvalidArgumentException::class.java) {
-                runBlocking { service.addTransaction(amount = 10.0) }
+                runBlocking { service.openDraft(amount = 10.0) }
             }
-            stubInsert(
-                db = db,
-                txId = 5003L,
-                fromAccountId = 11L,
-                categoryId = 10L,
-                payeeId = 0L,
-                amount = -1000L,
-                note = "",
-            )
-            val byId = runBlocking { service.addTransaction(amount = 10.0, categoryName = "Food", accountId = 11L) }
-            assertEquals(5003L, byId.transactionId)
-            stubInsert(
-                db = db,
-                txId = 5004L,
-                fromAccountId = 10L,
-                toAccountId = 11L,
-                categoryId = 0L,
-                payeeId = 0L,
-                amount = -2500L,
-                toAmount = 2500L,
-                note = "",
-            )
+            val reviewIntent: PendingIntent = mock()
+            whenever(db.createTransactionReviewPendingIntent(any())).thenReturn(reviewIntent)
+            val byId = runBlocking { service.openDraft(amount = 10.0, categoryName = "Food", accountId = 11L) }
+            assertSame(reviewIntent, byId)
             val transferByIds = runBlocking {
-                service.addTransaction(amount = 25.0, accountId = 10L, toAccountId = 11L)
+                service.openDraft(amount = 25.0, accountId = 10L, toAccountId = 11L)
             }
-            assertEquals(5004L, transferByIds.transactionId)
-            assertEquals("Wallet", transferByIds.accountName)
+            assertSame(reviewIntent, transferByIds)
+            val captor = argumentCaptor<AppFunctionTransactionDraft>()
+            verify(db, times(2)).createTransactionReviewPendingIntent(captor.capture())
+            assertEquals(11L, captor.firstValue.fromAccountId)
+            assertEquals(10L, captor.firstValue.categoryId)
+            assertEquals(-1000L, captor.firstValue.amount)
+            assertEquals(10L, captor.secondValue.fromAccountId)
+            assertEquals(11L, captor.secondValue.toAccountId)
+            assertEquals(-2500L, captor.secondValue.amount)
+            assertNull(captor.secondValue.toAmount)
+        } finally {
+            stopKoin()
+        }
+    }
+
+    @OptIn(ExperimentalUuidApi::class)
+    @Test
+    fun testOpenDraftCrossCurrencyTransferLeavesToAmountNullAndUsesInjectedClock() {
+        val db: AppFunctionDatabase = mock()
+        setupDefaultFixtures(db)
+        whenever(db.getAccounts()).thenReturn(
+            listOf(
+                AccountInfo(id = 1L, title = "USD Cash", currencyCode = "USD", type = "CASH", currencyId = 1L),
+                AccountInfo(id = 2L, title = "USD Bank", currencyCode = "USD", type = "BANK", currencyId = 1L),
+                AccountInfo(id = 3L, title = "EUR Bank", currencyCode = "EUR", type = "BANK", currencyId = 2L),
+                AccountInfo(id = 4L, title = "Custom USD", currencyCode = "USD", type = "BANK", currencyId = 9L),
+            )
+        )
+        val fixedInstant = Instant.parse("2026-11-22T10:15:30Z")
+        val fixedClock = object : Clock {
+            override fun now(): Instant = fixedInstant
+        }
+        ensureBundleEmptyInitialized()
+        stopKoin()
+        startKoin {
+            modules(
+                module {
+                    single { db }
+                    single<Clock> { fixedClock }
+                }
+            )
+        }
+        try {
+            val service = TransactionAppFunctionService()
+            runBlocking {
+                service.openDraft(amount = 50.0, accountId = 1L, toAccountId = 3L, note = "FX transfer")
+                service.openDraft(amount = 50.0, accountId = 1L, toAccountId = 2L, note = "Same currency")
+                service.openDraft(amount = 50.0, accountId = 1L, toAccountId = 4L, note = "Different currencyId")
+            }
+            val captor = argumentCaptor<AppFunctionTransactionDraft>()
+            verify(db, times(3)).createTransactionReviewPendingIntent(captor.capture())
+
+            val fxDraft = captor.allValues[0]
+            assertEquals(-5000L, fxDraft.amount)
+            assertNull(fxDraft.toAmount)
+            assertEquals(fixedInstant.toEpochMilliseconds(), fxDraft.dateTime)
+            assertEquals(fxDraft.draftId, Uuid.parse(fxDraft.draftId).toString())
+
+            val sameCurrencyDraft = captor.allValues[1]
+            assertEquals(-5000L, sameCurrencyDraft.amount)
+            assertEquals(5000L, sameCurrencyDraft.toAmount)
+
+            val differentIdDraft = captor.allValues[2]
+            assertNull(differentIdDraft.toAmount)
         } finally {
             stopKoin()
         }
@@ -963,8 +976,15 @@ class CategoryClassifierAndDatabaseAdapterTest {
 private fun setupDefaultFixtures(db: AppFunctionDatabase) {
     whenever(db.getAccounts()).thenReturn(
         listOf(
-            AccountInfo(id = 1L, title = "Cash", currencyCode = "USD", type = "CASH"),
-            AccountInfo(id = 2L, title = "Card", currencyCode = "USD", type = "CARD", lastCategoryId = 20L),
+            AccountInfo(id = 1L, title = "Cash", currencyCode = "USD", type = "CASH", currencyId = 1L),
+            AccountInfo(
+                id = 2L,
+                title = "Card",
+                currencyCode = "USD",
+                type = "CARD",
+                lastCategoryId = 20L,
+                currencyId = 1L,
+            ),
         )
     )
     whenever(db.getCategories()).thenReturn(
@@ -989,6 +1009,7 @@ private fun setupDefaultFixtures(db: AppFunctionDatabase) {
             HistoricalCategorySignal(categoryId = 11L, note = "Vegetables"),
         )
     )
+    whenever(db.createTransactionReviewPendingIntent(any())).thenReturn(mock())
 }
 
 private fun setupUkrainianFixtures(db: AppFunctionDatabase) {
@@ -1036,39 +1057,18 @@ private fun setupMixedLanguageFixtures(db: AppFunctionDatabase) {
     )
 }
 
-private fun stubInsert(
-    db: AppFunctionDatabase,
-    txId: Long,
-    fromAccountId: Long = 1L,
-    toAccountId: Long? = null,
-    categoryId: Long? = 10L,
-    payeeId: Long? = 100L,
-    amount: Long = -1550L,
-    toAmount: Long? = null,
-    note: String = "Coffee",
-    dateTime: Long? = null,
-    attachedPicture: String? = null,
-    splits: List<TransactionSplit> = emptyList(),
-) {
-    whenever(
-        db.insertOrUpdateTransaction(
-            fromAccountId = eq(fromAccountId),
-            toAccountId = eq(toAccountId),
-            categoryId = if (categoryId == null) anyOrNull() else eq(categoryId),
-            payeeId = if (payeeId == null) anyOrNull() else eq(payeeId),
-            amount = eq(amount),
-            toAmount = eq(toAmount),
-            note = eq(note),
-            dateTime = if (dateTime == null) any() else eq(dateTime),
-            attachedPicture = eq(attachedPicture),
-            splits = eq(splits),
-        )
-    ).thenReturn(txId)
+private fun captureDraft(db: AppFunctionDatabase): AppFunctionTransactionDraft {
+    val captor = argumentCaptor<AppFunctionTransactionDraft>()
+    verify(db).createTransactionReviewPendingIntent(captor.capture())
+    return captor.firstValue
 }
 
 private fun createMockDatabaseAdapter(): DatabaseAdapter {
     val mockAdapter: DatabaseAdapter = mock()
-    val usd = Currency().apply { name = "USD" }
+    val usd = Currency().apply {
+        id = 1L
+        name = "USD"
+    }
     val activeAcc = Account().apply {
         id = 1L
         title = "Checking"
@@ -1102,7 +1102,6 @@ private fun createMockDatabaseAdapter(): DatabaseAdapter {
         add(food)
     }
     whenever(mockAdapter.getCategoriesTree(false)).thenReturn(tree)
-    whenever(mockAdapter.insertOrUpdate(any<Transaction>())).thenReturn(777L)
     val cursor: Cursor = mock()
     whenever(cursor.moveToNext()).thenReturn(true, true, false)
     whenever(cursor.getLong(0)).thenReturn(11L, 10L)

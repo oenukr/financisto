@@ -8,9 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -27,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import com.google.accompanist.web.WebView
 import com.google.accompanist.web.rememberWebViewState
 import ru.orangesoftware.financisto.R
+import ru.orangesoftware.financisto.core.designsystem.theme.FinancistoTheme
 import ru.orangesoftware.financisto.utils.MyPreferences
 import ru.orangesoftware.financisto.utils.Utils
 
@@ -44,14 +43,6 @@ class AboutActivity : ComponentActivity() {
         }
     }
 
-    @Composable
-    fun FinancistoTheme(content: @Composable () -> Unit) {
-        MaterialTheme(
-            content = content
-        )
-    }
-
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun AboutScreen() {
         var state by remember { mutableIntStateOf(0) }
@@ -89,11 +80,11 @@ class AboutActivity : ComponentActivity() {
                         )
                     }
                 }
-                when(state) {
-                    0 -> WhatsNewContent()
-                    1 -> PrivacyPolicyContent()
-                    2 -> LicenseContent()
-                    3 -> AboutContent()
+                when (state) {
+                    TAB_WHATS_NEW -> WhatsNewContent()
+                    TAB_PRIVACY_POLICY -> PrivacyPolicyContent()
+                    TAB_LICENSE -> LicenseContent()
+                    TAB_ABOUT -> AboutContent()
                 }
             }
         }
@@ -128,10 +119,15 @@ class AboutActivity : ComponentActivity() {
     }
 
     companion object {
+        private const val TAB_WHATS_NEW = 0
+        private const val TAB_PRIVACY_POLICY = 1
+        private const val TAB_LICENSE = 2
+        private const val TAB_ABOUT = 3
+
         fun getAppVersion(context: Context): String {
             return try {
                 "v. " + Utils.getPackageInfo(context)?.versionName.orEmpty()
-            } catch (e: NameNotFoundException) {
+            } catch (ignored: NameNotFoundException) {
                 ""
             }
         }

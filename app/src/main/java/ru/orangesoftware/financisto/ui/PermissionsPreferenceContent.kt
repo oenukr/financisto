@@ -37,6 +37,7 @@ import org.koin.androidx.compose.KoinAndroidContext
 import org.koin.core.annotation.KoinExperimentalAPI
 import ru.orangesoftware.financisto.R
 import ru.orangesoftware.financisto.app.DependenciesHolder
+import ru.orangesoftware.financisto.core.designsystem.theme.FinancistoTheme
 import ru.orangesoftware.financisto.persistance.PreferencesStore
 
 private val logger = DependenciesHolder().logger
@@ -46,7 +47,7 @@ private val logger = DependenciesHolder().logger
 fun PermissionsPreferenceContent() {
 //    val preferencesStore = PreferencesStore(LocalContext.current)
 
-    MaterialTheme {
+    FinancistoTheme {
         // A surface container using the 'background' color from the theme
         Surface(color = MaterialTheme.colorScheme.background) {
             KoinAndroidContext {

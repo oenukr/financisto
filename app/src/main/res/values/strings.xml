@@ -1015,4 +1015,12 @@
         <item>Show List</item>
     </string-array>
 
+    <!-- Compose Transaction Editor -->
+    <string name="tx_notice_ai_draft_legacy_unsupported">AI transaction drafts can only be reviewed in this editor</string>
+    <string name="tx_error_camera_capture_unavailable">Unable to prepare camera capture</string>
+    <string name="tx_dialog_pending_ai_draft_title">Open new transaction draft?</string>
+    <string name="tx_dialog_pending_ai_draft_body">A new AI transaction draft is ready. Switching will discard your current draft or unsaved edits.</string>
+    <string name="tx_dialog_pending_ai_draft_switch">Switch to draft</string>
+    <string name="tx_dialog_pending_ai_draft_keep">Keep editing</string>
+
 </resources>

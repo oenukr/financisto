@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.appfunctions
 
+import android.app.PendingIntent
 import android.net.Uri
 import java.time.LocalDateTime
 
@@ -10,6 +11,7 @@ data class AccountInfo(
     val currencyCode: String = "",
     val type: String = "",
     val lastCategoryId: Long = 0L,
+    val currencyId: Long = 0L,
 )
 
 data class CategoryInfo(
@@ -38,26 +40,30 @@ data class HistoricalCategorySignal(
     val note: String = "",
 )
 
+data class AppFunctionTransactionDraft(
+    val draftId: String,
+    val fromAccountId: Long,
+    val toAccountId: Long?,
+    val categoryId: Long?,
+    val payeeId: Long?,
+    val payeeName: String?,
+    val amount: Long,
+    val toAmount: Long?,
+    val isIncome: Boolean,
+    val note: String,
+    val dateTime: Long,
+    val attachedPicture: String? = null,
+    val splits: List<TransactionSplit> = emptyList(),
+)
+
 interface AppFunctionDatabase {
     fun getAccounts(): List<AccountInfo>
     fun getCategories(): List<CategoryInfo>
     fun getPayees(): List<PayeeInfo>
     fun getCategoryHistory(limit: Int = DEFAULT_HISTORY_LIMIT): List<HistoricalCategorySignal> = emptyList()
-    fun createPayee(name: String): Long
     fun saveReceiptPicture(uri: Uri): String? = null
     fun extractReceiptImageDateTime(uri: Uri): LocalDateTime? = null
-    fun insertOrUpdateTransaction(
-        fromAccountId: Long,
-        toAccountId: Long?,
-        categoryId: Long?,
-        payeeId: Long?,
-        amount: Long,
-        toAmount: Long?,
-        note: String,
-        dateTime: Long,
-        attachedPicture: String? = null,
-        splits: List<TransactionSplit> = emptyList(),
-    ): Long
+    fun createTransactionReviewPendingIntent(draft: AppFunctionTransactionDraft): PendingIntent
 
     companion object {
         const val DEFAULT_HISTORY_LIMIT = 500

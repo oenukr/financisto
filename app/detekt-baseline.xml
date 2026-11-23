@@ -1,0 +1,523 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>ArgumentListWrapping:BiometricPromptUtils.kt$BiometricPromptUtils$(R.string.fingerprint_security_update_required)</ID>
+    <ID>ArgumentListWrapping:BiometricPromptUtils.kt$BiometricPromptUtils$(R.string.fingerprint_unavailable_enrolled_fingerprints)</ID>
+    <ID>ArgumentListWrapping:BudgetsTotalCalculatorTest.kt$BudgetsTotalCalculatorTest$(currency = foreignCurrency, amount = 500L, categories = catA.id.toString(), projects = null)</ID>
+    <ID>ArgumentListWrapping:BudgetsTotalCalculatorTest.kt$BudgetsTotalCalculatorTest$(currency = foreignCurrency, amount = 800L, categories = catA.id.toString(), projects = null)</ID>
+    <ID>ArgumentListWrapping:BudgetsTotalCalculatorTest.kt$BudgetsTotalCalculatorTest$(currency = homeCurrency, amount = 1000L, categories = catA.id.toString(), projects = null)</ID>
+    <ID>ArgumentListWrapping:DatabaseMappers.kt$("V_TRANSACTION_ATTRIBUTES", null, "_id=? AND attribute_id=?", arrayOf(transactionId.toString(), sa.id.toString()), null, null, null)</ID>
+    <ID>ArgumentListWrapping:DatabaseMappers.kt$("V_TRANSACTION_ATTRIBUTES", null, "_id=? AND attribute_id&gt;=0", arrayOf(transactionId.toString()), null, null, "attribute_name ASC")</ID>
+    <ID>ArgumentListWrapping:DatabaseMappers.kt$(DatabaseHelper.SMS_TEMPLATES_TABLE, DatabaseHelper.SmsTemplateColumns.NORMAL_PROJECTION, "_id=?", arrayOf(id.toString()), null, null, null)</ID>
+    <ID>ArgumentListWrapping:DatabaseMappers.kt$(DatabaseHelper.TRANSACTION_TABLE, null, "from_account_id=? AND parent_id=0", arrayOf(accountId.toString()), null, null, "datetime DESC")</ID>
+    <ID>ArgumentListWrapping:DatabaseMappers.kt$(DatabaseHelper.TRANSACTION_TABLE, null, "is_template=2 AND parent_id=0", null, null, null, null)</ID>
+    <ID>ArgumentListWrapping:DatabaseMappers.kt$(DatabaseHelper.TRANSACTION_TABLE, null, "parent_id=?", arrayOf(transactionId.toString()), null, null, null)</ID>
+    <ID>ArgumentListWrapping:DatabaseMappers.kt$(DatabaseHelper.V_CATEGORY, DatabaseHelper.CategoryViewColumns.NORMAL_PROJECTION, "_id=?", arrayOf(id.toString()), null, null, null)</ID>
+    <ID>ArgumentListWrapping:DatabaseMappers.kt$(accountId.toString())</ID>
+    <ID>ArgumentListWrapping:DatabaseMappers.kt$(id.toString())</ID>
+    <ID>ArgumentListWrapping:DatabaseMappers.kt$(transactionId.toString())</ID>
+    <ID>ArgumentListWrapping:DatabaseMappers.kt$(transactionId.toString(), sa.id.toString())</ID>
+    <ID>ArgumentListWrapping:FinancistoScheduleAllWorkManager.kt$FinancistoScheduleAllWorkManager$(applicationContext, R.string.scheduled_transactions_have_been_restored)</ID>
+    <ID>ArgumentListWrapping:FinancistoScheduleAllWorkManager.kt$FinancistoScheduleAllWorkManager$(count)</ID>
+    <ID>ArgumentListWrapping:GraphWidget.kt$(Modifier .height(lineHeight) .width(lineWidth) .background(color = color))</ID>
+    <ID>ArgumentListWrapping:MenuListItem.kt$MenuListItem.Companion$(R.string.csv_export_inprogress)</ID>
+    <ID>ArgumentListWrapping:MenuListItem.kt$MenuListItem.Companion$(R.string.csv_import_inprogress)</ID>
+    <ID>ArgumentListWrapping:MenuListItem.kt$MenuListItem.Companion$(R.string.integrity_fix_in_progress)</ID>
+    <ID>ArgumentListWrapping:MenuListItem.kt$MenuListItem.Companion$(R.string.qif_export_inprogress)</ID>
+    <ID>ArgumentListWrapping:MenuListItem.kt$MenuListItem.Companion$(R.string.qif_import_inprogress)</ID>
+    <ID>ArgumentListWrapping:MenuListItem.kt$MenuListItem.Companion$(activity, null, activity.getString(R.string.csv_export_inprogress), true)</ID>
+    <ID>ArgumentListWrapping:MenuListItem.kt$MenuListItem.Companion$(activity, null, activity.getString(R.string.csv_import_inprogress), true)</ID>
+    <ID>ArgumentListWrapping:MenuListItem.kt$MenuListItem.Companion$(activity, null, activity.getString(R.string.integrity_fix_in_progress), true)</ID>
+    <ID>ArgumentListWrapping:MenuListItem.kt$MenuListItem.Companion$(activity, null, activity.getString(R.string.qif_export_inprogress), true)</ID>
+    <ID>ArgumentListWrapping:MenuListItem.kt$MenuListItem.Companion$(activity, null, activity.getString(R.string.qif_import_inprogress), true)</ID>
+    <ID>ArgumentListWrapping:MenuListItem.kt$MenuListItem.DROPBOX_BACKUP$(R.string.backup_database_online_dropbox, R.string.backup_database_online_dropbox_summary, R.drawable.actionbar_dropbox)</ID>
+    <ID>ArgumentListWrapping:MenuListItem.kt$MenuListItem.DROPBOX_RESTORE$(R.string.restore_database_online_dropbox, R.string.restore_database_online_dropbox_summary, R.drawable.actionbar_dropbox)</ID>
+    <ID>ArgumentListWrapping:MenuListItem.kt$MenuListItem.MENU_BACKUP_TO$(Intent.createChooser(intent, activity.getString(R.string.backup_database_to_title)))</ID>
+    <ID>ArgumentListWrapping:MenuListItem.kt$MenuListItem.MENU_BACKUP_TO$(R.string.backup_database_to_title)</ID>
+    <ID>ArgumentListWrapping:MenuListItem.kt$MenuListItem.MENU_BACKUP_TO$(intent, activity.getString(R.string.backup_database_to_title))</ID>
+    <ID>ArgumentListWrapping:MenuListItem.kt$MenuListItem.MENU_PREFERENCES$(Intent(activity, PreferencesActivity::class.java), ACTIVITY_CHANGE_PREFERENCES)</ID>
+    <ID>ArgumentListWrapping:MenuListItem.kt$MenuListItem.MENU_PREFERENCES$(activity, PreferencesActivity::class.java)</ID>
+    <ID>ArgumentListWrapping:MenuListItem.kt$MenuListItem.MENU_RESTORE$(R.string.restore_database_inprogress)</ID>
+    <ID>ArgumentListWrapping:MenuListItem.kt$MenuListItem.MENU_RESTORE$(activity, null, activity.getString(R.string.restore_database_inprogress), true)</ID>
+    <ID>ArgumentListWrapping:MenuListItem.kt$MenuListItem.MENU_SCHEDULED_TRANSACTIONS$(R.string.scheduled_transactions, R.string.scheduled_transactions_summary, R.drawable.actionbar_calendar)</ID>
+    <ID>ArgumentListWrapping:MenuListItem.kt$MenuListItem.MenuEntities.SMS_TEMPLATES$(R.string.sms_templates, R.drawable.ic_action_sms, SmsDragListActivity::class.java, Manifest.permission.RECEIVE_SMS)</ID>
+    <ID>ArgumentListWrapping:OpenExchangeRatesDownloaderTest.kt$OpenExchangeRatesDownloaderTest$("https://openexchangerates.org/api/latest.json?app_id=MY_APP_ID", "open_exchange_normal_response.json")</ID>
+    <ID>ArgumentListWrapping:PlannerViewModelAdversarialTest.kt$PlannerViewModelAdversarialTest.&lt;no name provided&gt;$("_id", "from_account_id", "to_account_id", "from_amount", "to_amount", "datetime")</ID>
+    <ID>ArgumentListWrapping:PlannerViewModelAdversarialTest.kt$PlannerViewModelAdversarialTest.&lt;no name provided&gt;$(arrayOf("_id", "from_account_id", "to_account_id", "from_amount", "to_amount", "datetime"))</ID>
+    <ID>ArgumentListWrapping:QuickAction.kt$QuickAction$( ContextCompat.getDrawable( ctx, drawableId )!!, ctx.resources.getString(titleId) )</ID>
+    <ID>ArgumentListWrapping:RateNode.kt$RateNode$(", ")</ID>
+    <ID>ArgumentListWrapping:RateNode.kt$RateNode$("1")</ID>
+    <ID>ArgumentListWrapping:RateNode.kt$RateNode$("=")</ID>
+    <ID>ArgumentListWrapping:RateNode.kt$RateNode$(currencyFrom.name)</ID>
+    <ID>ArgumentListWrapping:RateNode.kt$RateNode$(currencyTo.name)</ID>
+    <ID>ArgumentListWrapping:RateNode.kt$RateNode$(nf.format(r))</ID>
+    <ID>ArgumentListWrapping:RateNode.kt$RateNode$(r)</ID>
+    <ID>ArgumentListWrapping:RecurrencePeriod.kt$RecurrencePeriod$( year, month, day, hour, minute, second )</ID>
+    <ID>ArgumentListWrapping:ReportActivity.kt$ReportActivity$(Alignment.CenterHorizontally)</ID>
+    <ID>ArgumentListWrapping:ReportActivity.kt$ReportActivity$(id = if (currentFilter.isEmpty) R.color.bottom_bar_tint else R.color.holo_blue_dark)</ID>
+    <ID>ArgumentListWrapping:ReportActivity.kt$ReportActivity$(id = incomeExpenseTitleId)</ID>
+    <ID>ArgumentListWrapping:ReportActivity.kt$ReportActivity$(modifier = Modifier.align(Alignment.CenterHorizontally), text = stringResource(id = incomeExpenseTitleId))</ID>
+    <ID>ArgumentListWrapping:WebserviceXConversionRateDownloaderTest.kt$WebserviceXConversionRateDownloaderTest$( "Something wrong with the exchange rates provider. Response from the service - System.IO.IOException: There is not enough space on the disk.", downloadedRate.errorMessage)</ID>
+    <ID>ArgumentListWrapping:WebserviceXConversionRateDownloaderTest.kt$WebserviceXConversionRateDownloaderTest$( "https://www.webservicex.net/CurrencyConvertor.asmx/ConversionRate?FromCurrency=$c1&amp;ToCurrency=$c2", "&lt;double xmlns=\"https://www.webserviceX.NET/\"&gt;$r&lt;/double&gt;")</ID>
+    <ID>ArgumentListWrapping:WebserviceXConversionRateDownloaderTest.kt$WebserviceXConversionRateDownloaderTest$(anyUrl(), "System.IO.IOException: There is not enough space on the disk.\r\nStacktrace...")</ID>
+    <ID>ChainWrapping:NumberPickerButton.kt$NumberPickerButton$||</ID>
+    <ID>CommentSpacing:CsvExportActivity.kt$CsvExportActivity$//findViewById&lt;CheckBox&gt;(R.id.checkboxExportSplits)</ID>
+    <ID>CommentSpacing:JavaAppKoin.kt$DependenciesHolder$//Inject the logger</ID>
+    <ID>CommentSpacing:LocationsReport.kt$LocationsReport$// if (id == 0L) context.getString(R.string.no_fix) else name ?: ""</ID>
+    <ID>CommentSpacing:PeriodReport.kt$PeriodReport$//currentPeriod.type.titleId.toString()</ID>
+    <ID>CommentSpacing:PermissionsPreferenceContent.kt$//backupPreferencesFlow.collectAsState(initial = null)</ID>
+    <ID>CommentSpacing:PermissionsPreferenceContent.kt$//storagePermissionState.status.isGranted,</ID>
+    <ID>CommentSpacing:PicturesUtil.kt$PicturesUtil$//.override(320, 320)</ID>
+    <ID>CommentSpacing:RecurrenceFrequency.kt$RecurrenceFrequency$//YEARLY(R.string.recur_interval_yearly); </ID>
+    <ID>CommentSpacing:RecurrenceFrequency.kt$RecurrenceFrequency.GEEKY$//SEMI_MONTHLY(R.string.recur_interval_semi_monthly),</ID>
+    <ID>CommentSpacing:RecurrencePattern.kt$RecurrencePattern$//su-sa</ID>
+    <ID>CommentSpacing:TransparentLayout.kt$TransparentLayout$//gray</ID>
+    <ID>CommentWrapping:Backup.kt$Backup$/* todo: seems not used, found only in old 20110422_0051_create_split_table.sql, should be removed then */</ID>
+    <ID>CommentWrapping:PermissionsPreferenceContent.kt$/*koinInject()*/</ID>
+    <ID>CommentWrapping:PreferencesStore.kt$PreferencesStore$/*Observable.create { emitter -&gt; runBlocking { backupPreferencesFlow.collect { value -&gt; emitter.onNext(value) } emitter.onComplete() } }*/</ID>
+    <ID>CommentWrapping:ReportActivity.kt$ReportActivity$/*context*/</ID>
+    <ID>CommentWrapping:ReportViewModel.kt$ReportViewModel$/*_currentReport.value?.reportType?.name.orEmpty()*/</ID>
+    <ID>CommentWrapping:SearchFilterTextWatcherListener.kt$SearchFilterTextWatcherListener$/*UI thread*/</ID>
+    <ID>CommentWrapping:TransparentLayout.kt$TransparentLayout$/* bottom = */</ID>
+    <ID>CommentWrapping:TransparentLayout.kt$TransparentLayout$/* left = */</ID>
+    <ID>CommentWrapping:TransparentLayout.kt$TransparentLayout$/* right = */</ID>
+    <ID>CommentWrapping:TransparentLayout.kt$TransparentLayout$/* top = */</ID>
+    <ID>ComplexCondition:ImportExportAsyncTask.kt$ImportExportAsyncTask$activity != null &amp;&amp; !activity.isFinishing &amp;&amp; !activity.isDestroyed &amp;&amp; currentDialog != null</ID>
+    <ID>ComplexCondition:ImportExportAsyncTask.kt$ImportExportAsyncTask$currentDialog != null &amp;&amp; activity != null &amp;&amp; !activity.isFinishing &amp;&amp; !activity.isDestroyed</ID>
+    <ID>ComplexCondition:ImportExportAsyncTask.kt$ImportExportAsyncTask$showResultMessage &amp;&amp; activity != null &amp;&amp; !activity.isFinishing &amp;&amp; !activity.isDestroyed</ID>
+    <ID>CyclomaticComplexMethod:DatabaseMappers.kt$fun Cursor.toTransactionInfo(em: MyEntityManager): TransactionInfo</ID>
+    <ID>CyclomaticComplexMethod:RecurrencePattern.kt$RecurrencePattern$fun toRRuleString(): String</ID>
+    <ID>CyclomaticComplexMethod:TransactionsListAdapter.kt$TransactionsListAdapter$override fun bindView(v: BlotterViewHolder?, context: Context?, cursor: Cursor?)</ID>
+    <ID>EmptyFinallyBlock:RecurrencePerformanceTest.kt$RecurrencePerformanceTest${ }</ID>
+    <ID>EmptyFunctionBlock:AbstractActivity.kt$AbstractActivity${}</ID>
+    <ID>EmptyFunctionBlock:AbstractListActivity.kt$AbstractListActivity${}</ID>
+    <ID>EmptyFunctionBlock:AbstractTotalsDetailsActivity.kt$AbstractTotalsDetailsActivity${}</ID>
+    <ID>EmptyFunctionBlock:CsvExportActivity.kt$CsvExportActivity${ }</ID>
+    <ID>EmptyFunctionBlock:DateRecurrenceIterator.kt$DateRecurrenceIterator.EmptyRecurrenceProcessor${}</ID>
+    <ID>EmptyFunctionBlock:ExchangeRatesListActivity.kt$ExchangeRatesListActivity.&lt;no name provided&gt;${}</ID>
+    <ID>EmptyFunctionBlock:PinActivity.kt$PinActivity${}</ID>
+    <ID>EmptyFunctionBlock:PlannerActivity.kt$PlannerActivity${}</ID>
+    <ID>EmptyFunctionBlock:RateNode.kt$RateNode.&lt;no name provided&gt;${}</ID>
+    <ID>EmptyFunctionBlock:RecurrenceProcessorTest.kt$RecurrenceProcessorTest.&lt;no name provided&gt;${}</ID>
+    <ID>EmptyFunctionBlock:RecurrenceTestHelper.kt$RecurrenceTestHelper.&lt;no name provided&gt;${}</ID>
+    <ID>EmptyFunctionBlock:TestKoinHelper.kt$TestKoinHelper.&lt;no name provided&gt;${}</ID>
+    <ID>EnumEntryNameCase:ExchangeRateProviderFactory.kt$ExchangeRateProviderFactory$freeCurrency</ID>
+    <ID>EnumEntryNameCase:ExchangeRateProviderFactory.kt$ExchangeRateProviderFactory$openexchangerates</ID>
+    <ID>EnumEntryNameCase:ExchangeRateProviderFactory.kt$ExchangeRateProviderFactory$webservicex</ID>
+    <ID>EnumNaming:ExchangeRateProviderFactory.kt$ExchangeRateProviderFactory$freeCurrency</ID>
+    <ID>EnumNaming:ExchangeRateProviderFactory.kt$ExchangeRateProviderFactory$openexchangerates</ID>
+    <ID>EnumNaming:ExchangeRateProviderFactory.kt$ExchangeRateProviderFactory$webservicex</ID>
+    <ID>FinalNewline:DateRecurrenceIterator.kt$ru.orangesoftware.financisto.recur.DateRecurrenceIterator.kt</ID>
+    <ID>FinalNewline:FreeCurrencyRateDownloader.kt$ru.orangesoftware.financisto.rates.FreeCurrencyRateDownloader.kt</ID>
+    <ID>FinalNewline:OpenExchangeRatesDownloader.kt$ru.orangesoftware.financisto.rates.OpenExchangeRatesDownloader.kt</ID>
+    <ID>FinalNewline:OpenExchangeRatesDownloaderTest.kt$ru.orangesoftware.financisto.rates.OpenExchangeRatesDownloaderTest.kt</ID>
+    <ID>FinalNewline:RecurrenceSchedulerIntegrationTest.kt$ru.orangesoftware.financisto.service.RecurrenceSchedulerIntegrationTest.kt</ID>
+    <ID>FinalNewline:WebserviceXConversionRateDownloader.kt$ru.orangesoftware.financisto.rates.WebserviceXConversionRateDownloader.kt</ID>
+    <ID>ForbiddenComment:PeriodReport.kt$PeriodReport$// TODO: localize</ID>
+    <ID>ForbiddenComment:ReportActivity.kt$ReportActivity$// TODO: react to changes in database</ID>
+    <ID>FunctionOnlyReturningConstant:CursorItemSource.kt$CursorItemSource$protected fun itemOnError(): T?</ID>
+    <ID>ImplicitDefaultLocale:ExchangeRatesListActivity.kt$ExchangeRatesListActivity$String.format("%n%n")</ID>
+    <ID>ImportOrdering:AbstractBlotterListAdapter.kt$import android.content.Context import android.database.Cursor import android.graphics.drawable.Drawable import androidx.core.content.ContextCompat import ru.orangesoftware.financisto.R import ru.orangesoftware.financisto.db.DatabaseAdapter</ID>
+    <ID>ImportOrdering:AbstractGenericListAdapter.kt$import android.content.Context import android.database.Cursor import android.view.View import android.view.ViewGroup import android.widget.ResourceCursorAdapter import ru.orangesoftware.financisto.R import ru.orangesoftware.financisto.db.DatabaseAdapter</ID>
+    <ID>ImportOrdering:ActivityLayoutListener.kt$import android.view.View.OnClickListener import ru.orangesoftware.financisto.model.MultiChoiceItem</ID>
+    <ID>ImportOrdering:AttributeListActivity.kt$import android.app.AlertDialog import android.content.Intent import android.database.Cursor import android.view.View import android.widget.ListAdapter import ru.orangesoftware.financisto.R import ru.orangesoftware.financisto.adapter.AttributeListAdapter import ru.orangesoftware.financisto.db.DatabaseHelper.AttributeColumns import ru.orangesoftware.financisto.utils.MenuItemInfo</ID>
+    <ID>ImportOrdering:AttributeListAdapter.kt$import android.content.Context import android.database.Cursor import android.view.View import ru.orangesoftware.financisto.R import ru.orangesoftware.financisto.db.DatabaseAdapter import ru.orangesoftware.financisto.model.Attribute</ID>
+    <ID>ImportOrdering:AttributeViewFactory.kt$import android.content.Context import ru.orangesoftware.financisto.model.Attribute</ID>
+    <ID>ImportOrdering:BlotterOperations.kt$import android.app.Activity import android.app.AlertDialog import android.content.Intent import ru.orangesoftware.financisto.R import ru.orangesoftware.financisto.db.DatabaseAdapter import ru.orangesoftware.financisto.model.Transaction import ru.orangesoftware.financisto.model.TransactionStatus import ru.orangesoftware.financisto.transaction.TransactionEntryRouter</ID>
+    <ID>ImportOrdering:CategoryListAdapter.kt$import android.content.Context import android.database.Cursor import android.view.View import android.widget.ResourceCursorAdapter import android.widget.TextView import ru.orangesoftware.financisto.R import ru.orangesoftware.financisto.db.DatabaseAdapter import ru.orangesoftware.financisto.db.DatabaseHelper.CategoryViewColumns import ru.orangesoftware.financisto.model.Category</ID>
+    <ID>ImportOrdering:CommonSwipeRefreshLayout.kt$import android.content.Context import android.util.AttributeSet import android.view.View import androidx.swiperefreshlayout.widget.SwipeRefreshLayout</ID>
+    <ID>ImportOrdering:CsvExportOptions.kt$import android.content.Intent import ru.orangesoftware.financisto.activity.CsvExportActivity import ru.orangesoftware.financisto.filter.WhereFilter import ru.orangesoftware.financisto.model.Currency import ru.orangesoftware.financisto.utils.CurrencyCache import ru.orangesoftware.financisto.utils.CurrencyExportPreferences import java.text.NumberFormat</ID>
+    <ID>ImportOrdering:CsvImportActivity.kt$import android.content.Intent import android.content.SharedPreferences import android.widget.ArrayAdapter import android.widget.Button import android.widget.CheckBox import android.widget.Spinner import android.widget.Toast import ru.orangesoftware.financisto.R import ru.orangesoftware.financisto.adapter.MyEntityAdapter import ru.orangesoftware.financisto.db.DatabaseAdapter import ru.orangesoftware.financisto.model.Account import ru.orangesoftware.financisto.utils.CurrencyExportPreferences</ID>
+    <ID>ImportOrdering:DateUtils.kt$import android.content.Context import android.provider.Settings import java.text.DateFormat import java.text.SimpleDateFormat import java.util.Calendar import java.util.Date</ID>
+    <ID>ImportOrdering:FilterState.kt$import android.content.Context import android.widget.ImageButton import androidx.core.content.ContextCompat import ru.orangesoftware.financisto.R import ru.orangesoftware.financisto.filter.WhereFilter</ID>
+    <ID>ImportOrdering:FinancistoApp.kt$import android.app.Application import android.content.Context import android.content.res.Configuration import org.koin.core.context.stopKoin import ru.orangesoftware.financisto.bus.GreenRobotBus import ru.orangesoftware.financisto.export.drive.GoogleDriveClient import ru.orangesoftware.financisto.utils.MyPreferences</ID>
+    <ID>ImportOrdering:FuturePlanner.kt$import android.database.Cursor import ru.orangesoftware.financisto.db.DatabaseAdapter import ru.orangesoftware.financisto.db.TransactionsTotalCalculator import ru.orangesoftware.financisto.filter.WhereFilter import ru.orangesoftware.financisto.model.Total import ru.orangesoftware.financisto.model.TransactionInfo import java.util.Date</ID>
+    <ID>ImportOrdering:GenericViewHolder.kt$import android.view.View import android.widget.ImageView import android.widget.TextView import ru.orangesoftware.financisto.R</ID>
+    <ID>ImportOrdering:IntegrityCheckRunningBalance.kt$import android.content.Context import ru.orangesoftware.financisto.R import ru.orangesoftware.financisto.db.DatabaseAdapter import ru.orangesoftware.financisto.model.Account import ru.orangesoftware.financisto.utils.IntegrityCheck.Level import ru.orangesoftware.financisto.utils.IntegrityCheck.Result</ID>
+    <ID>ImportOrdering:LocationSelector.kt$import android.app.Activity import android.widget.ArrayAdapter import android.widget.ListAdapter import ru.orangesoftware.financisto.R import ru.orangesoftware.financisto.db.DatabaseAdapter import ru.orangesoftware.financisto.db.MyEntityManager import ru.orangesoftware.financisto.model.MyLocation import ru.orangesoftware.financisto.utils.MyPreferences import ru.orangesoftware.financisto.utils.TransactionUtils</ID>
+    <ID>ImportOrdering:LocationsListActivity.kt$import android.view.View import ru.orangesoftware.financisto.R import ru.orangesoftware.financisto.blotter.BlotterFilter import ru.orangesoftware.financisto.filter.Criteria import ru.orangesoftware.financisto.model.MyLocation</ID>
+    <ID>ImportOrdering:MyQuickAction.kt$import android.content.Context import android.graphics.Color import android.graphics.LightingColorFilter import androidx.annotation.DrawableRes import androidx.annotation.StringRes import androidx.core.content.ContextCompat import greendroid.widget.QuickAction import ru.orangesoftware.financisto.R</ID>
+    <ID>ImportOrdering:NumberPickerButton.kt$import android.content.Context import android.util.AttributeSet import android.view.KeyEvent import android.view.MotionEvent import ru.orangesoftware.financisto.R</ID>
+    <ID>ImportOrdering:PayeeSelector.kt$import android.app.Activity import android.widget.ArrayAdapter import android.widget.ListAdapter import ru.orangesoftware.financisto.R import ru.orangesoftware.financisto.db.MyEntityManager import ru.orangesoftware.financisto.model.Payee import ru.orangesoftware.financisto.utils.MyPreferences import ru.orangesoftware.financisto.utils.TransactionUtils</ID>
+    <ID>ImportOrdering:PicturesUtil.kt$import android.content.Context import android.os.Environment import android.widget.ImageView import com.bumptech.glide.Glide import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions import java.io.File import java.text.SimpleDateFormat import java.util.Date import java.util.UUID</ID>
+    <ID>ImportOrdering:PinDialogPreference.kt$import android.app.AlertDialog import android.app.Dialog import android.content.Context import android.os.Bundle import android.preference.DialogPreference import android.util.AttributeSet import ru.orangesoftware.financisto.R import ru.orangesoftware.financisto.view.PinView</ID>
+    <ID>ImportOrdering:PinProtection.kt$import android.content.Context import android.content.Intent import ru.orangesoftware.financisto.activity.PinActivity import java.util.concurrent.TimeUnit</ID>
+    <ID>ImportOrdering:ProjectListActivity.kt$import android.view.View import ru.orangesoftware.financisto.R import ru.orangesoftware.financisto.blotter.BlotterFilter import ru.orangesoftware.financisto.filter.Criteria import ru.orangesoftware.financisto.model.Project</ID>
+    <ID>ImportOrdering:ProjectSelector.kt$import android.app.Activity import android.widget.ArrayAdapter import android.widget.ListAdapter import ru.orangesoftware.financisto.R import ru.orangesoftware.financisto.db.DatabaseAdapter import ru.orangesoftware.financisto.db.MyEntityManager import ru.orangesoftware.financisto.model.Project import ru.orangesoftware.financisto.utils.MyPreferences import ru.orangesoftware.financisto.utils.TransactionUtils</ID>
+    <ID>ImportOrdering:QuickAction.kt$import android.content.Context import android.graphics.drawable.Drawable import android.view.View import androidx.core.content.ContextCompat import java.lang.ref.WeakReference</ID>
+    <ID>ImportOrdering:QuickActionGrid.kt$import android.content.Context import android.graphics.Rect import android.view.LayoutInflater import android.view.View import android.view.View.MeasureSpec import android.view.ViewGroup import android.widget.AdapterView.OnItemClickListener import android.widget.BaseAdapter import android.widget.GridView import android.widget.TextView import ru.orangesoftware.financisto.R</ID>
+    <ID>ImportOrdering:RateNodeOwner.kt$import android.app.Activity import ru.orangesoftware.financisto.model.Currency</ID>
+    <ID>ImportOrdering:RequestPermissionActivity.kt$import android.content.Context import android.content.Intent import android.os.Bundle import androidx.activity.ComponentActivity import androidx.activity.compose.setContent import ru.orangesoftware.financisto.activity.RequestPermissionActivity.Constants.REQUESTED_PERMISSION import ru.orangesoftware.financisto.ui.PermissionsPreferenceContent import ru.orangesoftware.financisto.utils.MyPreferences</ID>
+    <ID>ImportOrdering:SummaryEntityListAdapter.kt$import android.content.Context import android.view.LayoutInflater import android.view.View import android.view.ViewGroup import android.widget.BaseAdapter import android.widget.ImageView import android.widget.TextView import androidx.core.content.ContextCompat import ru.orangesoftware.financisto.R import ru.orangesoftware.financisto.utils.SummaryEntityEnum</ID>
+    <ID>ImportOrdering:TemplateListAdapter.kt$import android.content.Context import android.database.Cursor import android.view.View import ru.orangesoftware.financisto.R import ru.orangesoftware.financisto.db.DatabaseAdapter</ID>
+    <ID>ImportOrdering:TransactionAttribute.kt$import android.content.ContentValues import android.database.Cursor import ru.orangesoftware.financisto.db.DatabaseHelper.TransactionAttributeColumns</ID>
+    <ID>ImportOrdering:UiUtils.kt$import android.content.Context import androidx.core.content.ContextCompat import com.wdullaer.materialdatetimepicker.date.DatePickerDialog import com.wdullaer.materialdatetimepicker.time.TimePickerDialog import ru.orangesoftware.financisto.R</ID>
+    <ID>ImportOrdering:WebViewDialog.kt$import android.app.Activity import android.app.AlertDialog import android.content.Context import android.content.SharedPreferences import android.content.pm.PackageInfo import android.webkit.WebView import ru.orangesoftware.financisto.R import ru.orangesoftware.financisto.utils.Utils</ID>
+    <ID>Indentation:AbstractBlotterListAdapter.kt$AbstractBlotterListAdapter$ </ID>
+    <ID>Indentation:AbstractGenericListAdapter.kt$AbstractGenericListAdapter$ </ID>
+    <ID>Indentation:ActivityLayoutListener.kt$ActivityLayoutListener$ </ID>
+    <ID>Indentation:Amount.kt$Amount$ </ID>
+    <ID>Indentation:AttributeListActivity.kt$AttributeListActivity$ </ID>
+    <ID>Indentation:Backup.kt$Backup$ </ID>
+    <ID>Indentation:BaseExchangeRateDownloaderTest.kt$BaseExchangeRateDownloaderTest.&lt;no name provided&gt;$ </ID>
+    <ID>Indentation:BiometricPromptUtils.kt$BiometricPromptUtils$ </ID>
+    <ID>Indentation:BlotterFilter.kt$BlotterFilter$ </ID>
+    <ID>Indentation:BudgetViewHolder.kt$BudgetViewHolder$ </ID>
+    <ID>Indentation:CardIssuer.kt$CardIssuer$ </ID>
+    <ID>Indentation:CategoryByPeriodReport.kt$CategoryByPeriodReport$ </ID>
+    <ID>Indentation:CategoryListAdapter.kt$CategoryListAdapter$ </ID>
+    <ID>Indentation:CategoryReportAll.kt$CategoryReportAll$ </ID>
+    <ID>Indentation:CurrencyListAdapter.kt$CurrencyListAdapter$ </ID>
+    <ID>Indentation:DailyAutoBackupScheduler.kt$DailyAutoBackupScheduler$ </ID>
+    <ID>Indentation:Database.kt$Database$ </ID>
+    <ID>Indentation:DatabaseExport.kt$DatabaseExport$ </ID>
+    <ID>Indentation:DatabaseUtils.kt$DatabaseUtils$ </ID>
+    <ID>Indentation:DateUtils.kt$DateUtils$ </ID>
+    <ID>Indentation:ElectronicPaymentType.kt$ElectronicPaymentType$ </ID>
+    <ID>Indentation:EntityEnum.kt$EntityEnum$ </ID>
+    <ID>Indentation:FinancistoScheduleAllWorkManager.kt$FinancistoScheduleAllWorkManager$ </ID>
+    <ID>Indentation:GraphWidget.kt$ </ID>
+    <ID>Indentation:KoinInjectionTest.kt$KoinInjectionTest$ </ID>
+    <ID>Indentation:LocalizableEnum.kt$LocalizableEnum$ </ID>
+    <ID>Indentation:LocationsReport.kt$LocationsReport$ </ID>
+    <ID>Indentation:MenuItemInfo.kt$MenuItemInfo$ </ID>
+    <ID>Indentation:MultiChoiceItem.kt$MultiChoiceItem$ </ID>
+    <ID>Indentation:MyEntityAdapter.kt$MyEntityAdapter$ </ID>
+    <ID>Indentation:MyQuickAction.kt$MyQuickAction$ </ID>
+    <ID>Indentation:MyViewFlipper.kt$MyViewFlipper$ </ID>
+    <ID>Indentation:NotificationOptions.kt$NotificationOptions$ </ID>
+    <ID>Indentation:NotificationOptions.kt$NotificationOptions.Companion$ </ID>
+    <ID>Indentation:NotificationOptions.kt$NotificationOptions.LedColor$ </ID>
+    <ID>Indentation:NotificationOptions.kt$NotificationOptions.VibrationPattern$ </ID>
+    <ID>Indentation:NumberPickerButton.kt$NumberPickerButton$ </ID>
+    <ID>Indentation:OpenExchangeRatesDownloaderTest.kt$OpenExchangeRatesDownloaderTest$ </ID>
+    <ID>Indentation:PayeesReport.kt$PayeesReport$ </ID>
+    <ID>Indentation:PeriodReport.kt$PeriodReport$ </ID>
+    <ID>Indentation:PeriodValue.kt$PeriodValue$ </ID>
+    <ID>Indentation:PinDialogPreference.kt$PinDialogPreference$ </ID>
+    <ID>Indentation:PreferencesStore.kt$PreferencesStore$ </ID>
+    <ID>Indentation:ProjectsReport.kt$ProjectsReport$ </ID>
+    <ID>Indentation:Recurrence.kt$Recurrence$ </ID>
+    <ID>Indentation:RecurrenceFrequency.kt$RecurrenceFrequency$ </ID>
+    <ID>Indentation:RecurrenceFrequency.kt$RecurrenceFrequency.GEEKY$ </ID>
+    <ID>Indentation:RecurrenceProcessorTest.kt$RecurrenceProcessorTest.&lt;no name provided&gt;$ </ID>
+    <ID>Indentation:RecurrenceUntil.kt$RecurrenceUntil$ </ID>
+    <ID>Indentation:RecurrenceView.kt$RecurrenceView$ </ID>
+    <ID>Indentation:RefreshSupportedActivity.kt$RefreshSupportedActivity$ </ID>
+    <ID>Indentation:ReportActivity.kt$ReportActivity$ </ID>
+    <ID>Indentation:RestoredTransaction.kt$RestoredTransaction$ </ID>
+    <ID>Indentation:SummaryEntityEnum.kt$SummaryEntityEnum$ </ID>
+    <ID>Indentation:SystemAttribute.kt$SystemAttribute$ </ID>
+    <ID>Indentation:SystemAttribute.kt$SystemAttribute.Companion$ </ID>
+    <ID>Indentation:TemplateListAdapter.kt$TemplateListAdapter$ </ID>
+    <ID>Indentation:TransactionTitleUtils.kt$TransactionTitleUtils$ </ID>
+    <ID>Indentation:TransparentLayout.kt$TransparentLayout$ </ID>
+    <ID>Indentation:WebserviceXConversionRateDownloaderTest.kt$WebserviceXConversionRateDownloaderTest$ </ID>
+    <ID>LongMethod:GraphWidget.kt$@Composable fun GraphComposable( modifier: Modifier = Modifier, unit: GraphUnit, maxAmount: Long, maxAmountWidth: Long, onItemClick: (id: Long) -&gt; Unit = {}, )</ID>
+    <ID>LongMethod:ReportActivity.kt$ReportActivity$@Composable private fun ReportBottomBar( modifier: Modifier = Modifier, @StringRes incomeExpenseTitleId: Int, currentFilter: WhereFilter, currentReport: Report?, onActivityResult: (ActivityResult) -&gt; Unit, onToggleIncomeExpense: () -&gt; Unit, @DrawableRes incomeExpenseIcon: Int, @StringRes incomeExpenseTitle: Int, shouldDisplayTotal: Boolean = false, total: Total, onPieButtonClick: () -&gt; Unit, )</ID>
+    <ID>LongMethod:ReportActivity.kt$ReportActivity$override fun onCreate(savedInstanceState: Bundle?)</ID>
+    <ID>LongMethod:TransactionsListAdapter.kt$TransactionsListAdapter$override fun bindView(v: BlotterViewHolder?, context: Context?, cursor: Cursor?)</ID>
+    <ID>LongParameterList:AccountType.kt$AccountType$( override val titleId: Int, override val iconId: Int, val hasIssuer: Boolean, val hasNumber: Boolean, val isCard: Boolean, val isCreditCard: Boolean, val isElectronic: Boolean, )</ID>
+    <ID>MagicNumber:CurrencyListAdapter.kt$CurrencyListAdapter$100000</ID>
+    <ID>MagicNumber:DailyAutoBackupScheduler.kt$DailyAutoBackupScheduler$100</ID>
+    <ID>MagicNumber:DailyAutoBackupScheduler.kt$DailyAutoBackupScheduler.Companion$100</ID>
+    <ID>MagicNumber:DateUtils.kt$DateUtils$23</ID>
+    <ID>MagicNumber:DateUtils.kt$DateUtils$59</ID>
+    <ID>MagicNumber:DateUtils.kt$DateUtils$999</ID>
+    <ID>MagicNumber:GraphWidget.kt$124</ID>
+    <ID>MagicNumber:GraphWidget.kt$156</ID>
+    <ID>MagicNumber:GraphWidget.kt$198</ID>
+    <ID>MagicNumber:GraphWidget.kt$239</ID>
+    <ID>MagicNumber:GraphWidget.kt$255</ID>
+    <ID>MagicNumber:GraphWidget.kt$35</ID>
+    <ID>MagicNumber:GraphWidget.kt$5</ID>
+    <ID>MagicNumber:NotificationOptions.kt$NotificationOptions$200</ID>
+    <ID>MagicNumber:NotificationOptions.kt$NotificationOptions.VibrationPattern.LONG$500</ID>
+    <ID>MagicNumber:NotificationOptions.kt$NotificationOptions.VibrationPattern.LONG_LONG$300</ID>
+    <ID>MagicNumber:NotificationOptions.kt$NotificationOptions.VibrationPattern.LONG_LONG$500</ID>
+    <ID>MagicNumber:NotificationOptions.kt$NotificationOptions.VibrationPattern.SHORT$200</ID>
+    <ID>MagicNumber:NotificationOptions.kt$NotificationOptions.VibrationPattern.SHORT_SHORT$200</ID>
+    <ID>MagicNumber:NotificationOptions.kt$NotificationOptions.VibrationPattern.THREE_LONG$300</ID>
+    <ID>MagicNumber:NotificationOptions.kt$NotificationOptions.VibrationPattern.THREE_LONG$500</ID>
+    <ID>MagicNumber:NotificationOptions.kt$NotificationOptions.VibrationPattern.THREE_SHORTS$200</ID>
+    <ID>MagicNumber:OpenExchangeRatesDownloader.kt$OpenExchangeRatesDownloader$1000</ID>
+    <ID>MagicNumber:QifUtils.kt$6</ID>
+    <ID>MagicNumber:QifUtils.kt$QifUtils$100</ID>
+    <ID>MagicNumber:QifUtils.kt$QifUtils$1900</ID>
+    <ID>MagicNumber:QifUtils.kt$QifUtils$2000</ID>
+    <ID>MagicNumber:QifUtils.kt$QifUtils$3</ID>
+    <ID>MagicNumber:QifUtils.kt$QifUtils$40</ID>
+    <ID>MagicNumber:Recurrence.kt$Recurrence.Companion$3</ID>
+    <ID>MagicNumber:StringUtil.kt$StringUtil$3</ID>
+    <ID>MagicNumber:TimePreference.kt$TimePreference$100</ID>
+    <ID>MagicNumber:TransparentLayout.kt$TransparentLayout$5F</ID>
+    <ID>MaxLineLength:Backup.kt$Backup$"split"</ID>
+    <ID>MaxLineLength:BiometricPromptUtils.kt$BiometricPromptUtils$BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -&gt; context.getString(R.string.fingerprint_unavailable_enrolled_fingerprints)</ID>
+    <ID>MaxLineLength:BiometricPromptUtils.kt$BiometricPromptUtils$BiometricManager.BIOMETRIC_ERROR_SECURITY_UPDATE_REQUIRED -&gt; context.getString(R.string.fingerprint_security_update_required)</ID>
+    <ID>MaxLineLength:BudgetsTotalCalculatorTest.kt$BudgetsTotalCalculatorTest$val b3 = createBudget(currency = foreignCurrency, amount = 800L, categories = catA.id.toString(), projects = null)</ID>
+    <ID>MaxLineLength:BudgetsTotalCalculatorTest.kt$BudgetsTotalCalculatorTest$val bForeign = createBudget(currency = foreignCurrency, amount = 500L, categories = catA.id.toString(), projects = null)</ID>
+    <ID>MaxLineLength:BudgetsTotalCalculatorTest.kt$BudgetsTotalCalculatorTest$val bHome = createBudget(currency = homeCurrency, amount = 1000L, categories = catA.id.toString(), projects = null)</ID>
+    <ID>MaxLineLength:DatabaseMappers.kt$db().query("V_TRANSACTION_ATTRIBUTES", null, "_id=? AND attribute_id=?", arrayOf(transactionId.toString(), sa.id.toString()), null, null, null)</ID>
+    <ID>MaxLineLength:DatabaseMappers.kt$db().query("V_TRANSACTION_ATTRIBUTES", null, "_id=? AND attribute_id&gt;=0", arrayOf(transactionId.toString()), null, null, "attribute_name ASC")</ID>
+    <ID>MaxLineLength:DatabaseMappers.kt$db().query(DatabaseHelper.SMS_TEMPLATES_TABLE, DatabaseHelper.SmsTemplateColumns.NORMAL_PROJECTION, "_id=?", arrayOf(id.toString()), null, null, null)</ID>
+    <ID>MaxLineLength:DatabaseMappers.kt$db().query(DatabaseHelper.TRANSACTION_TABLE, null, "from_account_id=? AND parent_id=0", arrayOf(accountId.toString()), null, null, "datetime DESC")</ID>
+    <ID>MaxLineLength:DatabaseMappers.kt$db().query(DatabaseHelper.TRANSACTION_TABLE, null, "is_template=2 AND parent_id=0", null, null, null, null)</ID>
+    <ID>MaxLineLength:DatabaseMappers.kt$db().query(DatabaseHelper.TRANSACTION_TABLE, null, "parent_id=?", arrayOf(transactionId.toString()), null, null, null)</ID>
+    <ID>MaxLineLength:DatabaseMappers.kt$db().query(DatabaseHelper.V_CATEGORY, DatabaseHelper.CategoryViewColumns.NORMAL_PROJECTION, "_id=?", arrayOf(id.toString()), null, null, null)</ID>
+    <ID>MaxLineLength:DatabaseMappers.kt$fun</ID>
+    <ID>MaxLineLength:FinancistoScheduleAllWorkManager.kt$FinancistoScheduleAllWorkManager$val text: String = getString(applicationContext, R.string.scheduled_transactions_have_been_restored).format(count)</ID>
+    <ID>MaxLineLength:FreeCurrencyRateDownloader.kt$FreeCurrencyRateDownloader$return "https://freecurrencyrates.com/api/action.php?s=fcr&amp;iso=${toCurrency.name}&amp;f=${fromCurrency.name}&amp;v=1&amp;do=cvals"</ID>
+    <ID>MaxLineLength:GraphWidget.kt$(abs(amount.toFloat()) / maxAmount * (width - (style.textDy * 5) - maxAmountWidth))</ID>
+    <ID>MaxLineLength:MenuListItem.kt$MenuListItem.Companion$val progressDialog = ProgressDialog.show(activity, null, activity.getString(R.string.csv_export_inprogress), true)</ID>
+    <ID>MaxLineLength:MenuListItem.kt$MenuListItem.Companion$val progressDialog = ProgressDialog.show(activity, null, activity.getString(R.string.csv_import_inprogress), true)</ID>
+    <ID>MaxLineLength:MenuListItem.kt$MenuListItem.Companion$val progressDialog = ProgressDialog.show(activity, null, activity.getString(R.string.integrity_fix_in_progress), true)</ID>
+    <ID>MaxLineLength:MenuListItem.kt$MenuListItem.Companion$val progressDialog = ProgressDialog.show(activity, null, activity.getString(R.string.qif_export_inprogress), true)</ID>
+    <ID>MaxLineLength:MenuListItem.kt$MenuListItem.Companion$val progressDialog = ProgressDialog.show(activity, null, activity.getString(R.string.qif_import_inprogress), true)</ID>
+    <ID>MaxLineLength:MenuListItem.kt$MenuListItem.DROPBOX_BACKUP$DROPBOX_BACKUP</ID>
+    <ID>MaxLineLength:MenuListItem.kt$MenuListItem.DROPBOX_RESTORE$DROPBOX_RESTORE</ID>
+    <ID>MaxLineLength:MenuListItem.kt$MenuListItem.MENU_BACKUP_TO$activity.startActivity(Intent.createChooser(intent, activity.getString(R.string.backup_database_to_title)))</ID>
+    <ID>MaxLineLength:MenuListItem.kt$MenuListItem.MENU_PREFERENCES$activity.startActivityForResult(Intent(activity, PreferencesActivity::class.java), ACTIVITY_CHANGE_PREFERENCES)</ID>
+    <ID>MaxLineLength:MenuListItem.kt$MenuListItem.MENU_RESTORE$val d = ProgressDialog.show(activity, null, activity.getString(R.string.restore_database_inprogress), true)</ID>
+    <ID>MaxLineLength:MenuListItem.kt$MenuListItem.MENU_SCHEDULED_TRANSACTIONS$MENU_SCHEDULED_TRANSACTIONS</ID>
+    <ID>MaxLineLength:MenuListItem.kt$MenuListItem.MenuEntities$SMS_TEMPLATES : MenuEntities</ID>
+    <ID>MaxLineLength:PeriodReport.kt$PeriodReport$override</ID>
+    <ID>MaxLineLength:PermissionsPreferenceContent.kt$// isSwitchDisabled = storagePermissionState.status.isGranted || (!storagePermissionState.status.isGranted &amp;&amp; !storagePermissionState.status.shouldShowRationale),</ID>
+    <ID>MaxLineLength:PermissionsPreferenceContent.kt$val latestFolder = preferencesStore.backupPreferencesRx.blockingFirst()//backupPreferencesFlow.collectAsState(initial = null)</ID>
+    <ID>MaxLineLength:PinActivity.kt$PinActivity$}</ID>
+    <ID>MaxLineLength:PlannerViewModelAdversarialTest.kt$PlannerViewModelAdversarialTest.&lt;no name provided&gt;$return MatrixCursor(arrayOf("_id", "from_account_id", "to_account_id", "from_amount", "to_amount", "datetime"))</ID>
+    <ID>MaxLineLength:RateNode.kt$RateNode$sb.append("1").append(currencyFrom.name).append("=").append(nf.format(r)).append(currencyTo.name).append(", ")</ID>
+    <ID>MaxLineLength:RecurrencePattern.kt$RecurrencePattern$val everyNthDay = state[RecurrenceViewFactory.P_MONTHLY_PATTERN_PARAMS + "_0"]?.toIntOrNull() ?: 1</ID>
+    <ID>MaxLineLength:RecurrenceSchedulerIntegrationTest.kt$RecurrenceSchedulerIntegrationTest$val recurrenceStr = "2026-01-15T10:00:00~MONTHLY:interval@1#monthly_pattern_0@EVERY_NTH_DAY#monthly_pattern_params_0@15#~INDEFINITELY:"</ID>
+    <ID>MaxLineLength:RecurrenceSchedulerIntegrationTest.kt$RecurrenceSchedulerIntegrationTest$val recurrenceStr = "2026-01-31T10:00:00~MONTHLY:interval@1#monthly_pattern_0@SPECIFIC_DAY#monthly_pattern_params_0@LAST-DAY#~INDEFINITELY:"</ID>
+    <ID>MaxLineLength:ReportActivity.kt$ReportActivity$DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_TIME or DateUtils.FORMAT_ABBREV_MONTH</ID>
+    <ID>MaxLineLength:ReportActivity.kt$ReportActivity$Text(modifier = Modifier.align(Alignment.CenterHorizontally), text = stringResource(id = incomeExpenseTitleId))</ID>
+    <ID>MaxLineLength:ReportActivity.kt$ReportActivity$tint = colorResource(id = if (currentFilter.isEmpty) R.color.bottom_bar_tint else R.color.holo_blue_dark)</ID>
+    <ID>MaxLineLength:ReportActivity.kt$ReportActivity$titleText = if (currentReport != null &amp;&amp; currentReport !is PeriodReport) titleText else null</ID>
+    <ID>MaxLineLength:RequestPermission.kt$RequestPermission$if</ID>
+    <ID>MaxLineLength:TransactionsListAdapter.kt$TransactionsListAdapter$DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_TIME or DateUtils.FORMAT_ABBREV_MONTH or DateUtils.FORMAT_SHOW_WEEKDAY or DateUtils.FORMAT_ABBREV_WEEKDAY</ID>
+    <ID>MaxLineLength:WebserviceXConversionRateDownloader.kt$WebserviceXConversionRateDownloader$return "https://www.webservicex.net/CurrencyConvertor.asmx/ConversionRate?FromCurrency=${fromCurrency.name}&amp;ToCurrency=${toCurrency.name}"</ID>
+    <ID>MaxLineLength:WebserviceXConversionRateDownloaderTest.kt$WebserviceXConversionRateDownloaderTest$"Something wrong with the exchange rates provider. Response from the service - System.IO.IOException: There is not enough space on the disk."</ID>
+    <ID>MaximumLineLength:Backup.kt$Backup$ </ID>
+    <ID>MaximumLineLength:BiometricPromptUtils.kt$BiometricPromptUtils$ </ID>
+    <ID>MaximumLineLength:BudgetsTotalCalculatorTest.kt$BudgetsTotalCalculatorTest$ </ID>
+    <ID>MaximumLineLength:DatabaseMappers.kt$ </ID>
+    <ID>MaximumLineLength:DatabaseMappers.kt$fun</ID>
+    <ID>MaximumLineLength:FinancistoScheduleAllWorkManager.kt$FinancistoScheduleAllWorkManager$ </ID>
+    <ID>MaximumLineLength:FreeCurrencyRateDownloader.kt$FreeCurrencyRateDownloader$ </ID>
+    <ID>MaximumLineLength:GraphWidget.kt$ </ID>
+    <ID>MaximumLineLength:MenuListItem.kt$MenuListItem$ </ID>
+    <ID>MaximumLineLength:MenuListItem.kt$MenuListItem.Companion$ </ID>
+    <ID>MaximumLineLength:MenuListItem.kt$MenuListItem.MENU_BACKUP_TO$ </ID>
+    <ID>MaximumLineLength:MenuListItem.kt$MenuListItem.MENU_PREFERENCES$ </ID>
+    <ID>MaximumLineLength:MenuListItem.kt$MenuListItem.MENU_RESTORE$ </ID>
+    <ID>MaximumLineLength:MenuListItem.kt$MenuListItem.MenuEntities$ </ID>
+    <ID>MaximumLineLength:PeriodReport.kt$PeriodReport$ </ID>
+    <ID>MaximumLineLength:PermissionsPreferenceContent.kt$ </ID>
+    <ID>MaximumLineLength:PinActivity.kt$PinActivity$ </ID>
+    <ID>MaximumLineLength:PlannerViewModelAdversarialTest.kt$PlannerViewModelAdversarialTest.&lt;no name provided&gt;$ </ID>
+    <ID>MaximumLineLength:RateNode.kt$RateNode$ </ID>
+    <ID>MaximumLineLength:RecurrencePattern.kt$RecurrencePattern$ </ID>
+    <ID>MaximumLineLength:RecurrenceSchedulerIntegrationTest.kt$RecurrenceSchedulerIntegrationTest$ </ID>
+    <ID>MaximumLineLength:ReportActivity.kt$ReportActivity$ </ID>
+    <ID>MaximumLineLength:RequestPermission.kt$RequestPermission$ </ID>
+    <ID>MaximumLineLength:TransactionsListAdapter.kt$TransactionsListAdapter$ </ID>
+    <ID>MaximumLineLength:WebserviceXConversionRateDownloader.kt$WebserviceXConversionRateDownloader$ </ID>
+    <ID>MaximumLineLength:WebserviceXConversionRateDownloaderTest.kt$WebserviceXConversionRateDownloaderTest$ </ID>
+    <ID>ModifierListSpacing:BlotterFilter.kt$BlotterFilter$@JvmField</ID>
+    <ID>ModifierListSpacing:DateUtils.kt$DateUtils$@JvmStatic</ID>
+    <ID>ModifierListSpacing:PinDialogPreference.kt$PinDialogPreference$@Deprecated("Deprecated in Java") override</ID>
+    <ID>MultiLineIfElse:DatabaseExport.kt$DatabaseExport$" " + if (orderedTable) " order by $DEF_SORT_COL asc" else ""</ID>
+    <ID>MultiLineIfElse:DatabaseExport.kt$DatabaseExport$" WHERE _id &gt; 0 "</ID>
+    <ID>MultiLineIfElse:DatabaseUtils.kt$DatabaseUtils$return c.getLong(0)</ID>
+    <ID>MultiLineIfElse:RequestPermission.kt$RequestPermission$return checkWritablePath(ctx)</ID>
+    <ID>NestedBlockDepth:BudgetListActivity.kt$BudgetListActivity$@Deprecated("Deprecated in Java") override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?)</ID>
+    <ID>NestedBlockDepth:BudgetsTotalCalculator.kt$BudgetsTotalCalculator$private fun &lt;T : MyEntity&gt; getChecked(entities: Map&lt;Long, T&gt;, s: String?): String?</ID>
+    <ID>NestedBlockDepth:CategoryByPeriodReport.kt$CategoryByPeriodReport$override fun setFilterIds()</ID>
+    <ID>NestedBlockDepth:DatabaseExport.kt$DatabaseExport$private fun exportTable(bw: BufferedWriter, tableName: String)</ID>
+    <ID>NestedBlockDepth:FinancistoAutoBackupWorkManager.kt$FinancistoAutoBackupWorkManager$private suspend fun exportDatabaseWhenLocked(): String?</ID>
+    <ID>NestedBlockDepth:IntegrityCheckAutobackup.kt$IntegrityCheckAutobackup$override fun check(context: Context): Result</ID>
+    <ID>NestedBlockDepth:RecurrencePattern.kt$RecurrencePattern$fun toRRuleString(): String</ID>
+    <ID>NestedBlockDepth:RecurrencePeriod.kt$RecurrencePeriod$fun toRRuleString(startDate: Calendar): String</ID>
+    <ID>NewLineAtEndOfFile:DateRecurrenceIterator.kt$ru.orangesoftware.financisto.recur.DateRecurrenceIterator.kt</ID>
+    <ID>NewLineAtEndOfFile:FreeCurrencyRateDownloader.kt$ru.orangesoftware.financisto.rates.FreeCurrencyRateDownloader.kt</ID>
+    <ID>NewLineAtEndOfFile:OpenExchangeRatesDownloader.kt$ru.orangesoftware.financisto.rates.OpenExchangeRatesDownloader.kt</ID>
+    <ID>NewLineAtEndOfFile:OpenExchangeRatesDownloaderTest.kt$ru.orangesoftware.financisto.rates.OpenExchangeRatesDownloaderTest.kt</ID>
+    <ID>NewLineAtEndOfFile:RecurrenceSchedulerIntegrationTest.kt$ru.orangesoftware.financisto.service.RecurrenceSchedulerIntegrationTest.kt</ID>
+    <ID>NewLineAtEndOfFile:WebserviceXConversionRateDownloader.kt$ru.orangesoftware.financisto.rates.WebserviceXConversionRateDownloader.kt</ID>
+    <ID>NoBlankLineBeforeRbrace:AccountListTotalsDetailsActivity.kt$AccountListTotalsDetailsActivity$ </ID>
+    <ID>NoBlankLineBeforeRbrace:ActivityLayoutListener.kt$ActivityLayoutListener$ </ID>
+    <ID>NoBlankLineBeforeRbrace:Amount.kt$Amount$ </ID>
+    <ID>NoBlankLineBeforeRbrace:DailyAutoBackupScheduler.kt$DailyAutoBackupScheduler$ </ID>
+    <ID>NoBlankLineBeforeRbrace:IntegrityCheckAutobackup.kt$IntegrityCheckAutobackup$ </ID>
+    <ID>NoBlankLineBeforeRbrace:IntegrityCheckRunningBalance.kt$IntegrityCheckRunningBalance$ </ID>
+    <ID>NoBlankLineBeforeRbrace:IntegrityFix.kt$IntegrityFix$ </ID>
+    <ID>NoBlankLineBeforeRbrace:MyViewFlipper.kt$MyViewFlipper$ </ID>
+    <ID>NoBlankLineBeforeRbrace:NotificationOptions.kt$NotificationOptions$ </ID>
+    <ID>NoBlankLineBeforeRbrace:RecurrencePerformanceTest.kt$RecurrencePerformanceTest$ </ID>
+    <ID>NoBlankLineBeforeRbrace:TransactionsTotalCalculatorBenchmark.kt$TransactionsTotalCalculatorBenchmark$ </ID>
+    <ID>NoBlankLineBeforeRbrace:UiUtils.kt$UiUtils$ </ID>
+    <ID>NoConsecutiveBlankLines:AbstractBlotterListAdapter.kt$AbstractBlotterListAdapter$ </ID>
+    <ID>NoConsecutiveBlankLines:FinancistoScheduleAllWorkManager.kt$FinancistoScheduleAllWorkManager$ </ID>
+    <ID>NoConsecutiveBlankLines:ItemTouchHelperAdapter.kt$ItemTouchHelperAdapter$ </ID>
+    <ID>NoConsecutiveBlankLines:ItemTouchHelperViewHolder.kt$ItemTouchHelperViewHolder$ </ID>
+    <ID>NoConsecutiveBlankLines:PinActivity.kt$PinActivity$ </ID>
+    <ID>NoConsecutiveBlankLines:QifUtils.kt$ </ID>
+    <ID>NoConsecutiveBlankLines:ScheduledAlarmReceiver.kt$ScheduledAlarmReceiver$ </ID>
+    <ID>NoConsecutiveBlankLines:TransactionTitleUtils.kt$TransactionTitleUtils$ </ID>
+    <ID>NoEmptyFirstLineInMethodBlock:KoinInjectionTest.kt$KoinInjectionTest$ </ID>
+    <ID>NoMultipleSpaces:BlotterTotalsDetailsActivity.kt$BlotterTotalsDetailsActivity$ </ID>
+    <ID>NoMultipleSpaces:BudgetListTotalsDetailsActivity.kt$BudgetListTotalsDetailsActivity$ </ID>
+    <ID>NoMultipleSpaces:DatabaseUtils.kt$DatabaseUtils$ </ID>
+    <ID>NoMultipleSpaces:IncomeExpenseAmount.kt$IncomeExpenseAmount$ </ID>
+    <ID>NoMultipleSpaces:NotificationOptions.kt$NotificationOptions.LedColor$ </ID>
+    <ID>NoMultipleSpaces:PreferencesStore.kt$PreferencesStore$ </ID>
+    <ID>NoMultipleSpaces:RecurrenceFrequency.kt$RecurrenceFrequency$ </ID>
+    <ID>NoMultipleSpaces:TransactionsTotalCalculatorBenchmark.kt$TransactionsTotalCalculatorBenchmark$ </ID>
+    <ID>NoSemicolons:AccountType.kt$AccountType.OTHER$;</ID>
+    <ID>NoSemicolons:CardIssuer.kt$CardIssuer.UNIONPAY$;</ID>
+    <ID>NoSemicolons:CommonSwipeRefreshLayout.kt$CommonSwipeRefreshLayout$;</ID>
+    <ID>NoSemicolons:ElectronicPaymentType.kt$ElectronicPaymentType.YANDEX_MONEY$;</ID>
+    <ID>NoSemicolons:MenuListItem.kt$MenuListItem.ImportExportEntities.QIF_IMPORT$;</ID>
+    <ID>NoSemicolons:MenuListItem.kt$MenuListItem.MenuEntities.LOCATIONS$;</ID>
+    <ID>NoSemicolons:NotificationOptions.kt$NotificationOptions.LedColor.PINK$;</ID>
+    <ID>NoSemicolons:NotificationOptions.kt$NotificationOptions.VibrationPattern.THREE_LONG$;</ID>
+    <ID>NoSemicolons:PayeeByPeriodReport.kt$PayeeByPeriodReport$;</ID>
+    <ID>NoSemicolons:PicturesUtil.kt$PicturesUtil$;</ID>
+    <ID>NoSemicolons:PreferencesStore.kt$PreferencesStore$;</ID>
+    <ID>NoSemicolons:RecurrenceFrequency.kt$RecurrenceFrequency.GEEKY$;</ID>
+    <ID>NoSemicolons:RecurrenceUntil.kt$RecurrenceUntil.STOPS_ON_DATE$;</ID>
+    <ID>NoSemicolons:TransactionStatus.kt$TransactionStatus.RECONCILED$;</ID>
+    <ID>NoTrailingSpaces:BaseExchangeRateDownloaderTest.kt$BaseExchangeRateDownloaderTest$ </ID>
+    <ID>NoTrailingSpaces:BaseExchangeRateDownloaderTest.kt$BaseExchangeRateDownloaderTest.&lt;no name provided&gt;$ </ID>
+    <ID>NoTrailingSpaces:CategoryTreeNavigator.kt$CategoryTreeNavigator$ </ID>
+    <ID>NoTrailingSpaces:DatabaseMappers.kt$ </ID>
+    <ID>NoTrailingSpaces:FreeCurrencyRateDownloaderTest.kt$FreeCurrencyRateDownloaderTest$ </ID>
+    <ID>NoTrailingSpaces:LibRecurProcessorTest.kt$LibRecurProcessorTest$ </ID>
+    <ID>NoTrailingSpaces:NumberPickerButton.kt$NumberPickerButton$ </ID>
+    <ID>NoTrailingSpaces:OpenExchangeRatesDownloader.kt$OpenExchangeRatesDownloader$ </ID>
+    <ID>NoTrailingSpaces:OpenExchangeRatesDownloader.kt$OpenExchangeRatesDownloader$// exchangeRate.date is already initialized to clock.now() in createRate, </ID>
+    <ID>NoTrailingSpaces:OpenExchangeRatesDownloaderTest.kt$OpenExchangeRatesDownloaderTest$ </ID>
+    <ID>NoTrailingSpaces:QuickAction.kt$QuickAction$ </ID>
+    <ID>NoTrailingSpaces:QuickActionGrid.kt$QuickActionGrid$ </ID>
+    <ID>NoTrailingSpaces:RecurrencePeriod.kt$RecurrencePeriod$ </ID>
+    <ID>NoTrailingSpaces:RecurrenceProcessorTest.kt$RecurrenceProcessorTest$ </ID>
+    <ID>NoTrailingSpaces:RecurrenceProcessorTest.kt$RecurrenceProcessorTest.&lt;no name provided&gt;$ </ID>
+    <ID>NoTrailingSpaces:RecurrenceSchedulerIntegrationTest.kt$RecurrenceSchedulerIntegrationTest$ </ID>
+    <ID>NoTrailingSpaces:ReportActivity.kt$ReportActivity$ </ID>
+    <ID>NoTrailingSpaces:SmsTemplateListSource.kt$SmsTemplateListSource$ </ID>
+    <ID>NoTrailingSpaces:StringUtil.kt$StringUtil$ </ID>
+    <ID>NoTrailingSpaces:Total.kt$Total$ </ID>
+    <ID>NoTrailingSpaces:TransparentLayout.kt$TransparentLayout$ </ID>
+    <ID>NoTrailingSpaces:WebserviceXConversionRateDownloaderTest.kt$WebserviceXConversionRateDownloaderTest$ </ID>
+    <ID>ParameterListWrapping:DatabaseMappers.kt$(sa: SystemAttribute, transactionId: Long)</ID>
+    <ID>ParameterListWrapping:PeriodReport.kt$PeriodReport$(id: Long, name: String?)</ID>
+    <ID>PropertyWrapping:BudgetsTotalCalculatorTest.kt$BudgetsTotalCalculatorTest$val b3 = createBudget(currency = foreignCurrency, amount = 800L, categories = catA.id.toString(), projects = null)</ID>
+    <ID>PropertyWrapping:BudgetsTotalCalculatorTest.kt$BudgetsTotalCalculatorTest$val bForeign = createBudget(currency = foreignCurrency, amount = 500L, categories = catA.id.toString(), projects = null)</ID>
+    <ID>PropertyWrapping:BudgetsTotalCalculatorTest.kt$BudgetsTotalCalculatorTest$val bHome = createBudget(currency = homeCurrency, amount = 1000L, categories = catA.id.toString(), projects = null)</ID>
+    <ID>ProtectedMemberInFinalClass:DailyAutoBackupScheduler.kt$DailyAutoBackupScheduler$protected fun getScheduledTime(): Date</ID>
+    <ID>ProtectedMemberInFinalClass:SmsTemplateListAsyncAdapter.kt$SmsTemplateListAsyncAdapter$protected fun createContextMenus(): List&lt;MenuItemInfo&gt;</ID>
+    <ID>ProtectedMemberInFinalClass:SmsTemplateListAsyncAdapter.kt$SmsTemplateListAsyncAdapter$protected fun onItemAction(menuId: Int, itemView: View): Boolean</ID>
+    <ID>ReturnCount:AbstractListActivity.kt$AbstractListActivity$open fun onPopupItemSelected(itemId: Int, view: View, position: Int, id: Long): Boolean</ID>
+    <ID>ReturnCount:FinancistoAutoBackupWorkManager.kt$FinancistoAutoBackupWorkManager$override fun doWork(): Result</ID>
+    <ID>ReturnCount:IntegrityCheckAutobackup.kt$IntegrityCheckAutobackup$override fun check(context: Context): Result</ID>
+    <ID>ReturnCount:IntegrityCheckTask.kt$IntegrityCheckTask$fun execute(vararg params: IntegrityCheck): IntegrityCheckTask</ID>
+    <ID>ReturnCount:PurgeAccountActivity.kt$PurgeAccountActivity$private fun loadAccount(): Boolean</ID>
+    <ID>ReturnCount:SmsTemplateListAsyncAdapter.kt$SmsTemplateListAsyncAdapter$protected fun onItemAction(menuId: Int, itemView: View): Boolean</ID>
+    <ID>ReturnCount:StringUtil.kt$StringUtil$fun generateSeparated(value: String, delim: String, num: Int): String</ID>
+    <ID>SpacingAroundAngleBrackets:DatabaseUtils.kt$DatabaseUtils$&lt; T&gt;</ID>
+    <ID>SpacingAroundColon:FinancistoScheduleAllWorkManager.kt$FinancistoScheduleAllWorkManager$:</ID>
+    <ID>SpacingAroundColon:FinancistoScheduleAutoBackupWorkManager.kt$FinancistoScheduleAutoBackupWorkManager$:</ID>
+    <ID>SpacingAroundColon:FinancistoScheduleOneWorkManager.kt$FinancistoScheduleOneWorkManager$:</ID>
+    <ID>SpacingAroundColon:FinancistoSmsWorkManager.kt$FinancistoSmsWorkManager$:</ID>
+    <ID>SpacingAroundColon:QuickActionGrid.kt$QuickActionGrid.&lt;no name provided&gt;$:</ID>
+    <ID>SpacingAroundComma:NotificationOptions.kt$NotificationOptions.VibrationPattern.LONG$,</ID>
+    <ID>SpacingAroundComma:NotificationOptions.kt$NotificationOptions.VibrationPattern.LONG_LONG$,</ID>
+    <ID>SpacingAroundComma:NotificationOptions.kt$NotificationOptions.VibrationPattern.SHORT$,</ID>
+    <ID>SpacingAroundComma:NotificationOptions.kt$NotificationOptions.VibrationPattern.SHORT_SHORT$,</ID>
+    <ID>SpacingAroundComma:NotificationOptions.kt$NotificationOptions.VibrationPattern.THREE_LONG$,</ID>
+    <ID>SpacingAroundComma:NotificationOptions.kt$NotificationOptions.VibrationPattern.THREE_SHORTS$,</ID>
+    <ID>SpacingAroundComma:PayeeSelector.kt$PayeeSelector$,</ID>
+    <ID>SpacingAroundComma:PermissionsPreferenceContent.kt$,</ID>
+    <ID>SpacingAroundCurly:CursorItemSource.kt$CursorItemSource${</ID>
+    <ID>SpacingAroundCurly:PreferencesStore.kt$PreferencesStore$}</ID>
+    <ID>SpacingAroundCurly:QifUtils.kt$QifUtils${</ID>
+    <ID>SpacingAroundKeyword:CursorItemSource.kt$CursorItemSource$if</ID>
+    <ID>SpacingAroundKeyword:ScheduledAlarmReceiver.kt$ScheduledAlarmReceiver$when</ID>
+    <ID>SpacingAroundKeyword:SplitAdjuster.kt$SplitAdjuster$for</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:BlotterFilter.kt$BlotterFilter$@JvmField val CATEGORY_ID: String = BlotterColumns.category_id.name</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:BlotterFilter.kt$BlotterFilter$@JvmField val CATEGORY_LEFT: String = BlotterColumns.category_left.name</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:BlotterFilter.kt$BlotterFilter$@JvmField val CATEGORY_NAME: String = BlotterColumns.category_title.name</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:BlotterFilter.kt$BlotterFilter$@JvmField val DATETIME: String = BlotterColumns.datetime.name</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:BlotterFilter.kt$BlotterFilter$@JvmField val FROM_ACCOUNT_CURRENCY_ID: String = BlotterColumns.from_account_currency_id.name</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:BlotterFilter.kt$BlotterFilter$@JvmField val IS_TEMPLATE: String = BlotterColumns.is_template.name</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:BlotterFilter.kt$BlotterFilter$@JvmField val LOCATION_ID: String = BlotterColumns.location_id.name</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:BlotterFilter.kt$BlotterFilter$@JvmField val NOTE: String = BlotterColumns.note.name</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:BlotterFilter.kt$BlotterFilter$@JvmField val PARENT_ID: String = BlotterColumns.parent_id.name</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:BlotterFilter.kt$BlotterFilter$@JvmField val PAYEE_ID: String = BlotterColumns.payee_id.name</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:BlotterFilter.kt$BlotterFilter$@JvmField val PROJECT_ID: String = BlotterColumns.project_id.name</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:BlotterFilter.kt$BlotterFilter$@JvmField val SORT_BY_ACCOUNT_NAME: String = "${BlotterColumns.from_account_title} asc"</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:BlotterFilter.kt$BlotterFilter$@JvmField val SORT_OLDER_TO_NEWER: String = "${BlotterColumns.datetime} asc"</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:BlotterFilter.kt$BlotterFilter$@JvmField val STATUS: String = BlotterColumns.status.name</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:BlotterFilter.kt$BlotterFilter$@JvmField val TEMPLATE_NAME: String = BlotterColumns.template_name.name</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:DateUtils.kt$DateUtils$@JvmStatic val FORMAT_DATE_ISO_8601: DateFormat = SimpleDateFormat("yyyy-MM-dd")</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:DateUtils.kt$DateUtils$@JvmStatic val FORMAT_DATE_RFC_2445: DateFormat = SimpleDateFormat("yyyyMMdd'T'HHmmss")</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:DateUtils.kt$DateUtils$@JvmStatic val FORMAT_TIME_ISO_8601: DateFormat = SimpleDateFormat("HH:mm:ss")</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:FreeCurrencyRateDownloaderTest.kt$FreeCurrencyRateDownloaderTest$@Mock lateinit var clock: Clock</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:OpenExchangeRatesDownloaderTest.kt$OpenExchangeRatesDownloaderTest$@Mock lateinit var clock: Clock</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:OpenExchangeRatesDownloaderTest.kt$OpenExchangeRatesDownloaderTest$@Mock lateinit var sharedPreferences: SharedPreferences</ID>
+    <ID>SpacingBetweenDeclarationsWithAnnotations:WebserviceXConversionRateDownloaderTest.kt$WebserviceXConversionRateDownloaderTest$@Mock lateinit var clock: Clock</ID>
+    <ID>SpacingBetweenDeclarationsWithComments:JavaAppKoin.kt$DependenciesHolder$//Inject the logger</ID>
+    <ID>SpacingBetweenDeclarationsWithComments:RecurrenceFrequency.kt$RecurrenceFrequency.GEEKY$//SEMI_MONTHLY(R.string.recur_interval_semi_monthly),</ID>
+    <ID>SpreadOperator:MenuListItem.kt$MenuListItem.MENU_ENTITIES$(activity, *permissions)</ID>
+    <ID>StringTemplate:RecurrencePattern.kt$RecurrencePattern$${params}</ID>
+    <ID>StringTemplate:RecurrencePeriod.kt$RecurrencePeriod$${params}</ID>
+    <ID>SwallowedException:DatabaseMappers.kt$e: Exception</ID>
+    <ID>SwallowedException:MenuListItem.kt$MenuListItem.MENU_DONATE$ex: Exception</ID>
+    <ID>SwallowedException:MyViewFlipper.kt$MyViewFlipper$e: IllegalArgumentException</ID>
+    <ID>SwallowedException:PlannerViewModelAdversarialTest.kt$PlannerViewModelAdversarialTest$e: CancellationException</ID>
+    <ID>SwallowedException:WebViewDialog.kt$WebViewDialog$ex: Exception</ID>
+    <ID>ThrowingExceptionsWithoutMessageOrCause:TimberLogger.kt$TimberTree$Throwable()</ID>
+    <ID>TooGenericExceptionCaught:DatabaseMappers.kt$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:FinancistoAutoBackupWorkManager.kt$FinancistoAutoBackupWorkManager$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:MenuListItem.kt$MenuListItem.MENU_DONATE$ex: Exception</ID>
+    <ID>TooGenericExceptionCaught:WebViewDialog.kt$WebViewDialog$ex: Exception</ID>
+    <ID>TooGenericExceptionThrown:BaseExchangeRateDownloaderTest.kt$BaseExchangeRateDownloaderTest.&lt;no name provided&gt;$throw RuntimeException("Boom")</ID>
+    <ID>TooGenericExceptionThrown:HttpClientWrapper.kt$HttpClientWrapper$throw RuntimeException("HTTP Error: ${response.status}")</ID>
+    <ID>TooGenericExceptionThrown:OpenExchangeRatesDownloader.kt$OpenExchangeRatesDownloader$throw RuntimeException("App ID is not set")</ID>
+    <ID>TooGenericExceptionThrown:PlannerViewModelAdversarialTest.kt$PlannerViewModelAdversarialTest.&lt;no name provided&gt;$throw RuntimeException("Fatal disk error")</ID>
+    <ID>TooGenericExceptionThrown:Recurrence.kt$Recurrence.Companion$throw RuntimeException("Failed to parse recurrence start date: $recurrence", it)</ID>
+    <ID>TooManyFunctions:AbstractActivity.kt$AbstractActivity : FragmentActivityActivityLayoutListener</ID>
+    <ID>TooManyFunctions:AbstractTotalsDetailsActivity.kt$AbstractTotalsDetailsActivity : AbstractActivity</ID>
+    <ID>TooManyFunctions:DatabaseMappers.kt$ru.orangesoftware.financisto.db.DatabaseMappers.kt</ID>
+    <ID>TooManyFunctions:DateUtils.kt$DateUtils</ID>
+    <ID>TooManyFunctions:ReportViewModel.kt$ReportViewModel : ViewModel</ID>
+    <ID>TooManyFunctions:SmsTemplateListAsyncAdapter.kt$SmsTemplateListAsyncAdapter : AsyncAdapterItemTouchHelperAdapter</ID>
+    <ID>TopLevelPropertyNaming:PackageReplaceReceiver.kt$private const val PACKAGE_REPLACED = "android.intent.action.PACKAGE_REPLACED"</ID>
+    <ID>TopLevelPropertyNaming:PinProtection.kt$private const val MIN_DELTA_TIME_MS: Long = 3000</ID>
+    <ID>TopLevelPropertyNaming:ScheduledAlarmReceiver.kt$private const val BOOT_COMPLETED = "android.intent.action.BOOT_COMPLETED"</ID>
+    <ID>TopLevelPropertyNaming:ScheduledAlarmReceiver.kt$private const val SCHEDULED_BACKUP = "ru.orangesoftware.financisto.SCHEDULED_BACKUP"</ID>
+    <ID>TopLevelPropertyNaming:TimePreference.kt$private const val DEFAULT_VALUE: Int = 600</ID>
+    <ID>UnusedParameter:PieChartViewModel.kt$PieChartViewModel$reportName: String</ID>
+    <ID>UnusedParameter:PinProtection.kt$PinProtection$context: Context</ID>
+    <ID>UnusedParameter:SmsTemplateListAsyncAdapter.kt$SmsTemplateListAsyncAdapter$position: Int</ID>
+    <ID>UnusedParameter:SmsTemplateListAsyncAdapter.kt$SmsTemplateListAsyncAdapter.LocalViewHolder$ignore: Int?</ID>
+    <ID>UnusedPrivateProperty:AbstractGenericListAdapter.kt$AbstractGenericListAdapter$db: DatabaseAdapter</ID>
+    <ID>UnusedPrivateProperty:MyViewFlipper.kt$MyViewFlipper$defStyleAttr: Int = 0</ID>
+    <ID>UnusedPrivateProperty:StringUtil.kt$StringUtil$i</ID>
+    <ID>UseCheckOrError:MonthlyViewViewModelTest.kt$MonthlyViewViewModelTest.&lt;no name provided&gt;$throw IllegalStateException("Database query failed")</ID>
+    <ID>UseCheckOrError:PlannerViewModelTest.kt$PlannerViewModelTest.&lt;no name provided&gt;$throw IllegalStateException("Database query failed")</ID>
+    <ID>VariableNaming:TimberLogger.kt$TimberTree$private val CALL_STACK_INDEX = 8</ID>
+    <ID>Wrapping:GraphWidget.kt$(</ID>
+    <ID>Wrapping:JavaAppKoin.kt$(</ID>
+    <ID>Wrapping:MenuListItem.kt$MenuListItem.MENU_BACKUP_TO$(</ID>
+    <ID>Wrapping:MyQuickAction.kt$MyQuickAction$colorFilter = LightingColorFilter( Color.BLACK, ContextCompat.getColor(ctx, R.color.colorPrimary) )</ID>
+    <ID>Wrapping:NumberPickerButton.kt$NumberPickerButton$(</ID>
+    <ID>Wrapping:OpenExchangeRatesDownloaderTest.kt$OpenExchangeRatesDownloaderTest$(</ID>
+    <ID>Wrapping:QuickAction.kt$QuickAction$( ContextCompat.getDrawable( ctx, drawableId )!!, ctx.resources.getString(titleId) )</ID>
+    <ID>Wrapping:QuickActionGrid.kt$QuickActionGrid.&lt;no name provided&gt;$(</ID>
+    <ID>Wrapping:RecurrenceTestHelper.kt$RecurrenceTestHelper$(</ID>
+    <ID>Wrapping:TestKoinHelper.kt$TestKoinHelper$(</ID>
+    <ID>Wrapping:WebserviceXConversionRateDownloaderTest.kt$WebserviceXConversionRateDownloaderTest$(</ID>
+  </CurrentIssues>
+</SmellBaseline>

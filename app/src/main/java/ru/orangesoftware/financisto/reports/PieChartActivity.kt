@@ -9,14 +9,15 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -34,6 +35,7 @@ import io.github.koalaplot.core.pie.CircularLabelPositionProvider
 import io.github.koalaplot.core.pie.PieChart
 import io.github.koalaplot.core.pie.PieLabelPlacement
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
+import ru.orangesoftware.financisto.core.designsystem.theme.FinancistoTheme
 import ru.orangesoftware.financisto.reports.PieChartViewModel.Companion.INTENT_KEY
 import ru.orangesoftware.financisto.reports.PieChartViewModel.Companion.SCREEN_DENTITY_KEY
 import ru.orangesoftware.financisto.utils.MyPreferences
@@ -46,7 +48,6 @@ class PieChartActivity : ComponentActivity() {
         super.attachBaseContext(MyPreferences.switchLocale(newBase))
     }
 
-    @OptIn(ExperimentalKoalaPlotApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -86,31 +87,49 @@ class PieChartActivity : ComponentActivity() {
 
             val chartData = pieChartViewModel.pieChartData.collectAsStateWithLifecycle()
 
-            if (chartData.value.isNotEmpty()) {
+            FinancistoTheme {
+                PieChartContent(chartData = chartData.value)
+            }
+
+            intent.extras?.let {
+                val chartTitle = it.getString(CHART_TITLE) ?: ""
+                setTitle(chartTitle)
+            }
+        }
+    }
+
+    @OptIn(ExperimentalKoalaPlotApi::class)
+    @Composable
+    private fun PieChartContent(chartData: List<ChartData>) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background,
+        ) {
+            if (chartData.isNotEmpty()) {
                 ChartLayout(
                     modifier = Modifier.fillMaxSize(),
                     legend = {
                         FlowLegend(
-                            itemCount = chartData.value.size,
+                            itemCount = chartData.size,
                             symbol = { i ->
                                 Symbol(
                                     modifier = Modifier.size(2.dp),
-                                    fillBrush = SolidColor(chartData.value[i].color)
+                                    fillBrush = SolidColor(chartData[i].color)
                                 )
                             },
                             label = { i ->
-                                Text(chartData.value[i].partName)
+                                Text(chartData[i].partName)
                             },
                             modifier = Modifier
                                 .padding(2.dp)
-                                .border(1.dp, Color.Black)
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant)
                                 .padding(2.dp)
                         )
                     },
                     legendLocation = LegendLocation.BOTTOM,
                 ) {
                     PieChart(
-                        values = chartData.value.map { abs(it.data.toFloat()) },
+                        values = chartData.map { abs(it.data.toFloat()) },
                         labelPositionProvider = CircularLabelPositionProvider(
                             labelSpacing = 1.0F,
                             labelPlacement = PieLabelPlacement.External,
@@ -118,12 +137,10 @@ class PieChartActivity : ComponentActivity() {
                     )
                 }
             } else {
-                Text(text = "No data", style = TextStyle(color = Color.Black))
-            }
-
-            intent.extras?.let {
-                val chartTitle = it.getString(CHART_TITLE) ?: ""
-                setTitle(chartTitle)
+                Text(
+                    text = "No data",
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
             }
         }
     }

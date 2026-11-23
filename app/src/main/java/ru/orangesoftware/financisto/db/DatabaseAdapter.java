@@ -289,6 +289,9 @@ public class DatabaseAdapter extends MyEntityManager {
             if (multiplier > 1) {
                 transaction.fromAmount *= multiplier;
                 transaction.toAmount *= multiplier;
+                if (transaction.originalFromAmount != 0) {
+                    transaction.originalFromAmount *= multiplier;
+                }
             }
             long transactionId = insertTransaction(transaction);
             Map<Long, String> attributesMap = getAllAttributesForTransaction(id);
@@ -308,6 +311,9 @@ public class DatabaseAdapter extends MyEntityManager {
             if (multiplier > 1) {
                 for (Transaction split : splits) {
                     split.fromAmount *= multiplier;
+                    if (split.originalFromAmount != 0) {
+                        split.originalFromAmount *= multiplier;
+                    }
                     split.remoteKey = null;
                 }
             }
@@ -330,6 +336,9 @@ public class DatabaseAdapter extends MyEntityManager {
         db.beginTransaction();
         try {
             long id = insertOrUpdateInTransaction(transaction, attributes);
+            if (id <= 0) {
+                throw new SQLiteException("Failed to insert or update transaction");
+            }
             db.setTransactionSuccessful();
             return id;
         } finally {
@@ -342,6 +351,9 @@ public class DatabaseAdapter extends MyEntityManager {
         transaction.lastRecurrence = System.currentTimeMillis();
         if (transaction.id == -1) {
             transactionId = insertTransaction(transaction);
+            if (transactionId == -1) {
+                throw new SQLiteException("Failed to insert transaction into " + TRANSACTION_TABLE);
+            }
         } else {
             updateTransaction(transaction);
             transactionId = transaction.id;
@@ -395,6 +407,9 @@ public class DatabaseAdapter extends MyEntityManager {
     private void insertSplits(Transaction parent) {
         List<Transaction> splits = parent.splits;
         if (splits != null) {
+            if (!splits.isEmpty() && parent.id <= 0) {
+                throw new SQLiteException("Cannot insert splits for invalid parent id: " + parent.id);
+            }
             for (Transaction split : splits) {
                 split.id = -1;
                 split.parentId = parent.id;
@@ -405,6 +420,9 @@ public class DatabaseAdapter extends MyEntityManager {
                 split.status = parent.status;
                 updateSplitOriginalAmount(parent, split);
                 long splitId = insertTransaction(split);
+                if (splitId == -1) {
+                    throw new SQLiteException("Failed to insert split transaction for parent id: " + parent.id);
+                }
                 insertAttributes(splitId, split.categoryAttributes);
             }
         }
@@ -413,8 +431,10 @@ public class DatabaseAdapter extends MyEntityManager {
     private void updateSplitOriginalAmount(Transaction parent, Transaction split) {
         if (parent.originalCurrencyId > 0) {
             split.originalCurrencyId = parent.originalCurrencyId;
-            split.originalFromAmount = split.fromAmount;
-            split.fromAmount = calculateAmountInAccountCurrency(parent, split.fromAmount);
+            if (split.originalFromAmount == 0) {
+                split.originalFromAmount = split.fromAmount;
+                split.fromAmount = calculateAmountInAccountCurrency(parent, split.fromAmount);
+            }
         }
     }
 
@@ -433,6 +453,9 @@ public class DatabaseAdapter extends MyEntityManager {
     private long insertTransaction(Transaction t) {
         t.updatedOn = System.currentTimeMillis();
         long id = db().insert(TRANSACTION_TABLE, null, t.toValues());
+        if (id == -1) {
+            throw new SQLiteException("Failed to insert transaction into " + TRANSACTION_TABLE);
+        }
         if (updateAccountBalance) {
             if (!t.isTemplateLike()) {
                 if (t.isSplitChild()) {

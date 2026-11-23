@@ -9,6 +9,7 @@ import androidx.core.app.NotificationCompat
 import ru.orangesoftware.financisto.activity.AbstractTransactionActivity
 import ru.orangesoftware.financisto.model.TransactionInfo
 import ru.orangesoftware.financisto.recur.NotificationOptions
+import ru.orangesoftware.financisto.transaction.TransactionEntryRouter
 import ru.orangesoftware.financisto.utils.NotificationChannels
 
 interface NotificationPresentation {
@@ -35,16 +36,22 @@ interface NotificationPresentation {
     }
 
     /* https://stackoverflow.com/a/3730394/365675 */
-    private fun contentIntent(context: Context, transactionInfo: TransactionInfo): PendingIntent =
-        PendingIntent.getActivity(
+    private fun contentIntent(context: Context, transactionInfo: TransactionInfo): PendingIntent {
+        val intent = if (!transactionInfo.isTemplateLike) {
+            TransactionEntryRouter.createEditIntent(context, transactionInfo.id)
+        } else {
+            Intent(context, transactionInfo.activity).apply {
+                putExtra(AbstractTransactionActivity.TRAN_ID_EXTRA, transactionInfo.id)
+                putExtra(TransactionEntryRouter.EXTRA_FORCE_LEGACY, true)
+            }
+        }
+        return PendingIntent.getActivity(
             context,
             transactionInfo.id.toInt(),
-            Intent(
-                context,
-                transactionInfo.activity
-            ).apply { putExtra(AbstractTransactionActivity.TRAN_ID_EXTRA, transactionInfo.id) },
-            PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            intent,
+            PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
+    }
 
     private fun applyNotificationOptions(notification: Notification, notificationOptions: String?) {
         if (notificationOptions == null) {

@@ -9,6 +9,7 @@ import ru.orangesoftware.financisto.R
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.model.Transaction
 import ru.orangesoftware.financisto.model.TransactionStatus
+import ru.orangesoftware.financisto.transaction.TransactionEntryRouter
 
 class BlotterOperations(
     private val activity: BlotterActivity,
@@ -27,6 +28,14 @@ class BlotterOperations(
     fun asNewFromTemplate(): BlotterOperations = this.apply { newFromTemplate = true }
 
     fun editTransaction() {
+        val requestCode = if (targetTransaction.isTransfer) EDIT_TRANSFER_REQUEST else EDIT_TRANSACTION_REQUEST
+        if (!newFromTemplate && !targetTransaction.isTemplateLike) {
+            activity.startActivityForResult(
+                TransactionEntryRouter.createEditIntent(activity, targetTransaction.id),
+                requestCode,
+            )
+            return
+        }
         if (targetTransaction.isTransfer) {
             startEditTransactionActivity(TransferActivity::class.java, EDIT_TRANSFER_REQUEST)
         } else {
@@ -39,6 +48,7 @@ class BlotterOperations(
         intent.putExtra(AbstractTransactionActivity.TRAN_ID_EXTRA, targetTransaction.id)
         intent.putExtra(AbstractTransactionActivity.DUPLICATE_EXTRA, false)
         intent.putExtra(AbstractTransactionActivity.NEW_FROM_TEMPLATE_EXTRA, newFromTemplate)
+        intent.putExtra(TransactionEntryRouter.EXTRA_FORCE_LEGACY, true)
         activity.startActivityForResult(intent, requestCode)
     }
 

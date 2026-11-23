@@ -1,6 +1,10 @@
+import io.gitlab.arturbosch.detekt.Detekt
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.detekt)
     alias(libs.plugins.kover)
     alias(libs.plugins.ksp)
 }
@@ -8,7 +12,11 @@ plugins {
 android {
     namespace = "ru.orangesoftware.financisto"
 
-    compileSdk = 37
+    compileSdk {
+        version = release(37) {
+            minorApiLevel = 1
+        }
+    }
 
     defaultConfig {
         applicationId = "ru.orangesoftware.financisto"
@@ -140,6 +148,7 @@ dependencies {
     implementation(libs.timber)
 
     implementation(libs.kotlinx.datetime)
+    implementation(libs.kotlinx.serialization.json)
     implementation(libs.lib.recur)
 
     implementation(libs.appcompat)
@@ -181,10 +190,32 @@ dependencies {
     testImplementation(libs.test.hamcrest)
     testImplementation(libs.test.mockito.core)
     testImplementation(libs.test.mockito.kotlin)
+    testImplementation(libs.kotlinx.coroutines.test)
 
     implementation(project(":appfunctions"))
+    implementation(project(":core:designsystem"))
+    implementation(project(":transaction"))
     implementation(libs.appfunctions.core)
     ksp(libs.appfunctions.compiler)
+
+    detektPlugins(libs.detekt.formatting)
+}
+
+detekt {
+    buildUponDefaultConfig = true
+    allRules = false
+    config.setFrom(rootProject.file("config/detekt.yml"))
+    baseline = file("detekt-baseline.xml")
+}
+
+tasks.withType<Detekt>().configureEach {
+    reports {
+        html.required.set(true)
+        xml.required.set(true)
+        txt.required.set(true)
+        sarif.required.set(true)
+        md.required.set(true)
+    }
 }
 
 kover {
