@@ -90,6 +90,7 @@ sealed interface TransactionUiState {
     data class NotFound(val transactionId: Long) : TransactionUiState
     data object NoAccounts : TransactionUiState
     data object LegacyRedirecting : TransactionUiState
+    data class LoadError(val message: String) : TransactionUiState
 
     data class Ready(
         val form: TransactionFormState,
@@ -213,6 +214,7 @@ sealed interface TransactionIntent {
     data object DismissSheet : TransactionIntent
     data class OpenSavedTransaction(val transactionId: Long) : TransactionIntent
     data object DuplicateDraftAnyway : TransactionIntent
+    data object RetryLoad : TransactionIntent
 }
 
 enum class ExternalEntityKind {

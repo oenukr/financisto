@@ -20,24 +20,27 @@ internal class TransactionReceiptStagingCoordinator(
     private val publishReady: (TransactionUiState.Ready) -> Unit,
     private val ioDispatcher: CoroutineDispatcher? = null,
     private val currentGeneration: () -> Long = { 0L },
+    private val onError: (String) -> Unit = {},
 ) {
     private data class ActiveStaging(
+        val token: Long,
         val generation: Long,
         var job: Job? = null,
     )
 
-    private val activeStagings = LinkedHashMap<Long, ActiveStaging>()
-    private var nextToken: Long = 0L
+    private var activeStaging: ActiveStaging? = null
+    private var latestToken: Long = 0L
 
     fun isStagingForCurrentForm(): Boolean {
-        val generation = currentGeneration()
-        return activeStagings.values.any { it.generation == generation }
+        val current = activeStaging
+        return current != null && current.generation == currentGeneration()
     }
 
     fun cancelAll(clearFlag: Boolean = false) {
-        val jobs = activeStagings.values.mapNotNull { it.job }
-        activeStagings.clear()
-        jobs.forEach(Job::cancel)
+        latestToken++
+        val job = activeStaging?.job
+        activeStaging = null
+        job?.cancel()
         if (clearFlag) {
             syncStagingFlag()
         }
@@ -46,34 +49,52 @@ internal class TransactionReceiptStagingCoordinator(
     @Suppress("TooGenericExceptionCaught")
     fun stageReceiptUri(uriString: String) {
         val capturedGeneration = currentGeneration()
-        val token = ++nextToken
-        val entry = ActiveStaging(generation = capturedGeneration)
-        activeStagings[token] = entry
+        val token = ++latestToken
+        val previousJob = activeStaging?.job
+        val entry = ActiveStaging(token = token, generation = capturedGeneration)
+        activeStaging = entry
+        previousJob?.cancel()
         syncStagingFlag()
 
         val job = scope.launch {
             val stagedRef = AtomicReference<String?>(null)
+            var failureMessage: String? = null
             try {
                 TransactionActionRunner.runOn(ioDispatcher) {
                     stagedRef.set(ports.receiptMediaPort.stageFromUri(uriString))
                 }
                 val staged = stagedRef.get()
-                if (staged != null && tryAttachStagedFile(staged, token, capturedGeneration)) {
+                if (staged == null) {
+                    failureMessage = DEFAULT_STAGE_ERROR_MESSAGE
+                } else if (tryAttachStagedFile(staged, token, capturedGeneration)) {
                     stagedRef.set(null)
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 Timber.w(e, "Failed to stage receipt from URI")
+                failureMessage = e.localizedMessage?.takeIf { it.isNotBlank() } ?: DEFAULT_STAGE_ERROR_MESSAGE
             } finally {
-                activeStagings.remove(token)
+                val errorToNotify = failureMessage?.takeIf {
+                    isCurrentActiveSelection(token, capturedGeneration) && currentReady()?.isSaving != true
+                }
+                if (activeStaging?.token == token) {
+                    activeStaging = null
+                }
                 syncStagingFlag()
+                errorToNotify?.let(onError)
                 deleteOrphanIfPresent(stagedRef.getAndSet(null))
             }
         }
-        if (activeStagings.containsKey(token)) {
+        if (activeStaging === entry) {
             entry.job = job
         }
+    }
+
+    private fun isCurrentActiveSelection(token: Long, capturedGeneration: Long): Boolean {
+        return token == latestToken &&
+            activeStaging?.token == token &&
+            currentGeneration() == capturedGeneration
     }
 
     private fun tryAttachStagedFile(
@@ -81,19 +102,19 @@ internal class TransactionReceiptStagingCoordinator(
         token: Long,
         capturedGeneration: Long,
     ): Boolean {
-        val currentReady = currentReady()
-        val isStillOwned = activeStagings.containsKey(token) &&
-            currentGeneration() == capturedGeneration
-        val canAttach = isStillOwned && currentReady != null && !currentReady.isSaving
+        val ready = currentReady()
+        val canAttach = isCurrentActiveSelection(token, capturedGeneration) &&
+            ready != null &&
+            !ready.isSaving
         if (canAttach) {
-            activeStagings.remove(token)
+            activeStaging = null
             publishReady(
-                currentReady.copy(
-                    form = currentReady.form.copy(
+                ready.copy(
+                    form = ready.form.copy(
                         attachedPictureFileName = fileName,
-                        newlyStagedPictureFiles = currentReady.form.newlyStagedPictureFiles + fileName,
+                        newlyStagedPictureFiles = ready.form.newlyStagedPictureFiles + fileName,
                     ),
-                    isStagingReceipt = isStagingForCurrentForm(),
+                    isStagingReceipt = false,
                 )
             )
         }
@@ -122,5 +143,9 @@ internal class TransactionReceiptStagingCoordinator(
                 Timber.w(e, "Failed to delete orphaned staged receipt %s", fileName)
             }
         }
+    }
+
+    private companion object {
+        const val DEFAULT_STAGE_ERROR_MESSAGE = "Could not attach receipt image."
     }
 }

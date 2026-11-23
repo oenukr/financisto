@@ -86,6 +86,12 @@ fun TransactionScreen(
                 onClose = onCloseRequested,
                 modifier = modifier,
             )
+            is TransactionUiState.LoadError -> TransactionLoadErrorView(
+                message = uiState.message,
+                onRetry = { onIntent(TransactionIntent.RetryLoad) },
+                onClose = onCloseRequested,
+                modifier = modifier,
+            )
             is TransactionUiState.Ready -> ReadyTransactionContent(
                 state = uiState,
                 resolveReceiptPath = resolveReceiptPath,

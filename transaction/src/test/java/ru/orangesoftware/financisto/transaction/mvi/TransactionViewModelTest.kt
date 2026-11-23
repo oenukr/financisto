@@ -2,6 +2,7 @@
 package ru.orangesoftware.financisto.transaction.mvi
 
 import androidx.lifecycle.SavedStateHandle
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -149,7 +150,9 @@ class TransactionViewModelTest {
     @Test
     fun aiDraftHandlesConsumedPromptAndStagedReceiptCleanupOnDiscardVsSave() = runTest {
         draftStore.savedByDraftId["draft-consumed"] = 88L
-        repository.editResult = TransactionEditLoadResult.Loaded(sampleRecord(id = 88L))
+        repository.editResult = TransactionEditLoadResult.Loaded(
+            sampleRecord(id = 88L, attachedPicture = "staged_a.jpg")
+        )
         val consumedVm = TransactionViewModel(
             launchArgs = TransactionLaunchArgs.AiDraft(
                 TransactionDraft(
@@ -491,6 +494,139 @@ class TransactionViewModelTest {
         assertEquals(1, repository.savedCommands.size)
         assertEquals(88L, repository.savedCommands.single().existingTransactionId)
         assertEquals(TransactionEffect.SavedAndFinish(101L), vm2.effects.first())
+    }
+
+    @Test
+    fun loadErrorPublishesRecoverableStateAndRetryLoadRecoversPreservingSavedForm() = runTest {
+        val handle = SavedStateHandle()
+        val initialVm = TransactionViewModel(
+            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
+            savedStateHandle = handle,
+            ports = ports,
+            ioDispatcher = testDispatcher,
+            clock = fixedClock,
+        )
+        initialVm.onIntent(TransactionIntent.UpdateNote("Preserve across retry"))
+
+        repository.failLoadCatalogMessage = "Database locked"
+        val failingVm = TransactionViewModel(
+            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
+            savedStateHandle = handle,
+            ports = ports,
+            ioDispatcher = testDispatcher,
+            clock = fixedClock,
+        )
+        assertEquals(TransactionUiState.LoadError("Database locked"), failingVm.uiState.value)
+
+        failingVm.onIntent(TransactionIntent.SaveClicked)
+        assertTrue(repository.savedCommands.isEmpty())
+
+        repository.failLoadCatalogMessage = null
+        failingVm.onIntent(TransactionIntent.RetryLoad)
+        val recovered = failingVm.uiState.value as TransactionUiState.Ready
+        assertEquals("Preserve across retry", recovered.form.note)
+    }
+
+    @Test
+    fun reopeningConsumedDraftUsesSavedTransactionReceiptAndNeverDeletedDraftReceipt() = runTest {
+        draftStore.savedByDraftId["draft-replaced-receipt"] = 88L
+        val draftArgs = TransactionLaunchArgs.AiDraft(
+            TransactionDraft(
+                draftId = "draft-replaced-receipt",
+                mode = TransactionMode.EXPENSE,
+                amountMinor = 1500L,
+                fromAccountId = 1L,
+                dateTimeMillis = FIXED_NOW_MILLIS,
+                stagedReceiptFileName = "receipt_a_deleted.jpg",
+            )
+        )
+        mediaPort.resolveFilePathHandler = { file -> if (file == "receipt_b_saved.jpg") "/tmp/$file" else null }
+        repository.editResult = TransactionEditLoadResult.Loaded(
+            sampleRecord(id = 88L, attachedPicture = "receipt_b_saved.jpg")
+        )
+
+        val vmWithReplacement = TransactionViewModel(draftArgs, SavedStateHandle(), ports, testDispatcher, fixedClock)
+        val readyWithB = vmWithReplacement.uiState.value as TransactionUiState.Ready
+        assertEquals("receipt_b_saved.jpg", readyWithB.form.attachedPictureFileName)
+        assertEquals("receipt_b_saved.jpg", readyWithB.form.initialPersistedPictureFileName)
+        assertTrue(readyWithB.form.newlyStagedPictureFiles.isEmpty())
+
+        repository.editResult = TransactionEditLoadResult.Loaded(sampleRecord(id = 88L, attachedPicture = null))
+        val vmWithoutReceipt = TransactionViewModel(draftArgs, SavedStateHandle(), ports, testDispatcher, fixedClock)
+        assertNull((vmWithoutReceipt.uiState.value as TransactionUiState.Ready).form.attachedPictureFileName)
+
+        repository.editResult = TransactionEditLoadResult.NotFound(88L)
+        val vmNotFoundDeleted = TransactionViewModel(draftArgs, SavedStateHandle(), ports, testDispatcher, fixedClock)
+        assertNull((vmNotFoundDeleted.uiState.value as TransactionUiState.Ready).form.attachedPictureFileName)
+    }
+
+    @Test
+    fun processDeathDuringPendingOpenSavedTransactionResumesEditInsteadOfDraft() = runTest {
+        draftStore.savedByDraftId["draft-mid-edit-load"] = 88L
+        val draftArgs = TransactionLaunchArgs.AiDraft(
+            TransactionDraft(
+                draftId = "draft-mid-edit-load",
+                mode = TransactionMode.EXPENSE,
+                amountMinor = 1500L,
+                fromAccountId = 1L,
+                dateTimeMillis = FIXED_NOW_MILLIS,
+            )
+        )
+        val handle = SavedStateHandle()
+        val vm1 = TransactionViewModel(draftArgs, handle, ports, testDispatcher, fixedClock)
+        assertEquals(
+            ActiveSheet.ConsumedDraftPrompt(88L),
+            (vm1.uiState.value as TransactionUiState.Ready).activeSheet,
+        )
+
+        val editGate = CompletableDeferred<TransactionEditLoadResult>()
+        repository.pendingEditDeferred = editGate
+        vm1.onIntent(TransactionIntent.OpenSavedTransaction(88L))
+        assertEquals(TransactionUiState.Loading, vm1.uiState.value)
+
+        repository.pendingEditDeferred = null
+        repository.editResult = TransactionEditLoadResult.Loaded(sampleRecord(id = 88L))
+        val vm2 = TransactionViewModel(draftArgs, handle, ports, testDispatcher, fixedClock)
+        val restored = vm2.uiState.value as TransactionUiState.Ready
+        assertEquals(88L, restored.form.existingTransactionId)
+        assertFalse(restored.form.isAiDraft)
+        assertNull(restored.activeSheet)
+        assertNull(restored.consumedDraftTransactionId)
+    }
+
+    @Test
+    fun openSavedTransactionPublishesLoadingAndBlocksDuplicateOrSaveWhilePending() = runTest {
+        draftStore.savedByDraftId["draft-block-pending"] = 88L
+        val draftArgs = TransactionLaunchArgs.AiDraft(
+            TransactionDraft(
+                draftId = "draft-block-pending",
+                mode = TransactionMode.EXPENSE,
+                amountMinor = 1500L,
+                fromAccountId = 1L,
+                dateTimeMillis = FIXED_NOW_MILLIS,
+            )
+        )
+        val vm = TransactionViewModel(draftArgs, SavedStateHandle(), ports, testDispatcher, fixedClock)
+        assertEquals(
+            ActiveSheet.ConsumedDraftPrompt(88L),
+            (vm.uiState.value as TransactionUiState.Ready).activeSheet,
+        )
+
+        val editGate = CompletableDeferred<TransactionEditLoadResult>()
+        repository.pendingEditDeferred = editGate
+        vm.onIntent(TransactionIntent.OpenSavedTransaction(88L))
+        assertEquals(TransactionUiState.Loading, vm.uiState.value)
+
+        vm.onIntent(TransactionIntent.DuplicateDraftAnyway)
+        vm.onIntent(TransactionIntent.SaveClicked)
+        vm.onIntent(TransactionIntent.UpdateNote("Stale edit"))
+        assertEquals(TransactionUiState.Loading, vm.uiState.value)
+        assertTrue(repository.savedCommands.isEmpty())
+
+        editGate.complete(TransactionEditLoadResult.Loaded(sampleRecord(id = 88L)))
+        val loaded = vm.uiState.value as TransactionUiState.Ready
+        assertEquals(88L, loaded.form.existingTransactionId)
+        assertEquals("Legacy note", loaded.form.note)
     }
 
     private fun SaveTransactionCommand.amountCommandMinor(): Long = fromAmountMinor

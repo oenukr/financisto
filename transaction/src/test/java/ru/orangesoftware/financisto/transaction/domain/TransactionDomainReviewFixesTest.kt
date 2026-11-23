@@ -312,6 +312,104 @@ class TransactionDomainReviewFixesTest {
         assertEquals(0L, adjustedZero.form.primaryAmountMinor)
     }
 
+    @Test
+    fun collapseSingleSplitReconcilesFormModeToMatchSplitSign() {
+        val catalog = multiScaleCatalog()
+        val expenseFormWithIncomeSplit = TransactionFormState(
+            mode = TransactionMode.EXPENSE,
+            fromAccountId = 1L,
+            primaryAmountInput = "50.00",
+            primaryAmountMinor = 5000L,
+            isSplitMode = true,
+            categoryId = TransactionIds.SPLIT_CATEGORY_ID,
+            splits = listOf(
+                EditableSplit(localId = -1L, categoryId = 20L, amountMinor = 5000L, isIncome = true),
+            ),
+        )
+        val initialExpense = TransactionUiState.Ready(
+            form = expenseFormWithIncomeSplit,
+            initialFormSnapshot = expenseFormWithIncomeSplit,
+            catalog = catalog,
+            prefs = TransactionFormPreferences(),
+        )
+        val collapsedToIncome = TransactionReducer.reduce(initialExpense, TransactionIntent.CollapseSingleSplit)
+        assertFalse(collapsedToIncome.form.isSplitMode)
+        assertEquals(TransactionMode.INCOME, collapsedToIncome.form.mode)
+        assertEquals(20L, collapsedToIncome.form.categoryId)
+        assertTrue(collapsedToIncome.form.splits.isEmpty())
+        val incomeCmd = (
+            TransactionValidator.validateAndBuildCommand(collapsedToIncome.form, catalog)
+                as TransactionValidationResult.Valid
+            ).command
+        assertEquals(5000L, incomeCmd.fromAmountMinor)
+
+        val incomeFormWithExpenseSplit = initialExpense.copy(
+            form = expenseFormWithIncomeSplit.copy(
+                mode = TransactionMode.INCOME,
+                splits = listOf(
+                    EditableSplit(localId = -1L, categoryId = 10L, amountMinor = 5000L, isIncome = false),
+                ),
+            ),
+        )
+        val collapsedToExpense = TransactionReducer.reduce(
+            incomeFormWithExpenseSplit,
+            TransactionIntent.CollapseSingleSplit,
+        )
+        assertEquals(TransactionMode.EXPENSE, collapsedToExpense.form.mode)
+        assertEquals(10L, collapsedToExpense.form.categoryId)
+    }
+
+    @Test
+    fun calculatorExpressionEvaluatorAllowsSmallNonZeroDivisorsAndRejectsZero() {
+        val smallDiv = requireNotNull(CalculatorExpressionEvaluator.evaluate("0.000000000001 / 0.0000000000001"))
+        assertEquals(10.0, smallDiv, 1e-6)
+        val tinyDivisor = requireNotNull(CalculatorExpressionEvaluator.evaluate("1 / 0.0000000000001"))
+        assertEquals(1e13, tinyDivisor, 1e7)
+        assertNull(CalculatorExpressionEvaluator.evaluate("10 / 0"))
+        assertNull(CalculatorExpressionEvaluator.evaluate("10 / -0"))
+        assertNull(CalculatorExpressionEvaluator.evaluate("10 / (5 - 5)"))
+    }
+
+    @Test
+    fun allocateAccountAmountsNeverReversesSplitDirectionOnRounding() {
+        val fourUnitIncomeSplits = (1..4).map { idx ->
+            EditableSplit(localId = -idx.toLong(), categoryId = 20L, amountMinor = 1L, isIncome = true)
+        }
+        val incomeAllocated = SplitAllocationCalculator.allocateAccountAmounts(
+            splits = fourUnitIncomeSplits,
+            originalTotalSignedMinor = 4L,
+            accountTotalSignedMinor = 2L,
+        )
+        assertEquals(2L, incomeAllocated.sum())
+        assertTrue(incomeAllocated.all { it >= 0L })
+
+        val fourUnitExpenseSplits = (1..4).map { idx ->
+            EditableSplit(localId = -idx.toLong(), categoryId = 10L, amountMinor = 1L, isIncome = false)
+        }
+        val expenseAllocated = SplitAllocationCalculator.allocateAccountAmounts(
+            splits = fourUnitExpenseSplits,
+            originalTotalSignedMinor = -4L,
+            accountTotalSignedMinor = -2L,
+        )
+        assertEquals(-2L, expenseAllocated.sum())
+        assertTrue(expenseAllocated.all { it <= 0L })
+
+        val mixedRoundingSplits = listOf(
+            EditableSplit(localId = -1L, categoryId = 20L, amountMinor = 4L, isIncome = true),
+            EditableSplit(localId = -2L, categoryId = 10L, amountMinor = 1L, isIncome = false),
+            EditableSplit(localId = -3L, categoryId = 11L, amountMinor = 1L, isIncome = false),
+        )
+        val mixedAllocated = SplitAllocationCalculator.allocateAccountAmounts(
+            splits = mixedRoundingSplits,
+            originalTotalSignedMinor = 2L,
+            accountTotalSignedMinor = 1L,
+        )
+        assertEquals(1L, mixedAllocated.sum())
+        assertTrue(mixedAllocated[0] >= 0L)
+        assertTrue(mixedAllocated[1] <= 0L)
+        assertTrue(mixedAllocated[2] <= 0L)
+    }
+
     private fun multiScaleCatalog(): TransactionCatalog {
         val usd = CurrencyOption(id = 1L, code = "USD", symbol = "$", decimals = 2, isDefault = true)
         val eur = CurrencyOption(id = 2L, code = "EUR", symbol = "€", decimals = 2)

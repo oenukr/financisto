@@ -3,8 +3,8 @@ package ru.orangesoftware.financisto.transaction.domain
 
 import ru.orangesoftware.financisto.transaction.model.EditableSplit
 import ru.orangesoftware.financisto.transaction.model.TransactionMode
+import java.math.BigInteger
 import kotlin.math.abs
-import kotlin.math.roundToLong
 
 object SplitAllocationCalculator {
 
@@ -73,8 +73,9 @@ object SplitAllocationCalculator {
     }
 
     /**
-     * Converts foreign-currency splits into signed account-currency minor units proportionally,
-     * absorbing any rounding remainder into the last split so their sum equals [accountTotalSignedMinor].
+     * Converts foreign-currency splits into signed account-currency minor units proportionally
+     * using exact largest-remainder allocation so their sum equals [accountTotalSignedMinor]
+     * without reversing any split's direction relative to its original sign.
      */
     fun allocateAccountAmounts(
         splits: List<EditableSplit>,
@@ -86,19 +87,61 @@ object SplitAllocationCalculator {
             originalTotalSignedMinor == 0L -> List(splits.size) { index ->
                 if (index == splits.lastIndex) accountTotalSignedMinor else 0L
             }
-            else -> {
-                val ratio = abs(accountTotalSignedMinor).toDouble() / abs(originalTotalSignedMinor).toDouble()
-                var runningSum = 0L
-                splits.mapIndexed { index, split ->
-                    if (index == splits.lastIndex) {
-                        accountTotalSignedMinor - runningSum
-                    } else {
-                        val converted = (splitSignedMinor(split) * ratio).roundToLong()
-                        runningSum += converted
-                        converted
-                    }
-                }
+            else -> allocateProportionally(splits, originalTotalSignedMinor, accountTotalSignedMinor)
+        }
+    }
+
+    private fun allocateProportionally(
+        splits: List<EditableSplit>,
+        originalTotalSignedMinor: Long,
+        accountTotalSignedMinor: Long,
+    ): List<Long> {
+        val denom = BigInteger.valueOf(originalTotalSignedMinor).abs()
+        val numerScale = BigInteger.valueOf(accountTotalSignedMinor).abs()
+        val allocations = LongArray(splits.size)
+        val remainders = Array(splits.size) { BigInteger.ZERO }
+        var baseSum = 0L
+
+        splits.forEachIndexed { index, split ->
+            val product = BigInteger.valueOf(splitSignedMinor(split)).multiply(numerScale)
+            val divRem = product.divideAndRemainder(denom)
+            val base = divRem[0].toLong()
+            allocations[index] = base
+            remainders[index] = divRem[1]
+            baseSum += base
+        }
+
+        val deficit = accountTotalSignedMinor - baseSum
+        if (deficit != 0L) {
+            distributeRoundingDeficit(allocations, remainders, deficit)
+        }
+        return allocations.toList()
+    }
+
+    private fun distributeRoundingDeficit(
+        allocations: LongArray,
+        remainders: Array<BigInteger>,
+        deficit: Long,
+    ) {
+        val step = if (deficit > 0L) 1L else -1L
+        val eligibleIndices = remainders.indices
+            .filter { index ->
+                if (step > 0L) remainders[index] > BigInteger.ZERO else remainders[index] < BigInteger.ZERO
             }
+            .sortedWith(
+                compareBy<Int> { index ->
+                    if (step > 0L) remainders[index].negate() else remainders[index]
+                }.thenBy { it }
+            )
+
+        var remaining = abs(deficit)
+        for (index in eligibleIndices) {
+            if (remaining <= 0L) break
+            allocations[index] += step
+            remaining--
+        }
+        if (remaining > 0L) {
+            allocations[allocations.lastIndex] += step * remaining
         }
     }
 }

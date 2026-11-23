@@ -11,6 +11,18 @@ import ru.orangesoftware.financisto.transaction.port.TransactionPorts
 
 internal object TransactionLoader {
 
+    fun resolveEffectiveLaunchArgs(
+        args: TransactionLaunchArgs,
+        restoredForm: TransactionFormState?,
+    ): TransactionLaunchArgs {
+        val restoredEditId = restoredForm?.takeIf { it.isEditing && !it.isAiDraft }?.existingTransactionId
+        return if (args is TransactionLaunchArgs.AiDraft && restoredEditId != null) {
+            TransactionLaunchArgs.Edit(restoredEditId)
+        } else {
+            args
+        }
+    }
+
     suspend fun loadInitial(
         launchArgs: TransactionLaunchArgs,
         ports: TransactionPorts,
@@ -88,17 +100,34 @@ internal object TransactionLoader {
             return TransactionUiState.NoAccounts
         }
         val consumedTxId = ports.draftSessionStore.getSavedTransactionId(args.draft.draftId)
-        val isConsumedForDraft = consumedTxId != null && (restoredForm == null || restoredForm.isAiDraft)
+        val consumedDraftId = consumedTxId?.takeIf { restoredForm == null || restoredForm.isAiDraft }
+        val isConsumedForDraft = consumedDraftId != null
         ports.draftSessionStore.acknowledgeDraftOpened(args.draft.draftId)
-        val committedReceipt = args.draft.stagedReceiptFileName
+        val resolvedReceipt = consumedDraftId?.let {
+            resolveConsumedDraftReceipt(it, args.draft.stagedReceiptFileName, ports)
+        }
         val rawInitial = restoredSnapshot
             ?: TransactionInitialStateFactory.fromAiDraft(args.draft, catalog, isConsumedDraft = isConsumedForDraft)
-        val initialForm = sanitizeConsumedDraftReceipt(rawInitial, committedReceipt, isConsumedForDraft)
-        val currentForm = sanitizeConsumedDraftReceipt(
-            restoredForm ?: initialForm,
-            committedReceipt,
-            isConsumedForDraft,
+        val initialForm = sanitizeConsumedDraftReceipt(
+            form = rawInitial,
+            draftReceipt = args.draft.stagedReceiptFileName,
+            resolvedReceipt = resolvedReceipt,
+            isConsumed = isConsumedForDraft,
+            isBaseForm = restoredSnapshot == null,
+            ports = ports,
         )
+        val currentForm = if (restoredForm != null) {
+            sanitizeConsumedDraftReceipt(
+                form = restoredForm,
+                draftReceipt = args.draft.stagedReceiptFileName,
+                resolvedReceipt = resolvedReceipt,
+                isConsumed = isConsumedForDraft,
+                isBaseForm = false,
+                ports = ports,
+            )
+        } else {
+            initialForm
+        }
         val effectiveConsumedTxId = consumedTxId?.takeIf { currentForm.isAiDraft }
         val sheet = if (effectiveConsumedTxId != null && !currentForm.isDuplicateDraftConfirmed) {
             ActiveSheet.ConsumedDraftPrompt(effectiveConsumedTxId)
@@ -115,15 +144,49 @@ internal object TransactionLoader {
         )
     }
 
+    private suspend fun resolveConsumedDraftReceipt(
+        consumedTxId: Long,
+        draftReceipt: String?,
+        ports: TransactionPorts,
+    ): String? {
+        val candidate = when (val editResult = ports.repository.loadForEdit(consumedTxId)) {
+            is TransactionEditLoadResult.Loaded -> editResult.record.attachedPicture
+            is TransactionEditLoadResult.NotFound,
+            is TransactionEditLoadResult.RequiresLegacyFallback -> draftReceipt
+        }
+        return candidate?.takeIf { ports.receiptMediaPort.resolveFilePath(it) != null }
+    }
+
     private fun sanitizeConsumedDraftReceipt(
         form: TransactionFormState,
-        committedReceipt: String?,
+        draftReceipt: String?,
+        resolvedReceipt: String?,
         isConsumed: Boolean,
+        isBaseForm: Boolean,
+        ports: TransactionPorts,
     ): TransactionFormState {
-        if (!isConsumed || committedReceipt == null) return form
+        if (!isConsumed) return form
+        val currentAttached = form.attachedPictureFileName
+        val nextAttached = when {
+            isBaseForm -> resolvedReceipt
+            currentAttached == null -> null
+            ports.receiptMediaPort.resolveFilePath(currentAttached) != null -> {
+                if (currentAttached == draftReceipt && resolvedReceipt != draftReceipt) {
+                    resolvedReceipt
+                } else {
+                    currentAttached
+                }
+            }
+            currentAttached == draftReceipt -> resolvedReceipt
+            else -> null
+        }
+        val filteredStaged = form.newlyStagedPictureFiles.filterNot { file ->
+            file == resolvedReceipt || file == draftReceipt
+        }
         return form.copy(
-            initialPersistedPictureFileName = form.initialPersistedPictureFileName ?: committedReceipt,
-            newlyStagedPictureFiles = form.newlyStagedPictureFiles.filterNot { it == committedReceipt },
+            attachedPictureFileName = nextAttached,
+            initialPersistedPictureFileName = resolvedReceipt,
+            newlyStagedPictureFiles = filteredStaged,
         )
     }
 

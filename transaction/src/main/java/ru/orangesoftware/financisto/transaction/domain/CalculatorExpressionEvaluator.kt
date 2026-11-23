@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.transaction.domain
 
-import kotlin.math.abs
-
 /**
  * Pure Kotlin recursive-descent arithmetic evaluator supporting +, -, *, /, unary signs, and parentheses.
  */
 object CalculatorExpressionEvaluator {
-    private const val DIV_ZERO_EPSILON = 1e-12
 
     fun evaluate(expression: String): Double? {
         val sanitized = sanitize(expression)
@@ -62,7 +59,7 @@ object CalculatorExpressionEvaluator {
                 val right = parseFactor()
                 left = when {
                     right == null -> null
-                    op == '/' && abs(right) < DIV_ZERO_EPSILON -> null
+                    op == '/' && right == 0.0 -> null
                     op == '*' -> left * right
                     else -> left / right
                 }

@@ -20,10 +20,13 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import ru.orangesoftware.financisto.transaction.domain.TransactionRateCoordinator
+import ru.orangesoftware.financisto.transaction.domain.TransactionReducer
 import ru.orangesoftware.financisto.transaction.model.CategoryOption
 import ru.orangesoftware.financisto.transaction.model.TransactionCatalog
 import ru.orangesoftware.financisto.transaction.model.TransactionDraft
 import ru.orangesoftware.financisto.transaction.model.TransactionEditLoadResult
+import ru.orangesoftware.financisto.transaction.model.TransactionFormPreferences
 import ru.orangesoftware.financisto.transaction.model.TransactionLaunchArgs
 import ru.orangesoftware.financisto.transaction.model.TransactionMode
 import ru.orangesoftware.financisto.transaction.mvi.TransactionTestFakes.FIXED_NOW_MILLIS
@@ -461,5 +464,59 @@ class TransactionViewModelConcurrencyTest {
         assertTrue(editVm.hasUnsavedUserEdits())
         saveGate.complete(77L)
         assertEquals(TransactionEffect.SavedAndFinish(77L), editVm.effects.first())
+    }
+
+    @Test
+    fun rateCoordinatorPairGuardRejectsMismatchedPairWithoutInvalidatingRequestId() = runTest(testDispatcher) {
+        val catalog = multiCurrencyCatalog()
+        val initialForm = TransactionFormState(
+            mode = TransactionMode.EXPENSE,
+            fromAccountId = 1L,
+            originalCurrencyId = 2L,
+            primaryAmountInput = "100.00",
+            primaryAmountMinor = 10000L,
+        )
+        var currentState = TransactionUiState.Ready(
+            form = initialForm,
+            initialFormSnapshot = initialForm,
+            catalog = catalog,
+            prefs = TransactionFormPreferences(),
+        )
+        val effects = mutableListOf<TransactionEffect>()
+        val coordinator = TransactionRateCoordinator(
+            scope = this,
+            ports = ports,
+            currentReady = { currentState },
+            publishReady = { currentState = it },
+            sendEffect = { effects.add(it) },
+            ioDispatcher = testDispatcher,
+            currentGeneration = { 1L },
+        )
+
+        val mismatchGate = CompletableDeferred<Result<Double>>()
+        exchangeRatePort.handler = { _, _ -> mismatchGate.await() }
+        coordinator.fetchLiveRate(currentState)
+        assertTrue(currentState.isFetchingRate)
+
+        currentState = TransactionReducer.reduce(
+            currentState,
+            TransactionIntent.SelectCurrency(3L),
+        ).copy(isFetchingRate = true)
+        mismatchGate.complete(Result.success(4.2))
+
+        assertEquals(3L, currentState.primaryCurrency?.id)
+        assertFalse(currentState.isFetchingRate)
+        assertEquals(0.0, currentState.form.exchangeRate, 1e-6)
+        assertEquals(0L, currentState.form.secondaryAmountMinor)
+
+        val matchGate = CompletableDeferred<Result<Double>>()
+        exchangeRatePort.handler = { _, _ -> matchGate.await() }
+        coordinator.fetchLiveRate(currentState)
+        matchGate.complete(Result.success(1.25))
+
+        assertFalse(currentState.isFetchingRate)
+        assertEquals(1.25, currentState.form.exchangeRate, 1e-6)
+        assertEquals(12500L, currentState.form.secondaryAmountMinor)
+        assertTrue(effects.isEmpty())
     }
 }

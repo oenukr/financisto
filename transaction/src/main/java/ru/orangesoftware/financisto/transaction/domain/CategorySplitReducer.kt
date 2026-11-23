@@ -198,8 +198,14 @@ internal object CategorySplitReducer {
 
     private fun collapseSingleSplit(state: TransactionUiState.Ready): TransactionUiState.Ready {
         val single = state.form.splits.singleOrNull() ?: return state
+        val nextMode = when {
+            state.form.mode == TransactionMode.TRANSFER -> state.form.mode
+            single.isIncome -> TransactionMode.INCOME
+            else -> TransactionMode.EXPENSE
+        }
         return state.copy(
             form = state.form.copy(
+                mode = nextMode,
                 isSplitMode = false,
                 categoryId = single.categoryId,
                 projectId = single.projectId,

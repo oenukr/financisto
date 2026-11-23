@@ -4,6 +4,7 @@ package ru.orangesoftware.financisto.transaction.mvi
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -17,6 +18,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ru.orangesoftware.financisto.transaction.domain.SaveExecutionOutcome
 import ru.orangesoftware.financisto.transaction.domain.TransactionActionRunner
+import ru.orangesoftware.financisto.transaction.domain.TransactionExternalEntityHelper
 import ru.orangesoftware.financisto.transaction.domain.TransactionLoader
 import ru.orangesoftware.financisto.transaction.domain.TransactionRateCoordinator
 import ru.orangesoftware.financisto.transaction.domain.TransactionReceiptStagingCoordinator
@@ -25,6 +27,7 @@ import ru.orangesoftware.financisto.transaction.domain.TransactionValidationResu
 import ru.orangesoftware.financisto.transaction.domain.TransactionValidator
 import ru.orangesoftware.financisto.transaction.model.TransactionLaunchArgs
 import ru.orangesoftware.financisto.transaction.port.TransactionPorts
+import timber.log.Timber
 import kotlin.time.Clock
 
 class TransactionViewModel(
@@ -64,10 +67,12 @@ class TransactionViewModel(
         publishReady = ::publishState,
         ioDispatcher = ioDispatcher,
         currentGeneration = { formGeneration },
+        onError = { message -> _effects.trySend(TransactionEffect.ShowMessage(message)) },
     )
 
     init {
-        loadInitialState(launchArgs, restoreSaved = true)
+        val persistedLaunchArgs = savedStateHandle.get<TransactionLaunchArgs>(KEY_EFFECTIVE_LAUNCH_ARGS)
+        loadInitialState(persistedLaunchArgs ?: launchArgs, restoreSaved = true)
     }
 
     fun onPinStateChanged(unlocked: Boolean) {
@@ -106,45 +111,58 @@ class TransactionViewModel(
     }
 
     fun onIntent(intent: TransactionIntent) {
+        if (intent is TransactionIntent.RetryLoad) {
+            if (internalState is TransactionUiState.LoadError) {
+                loadInitialState(currentLaunchArgs, restoreSaved = true)
+            }
+            return
+        }
         val ready = (internalState as? TransactionUiState.Ready)?.takeUnless { it.isSaving } ?: return
         val immediateEffect = TransactionActionRunner.immediateEffectOrNull(intent, currentLaunchArgs)
         if (immediateEffect != null) {
             _effects.trySend(immediateEffect)
-            return
-        }
-        when (intent) {
-            is TransactionIntent.SaveClicked -> handleSave(ready, saveAndNew = false)
-            is TransactionIntent.SaveAndNewClicked -> handleSave(ready, saveAndNew = true)
-            is TransactionIntent.CancelOrBackClicked -> if (ready.hasUnsavedChanges) {
-                publishState(ready.copy(sheetStack = listOf(ActiveSheet.DiscardConfirmation)))
-            } else {
-                discardAndClose(ready)
-            }
-            is TransactionIntent.ConfirmDiscard -> discardAndClose(ready)
-            is TransactionIntent.FetchLiveRate -> rateCoordinator.fetchLiveRate(ready)
-            is TransactionIntent.AttachReceiptFromUri -> stagingCoordinator.stageReceiptUri(intent.uriString)
-            is TransactionIntent.ExternalEntityCreated -> handleExternalEntityCreated(ready, intent)
-            is TransactionIntent.ClearFormClicked -> {
-                formGeneration++
-                rateCoordinator.cancel()
-                stagingCoordinator.cancelAll()
-                publishState(
-                    ready.copy(
-                        form = TransactionActionRunner.buildClearedForm(ready, clock.now().toEpochMilliseconds()),
-                        sheetStack = emptyList(),
-                        expandedField = null,
-                        validationErrors = emptyList(),
-                        isFetchingRate = false,
-                        isStagingReceipt = false,
+        } else {
+            when (intent) {
+                is TransactionIntent.SaveClicked,
+                is TransactionIntent.SaveAndNewClicked ->
+                    handleSave(ready, saveAndNew = intent is TransactionIntent.SaveAndNewClicked)
+                is TransactionIntent.CancelOrBackClicked,
+                is TransactionIntent.ConfirmDiscard ->
+                    discardAndClose(ready, promptIfDirty = intent is TransactionIntent.CancelOrBackClicked)
+                is TransactionIntent.FetchLiveRate -> rateCoordinator.fetchLiveRate(ready)
+                is TransactionIntent.AttachReceiptFromUri -> stagingCoordinator.stageReceiptUri(intent.uriString)
+                is TransactionIntent.OpenExternalCategoryCreator -> {
+                    TransactionExternalEntityHelper.savePendingCategoryTarget(
+                        savedStateHandle = savedStateHandle,
+                        target = TransactionExternalEntityHelper.captureCategoryTarget(ready),
                     )
-                )
+                    _effects.trySend(TransactionEffect.LaunchExternalCategoryCreator)
+                }
+                is TransactionIntent.ExternalEntityCreated -> handleExternalEntityCreated(ready, intent)
+                is TransactionIntent.ClearFormClicked -> {
+                    formGeneration++
+                    rateCoordinator.cancel()
+                    stagingCoordinator.cancelAll()
+                    TransactionExternalEntityHelper.clearPendingCategoryTarget(savedStateHandle)
+                    publishState(
+                        ready.copy(
+                            form = TransactionActionRunner.buildClearedForm(ready, clock.now().toEpochMilliseconds()),
+                            sheetStack = emptyList(),
+                            expandedField = null,
+                            validationErrors = emptyList(),
+                            isFetchingRate = false,
+                            isStagingReceipt = false,
+                        )
+                    )
+                }
+                is TransactionIntent.OpenSavedTransaction ->
+                    loadInitialState(TransactionLaunchArgs.Edit(intent.transactionId), restoreSaved = false)
+                else -> applyReducerIntent(ready, intent)
             }
-            is TransactionIntent.OpenSavedTransaction ->
-                loadInitialState(TransactionLaunchArgs.Edit(intent.transactionId), restoreSaved = false)
-            else -> applyReducerIntent(ready, intent)
         }
     }
 
+    @Suppress("TooGenericExceptionCaught")
     private fun loadInitialState(args: TransactionLaunchArgs, restoreSaved: Boolean) {
         formGeneration++
         val capturedGeneration = formGeneration
@@ -161,35 +179,45 @@ class TransactionViewModel(
         } else {
             null
         }
-        val restoredEditId = restoredForm?.takeIf { it.isEditing && !it.isAiDraft }?.existingTransactionId
-        val effectiveArgs = if (args is TransactionLaunchArgs.AiDraft && restoredEditId != null) {
-            TransactionLaunchArgs.Edit(restoredEditId)
-        } else {
-            args
-        }
+        val effectiveArgs = TransactionLoader.resolveEffectiveLaunchArgs(args, restoredForm)
         currentLaunchArgs = effectiveArgs
+        savedStateHandle[KEY_EFFECTIVE_LAUNCH_ARGS] = effectiveArgs
         if (!restoreSaved) {
             savedStateHandle.remove<TransactionFormState>(KEY_FORM_STATE)
             savedStateHandle.remove<TransactionFormState>(KEY_INITIAL_SNAPSHOT)
+            TransactionExternalEntityHelper.clearPendingCategoryTarget(savedStateHandle)
         }
+        publishState(TransactionUiState.Loading)
         val nowMillis = clock.now().toEpochMilliseconds()
         loadJob = viewModelScope.launch {
-            val loaded = TransactionActionRunner.runOn(ioDispatcher) {
-                TransactionLoader.loadInitial(
-                    launchArgs = effectiveArgs,
-                    ports = ports,
-                    restoredForm = restoredForm,
-                    restoredSnapshot = restoredSnap,
-                    nowMillis = nowMillis,
+            val loaded = try {
+                TransactionActionRunner.runOn(ioDispatcher) {
+                    TransactionLoader.loadInitial(
+                        launchArgs = effectiveArgs,
+                        ports = ports,
+                        restoredForm = restoredForm,
+                        restoredSnapshot = restoredSnap,
+                        nowMillis = nowMillis,
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (formGeneration == capturedGeneration) {
+                    Timber.e(e, "Failed to load transaction editor state for %s", effectiveArgs)
+                }
+                TransactionUiState.LoadError(
+                    e.localizedMessage?.takeIf { it.isNotBlank() } ?: DEFAULT_LOAD_ERROR_MESSAGE
                 )
             }
-            if (formGeneration != capturedGeneration) return@launch
-            if (loaded is TransactionUiState.LegacyRedirecting) {
-                _effects.trySend(TransactionEffect.OpenLegacyEditor(effectiveArgs))
-            }
-            publishState(loaded)
-            if (loaded is TransactionUiState.Ready) {
-                rateCoordinator.maybeLookupStoredRate(loaded, syncInitialSnapshotIfUntouched = true)
+            if (formGeneration == capturedGeneration) {
+                if (loaded is TransactionUiState.LegacyRedirecting) {
+                    _effects.trySend(TransactionEffect.OpenLegacyEditor(effectiveArgs))
+                }
+                publishState(loaded)
+                if (loaded is TransactionUiState.Ready) {
+                    rateCoordinator.maybeLookupStoredRate(loaded, syncInitialSnapshotIfUntouched = true)
+                }
             }
         }
     }
@@ -201,30 +229,30 @@ class TransactionViewModel(
         } else {
             reduced
         }
-        val isManualRateEdit = intent is TransactionIntent.UpdateExchangeRate ||
-            (intent is TransactionIntent.ApplyCalculatorResult && intent.target == CalculatorTarget.EXCHANGE_RATE)
-        if (isManualRateEdit) {
+        var stateToPublish = next
+        if (TransactionActionRunner.cancelsPendingRateFetch(intent)) {
             rateCoordinator.cancel()
-            publishState(next.copy(isFetchingRate = false))
-        } else {
-            publishState(next)
+            stateToPublish = stateToPublish.copy(isFetchingRate = false)
         }
-        val isCurrencyContextChange = when (intent) {
-            is TransactionIntent.SelectAccount,
-            is TransactionIntent.SelectCurrency,
-            is TransactionIntent.SwapTransferAccounts,
-            is TransactionIntent.SwitchMode -> true
-            else -> false
+        if (intent is TransactionIntent.AttachCapturedPhotoFile || intent is TransactionIntent.RemoveReceipt) {
+            stagingCoordinator.cancelAll()
+            stateToPublish = stateToPublish.copy(isStagingReceipt = false)
         }
-        if (isCurrencyContextChange) {
-            rateCoordinator.maybeLookupStoredRate(next)
+        publishState(stateToPublish)
+        if (TransactionActionRunner.isCurrencyContextChange(intent)) {
+            rateCoordinator.maybeLookupStoredRate(stateToPublish)
         }
     }
 
-    private fun discardAndClose(ready: TransactionUiState.Ready) {
+    private fun discardAndClose(ready: TransactionUiState.Ready, promptIfDirty: Boolean) {
+        if (promptIfDirty && ready.hasUnsavedChanges) {
+            publishState(ready.copy(sheetStack = listOf(ActiveSheet.DiscardConfirmation)))
+            return
+        }
         formGeneration++
         rateCoordinator.cancel()
         stagingCoordinator.cancelAll(clearFlag = true)
+        TransactionExternalEntityHelper.clearPendingCategoryTarget(savedStateHandle)
         val draftId = ready.form.aiDraftId
         val stagedFiles = ready.form.newlyStagedPictureFiles
         val keepFile = ready.form.initialPersistedPictureFileName
@@ -241,55 +269,56 @@ class TransactionViewModel(
 
     private fun handleSave(ready: TransactionUiState.Ready, saveAndNew: Boolean) {
         val consumedTxId = ready.consumedDraftTransactionId
-        when {
-            consumedTxId != null && !ready.form.isDuplicateDraftConfirmed ->
-                publishState(ready.copy(sheetStack = listOf(ActiveSheet.ConsumedDraftPrompt(consumedTxId))))
-            stagingCoordinator.isStagingForCurrentForm() ->
-                _effects.trySend(TransactionEffect.ShowMessage("Please wait for the receipt to finish attaching."))
-            else -> when (val validation = TransactionValidator.validateAndBuildCommand(ready.form, ready.catalog)) {
-                is TransactionValidationResult.Invalid -> publishState(ready.copy(validationErrors = validation.errors))
-                is TransactionValidationResult.Valid -> {
-                    rateCoordinator.cancel()
-                    val savingState = ready.copy(
-                        isSaving = true,
-                        isFetchingRate = false,
-                        validationErrors = emptyList(),
-                    )
-                    publishState(savingState)
-                    viewModelScope.launch {
-                        val outcome = TransactionActionRunner.runOn(ioDispatcher) {
-                            TransactionActionRunner.executeSave(
-                                savingState,
-                                validation.command,
-                                saveAndNew,
-                                ports,
-                                clock,
-                            )
+        if (consumedTxId != null && !ready.form.isDuplicateDraftConfirmed) {
+            publishState(ready.copy(sheetStack = listOf(ActiveSheet.ConsumedDraftPrompt(consumedTxId))))
+            return
+        }
+        if (stagingCoordinator.isStagingForCurrentForm()) {
+            _effects.trySend(TransactionEffect.ShowMessage("Please wait for the receipt to finish attaching."))
+            return
+        }
+        when (val validation = TransactionValidator.validateAndBuildCommand(ready.form, ready.catalog)) {
+            is TransactionValidationResult.Invalid -> publishState(ready.copy(validationErrors = validation.errors))
+            is TransactionValidationResult.Valid -> {
+                rateCoordinator.cancel()
+                val savingState = ready.copy(isSaving = true, isFetchingRate = false, validationErrors = emptyList())
+                publishState(savingState)
+                viewModelScope.launch {
+                    val outcome = TransactionActionRunner.runOn(ioDispatcher) {
+                        TransactionActionRunner.executeSave(savingState, validation.command, saveAndNew, ports, clock)
+                    }
+                    when (outcome) {
+                        is SaveExecutionOutcome.Finished -> {
+                            outcome.warningMessage?.let { _effects.trySend(TransactionEffect.ShowMessage(it)) }
+                            _effects.trySend(TransactionEffect.SavedAndFinish(outcome.savedId))
                         }
-                        when (outcome) {
-                            is SaveExecutionOutcome.Finished -> {
-                                outcome.warningMessage?.let { _effects.trySend(TransactionEffect.ShowMessage(it)) }
-                                _effects.trySend(TransactionEffect.SavedAndFinish(outcome.savedId))
-                            }
-                            is SaveExecutionOutcome.ResetNext -> {
-                                formGeneration++
-                                rateCoordinator.cancel()
-                                stagingCoordinator.cancelAll()
-                                currentLaunchArgs = TransactionLaunchArgs.BlankNew(
-                                    accountId = outcome.nextReady.form.fromAccountId.takeIf { it > 0L },
-                                    initialMode = outcome.nextReady.form.mode,
-                                    initialDateTimeMillis = outcome.nextReady.form.dateTimeMillis,
+                        is SaveExecutionOutcome.ResetNext -> {
+                            formGeneration++
+                            rateCoordinator.cancel()
+                            stagingCoordinator.cancelAll()
+                            TransactionExternalEntityHelper.clearPendingCategoryTarget(savedStateHandle)
+                            currentLaunchArgs = outcome.nextLaunchArgs
+                            savedStateHandle[KEY_EFFECTIVE_LAUNCH_ARGS] = outcome.nextLaunchArgs
+                            publishState(outcome.nextReady)
+                            _effects.trySend(TransactionEffect.ShowMessage("Transaction saved"))
+                        }
+                        is SaveExecutionOutcome.AlreadySavedDraft -> {
+                            (internalState as? TransactionUiState.Ready)?.let { latest ->
+                                val prompt = ActiveSheet.ConsumedDraftPrompt(outcome.savedTransactionId)
+                                publishState(
+                                    latest.copy(
+                                        isSaving = false,
+                                        consumedDraftTransactionId = outcome.savedTransactionId,
+                                        sheetStack = listOf(prompt),
+                                    )
                                 )
-                                publishState(outcome.nextReady)
-                                _effects.trySend(TransactionEffect.ShowMessage("Transaction saved"))
                             }
-                            is SaveExecutionOutcome.Failed -> {
-                                val latest = internalState as? TransactionUiState.Ready
-                                if (latest != null) {
-                                    publishState(latest.copy(isSaving = false))
-                                }
-                                _effects.trySend(TransactionEffect.ShowMessage(outcome.message))
+                        }
+                        is SaveExecutionOutcome.Failed -> {
+                            (internalState as? TransactionUiState.Ready)?.let {
+                                publishState(it.copy(isSaving = false))
                             }
+                            _effects.trySend(TransactionEffect.ShowMessage(outcome.message))
                         }
                     }
                 }
@@ -297,27 +326,50 @@ class TransactionViewModel(
         }
     }
 
+    @Suppress("TooGenericExceptionCaught")
     private fun handleExternalEntityCreated(
         ready: TransactionUiState.Ready,
         intent: TransactionIntent.ExternalEntityCreated,
     ) {
         val editId = ready.form.existingTransactionId.takeIf { it > 0L }
         val capturedGeneration = formGeneration
+        val pendingCategoryTarget = if (intent.kind == ExternalEntityKind.CATEGORY) {
+            TransactionExternalEntityHelper.consumePendingCategoryTarget(savedStateHandle)
+                ?: TransactionExternalEntityHelper.captureCategoryTarget(ready)
+        } else {
+            null
+        }
         viewModelScope.launch {
-            val catalog = TransactionActionRunner.runOn(ioDispatcher) {
-                ports.repository.loadCatalog(editingTransactionId = editId)
+            val catalog = try {
+                TransactionActionRunner.runOn(ioDispatcher) {
+                    ports.repository.loadCatalog(editingTransactionId = editId)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to reload catalog after external %s creation", intent.kind)
+                if (formGeneration == capturedGeneration) {
+                    _effects.trySend(
+                        TransactionEffect.ShowMessage(
+                            e.localizedMessage?.takeIf { it.isNotBlank() } ?: DEFAULT_LOAD_ERROR_MESSAGE
+                        )
+                    )
+                }
+                null
             }
-            if (formGeneration != capturedGeneration) return@launch
-            val latestReady = (internalState as? TransactionUiState.Ready)
-                ?.takeUnless { it.isSaving }
-                ?: return@launch
-            val updated = TransactionActionRunner.applyExternalEntityCreated(
-                ready = latestReady,
-                refreshedCatalog = catalog,
-                kind = intent.kind,
-                createdId = intent.createdId,
-            )
-            publishState(updated)
+            if (catalog != null && formGeneration == capturedGeneration) {
+                val latestReady = (internalState as? TransactionUiState.Ready)?.takeUnless { it.isSaving }
+                if (latestReady != null) {
+                    val updated = TransactionExternalEntityHelper.applyExternalEntityCreated(
+                        ready = latestReady,
+                        refreshedCatalog = catalog,
+                        kind = intent.kind,
+                        createdId = intent.createdId,
+                        pendingCategoryTarget = pendingCategoryTarget,
+                    )
+                    publishState(updated)
+                }
+            }
         }
     }
 
@@ -333,5 +385,7 @@ class TransactionViewModel(
     private companion object {
         const val KEY_FORM_STATE = "transaction_form_state"
         const val KEY_INITIAL_SNAPSHOT = "transaction_initial_snapshot"
+        const val KEY_EFFECTIVE_LAUNCH_ARGS = "transaction_effective_launch_args"
+        const val DEFAULT_LOAD_ERROR_MESSAGE = "Failed to load transaction."
     }
 }
