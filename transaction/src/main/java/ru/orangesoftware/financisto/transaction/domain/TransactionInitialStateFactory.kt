@@ -81,10 +81,11 @@ object TransactionInitialStateFactory {
         catalog: TransactionCatalog,
         isConsumedDraft: Boolean = false,
     ): TransactionFormState {
+        val validCategoryIds = catalog.categories.mapTo(hashSetOf()) { it.id }
         val splits = draft.splits.mapIndexed { index, split ->
             EditableSplit(
                 localId = -(index + 1L),
-                categoryId = split.categoryId,
+                categoryId = split.categoryId.takeIf { it in validCategoryIds } ?: TransactionIds.NO_CATEGORY_ID,
                 amountMinor = abs(split.amountMinor),
                 isIncome = split.amountMinor > 0L,
                 note = split.note,
@@ -93,8 +94,8 @@ object TransactionInitialStateFactory {
         }
         val primaryMinor = resolveDraftPrimaryAmount(draft)
         val secondaryMinor = resolveDraftSecondaryAmount(draft, catalog)
-        val payeeTitle = draft.payeeId?.let { id -> catalog.payees.firstOrNull { it.id == id }?.title }
-            ?: draft.pendingPayeeName.orEmpty()
+        val matchedPayee = draft.payeeId?.let { id -> catalog.payees.firstOrNull { it.id == id && it.isActive } }
+        val payeeTitle = matchedPayee?.title ?: draft.pendingPayeeName.orEmpty()
         val stagedList = if (isConsumedDraft) emptyList() else listOfNotNull(draft.stagedReceiptFileName)
         val persistedPicture = if (isConsumedDraft) draft.stagedReceiptFileName else null
         val base = TransactionFormState(
@@ -107,13 +108,13 @@ object TransactionInitialStateFactory {
             originalCurrencyId = draft.originalCurrencyId?.takeIf { it > 0L },
             primaryAmountMinor = primaryMinor,
             secondaryAmountMinor = secondaryMinor,
-            payeeId = draft.payeeId ?: TransactionIds.NO_PAYEE_ID,
-            pendingPayeeName = if (draft.payeeId == null) draft.pendingPayeeName else null,
+            payeeId = matchedPayee?.id ?: TransactionIds.NO_PAYEE_ID,
+            pendingPayeeName = if (matchedPayee == null) draft.pendingPayeeName else null,
             payeeQuery = payeeTitle,
             categoryId = if (splits.isNotEmpty()) {
                 TransactionIds.SPLIT_CATEGORY_ID
             } else {
-                draft.categoryId ?: TransactionIds.NO_CATEGORY_ID
+                draft.categoryId?.takeIf { it in validCategoryIds } ?: TransactionIds.NO_CATEGORY_ID
             },
             isSplitMode = splits.isNotEmpty(),
             splits = splits,

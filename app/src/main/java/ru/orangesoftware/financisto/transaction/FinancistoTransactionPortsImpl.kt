@@ -5,6 +5,7 @@ import android.content.ContentResolver
 import android.content.Context
 import android.database.sqlite.SQLiteException
 import android.net.Uri
+import androidx.annotation.VisibleForTesting
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import kotlinx.coroutines.CancellationException
@@ -108,6 +109,9 @@ class FinancistoDraftSessionStore(
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val lock = Any()
 
+    @VisibleForTesting
+    internal var deleteStagedReceipt: (String) -> Unit = ::deleteStagedReceiptQuietly
+
     override suspend fun getSavedTransactionId(draftId: String): Long? = withContext(ioDispatcher) {
         synchronized(lock) {
             val raw = prefs.getString(KEY_SAVED_DRAFTS, null) ?: return@synchronized null
@@ -165,15 +169,30 @@ class FinancistoDraftSessionStore(
     }
 
     fun savePendingDraft(draft: TransactionDraft): Boolean {
-        return synchronized(lock) {
-            val committed = prefs.edit()
+        var orphanReceiptFile: String? = null
+        val committed = synchronized(lock) {
+            val previous = prefs.getString(KEY_PENDING_DRAFT, null)?.let(DraftSessionCodec::decodeDraft)
+            val previousId = previous?.draftId
+            val candidateOrphan = previous
+                ?.takeIf { it.draftId != draft.draftId }
+                ?.stagedReceiptFileName
+                ?.takeIf { it.isNotBlank() && it != draft.stagedReceiptFileName }
+            val alreadySaved = previousId != null && candidateOrphan != null && prefs.getString(KEY_SAVED_DRAFTS, null)
+                ?.let(DraftSessionCodec::decodeHistory)
+                .orEmpty()
+                .any { it.draftId == previousId && it.transactionId > 0L }
+            val result = prefs.edit()
                 .putString(KEY_PENDING_DRAFT, DraftSessionCodec.encodeDraft(draft))
                 .commit()
-            if (!committed) {
+            if (!result) {
                 Timber.e("Failed to persist pending AI transaction draft: %s", draft.draftId)
+            } else if (candidateOrphan != null && !alreadySaved) {
+                orphanReceiptFile = candidateOrphan
             }
-            committed
+            result
         }
+        orphanReceiptFile?.let(deleteStagedReceipt)
+        return committed
     }
 
     fun peekPendingAutoOpenDraft(currentDraftId: String? = null): TransactionDraft? =
@@ -214,6 +233,17 @@ class FinancistoDraftSessionStore(
         const val KEY_PENDING_DRAFT = "pending_auto_open_draft"
         const val KEY_SAVED_DRAFTS = "saved_draft_history"
         const val MAX_SAVED_DRAFTS = 50
+
+        private fun deleteStagedReceiptQuietly(fileName: String) {
+            try {
+                val file = PicturesUtil.pictureFile(fileName, false)
+                if (file.exists() && !file.delete()) {
+                    Timber.w("Failed to delete orphaned staged receipt file: %s", file.absolutePath)
+                }
+            } catch (e: SecurityException) {
+                Timber.w(e, "No permission to delete orphaned staged receipt file: %s", fileName)
+            }
+        }
     }
 }
 

@@ -127,8 +127,7 @@ sealed interface TransactionUiState {
         }
 
         val hasUnsavedChanges: Boolean
-            get() = form != initialFormSnapshot ||
-                (form.isAiDraft && form.attachedPictureFileName != null)
+            get() = form != initialFormSnapshot || form.isAiDraft
     }
 }
 

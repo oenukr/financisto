@@ -153,8 +153,7 @@ class ComposeTransactionActivity : ComponentActivity() {
                         trySwitchToPendingAiDraft(promptDraft, draftSessionStore)
                     },
                     onKeepEditing = {
-                        pendingAiDraftPrompt = null
-                        draftSessionStore.clearPendingAutoOpenDraft(promptDraft.draftId)
+                        dismissPendingAiDraft(promptDraft, draftSessionStore, receiptMediaPort)
                     },
                 )
             }

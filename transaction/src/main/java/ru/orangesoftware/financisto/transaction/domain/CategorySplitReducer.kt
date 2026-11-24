@@ -74,7 +74,7 @@ internal object CategorySplitReducer {
         } else {
             form.locationQuery
         }
-        val canRememberProj = form.isFromNewBlankLaunch && state.prefs.isRememberProject
+        val canRememberProj = !form.isEditing && state.prefs.isRememberProject
         val fillProj = canRememberProj &&
             form.projectId == TransactionIds.NO_PROJECT_ID &&
             (cat?.lastProjectId ?: 0L) > 0L
@@ -93,7 +93,7 @@ internal object CategorySplitReducer {
         cat: CategoryOption?,
     ): Long {
         val form = state.form
-        val canRemember = form.isFromNewBlankLaunch && state.prefs.isRememberLocation
+        val canRemember = !form.isEditing && state.prefs.isRememberLocation
         val candidate = cat?.lastLocationId ?: 0L
         val shouldFill = canRemember &&
             form.locationId == TransactionIds.CURRENT_LOCATION_ID &&

@@ -44,7 +44,7 @@ internal object CurrencyAccountReducer {
         account: AccountOption,
     ): TransactionFormState {
         val form = state.form
-        val canRememberCategory = form.isFromNewBlankLaunch &&
+        val canRememberCategory = !form.isEditing &&
             !state.prefs.isShowPayee &&
             state.prefs.isRememberCategory &&
             !form.isSplitMode
@@ -83,7 +83,7 @@ internal object CurrencyAccountReducer {
     ): Long {
         val form = state.form
         val canRememberTo = form.mode == TransactionMode.TRANSFER &&
-            form.isFromNewBlankLaunch &&
+            !form.isEditing &&
             state.prefs.isRememberAccount
         val validLastAccount = account.lastAccountId > 0L &&
             account.lastAccountId != account.id &&

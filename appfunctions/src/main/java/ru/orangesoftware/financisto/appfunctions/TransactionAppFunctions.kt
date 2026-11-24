@@ -153,7 +153,13 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
     ): PendingIntent = executeOnIo("Failed to prepare transaction draft.") {
         val accounts = db.getAccounts()
         val catalog = ClassificationCatalog(db.getCategories(), db.getPayees(), db.getCategoryHistory())
-        val (amountInCents, account) = validateAmountAndResolveAccount(amount, accountName, accountId, accounts)
+        val (amountInCents, account) = validateAmountAndResolveAccount(
+            amount = amount,
+            accountName = accountName,
+            accountId = accountId,
+            accounts = accounts,
+            allowNegative = !(isIncome == true && toAccountId == null && toAccountName.isNullOrBlank()),
+        )
         val toAccount = resolveDestinationAccount(toAccountName, toAccountId, account, accounts, splits.isNotEmpty())
         val isIncomeTransaction = isIncome == true
         val resolvedCategory = resolveSingleCategory(
@@ -199,6 +205,7 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
             dateTime = epochMillis,
             attachedPicture = attachedPictureFileName,
             splits = resolvedSplits.map { it.first },
+            receiptAttachFailed = receiptImageUri != null && attachedPictureFileName == null,
         )
         db.createTransactionReviewPendingIntent(draft)
     }
@@ -266,8 +273,9 @@ abstract class TransactionAppFunctions : AppFunctionService(), KoinComponent {
         accountName: String?,
         accountId: Long?,
         accounts: List<AccountInfo>,
+        allowNegative: Boolean,
     ): Pair<Long, AccountInfo> {
-        val amountInCents = toValidatedMinorUnits(amount, "Transaction amount", allowNegative = true)
+        val amountInCents = toValidatedMinorUnits(amount, "Transaction amount", allowNegative = allowNegative)
         return amountInCents to resolveUniqueAccount(accounts, accountId, accountName, "Account")
     }
 
@@ -561,6 +569,7 @@ private fun resolveUniqueAccountByName(
     available: String,
 ): AccountInfo {
     val query = accountName?.takeIf { it.isNotBlank() }
+    if (query == null && accounts.size == 1) return accounts.single()
     val matches = if (query != null) {
         CategoryClassifier.findBestMatches(accounts, query) { it.title }
     } else {

@@ -25,8 +25,10 @@ import ru.orangesoftware.financisto.activity.AbstractTransactionActivity
 import ru.orangesoftware.financisto.activity.TransactionActivity
 import ru.orangesoftware.financisto.activity.TransferActivity
 import ru.orangesoftware.financisto.db.AbstractDbTest
+import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.model.Account
 import ru.orangesoftware.financisto.model.Category
+import ru.orangesoftware.financisto.model.Currency
 import ru.orangesoftware.financisto.model.Payee
 import ru.orangesoftware.financisto.model.Transaction
 import ru.orangesoftware.financisto.model.TransactionStatus
@@ -49,6 +51,7 @@ import ru.orangesoftware.financisto.transaction.model.TransactionLaunchArgs
 import ru.orangesoftware.financisto.transaction.model.TransactionMode
 import ru.orangesoftware.financisto.transaction.model.TransactionStatusOption
 import ru.orangesoftware.financisto.transaction.mvi.TransactionFormState
+import ru.orangesoftware.financisto.utils.CurrencyCache
 
 class FinancistoTransactionRepositoryTest : AbstractDbTest() {
 
@@ -331,6 +334,11 @@ class FinancistoTransactionRepositoryTest : AbstractDbTest() {
         assertEquals(listOf(-1000L, -1000L, -1000L), persistedSplits.map { it.originalFromAmount })
         assertEquals(listOf(-1034L, -1033L, -1033L), persistedSplits.map { it.fromAmount })
         assertEquals(persistedParent.fromAmount, persistedSplits.sumOf { it.fromAmount })
+    }
+
+    @Test
+    fun loadCatalogSaveAndLoadForEditScaleZeroAndOneDecimalCurrenciesCorrectly() = runTest {
+        verifyDecimalCurrencyScaling(db, repository, cash.id)
     }
 
     @Test
@@ -696,3 +704,168 @@ class FinancistoTransactionRepositoryTest : AbstractDbTest() {
         splits = splits,
     )
 }
+
+private suspend fun verifyDecimalCurrencyScaling(
+    db: DatabaseAdapter,
+    repository: FinancistoTransactionRepository,
+    usdAccountId: Long,
+) {
+    val jpy = Currency().apply {
+        name = "JPY"
+        title = "Japanese Yen"
+        symbol = "¥"
+        decimals = 0
+    }.also { db.saveOrUpdate(it) }
+    val oneDec = Currency().apply {
+        name = "ONEDEC"
+        title = "One Decimal"
+        symbol = "D1"
+        decimals = 1
+    }.also { db.saveOrUpdate(it) }
+    CurrencyCache.initialize(db)
+    val jpyWallet = AccountBuilder.withDb(db).title("JPY Wallet").currency(jpy).total(100_000L).create()
+    val oneDecWallet = AccountBuilder.withDb(db).title("OneDec Wallet").currency(oneDec).total(1_550L).create()
+    val catalog = repository.loadCatalog(editingTransactionId = null)
+    assertEquals(1_000L, catalog.accounts.first { it.id == jpyWallet.id }.balanceMinor)
+    assertEquals(155L, catalog.accounts.first { it.id == oneDecWallet.id }.balanceMinor)
+
+    val categories = CategoryBuilder.createDefaultHierarchy(db)
+    val catA1 = categories.getValue("A1").id
+    val catA2 = categories.getValue("A2").id
+    verifyDomesticDecimalTransactions(db, repository, jpyWallet.id, oneDecWallet.id, catA1, catA2)
+    verifyTransferAndForeignDecimalTransactions(db, repository, usdAccountId, jpyWallet.id, jpy.id, catA1, catA2)
+}
+
+private suspend fun verifyDomesticDecimalTransactions(
+    db: DatabaseAdapter,
+    repository: FinancistoTransactionRepository,
+    jpyAccountId: Long,
+    oneDecAccountId: Long,
+    catA1: Long,
+    catA2: Long,
+) {
+    val jpyExpenseId = repository.saveTransaction(
+        decimalSaveCommand(fromAccountId = jpyAccountId, categoryId = catA1, fromAmountMinor = -500L)
+    )
+    assertEquals(-50_000L, db.getTransaction(jpyExpenseId).fromAmount)
+    assertEquals(
+        -500L,
+        (repository.loadForEdit(jpyExpenseId) as TransactionEditLoadResult.Loaded).record.fromAmountMinor,
+    )
+
+    val oneDecExpenseId = repository.saveTransaction(
+        decimalSaveCommand(fromAccountId = oneDecAccountId, categoryId = catA1, fromAmountMinor = -155L)
+    )
+    assertEquals(-1_550L, db.getTransaction(oneDecExpenseId).fromAmount)
+    assertEquals(
+        -155L,
+        (repository.loadForEdit(oneDecExpenseId) as TransactionEditLoadResult.Loaded).record.fromAmountMinor,
+    )
+
+    val jpySplitId = repository.saveTransaction(
+        decimalSaveCommand(
+            fromAccountId = jpyAccountId,
+            categoryId = TransactionIds.SPLIT_CATEGORY_ID,
+            fromAmountMinor = -1_000L,
+            splits = listOf(
+                SaveSplitCommand(catA1, -400L, "Part A", 0L),
+                SaveSplitCommand(catA2, -600L, "Part B", 0L),
+            ),
+        )
+    )
+    assertEquals(-100_000L, db.getTransaction(jpySplitId).fromAmount)
+    assertEquals(listOf(-40_000L, -60_000L), db.getSplitsForTransaction(jpySplitId).map { it.fromAmount })
+    val jpySplitLoaded = (repository.loadForEdit(jpySplitId) as TransactionEditLoadResult.Loaded).record
+    assertEquals(-1_000L, jpySplitLoaded.fromAmountMinor)
+    assertEquals(listOf(400L, 600L), jpySplitLoaded.splits.map { it.amountMinor })
+}
+
+private suspend fun verifyTransferAndForeignDecimalTransactions(
+    db: DatabaseAdapter,
+    repository: FinancistoTransactionRepository,
+    usdAccountId: Long,
+    jpyAccountId: Long,
+    jpyCurrencyId: Long,
+    catA1: Long,
+    catA2: Long,
+) {
+    val transferId = repository.saveTransaction(
+        decimalSaveCommand(
+            fromAccountId = usdAccountId,
+            mode = TransactionMode.TRANSFER,
+            toAccountId = jpyAccountId,
+            fromAmountMinor = -1_000L,
+            toAmountMinor = 1_500L,
+        )
+    )
+    assertEquals(-1_000L, db.getTransaction(transferId).fromAmount)
+    assertEquals(150_000L, db.getTransaction(transferId).toAmount)
+    val loadedTransfer = (repository.loadForEdit(transferId) as TransactionEditLoadResult.Loaded).record
+    assertEquals(-1_000L, loadedTransfer.fromAmountMinor)
+    assertEquals(1_500L, loadedTransfer.toAmountMinor)
+
+    val foreignExpenseId = repository.saveTransaction(
+        decimalSaveCommand(
+            fromAccountId = usdAccountId,
+            categoryId = catA1,
+            fromAmountMinor = -1_000L,
+            originalCurrencyId = jpyCurrencyId,
+            originalFromAmountMinor = -1_500L,
+        )
+    )
+    assertEquals(-150_000L, db.getTransaction(foreignExpenseId).originalFromAmount)
+    val loadedForeign = (repository.loadForEdit(foreignExpenseId) as TransactionEditLoadResult.Loaded).record
+    assertEquals(-1_500L, loadedForeign.originalFromAmountMinor)
+
+    val foreignSplitId = repository.saveTransaction(
+        decimalSaveCommand(
+            fromAccountId = usdAccountId,
+            categoryId = TransactionIds.SPLIT_CATEGORY_ID,
+            fromAmountMinor = -1_000L,
+            originalCurrencyId = jpyCurrencyId,
+            originalFromAmountMinor = -1_500L,
+            splits = listOf(
+                SaveSplitCommand(catA1, -400L, "S1", 0L, originalFromAmountMinor = -600L),
+                SaveSplitCommand(catA2, -600L, "S2", 0L, originalFromAmountMinor = -900L),
+            ),
+        )
+    )
+    assertEquals(listOf(-400L, -600L), db.getSplitsForTransaction(foreignSplitId).map { it.fromAmount })
+    assertEquals(listOf(-60_000L, -90_000L), db.getSplitsForTransaction(foreignSplitId).map { it.originalFromAmount })
+    val loadedForeignSplit = (repository.loadForEdit(foreignSplitId) as TransactionEditLoadResult.Loaded).record
+    assertEquals(-1_500L, loadedForeignSplit.originalFromAmountMinor)
+    assertEquals(listOf(600L, 900L), loadedForeignSplit.splits.map { it.amountMinor })
+}
+
+private fun decimalSaveCommand(
+    fromAccountId: Long,
+    mode: TransactionMode = TransactionMode.EXPENSE,
+    toAccountId: Long = 0L,
+    categoryId: Long = 0L,
+    fromAmountMinor: Long,
+    toAmountMinor: Long = 0L,
+    originalCurrencyId: Long = 0L,
+    originalFromAmountMinor: Long = 0L,
+    splits: List<SaveSplitCommand> = emptyList(),
+): SaveTransactionCommand = SaveTransactionCommand(
+    existingTransactionId = TransactionIds.UNSAVED_TRANSACTION_ID,
+    mode = mode,
+    fromAccountId = fromAccountId,
+    toAccountId = toAccountId,
+    categoryId = categoryId,
+    payeeId = 0L,
+    pendingPayeeName = null,
+    projectId = 0L,
+    pendingProjectName = null,
+    locationId = 0L,
+    fromAmountMinor = fromAmountMinor,
+    toAmountMinor = toAmountMinor,
+    originalCurrencyId = originalCurrencyId,
+    originalFromAmountMinor = originalFromAmountMinor,
+    note = "",
+    dateTimeMillis = 1_700_000_000_000L,
+    status = TransactionStatusOption.UR,
+    attachedPicture = null,
+    isCCardPayment = false,
+    splits = splits,
+)

@@ -9,8 +9,13 @@ import org.junit.Test
 import ru.orangesoftware.financisto.transaction.model.AccountOption
 import ru.orangesoftware.financisto.transaction.model.CategoryOption
 import ru.orangesoftware.financisto.transaction.model.CurrencyOption
+import ru.orangesoftware.financisto.transaction.model.DraftSplit
 import ru.orangesoftware.financisto.transaction.model.EditableSplit
+import ru.orangesoftware.financisto.transaction.model.LocationOption
+import ru.orangesoftware.financisto.transaction.model.PayeeOption
+import ru.orangesoftware.financisto.transaction.model.ProjectOption
 import ru.orangesoftware.financisto.transaction.model.TransactionCatalog
+import ru.orangesoftware.financisto.transaction.model.TransactionDraft
 import ru.orangesoftware.financisto.transaction.model.TransactionFormPreferences
 import ru.orangesoftware.financisto.transaction.model.TransactionIds
 import ru.orangesoftware.financisto.transaction.model.TransactionMode
@@ -486,89 +491,305 @@ class TransactionDomainReviewFixesTest {
         assertEquals(command.fromAmountMinor, command.splits.sumOf { it.amountMinor })
     }
 
-    private fun multiScaleCatalog(): TransactionCatalog {
-        val usd = CurrencyOption(id = 1L, code = "USD", symbol = "$", decimals = 2, isDefault = true)
-        val eur = CurrencyOption(id = 2L, code = "EUR", symbol = "€", decimals = 2)
-        val jpy = CurrencyOption(id = 3L, code = "JPY", symbol = "¥", decimals = 0)
-        val bhd = CurrencyOption(id = 4L, code = "BHD", symbol = "BD", decimals = 3)
-        return TransactionCatalog(
-            accounts = multiScaleAccounts(),
-            currencies = listOf(usd, eur, jpy, bhd),
-            categories = listOf(
-                CategoryOption(id = 10L, parentId = 0L, title = "Food", fullPath = "Food", level = 1, isIncome = false),
-                CategoryOption(
-                    id = 11L,
-                    parentId = 10L,
-                    title = "Coffee",
-                    fullPath = "Food > Coffee",
-                    level = 2,
-                    isIncome = false,
-                ),
-                CategoryOption(
-                    id = 20L,
-                    parentId = 0L,
-                    title = "Salary",
-                    fullPath = "Salary",
-                    level = 1,
-                    isIncome = true,
-                ),
+    @Test
+    fun fromAiDraftSanitizesMissingCategoriesAndMissingOrInactivePayee() {
+        val catalog = multiScaleCatalog().copy(
+            payees = listOf(
+                PayeeOption(id = 200L, title = "Corner Cafe", isActive = true),
+                PayeeOption(id = 996L, title = "Inactive Shop", isActive = false),
             ),
+        )
+        val singleDraft = TransactionDraft(
+            draftId = "draft-missing-refs",
+            mode = TransactionMode.EXPENSE,
+            amountMinor = 2500L,
+            fromAccountId = 1L,
+            categoryId = 999L,
+            payeeId = 997L,
+            dateTimeMillis = 1_700_000_000_000L,
+        )
+        val singleForm = TransactionInitialStateFactory.fromAiDraft(singleDraft, catalog)
+        assertEquals(TransactionIds.NO_CATEGORY_ID, singleForm.categoryId)
+        assertEquals(TransactionIds.NO_PAYEE_ID, singleForm.payeeId)
+        assertEquals("", singleForm.payeeQuery)
+        assertNull(singleForm.pendingPayeeName)
+        val singleCmd = (
+            TransactionValidator.validateAndBuildCommand(singleForm, catalog)
+                as TransactionValidationResult.Valid
+            ).command
+        assertEquals(TransactionIds.NO_CATEGORY_ID, singleCmd.categoryId)
+        assertEquals(TransactionIds.NO_PAYEE_ID, singleCmd.payeeId)
+
+        val splitDraft = TransactionDraft(
+            draftId = "draft-missing-split-cat",
+            mode = TransactionMode.EXPENSE,
+            amountMinor = 2500L,
+            fromAccountId = 1L,
+            payeeId = 996L,
+            dateTimeMillis = 1_700_000_000_000L,
+            splits = listOf(
+                DraftSplit(categoryId = 998L, amountMinor = -1500L),
+                DraftSplit(categoryId = 10L, amountMinor = -1000L),
+            ),
+        )
+        val splitForm = TransactionInitialStateFactory.fromAiDraft(splitDraft, catalog)
+        assertEquals(TransactionIds.SPLIT_CATEGORY_ID, splitForm.categoryId)
+        assertEquals(listOf(TransactionIds.NO_CATEGORY_ID, 10L), splitForm.splits.map { it.categoryId })
+        assertEquals(TransactionIds.NO_PAYEE_ID, splitForm.payeeId)
+        assertEquals("", splitForm.payeeQuery)
+        val splitCmd = (
+            TransactionValidator.validateAndBuildCommand(splitForm, catalog)
+                as TransactionValidationResult.Valid
+            ).command
+        assertEquals(listOf(TransactionIds.NO_CATEGORY_ID, 10L), splitCmd.splits.map { it.categoryId })
+        assertEquals(TransactionIds.NO_PAYEE_ID, splitCmd.payeeId)
+    }
+
+    @Test
+    fun validatorRejectsManualDualCurrencyTransferWithMissingDestinationAmount() {
+        val catalog = multiScaleCatalog()
+        val missingDest = TransactionFormState(
+            aiDraftId = null,
+            mode = TransactionMode.TRANSFER,
+            fromAccountId = 1L,
+            toAccountId = 2L,
+            primaryAmountInput = "10.00",
+            primaryAmountMinor = 1000L,
+            secondaryAmountInput = "0",
+            secondaryAmountMinor = 0L,
+            isFromNewBlankLaunch = true,
+        )
+        assertTrue(
+            TransactionValidator.validateAndBuildCommand(missingDest, catalog) is TransactionValidationResult.Invalid
+        )
+
+        val zeroTransfer = missingDest.copy(primaryAmountInput = "0", primaryAmountMinor = 0L)
+        assertTrue(
+            TransactionValidator.validateAndBuildCommand(zeroTransfer, catalog) is TransactionValidationResult.Valid
+        )
+
+        val aiZeroTransfer = zeroTransfer.copy(aiDraftId = "draft-xfer", isFromNewBlankLaunch = false)
+        assertTrue(
+            TransactionValidator.validateAndBuildCommand(aiZeroTransfer, catalog) is TransactionValidationResult.Invalid
         )
     }
 
-    private fun multiScaleAccounts(): List<AccountOption> = listOf(
-        AccountOption(
-            id = 1L,
-            title = "USD Cash",
-            typeLabel = "CASH",
-            currencyId = 1L,
-            currencyCode = "USD",
-            currencySymbol = "$",
-            currencyDecimals = 2,
-            balanceMinor = 50000L,
-            lastAccountId = 5L,
+    @Test
+    fun rememberLastPopulatesEmptyAiDraftFieldsWithoutOverwritingPopulatedOnes() {
+        val catalog = rememberCatalog()
+        val prefs = rememberAllPrefs(isShowPayee = true)
+        val emptyAiForm = TransactionFormState(
+            aiDraftId = "draft-remember",
+            existingTransactionId = TransactionIds.UNSAVED_TRANSACTION_ID,
+            mode = TransactionMode.EXPENSE,
+            fromAccountId = 1L,
+            isFromNewBlankLaunch = false,
+        )
+        val emptyState = TransactionUiState.Ready(emptyAiForm, emptyAiForm, catalog, prefs)
+
+        assertEquals(11L, TransactionReducer.reduce(emptyState, TransactionIntent.SelectPayee(200L)).form.categoryId)
+        val afterCat = TransactionReducer.reduce(emptyState, TransactionIntent.SelectCategory(10L)).form
+        assertEquals(300L, afterCat.locationId)
+        assertEquals("Downtown", afterCat.locationQuery)
+        assertEquals(400L, afterCat.projectId)
+
+        val noPayee = emptyState.copy(prefs = prefs.copy(isShowPayee = false))
+        val afterAcc = TransactionReducer.reduce(
+            noPayee,
+            TransactionIntent.SelectAccount(accountId = 2L, isDestination = false),
+        ).form
+        assertEquals(20L, afterAcc.categoryId)
+        assertEquals(TransactionMode.INCOME, afterAcc.mode)
+
+        val xferEmpty = emptyState.copy(form = emptyAiForm.copy(mode = TransactionMode.TRANSFER, toAccountId = 0L))
+        val afterXfer = TransactionReducer.reduce(
+            xferEmpty,
+            TransactionIntent.SelectAccount(accountId = 1L, isDestination = false),
+        ).form
+        assertEquals(5L, afterXfer.toAccountId)
+
+        val populated = emptyAiForm.copy(
+            categoryId = 10L,
+            locationId = 301L,
+            locationQuery = "Airport",
+            projectId = 401L,
+            toAccountId = 2L,
+        )
+        val popState = TransactionUiState.Ready(populated, populated, catalog, prefs)
+        assertEquals(10L, TransactionReducer.reduce(popState, TransactionIntent.SelectPayee(200L)).form.categoryId)
+        val keptCat = TransactionReducer.reduce(popState, TransactionIntent.SelectCategory(10L)).form
+        assertEquals(301L, keptCat.locationId)
+        assertEquals("Airport", keptCat.locationQuery)
+        assertEquals(401L, keptCat.projectId)
+        val keptAcc = TransactionReducer.reduce(
+            popState.copy(prefs = prefs.copy(isShowPayee = false)),
+            TransactionIntent.SelectAccount(accountId = 2L, isDestination = false),
+        ).form
+        assertEquals(10L, keptAcc.categoryId)
+        val keptXfer = TransactionReducer.reduce(
+            popState.copy(form = populated.copy(mode = TransactionMode.TRANSFER)),
+            TransactionIntent.SelectAccount(accountId = 1L, isDestination = false),
+        ).form
+        assertEquals(2L, keptXfer.toAccountId)
+    }
+
+    @Test
+    fun rememberLastStaysDisabledWhenEditingExistingTransaction() {
+        val catalog = rememberCatalog()
+        val prefs = rememberAllPrefs(isShowPayee = false)
+        val editingForm = TransactionFormState(
+            existingTransactionId = 55L,
+            aiDraftId = null,
+            mode = TransactionMode.EXPENSE,
+            fromAccountId = 1L,
+            isFromNewBlankLaunch = false,
+        )
+        val editingState = TransactionUiState.Ready(editingForm, editingForm, catalog, prefs)
+
+        assertEquals(
+            TransactionIds.NO_CATEGORY_ID,
+            TransactionReducer.reduce(editingState, TransactionIntent.SelectPayee(200L)).form.categoryId,
+        )
+        val afterCat = TransactionReducer.reduce(editingState, TransactionIntent.SelectCategory(10L)).form
+        assertEquals(TransactionIds.CURRENT_LOCATION_ID, afterCat.locationId)
+        assertEquals(TransactionIds.NO_PROJECT_ID, afterCat.projectId)
+        assertEquals(
+            TransactionIds.NO_CATEGORY_ID,
+            TransactionReducer.reduce(
+                editingState,
+                TransactionIntent.SelectAccount(accountId = 2L, isDestination = false),
+            ).form.categoryId,
+        )
+        val editingTransfer = editingState.copy(form = editingForm.copy(mode = TransactionMode.TRANSFER))
+        assertEquals(
+            0L,
+            TransactionReducer.reduce(
+                editingTransfer,
+                TransactionIntent.SelectAccount(accountId = 1L, isDestination = false),
+            ).form.toAccountId,
+        )
+    }
+}
+
+private fun rememberAllPrefs(isShowPayee: Boolean): TransactionFormPreferences = TransactionFormPreferences(
+    isRememberAccount = true,
+    isRememberCategory = true,
+    isRememberLocation = true,
+    isRememberProject = true,
+    isShowPayee = isShowPayee,
+)
+
+private fun rememberCatalog(): TransactionCatalog = multiScaleCatalog().copy(
+    categories = listOf(
+        CategoryOption(
+            id = 10L,
+            parentId = 0L,
+            title = "Food",
+            fullPath = "Food",
+            level = 1,
+            isIncome = false,
+            lastLocationId = 300L,
+            lastProjectId = 400L,
         ),
-        AccountOption(
-            id = 2L,
-            title = "Euro Bank",
-            typeLabel = "BANK",
-            currencyId = 2L,
-            currencyCode = "EUR",
-            currencySymbol = "€",
-            currencyDecimals = 2,
-            balanceMinor = 40000L,
-            lastCategoryId = 20L,
+        CategoryOption(
+            id = 11L,
+            parentId = 10L,
+            title = "Coffee",
+            fullPath = "Food > Coffee",
+            level = 2,
+            isIncome = false,
+            lastLocationId = 301L,
+            lastProjectId = 401L,
         ),
-        AccountOption(
-            id = 3L,
-            title = "JPY Wallet",
-            typeLabel = "CASH",
-            currencyId = 3L,
-            currencyCode = "JPY",
-            currencySymbol = "¥",
-            currencyDecimals = 0,
-            balanceMinor = 50000L,
-            lastCategoryId = 10L,
-        ),
-        AccountOption(
-            id = 4L,
-            title = "BHD Bank",
-            typeLabel = "BANK",
-            currencyId = 4L,
-            currencyCode = "BHD",
-            currencySymbol = "BD",
-            currencyDecimals = 3,
-            balanceMinor = 10000L,
-        ),
-        AccountOption(
-            id = 5L,
-            title = "USD Savings",
-            typeLabel = "BANK",
-            currencyId = 1L,
-            currencyCode = "USD",
-            currencySymbol = "$",
-            currencyDecimals = 2,
-            balanceMinor = 90000L,
+        CategoryOption(id = 20L, parentId = 0L, title = "Salary", fullPath = "Salary", level = 1, isIncome = true),
+    ),
+    payees = listOf(PayeeOption(id = 200L, title = "Corner Cafe", lastCategoryId = 11L)),
+    locations = listOf(LocationOption(id = 300L, title = "Downtown"), LocationOption(id = 301L, title = "Airport")),
+    projects = listOf(ProjectOption(id = 400L, title = "Vacation"), ProjectOption(id = 401L, title = "Work")),
+)
+
+private fun multiScaleCatalog(): TransactionCatalog {
+    val usd = CurrencyOption(id = 1L, code = "USD", symbol = "$", decimals = 2, isDefault = true)
+    val eur = CurrencyOption(id = 2L, code = "EUR", symbol = "€", decimals = 2)
+    val jpy = CurrencyOption(id = 3L, code = "JPY", symbol = "¥", decimals = 0)
+    val bhd = CurrencyOption(id = 4L, code = "BHD", symbol = "BD", decimals = 3)
+    return TransactionCatalog(
+        accounts = multiScaleAccounts(),
+        currencies = listOf(usd, eur, jpy, bhd),
+        categories = listOf(
+            CategoryOption(id = 10L, parentId = 0L, title = "Food", fullPath = "Food", level = 1, isIncome = false),
+            CategoryOption(
+                id = 11L,
+                parentId = 10L,
+                title = "Coffee",
+                fullPath = "Food > Coffee",
+                level = 2,
+                isIncome = false,
+            ),
+            CategoryOption(
+                id = 20L,
+                parentId = 0L,
+                title = "Salary",
+                fullPath = "Salary",
+                level = 1,
+                isIncome = true,
+            ),
         ),
     )
 }
+
+private fun multiScaleAccounts(): List<AccountOption> = listOf(
+    AccountOption(
+        id = 1L,
+        title = "USD Cash",
+        typeLabel = "CASH",
+        currencyId = 1L,
+        currencyCode = "USD",
+        currencySymbol = "$",
+        currencyDecimals = 2,
+        balanceMinor = 50000L,
+        lastAccountId = 5L,
+    ),
+    AccountOption(
+        id = 2L,
+        title = "Euro Bank",
+        typeLabel = "BANK",
+        currencyId = 2L,
+        currencyCode = "EUR",
+        currencySymbol = "€",
+        currencyDecimals = 2,
+        balanceMinor = 40000L,
+        lastCategoryId = 20L,
+    ),
+    AccountOption(
+        id = 3L,
+        title = "JPY Wallet",
+        typeLabel = "CASH",
+        currencyId = 3L,
+        currencyCode = "JPY",
+        currencySymbol = "¥",
+        currencyDecimals = 0,
+        balanceMinor = 50000L,
+        lastCategoryId = 10L,
+    ),
+    AccountOption(
+        id = 4L,
+        title = "BHD Bank",
+        typeLabel = "BANK",
+        currencyId = 4L,
+        currencyCode = "BHD",
+        currencySymbol = "BD",
+        currencyDecimals = 3,
+        balanceMinor = 10000L,
+    ),
+    AccountOption(
+        id = 5L,
+        title = "USD Savings",
+        typeLabel = "BANK",
+        currencyId = 1L,
+        currencyCode = "USD",
+        currencySymbol = "$",
+        currencyDecimals = 2,
+        balanceMinor = 90000L,
+    ),
+)

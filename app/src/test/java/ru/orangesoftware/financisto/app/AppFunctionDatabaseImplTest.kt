@@ -32,6 +32,7 @@ import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.model.Account
 import ru.orangesoftware.financisto.model.Category
 import ru.orangesoftware.financisto.model.CategoryEntity
+import ru.orangesoftware.financisto.model.Currency
 import ru.orangesoftware.financisto.model.Payee
 import ru.orangesoftware.financisto.model.Transaction
 import ru.orangesoftware.financisto.test.AccountBuilder
@@ -45,6 +46,7 @@ import ru.orangesoftware.financisto.transaction.port.DraftSessionStore
 import ru.orangesoftware.financisto.transaction.port.ExchangeRatePort
 import ru.orangesoftware.financisto.transaction.port.ReceiptMediaPort
 import ru.orangesoftware.financisto.transaction.port.TransactionRepository
+import ru.orangesoftware.financisto.utils.CurrencyCache
 import ru.orangesoftware.financisto.utils.PicturesUtil
 import java.io.File
 import java.io.IOException
@@ -297,6 +299,33 @@ class AppFunctionDatabaseImplTest : AbstractDbTest() {
     }
 
     @Test
+    fun testCreateTransactionReviewPendingIntentPropagatesReceiptAttachFailed() {
+        val defaultIntent = Shadows.shadowOf(
+            appDb.createTransactionReviewPendingIntent(
+                sampleAppFunctionDraft(draftId = "draft-receipt-ok", amount = -1000L, note = "Receipt ok")
+            )
+        ).savedIntent
+        val defaultDraft =
+            (TransactionEntryRouter.resolveLaunchArgs(defaultIntent) as TransactionLaunchArgs.AiDraft).draft
+        assertFalse(defaultDraft.receiptAttachFailed)
+        assertEquals(defaultDraft, draftStore.consumePendingAutoOpenDraft())
+
+        val failedIntent = Shadows.shadowOf(
+            appDb.createTransactionReviewPendingIntent(
+                sampleAppFunctionDraft(
+                    draftId = "draft-receipt-failed",
+                    amount = -1000L,
+                    note = "Receipt failed",
+                ).copy(receiptAttachFailed = true)
+            )
+        ).savedIntent
+        val failedDraft =
+            (TransactionEntryRouter.resolveLaunchArgs(failedIntent) as TransactionLaunchArgs.AiDraft).draft
+        assertTrue(failedDraft.receiptAttachFailed)
+        assertEquals(failedDraft, draftStore.consumePendingAutoOpenDraft())
+    }
+
+    @Test
     fun testCreateTransactionReviewPendingIntentDistinguishesHashCollidingDraftIds() {
         val draftIdA = "00000000-0000-4000-8000-00000500c004"
         val draftIdB = "00000000-0000-4000-8000-000000510170"
@@ -325,6 +354,78 @@ class AppFunctionDatabaseImplTest : AbstractDbTest() {
             sampleAppFunctionDraft(draftId = draftIdA, amount = -1500L, note = "Draft A Updated")
         )
         assertTrue(intentA.filterEquals(Shadows.shadowOf(updatedA).savedIntent))
+    }
+
+    @Test
+    fun testCreateTransactionReviewPendingIntentScalesZeroDecimalSplitsAndTransfer() {
+        val jpy = createJpyCurrency()
+        val jpyAccount1 = AccountBuilder.withDb(db).title("JPY Cash").currency(jpy).create()
+        val jpyAccount2 = AccountBuilder.withDb(db).title("JPY Card").currency(jpy).create()
+
+        val splitIntent = Shadows.shadowOf(
+            appDb.createTransactionReviewPendingIntent(
+                sampleAppFunctionDraft("draft-jpy-split", amount = -100_000L, note = "JPY dinner").copy(
+                    fromAccountId = jpyAccount1.id,
+                    categoryId = Category.SPLIT_CATEGORY_ID,
+                    splits = listOf(
+                        TransactionSplit(categoryId = 10L, amount = -40_000L, note = "Food"),
+                        TransactionSplit(categoryId = 20L, amount = -60_000L, note = "Drinks"),
+                    ),
+                )
+            )
+        ).savedIntent
+        val splitDraft = (TransactionEntryRouter.resolveLaunchArgs(splitIntent) as TransactionLaunchArgs.AiDraft).draft
+        assertEquals(1_000L, splitDraft.amountMinor)
+        assertEquals(listOf(-400L, -600L), splitDraft.splits.map { it.amountMinor })
+
+        val transferIntent = Shadows.shadowOf(
+            appDb.createTransactionReviewPendingIntent(
+                sampleAppFunctionDraft("draft-jpy-transfer", amount = -100_000L, note = "JPY transfer").copy(
+                    fromAccountId = jpyAccount1.id,
+                    toAccountId = jpyAccount2.id,
+                    toAmount = 100_000L,
+                )
+            )
+        ).savedIntent
+        val transferDraft =
+            (TransactionEntryRouter.resolveLaunchArgs(transferIntent) as TransactionLaunchArgs.AiDraft).draft
+        assertEquals(1_000L, transferDraft.amountMinor)
+        assertEquals(1_000L, transferDraft.toAmountMinor)
+    }
+
+    @Test
+    fun testCreateTransactionReviewPendingIntentRebalancesSubUnitSplitRounding() {
+        val jpy = createJpyCurrency()
+        val jpyAccount = AccountBuilder.withDb(db).title("JPY Cash").currency(jpy).create()
+
+        val rebalancedIntent = Shadows.shadowOf(
+            appDb.createTransactionReviewPendingIntent(
+                sampleAppFunctionDraft("draft-jpy-rebalance", amount = -300L, note = "JPY rounding").copy(
+                    fromAccountId = jpyAccount.id,
+                    categoryId = Category.SPLIT_CATEGORY_ID,
+                    splits = listOf(
+                        TransactionSplit(categoryId = 10L, amount = -150L, note = "S1"),
+                        TransactionSplit(categoryId = 20L, amount = -150L, note = "S2"),
+                    ),
+                )
+            )
+        ).savedIntent
+        val rebalancedDraft =
+            (TransactionEntryRouter.resolveLaunchArgs(rebalancedIntent) as TransactionLaunchArgs.AiDraft).draft
+        assertEquals(3L, rebalancedDraft.amountMinor)
+        assertEquals(listOf(-2L, -1L), rebalancedDraft.splits.map { it.amountMinor })
+    }
+
+    private fun createJpyCurrency(): Currency {
+        return Currency().apply {
+            name = "JPY"
+            title = "Japanese Yen"
+            symbol = "¥"
+            decimals = 0
+        }.also {
+            db.saveOrUpdate(it)
+            CurrencyCache.initialize(db)
+        }
     }
 
     @Test

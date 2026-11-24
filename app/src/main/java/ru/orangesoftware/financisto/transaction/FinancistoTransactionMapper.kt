@@ -18,6 +18,8 @@ import ru.orangesoftware.financisto.transaction.model.TransactionStatusOption
 import timber.log.Timber
 
 internal object FinancistoTransactionMapper {
+    internal const val STORAGE_DECIMALS = 2
+    private val POW10 = longArrayOf(1L, 10L, 100L, 1_000L, 10_000L)
     private const val RECENT_NOTES_LIMIT = 8
     private val RECENT_NOTES_SQL = """
         SELECT DISTINCT TRIM(${DatabaseHelper.TransactionColumns.note}) AS n
@@ -47,7 +49,7 @@ internal object FinancistoTransactionMapper {
                     currencyCode = cur.name.orEmpty(),
                     currencySymbol = cur.symbol.orEmpty(),
                     currencyDecimals = cur.decimals,
-                    balanceMinor = a.totalAmount,
+                    balanceMinor = rescaleMinorUnits(a.totalAmount, STORAGE_DECIMALS, cur.decimals),
                     lastCategoryId = a.lastCategoryId,
                     lastAccountId = a.lastAccountId,
                     isActive = a.isActive,
@@ -98,34 +100,32 @@ internal object FinancistoTransactionMapper {
             .map { loc -> LocationOption(id = loc.id, title = loc.title.orEmpty(), isActive = loc.isActive) }
     }
 
+    private class CategoryStackEntry(
+        val category: Category,
+        val parentPath: String?,
+        val parentId: Long,
+    )
+
     fun loadCategories(db: DatabaseAdapter): List<CategoryOption> {
         val categories = mutableListOf<CategoryOption>()
-        collectCategories(
-            nodes = db.getCategoriesTree(false).roots,
-            parentPath = null,
-            parentId = 0L,
-            dest = categories,
-        )
-        return categories
-    }
-
-    fun collectCategories(
-        nodes: List<Category>,
-        parentPath: String?,
-        parentId: Long,
-        dest: MutableList<CategoryOption>,
-    ) {
-        for (cat in nodes) {
+        val stack = mutableListOf<CategoryStackEntry>()
+        val roots = db.getCategoriesTree(false).roots
+        for (i in roots.indices.reversed()) {
+            stack.add(CategoryStackEntry(roots[i], null, 0L))
+        }
+        while (stack.isNotEmpty()) {
+            val entry = stack.removeAt(stack.lastIndex)
+            val cat = entry.category
             if (cat.id <= 0L) continue
             val savedLevel = cat.level
             cat.level = 0
             val title = cat.title.orEmpty()
             cat.level = savedLevel
-            val fullPath = if (parentPath.isNullOrBlank()) title else "$parentPath > $title"
-            dest.add(
+            val fullPath = if (entry.parentPath.isNullOrBlank()) title else "${entry.parentPath} > $title"
+            categories.add(
                 CategoryOption(
                     id = cat.id,
-                    parentId = parentId,
+                    parentId = entry.parentId,
                     title = title,
                     fullPath = fullPath,
                     level = savedLevel,
@@ -135,9 +135,13 @@ internal object FinancistoTransactionMapper {
                 )
             )
             if (cat.hasChildren()) {
-                collectCategories(cat.children.roots, fullPath, cat.id, dest)
+                val children = cat.children.roots
+                for (i in children.indices.reversed()) {
+                    stack.add(CategoryStackEntry(children[i], fullPath, cat.id))
+                }
             }
         }
+        return categories
     }
 
     fun queryRecentNotes(db: DatabaseAdapter): List<String> {
@@ -173,5 +177,19 @@ internal object FinancistoTransactionMapper {
         TransactionStatusOption.UR -> TransactionStatus.UR
         TransactionStatusOption.CLEARED -> TransactionStatus.CLEARED
         TransactionStatusOption.RECONCILED -> TransactionStatus.RECONCILED
+    }
+
+    fun rescaleMinorUnits(amount: Long, fromDecimals: Int, toDecimals: Int): Long {
+        val from = fromDecimals.coerceIn(0, POW10.lastIndex)
+        val to = toDecimals.coerceIn(0, POW10.lastIndex)
+        return when {
+            from == to -> amount
+            from < to -> amount * POW10[to - from]
+            else -> {
+                val factor = POW10[from - to]
+                val half = factor / 2L
+                if (amount >= 0L) (amount + half) / factor else (amount - half) / factor
+            }
+        }
     }
 }
