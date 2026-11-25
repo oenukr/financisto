@@ -18,6 +18,7 @@ import androidx.fragment.app.FragmentActivity
 import ru.orangesoftware.financisto.R
 import ru.orangesoftware.financisto.app.DependenciesHolder
 import ru.orangesoftware.financisto.db.DatabaseAdapter
+import ru.orangesoftware.financisto.transaction.TransactionEntryRouter
 import ru.orangesoftware.financisto.utils.Logger
 import ru.orangesoftware.financisto.utils.MenuItemInfo
 import ru.orangesoftware.financisto.utils.MyPreferences
@@ -55,6 +56,7 @@ abstract class AbstractListActivity protected constructor(
     protected var savedListTop: Int = 0
 
     private var listViewInternal: ListView? = null
+    private var observedTransactionVersion: Long = TransactionEntryRouter.savedTransactionVersion
 
     fun getListView(): ListView =
         requireNotNull(listViewInternal) { "ListView is not initialized yet" }
@@ -172,6 +174,11 @@ abstract class AbstractListActivity protected constructor(
     override fun onResume() {
         super.onResume()
         if (enablePin) PinProtection.unlock(this)
+        val latestTransactionVersion = TransactionEntryRouter.savedTransactionVersion
+        if (latestTransactionVersion != observedTransactionVersion) {
+            observedTransactionVersion = latestTransactionVersion
+            recreateCursor()
+        }
     }
 
     protected open fun createContextMenus(id: Long): MutableList<MenuItemInfo> {
@@ -217,6 +224,7 @@ abstract class AbstractListActivity protected constructor(
     protected abstract fun viewItem(v: View?, position: Int, id: Long)
 
     override fun recreateCursor() {
+        observedTransactionVersion = TransactionEntryRouter.savedTransactionVersion
         logger.i("Recreating cursor")
         val lv = listViewInternal
         if (lv != null && lv.getChildAt(0) != null) {

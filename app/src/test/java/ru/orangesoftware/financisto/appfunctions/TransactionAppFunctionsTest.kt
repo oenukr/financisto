@@ -8,6 +8,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.net.Uri
 import android.os.Bundle
 import androidx.appfunctions.AppFunctionElementNotFoundException
+import androidx.appfunctions.AppFunctionException
 import androidx.appfunctions.AppFunctionInvalidArgumentException
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -259,6 +260,25 @@ class TransactionAppFunctionsTest {
     }
 
     @Test
+    fun testOpenDraftRejectsNegativeIncomeWhileAllowingNegativeExpenseAndTransfer() {
+        assertThrows(AppFunctionInvalidArgumentException::class.java) {
+            runBlocking { appFunctions.openDraft(amount = -25.0, accountName = "Cash", isIncome = true) }
+        }
+        runBlocking {
+            appFunctions.openDraft(amount = -15.50, accountName = "Cash", isIncome = false)
+            appFunctions.openDraft(amount = -10.00, accountName = "Cash", isIncome = null)
+            appFunctions.openDraft(amount = -50.00, accountName = "Cash", toAccountName = "Card")
+            val drafts = captureDrafts(db, count = 3)
+            assertEquals(-1550L, drafts[0].amount)
+            assertFalse(drafts[0].isIncome)
+            assertEquals(-1000L, drafts[1].amount)
+            assertFalse(drafts[1].isIncome)
+            assertEquals(-5000L, drafts[2].amount)
+            assertEquals(5000L, drafts[2].toAmount)
+        }
+    }
+
+    @Test
     fun testOpenDraftShortQueryNoFuzzyMatch() {
         whenever(db.getAccounts()).thenReturn(listOf(AccountInfo(1L, "Cash"), AccountInfo(3L, "C")))
         assertThrows(AppFunctionElementNotFoundException::class.java) {
@@ -311,6 +331,27 @@ class TransactionAppFunctionsTest {
             assertEquals("Weekly groceries", draft.note)
             assertEquals(expectedMillis, draft.dateTime)
             assertEquals("20261105143000.jpg", draft.attachedPicture)
+            assertFalse(draft.receiptAttachFailed)
+        }
+    }
+
+    @Test
+    fun testOpenDraftFlagsReceiptAttachFailedOnlyWhenSaveFails() {
+        runBlocking {
+            val failingUri: Uri = mock()
+            val successUri: Uri = mock()
+            whenever(db.saveReceiptPicture(failingUri)).thenReturn(null)
+            whenever(db.saveReceiptPicture(successUri)).thenReturn("saved_receipt.jpg")
+            appFunctions.openDraft(amount = 15.00, accountName = "Cash", receiptImageUri = failingUri)
+            appFunctions.openDraft(amount = 20.00, accountName = "Cash", receiptImageUri = successUri)
+            appFunctions.openDraft(amount = 25.00, accountName = "Cash", receiptImageUri = null)
+            val drafts = captureDrafts(db, count = 3)
+            assertNull(drafts[0].attachedPicture)
+            assertTrue(drafts[0].receiptAttachFailed)
+            assertEquals("saved_receipt.jpg", drafts[1].attachedPicture)
+            assertFalse(drafts[1].receiptAttachFailed)
+            assertNull(drafts[2].attachedPicture)
+            assertFalse(drafts[2].receiptAttachFailed)
         }
     }
 
@@ -632,6 +673,31 @@ class TransactionAppFunctionsTest {
             assertEquals(-2000L, draft.amount)
             assertFalse(draft.isIncome)
             assertEquals("Salary", draft.note)
+        }
+    }
+
+    @Test
+    fun testOpenDraftDefaultsToSoleAccountOnlyWhenSingleAccountExists() {
+        runBlocking {
+            val sole = AccountInfo(7L, "Sole Wallet", currencyCode = "USD", type = "CASH", currencyId = 1L)
+            val reviewIntent: PendingIntent = mock()
+            whenever(db.createTransactionReviewPendingIntent(any())).thenReturn(reviewIntent)
+            whenever(db.getAccounts()).thenReturn(listOf(sole))
+            val result = openDraftWithoutAppFunctionThrow {
+                appFunctions.openDraft(amount = 12.50, accountName = null, accountId = null)
+            }
+            assertSame(reviewIntent, result)
+            val draft = captureDraft(db)
+            assertEquals(7L, draft.fromAccountId)
+            assertEquals(-1250L, draft.amount)
+            whenever(db.getAccounts()).thenReturn(emptyList())
+            assertThrows(AppFunctionInvalidArgumentException::class.java) {
+                runBlocking { appFunctions.openDraft(amount = 12.50, accountName = null, accountId = null) }
+            }
+            whenever(db.getAccounts()).thenReturn(listOf(sole, sole.copy(id = 8L, title = "Second")))
+            assertThrows(AppFunctionInvalidArgumentException::class.java) {
+                runBlocking { appFunctions.openDraft(amount = 12.50, accountName = null, accountId = null) }
+            }
         }
     }
 }
@@ -1061,6 +1127,20 @@ private fun captureDraft(db: AppFunctionDatabase): AppFunctionTransactionDraft {
     val captor = argumentCaptor<AppFunctionTransactionDraft>()
     verify(db).createTransactionReviewPendingIntent(captor.capture())
     return captor.firstValue
+}
+
+private fun captureDrafts(db: AppFunctionDatabase, count: Int): List<AppFunctionTransactionDraft> {
+    val captor = argumentCaptor<AppFunctionTransactionDraft>()
+    verify(db, times(count)).createTransactionReviewPendingIntent(captor.capture())
+    return captor.allValues
+}
+
+private suspend fun openDraftWithoutAppFunctionThrow(block: suspend () -> PendingIntent): PendingIntent {
+    return try {
+        block()
+    } catch (e: AppFunctionException) {
+        throw AssertionError("Expected sole account default, but threw ${e::class.simpleName}: ${e.message}")
+    }
 }
 
 private fun createMockDatabaseAdapter(): DatabaseAdapter {

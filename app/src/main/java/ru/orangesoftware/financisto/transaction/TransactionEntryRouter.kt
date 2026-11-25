@@ -12,10 +12,19 @@ import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.transaction.model.TransactionDraft
 import ru.orangesoftware.financisto.transaction.model.TransactionLaunchArgs
 import ru.orangesoftware.financisto.transaction.model.TransactionMode
+import java.util.concurrent.atomic.AtomicLong
 
 object TransactionEntryRouter {
     const val EXTRA_LAUNCH_ARGS = "transaction_launch_args"
     const val EXTRA_FORCE_LEGACY = "force_legacy_editor"
+    private val savedTransactionVersionCounter = AtomicLong(0L)
+
+    val savedTransactionVersion: Long
+        get() = savedTransactionVersionCounter.get()
+
+    internal fun notifyTransactionSaved() {
+        savedTransactionVersionCounter.incrementAndGet()
+    }
 
     @JvmStatic
     fun createNewIntent(
@@ -53,6 +62,7 @@ object TransactionEntryRouter {
     internal fun createAiDraftReplacementIntent(context: Context, draft: TransactionDraft): Intent {
         return Intent(context, ComposeTransactionActivity::class.java).apply {
             putExtra(EXTRA_LAUNCH_ARGS, TransactionLaunchArgs.AiDraft(draft))
+            addFlags(Intent.FLAG_ACTIVITY_FORWARD_RESULT)
         }
     }
 
@@ -143,7 +153,9 @@ object TransactionEntryRouter {
     fun launchPendingAiDraftIfPresent(
         context: Context,
         currentDraftId: String? = null,
-        draftSessionStore: FinancistoDraftSessionStore = resolveDraftSessionStore(context),
+        draftSessionStore: FinancistoDraftSessionStore =
+            GlobalContext.getOrNull()?.getOrNull<FinancistoDraftSessionStore>()
+                ?: FinancistoDraftSessionStore(context.applicationContext),
     ): Boolean {
         val draft = draftSessionStore.consumePendingAutoOpenDraft(currentDraftId) ?: return false
         context.startActivity(createAiDraftIntent(context, draft))
@@ -167,10 +179,5 @@ object TransactionEntryRouter {
             parent.id > 0L && parent.isTemplateLike
         }
         return hasLegacyFlag || hasTemplateExtra || isTemplateTransaction
-    }
-
-    private fun resolveDraftSessionStore(context: Context): FinancistoDraftSessionStore {
-        return GlobalContext.getOrNull()?.getOrNull<FinancistoDraftSessionStore>()
-            ?: FinancistoDraftSessionStore(context.applicationContext)
     }
 }

@@ -308,6 +308,86 @@ class TransactionViewModelReviewFixesTest {
         assertEquals(TransactionEffect.LaunchCameraCapture, vm.effects.first())
     }
 
+    @Test
+    fun untouchedAiDraftWithoutReceiptHasUnsavedChangesAndPromptsOnBack() = runTest {
+        val vm = TransactionViewModel(
+            launchArgs = TransactionLaunchArgs.AiDraft(
+                TransactionDraft(
+                    draftId = "draft-no-receipt",
+                    mode = TransactionMode.EXPENSE,
+                    amountMinor = 1500L,
+                    fromAccountId = 1L,
+                    dateTimeMillis = FIXED_NOW_MILLIS,
+                    stagedReceiptFileName = null,
+                )
+            ),
+            savedStateHandle = SavedStateHandle(),
+            ports = ports,
+            ioDispatcher = testDispatcher,
+            clock = fixedClock,
+        )
+
+        val ready = vm.uiState.value as TransactionUiState.Ready
+        assertTrue(ready.hasUnsavedChanges)
+        assertFalse(vm.hasUnsavedUserEdits())
+
+        vm.onIntent(TransactionIntent.CancelOrBackClicked)
+        assertEquals(
+            ActiveSheet.DiscardConfirmation,
+            (vm.uiState.value as TransactionUiState.Ready).activeSheet,
+        )
+        assertFalse(vm.hasUnsavedUserEdits())
+    }
+
+    @Test
+    fun receiptAttachFailedEmitsMessageOnceOnInitialLoadAndNotOnRestore() = runTest {
+        val handle = SavedStateHandle()
+        val args = TransactionLaunchArgs.AiDraft(
+            TransactionDraft(
+                draftId = "draft-receipt-attach-failed",
+                mode = TransactionMode.EXPENSE,
+                amountMinor = 1500L,
+                fromAccountId = 1L,
+                dateTimeMillis = FIXED_NOW_MILLIS,
+                receiptAttachFailed = true,
+            )
+        )
+        val vm1 = TransactionViewModel(args, handle, ports, testDispatcher, fixedClock)
+        assertTrue(vm1.uiState.value is TransactionUiState.Ready)
+        val vm1Effects = mutableListOf<TransactionEffect>()
+        val collect1 = launch(testDispatcher) { vm1.effects.collect { vm1Effects.add(it) } }
+        collect1.cancel()
+        assertEquals(listOf(TransactionEffect.ShowMessage("Could not attach receipt image.")), vm1Effects)
+
+        val vm2 = TransactionViewModel(args, handle, ports, testDispatcher, fixedClock)
+        assertTrue(vm2.uiState.value is TransactionUiState.Ready)
+        val vm2Effects = mutableListOf<TransactionEffect>()
+        val collect2 = launch(testDispatcher) { vm2.effects.collect { vm2Effects.add(it) } }
+        collect2.cancel()
+        assertTrue(vm2Effects.isEmpty())
+
+        val okVm = TransactionViewModel(
+            launchArgs = TransactionLaunchArgs.AiDraft(
+                TransactionDraft(
+                    draftId = "draft-receipt-attach-ok",
+                    mode = TransactionMode.EXPENSE,
+                    amountMinor = 1500L,
+                    fromAccountId = 1L,
+                    dateTimeMillis = FIXED_NOW_MILLIS,
+                    receiptAttachFailed = false,
+                )
+            ),
+            savedStateHandle = SavedStateHandle(),
+            ports = ports,
+            ioDispatcher = testDispatcher,
+            clock = fixedClock,
+        )
+        val okEffects = mutableListOf<TransactionEffect>()
+        val collectOk = launch(testDispatcher) { okVm.effects.collect { okEffects.add(it) } }
+        collectOk.cancel()
+        assertTrue(okEffects.isEmpty())
+    }
+
     private fun incomeCategory(id: Long, title: String): CategoryOption = CategoryOption(
         id = id,
         parentId = 0L,

@@ -54,6 +54,7 @@ data class AppFunctionTransactionDraft(
     val dateTime: Long,
     val attachedPicture: String? = null,
     val splits: List<TransactionSplit> = emptyList(),
+    val receiptAttachFailed: Boolean = false,
 )
 
 interface AppFunctionDatabase {

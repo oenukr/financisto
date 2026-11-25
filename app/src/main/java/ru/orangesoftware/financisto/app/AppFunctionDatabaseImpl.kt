@@ -13,14 +13,18 @@ import ru.orangesoftware.financisto.appfunctions.AppFunctionTransactionDraft
 import ru.orangesoftware.financisto.appfunctions.CategoryInfo
 import ru.orangesoftware.financisto.appfunctions.HistoricalCategorySignal
 import ru.orangesoftware.financisto.appfunctions.PayeeInfo
+import ru.orangesoftware.financisto.appfunctions.TransactionSplit
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.db.DatabaseHelper
 import ru.orangesoftware.financisto.transaction.FinancistoDraftSessionStore
 import ru.orangesoftware.financisto.transaction.FinancistoTransactionMapper
+import ru.orangesoftware.financisto.transaction.FinancistoTransactionMapper.STORAGE_DECIMALS
+import ru.orangesoftware.financisto.transaction.FinancistoTransactionMapper.rescaleMinorUnits
 import ru.orangesoftware.financisto.transaction.TransactionEntryRouter
 import ru.orangesoftware.financisto.transaction.model.DraftSplit
 import ru.orangesoftware.financisto.transaction.model.TransactionDraft
 import ru.orangesoftware.financisto.transaction.model.TransactionMode
+import ru.orangesoftware.financisto.transaction.rescaleSplitMinorUnits
 import ru.orangesoftware.financisto.utils.PicturesUtil
 import timber.log.Timber
 import java.io.File
@@ -160,26 +164,28 @@ class AppFunctionDatabaseImpl(
             draft.isIncome -> TransactionMode.INCOME
             else -> TransactionMode.EXPENSE
         }
+        val fromDecimals = draft.fromAccountId.takeIf { it > 0L }
+            ?.let { db.getAccount(it)?.currency?.decimals } ?: DEFAULT_DECIMALS
+        val toDecimals = toAccountId?.takeIf { it > 0L }
+            ?.let { db.getAccount(it)?.currency?.decimals } ?: DEFAULT_DECIMALS
+        val amountMinor = rescaleMinorUnits(abs(draft.amount), STORAGE_DECIMALS, fromDecimals)
+        val toAmountMinor = draft.toAmount?.let { rescaleMinorUnits(abs(it), STORAGE_DECIMALS, toDecimals) }
+        val signedTotalMinor = if (mode == TransactionMode.INCOME) amountMinor else -amountMinor
         val uiDraft = TransactionDraft(
             draftId = draft.draftId,
             mode = mode,
-            amountMinor = abs(draft.amount),
+            amountMinor = amountMinor,
             fromAccountId = draft.fromAccountId,
             toAccountId = toAccountId,
-            toAmountMinor = draft.toAmount?.let(::abs),
+            toAmountMinor = toAmountMinor,
             categoryId = draft.categoryId,
             payeeId = draft.payeeId,
             pendingPayeeName = if (draft.payeeId == null) draft.payeeName else null,
             dateTimeMillis = draft.dateTime,
             note = draft.note,
             stagedReceiptFileName = draft.attachedPicture,
-            splits = draft.splits.map { split ->
-                DraftSplit(
-                    categoryId = split.categoryId,
-                    amountMinor = split.amount,
-                    note = split.note,
-                )
-            },
+            splits = scaleDraftSplits(draft.splits, fromDecimals, signedTotalMinor),
+            receiptAttachFailed = draft.receiptAttachFailed,
         )
         // Save as pending auto-open fallback when the user switches to Financisto manually;
         // the AppFunctions host invokes the returned PendingIntent as the primary launch channel.
@@ -195,6 +201,26 @@ class AppFunctionDatabaseImpl(
             intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
+    }
+
+    private fun scaleDraftSplits(
+        splits: List<TransactionSplit>,
+        fromDecimals: Int,
+        signedTotalMinor: Long,
+    ): List<DraftSplit> {
+        val scaledAmounts = rescaleSplitMinorUnits(
+            rawAmounts = splits.map { it.amount },
+            fromDecimals = STORAGE_DECIMALS,
+            toDecimals = fromDecimals,
+            targetTotal = signedTotalMinor,
+        )
+        return splits.mapIndexed { idx, split ->
+            DraftSplit(
+                categoryId = split.categoryId,
+                amountMinor = scaledAmounts[idx],
+                note = split.note,
+            )
+        }
     }
 
     private fun openUriStream(uri: Uri): InputStream? {
@@ -240,6 +266,7 @@ class AppFunctionDatabaseImpl(
     }
 
     internal companion object {
+        private const val DEFAULT_DECIMALS = 2
         private val CATEGORY_HISTORY_QUERY = """
             SELECT t.category_id,
                    CASE WHEN t.payee_id > 0 THEN t.payee_id ELSE COALESCE(p.payee_id, 0) END,

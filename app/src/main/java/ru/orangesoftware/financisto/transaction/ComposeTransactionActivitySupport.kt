@@ -10,6 +10,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.FileProvider
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -66,12 +67,13 @@ internal fun activeAiDraftId(
     }
 }
 
-internal fun shouldPromptBeforeReplacingWithDraft(
+internal fun resolveIncomingDraftAction(
+    incomingDraftId: String,
     viewModel: TransactionViewModel,
     launchArgs: TransactionLaunchArgs,
-): Boolean {
-    if (viewModel.hasUnsavedUserEdits()) return true
-    return when (val state = viewModel.uiState.value) {
+): ComposeTransactionActivity.IncomingDraftResolution {
+    val currentDraftId = activeAiDraftId(viewModel.uiState.value, launchArgs)
+    val shouldPrompt = viewModel.hasUnsavedUserEdits() || when (val state = viewModel.uiState.value) {
         is TransactionUiState.Ready ->
             state.form.isAiDraft && state.activeSheet !is ActiveSheet.ConsumedDraftPrompt
         is TransactionUiState.Loading,
@@ -81,18 +83,10 @@ internal fun shouldPromptBeforeReplacingWithDraft(
         is TransactionUiState.LegacyRedirecting,
         is TransactionUiState.LoadError -> false
     }
-}
-
-internal fun resolveIncomingDraftAction(
-    incomingDraftId: String,
-    viewModel: TransactionViewModel,
-    launchArgs: TransactionLaunchArgs,
-): ComposeTransactionActivity.IncomingDraftResolution {
-    val currentDraftId = activeAiDraftId(viewModel.uiState.value, launchArgs)
     return when {
         incomingDraftId == currentDraftId ->
             ComposeTransactionActivity.IncomingDraftResolution.ACKNOWLEDGE_CURRENT
-        shouldPromptBeforeReplacingWithDraft(viewModel, launchArgs) ->
+        shouldPrompt ->
             ComposeTransactionActivity.IncomingDraftResolution.PROMPT_USER
         else -> ComposeTransactionActivity.IncomingDraftResolution.REPLACE_IMMEDIATELY
     }
@@ -111,6 +105,26 @@ internal fun ComposeTransactionActivity.trySwitchToPendingAiDraft(
     startActivity(TransactionEntryRouter.createAiDraftReplacementIntent(this, draft))
     finish()
     return true
+}
+
+internal fun ComposeTransactionActivity.dismissPendingAiDraft(
+    draft: TransactionDraft,
+    draftSessionStore: FinancistoDraftSessionStore,
+    receiptMediaPort: ReceiptMediaPort,
+) {
+    pendingAiDraftPrompt = null
+    draftSessionStore.clearPendingAutoOpenDraft(draft.draftId)
+    val stagedFile = draft.stagedReceiptFileName?.takeIf { it.isNotBlank() } ?: return
+    val currentForm = (viewModel.uiState.value as? TransactionUiState.Ready)?.form
+    val matchesActiveReceipt = stagedFile == currentForm?.attachedPictureFileName ||
+        stagedFile == currentForm?.initialPersistedPictureFileName
+    if (!matchesActiveReceipt) {
+        lifecycleScope.launch {
+            if (draftSessionStore.getSavedTransactionId(draft.draftId) == null) {
+                receiptMediaPort.deleteStagedFile(stagedFile)
+            }
+        }
+    }
 }
 
 private val TransactionUiState.isIdleReady: Boolean

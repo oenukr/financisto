@@ -53,6 +53,7 @@ data class TransactionDraft(
     val isCCardPayment: Boolean = false,
     val stagedReceiptFileName: String? = null,
     val splits: List<DraftSplit> = emptyList(),
+    val receiptAttachFailed: Boolean = false,
 ) : Parcelable
 
 @Parcelize

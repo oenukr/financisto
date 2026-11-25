@@ -5,6 +5,7 @@ import android.view.View
 import android.widget.ImageButton
 import android.widget.ListView
 import android.widget.TextView
+import kotlinx.coroutines.runBlocking
 import org.greenrobot.eventbus.Subscribe
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -24,6 +25,11 @@ import ru.orangesoftware.financisto.test.AccountBuilder
 import ru.orangesoftware.financisto.test.CurrencyBuilder
 import ru.orangesoftware.financisto.test.DateTime
 import ru.orangesoftware.financisto.test.TransactionBuilder
+import ru.orangesoftware.financisto.transaction.FinancistoTransactionRepository
+import ru.orangesoftware.financisto.transaction.model.SaveTransactionCommand
+import ru.orangesoftware.financisto.transaction.model.TransactionIds
+import ru.orangesoftware.financisto.transaction.model.TransactionMode
+import ru.orangesoftware.financisto.transaction.model.TransactionStatusOption
 import ru.orangesoftware.financisto.utils.CurrencyCache
 
 @Suppress("DEPRECATION")
@@ -108,6 +114,58 @@ class AccountListActivityTest : AbstractDbTest() {
         val totalView = activity.findViewById<TextView>(R.id.total)
         val text = totalView.text.toString()
         assertTrue("Expected recalculated total text to contain 45.00, got: $text", text.contains("45.00"))
+
+        controller.destroy()
+    }
+
+    @Test
+    fun activity_resumingAfterRepositorySaveWithoutActivityResult_recalculatesTotals() {
+        TransactionBuilder.withDb(db)
+            .account(account1)
+            .dateTime(DateTime.date(2026, 1, 10).atNoon())
+            .amount(1200L)
+            .create()
+
+        val controller = Robolectric.buildActivity(AccountListActivity::class.java).setup()
+        val activity = controller.get()
+        waitForTotalCalculation(activity)
+
+        val initialTotal = activity.findViewById<TextView>(R.id.total).text.toString()
+        assertTrue("Expected initial total to contain 12.00, got: $initialTotal", initialTotal.contains("12.00"))
+
+        controller.pause()
+        val repository = FinancistoTransactionRepository(context, db)
+        runBlocking {
+            repository.saveTransaction(
+                SaveTransactionCommand(
+                    existingTransactionId = TransactionIds.UNSAVED_TRANSACTION_ID,
+                    mode = TransactionMode.INCOME,
+                    fromAccountId = account1.id,
+                    toAccountId = 0L,
+                    categoryId = TransactionIds.NO_CATEGORY_ID,
+                    payeeId = TransactionIds.NO_PAYEE_ID,
+                    pendingPayeeName = null,
+                    projectId = TransactionIds.NO_PROJECT_ID,
+                    pendingProjectName = null,
+                    locationId = TransactionIds.CURRENT_LOCATION_ID,
+                    fromAmountMinor = 3300L,
+                    toAmountMinor = 0L,
+                    originalCurrencyId = 0L,
+                    originalFromAmountMinor = 0L,
+                    note = "Saved via AppFunction",
+                    dateTimeMillis = DateTime.date(2026, 1, 11).atNoon().asLong(),
+                    status = TransactionStatusOption.UR,
+                    attachedPicture = null,
+                    isCCardPayment = false,
+                    splits = emptyList(),
+                )
+            )
+        }
+        controller.resume()
+        waitForTotalCalculation(activity)
+
+        val updatedTotal = activity.findViewById<TextView>(R.id.total).text.toString()
+        assertTrue("Expected updated total to contain 45.00, got: $updatedTotal", updatedTotal.contains("45.00"))
 
         controller.destroy()
     }

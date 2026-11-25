@@ -3,6 +3,7 @@ package ru.orangesoftware.financisto.transaction
 
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import androidx.core.content.edit
 import androidx.lifecycle.SavedStateHandle
@@ -16,7 +17,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.Runnable
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -39,6 +42,7 @@ import ru.orangesoftware.financisto.db.AbstractDbTest
 import ru.orangesoftware.financisto.model.Account
 import ru.orangesoftware.financisto.test.AccountBuilder
 import ru.orangesoftware.financisto.test.CurrencyBuilder
+import ru.orangesoftware.financisto.test.TransactionBuilder
 import ru.orangesoftware.financisto.transaction.model.AccountOption
 import ru.orangesoftware.financisto.transaction.model.CurrencyOption
 import ru.orangesoftware.financisto.transaction.model.SaveTransactionCommand
@@ -144,6 +148,7 @@ class ComposeTransactionActivityBehaviorTest : AbstractDbTest() {
         assertTrue(activity.isFinishing)
         val replacement = shadowOf(activity).nextStartedActivity
         assertNotNull(replacement)
+        assertTrue(replacement.flags and Intent.FLAG_ACTIVITY_FORWARD_RESULT != 0)
         assertEquals(ComposeTransactionActivity::class.java.name, replacement.component?.className)
         val resolved = TransactionEntryRouter.resolveLaunchArgs(replacement)
         assertEquals(TransactionLaunchArgs.AiDraft(incomingDraft), resolved)
@@ -482,6 +487,83 @@ class ComposeTransactionActivityBehaviorTest : AbstractDbTest() {
 
         assertTrue(caughtCancellation)
         assertFalse(tempFile.exists())
+    }
+
+    @Test
+    fun dismissPendingAiDraftDeletesOrphanedReceiptAndSkipsSavedOrActiveReceipt() {
+        val draftStore = FinancistoDraftSessionStore(context, UnconfinedTestDispatcher())
+        val fakeMediaPort = FakeReceiptMediaPort()
+        val controller = Robolectric.buildActivity(
+            ComposeTransactionActivity::class.java,
+            TransactionEntryRouter.createNewIntent(context, account.id),
+        ).setup()
+        val activity = controller.get()
+        awaitReady(activity)
+
+        val orphanIncoming = sampleDraft("draft-dismiss-orphan", amountMinor = 1800L, note = "Lunch")
+            .copy(stagedReceiptFileName = "orphan_keep_editing.jpg")
+        draftStore.savePendingDraft(orphanIncoming)
+        activity.pendingAiDraftPrompt = orphanIncoming
+        activity.dismissPendingAiDraft(orphanIncoming, draftStore, fakeMediaPort)
+        ShadowLooper.idleMainLooper()
+        assertNull(activity.pendingAiDraftPrompt)
+        assertNull(draftStore.peekPendingAutoOpenDraft())
+        assertEquals(listOf("orphan_keep_editing.jpg"), fakeMediaPort.deletedFiles)
+
+        val savedIncoming = sampleDraft("draft-dismiss-saved", amountMinor = 2200L, note = "Saved")
+            .copy(stagedReceiptFileName = "saved_keep_editing.jpg")
+        runBlocking { draftStore.markDraftSaved(savedIncoming.draftId, 88L) }
+        draftStore.savePendingDraft(savedIncoming)
+        activity.pendingAiDraftPrompt = savedIncoming
+        activity.dismissPendingAiDraft(savedIncoming, draftStore, fakeMediaPort)
+        ShadowLooper.idleMainLooper()
+        assertNull(activity.pendingAiDraftPrompt)
+        assertNull(draftStore.peekPendingAutoOpenDraft())
+        assertEquals(listOf("orphan_keep_editing.jpg"), fakeMediaPort.deletedFiles)
+
+        activity.viewModel.onIntent(TransactionIntent.AttachCapturedPhotoFile("active_attached.jpg"))
+        ShadowLooper.idleMainLooper()
+        val attachedIncoming = sampleDraft("draft-dismiss-attached", amountMinor = 1500L, note = "Same photo")
+            .copy(stagedReceiptFileName = "active_attached.jpg")
+        draftStore.savePendingDraft(attachedIncoming)
+        activity.pendingAiDraftPrompt = attachedIncoming
+        activity.dismissPendingAiDraft(attachedIncoming, draftStore, fakeMediaPort)
+        ShadowLooper.idleMainLooper()
+        assertNull(activity.pendingAiDraftPrompt)
+        assertEquals(listOf("orphan_keep_editing.jpg"), fakeMediaPort.deletedFiles)
+        controller.destroy()
+    }
+
+    @Test
+    fun dismissPendingAiDraftSkipsReceiptMatchingInitialPersistedPicture() {
+        val draftStore = FinancistoDraftSessionStore(context, UnconfinedTestDispatcher())
+        val fakeMediaPort = FakeReceiptMediaPort()
+        val koinDb = GlobalContext.get().get<ru.orangesoftware.financisto.db.DatabaseAdapter>()
+        val existingTx = TransactionBuilder.withDb(koinDb).account(account).amount(-1200L).create()
+        existingTx.attachedPicture = "persisted_initial.jpg"
+        koinDb.insertOrUpdate(existingTx, emptyList())
+
+        val editController = Robolectric.buildActivity(
+            ComposeTransactionActivity::class.java,
+            TransactionEntryRouter.createEditIntent(context, existingTx.id),
+        ).setup()
+        val editActivity = editController.get()
+        awaitReady(editActivity)
+        editActivity.viewModel.onIntent(TransactionIntent.RemoveReceipt)
+        ShadowLooper.idleMainLooper()
+        val readyEdit = editActivity.viewModel.uiState.value as TransactionUiState.Ready
+        assertNull(readyEdit.form.attachedPictureFileName)
+        assertEquals("persisted_initial.jpg", readyEdit.form.initialPersistedPictureFileName)
+
+        val persistedIncoming = sampleDraft("draft-dismiss-persisted", amountMinor = 1200L, note = "Persisted photo")
+            .copy(stagedReceiptFileName = "persisted_initial.jpg")
+        draftStore.savePendingDraft(persistedIncoming)
+        editActivity.pendingAiDraftPrompt = persistedIncoming
+        editActivity.dismissPendingAiDraft(persistedIncoming, draftStore, fakeMediaPort)
+        ShadowLooper.idleMainLooper()
+        assertNull(editActivity.pendingAiDraftPrompt)
+        assertTrue(fakeMediaPort.deletedFiles.isEmpty())
+        editController.destroy()
     }
 
     private fun awaitReady(activity: ComposeTransactionActivity) {

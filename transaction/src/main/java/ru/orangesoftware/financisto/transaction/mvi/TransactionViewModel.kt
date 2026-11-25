@@ -187,16 +187,8 @@ class TransactionViewModel(
         rateCoordinator.cancel()
         stagingCoordinator.cancelAll()
         externalEntityCoordinator.cancelAll()
-        val restoredForm = if (restoreSaved) {
-            savedStateHandle.get<TransactionFormState>(KEY_FORM_STATE)
-        } else {
-            null
-        }
-        val restoredSnap = if (restoreSaved) {
-            savedStateHandle.get<TransactionFormState>(KEY_INITIAL_SNAPSHOT)
-        } else {
-            null
-        }
+        val restoredForm = if (restoreSaved) savedStateHandle.get<TransactionFormState>(KEY_FORM_STATE) else null
+        val restoredSnap = if (restoreSaved) savedStateHandle.get<TransactionFormState>(KEY_INITIAL_SNAPSHOT) else null
         val effectiveArgs = TransactionLoader.resolveEffectiveLaunchArgs(args, restoredForm)
         currentLaunchArgs = effectiveArgs
         savedStateHandle[KEY_EFFECTIVE_LAUNCH_ARGS] = effectiveArgs
@@ -234,6 +226,11 @@ class TransactionViewModel(
                 }
                 publishState(loaded)
                 if (loaded is TransactionUiState.Ready) {
+                    if (restoredForm == null &&
+                        (effectiveArgs as? TransactionLaunchArgs.AiDraft)?.draft?.receiptAttachFailed == true
+                    ) {
+                        _effects.trySend(TransactionEffect.ShowMessage(RECEIPT_ATTACH_FAILED_MESSAGE))
+                    }
                     rateCoordinator.maybeLookupStoredRate(loaded, syncInitialSnapshotIfUntouched = true)
                 }
             }
@@ -379,5 +376,6 @@ class TransactionViewModel(
         const val KEY_INITIAL_SNAPSHOT = "transaction_initial_snapshot"
         const val KEY_EFFECTIVE_LAUNCH_ARGS = "transaction_effective_launch_args"
         const val DEFAULT_LOAD_ERROR_MESSAGE = "Failed to load transaction."
+        const val RECEIPT_ATTACH_FAILED_MESSAGE = "Could not attach receipt image."
     }
 }

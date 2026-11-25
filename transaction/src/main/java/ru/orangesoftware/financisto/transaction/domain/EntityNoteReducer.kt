@@ -90,11 +90,12 @@ internal object EntityNoteReducer {
     private fun selectPayee(state: TransactionUiState.Ready, payeeId: Long): TransactionUiState.Ready {
         val payee = state.catalog.payees.firstOrNull { it.id == payeeId } ?: return state
         val form = state.form
-        val shouldFillCategory = form.isFromNewBlankLaunch &&
+        val shouldFillCategory = !form.isEditing &&
             state.prefs.isRememberCategory &&
             !form.isSplitMode &&
             form.categoryId == TransactionIds.NO_CATEGORY_ID &&
-            payee.lastCategoryId > 0L
+            payee.lastCategoryId > 0L &&
+            state.catalog.categories.any { it.id == payee.lastCategoryId }
         val nextCategoryId = if (shouldFillCategory) payee.lastCategoryId else form.categoryId
         val nextMode = if (shouldFillCategory) {
             val cat = state.catalog.categories.firstOrNull { it.id == nextCategoryId }

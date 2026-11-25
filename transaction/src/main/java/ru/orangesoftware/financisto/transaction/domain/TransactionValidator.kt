@@ -94,7 +94,8 @@ object TransactionValidator {
         if (form.isAiDraft && form.primaryAmountMinor <= 0L) {
             errors.add("Transfer amount must be greater than zero.")
         }
-        if (form.isAiDraft && isDualCurrency && form.secondaryAmountMinor <= 0L) {
+        val requiresDestAmount = isDualCurrency && (form.isAiDraft || form.primaryAmountMinor > 0L)
+        if (requiresDestAmount && form.secondaryAmountMinor <= 0L) {
             errors.add("Destination transfer amount must be greater than zero.")
         }
     }

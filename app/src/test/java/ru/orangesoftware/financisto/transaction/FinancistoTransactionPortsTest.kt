@@ -31,6 +31,7 @@ import ru.orangesoftware.financisto.test.CurrencyBuilder
 import ru.orangesoftware.financisto.transaction.model.TransactionDraft
 import ru.orangesoftware.financisto.transaction.model.TransactionMode
 import ru.orangesoftware.financisto.utils.CurrencyCache
+import ru.orangesoftware.financisto.utils.PicturesUtil
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class FinancistoTransactionPortsTest : AbstractDbTest() {
@@ -76,6 +77,46 @@ class FinancistoTransactionPortsTest : AbstractDbTest() {
         verify(mockEditor).putString(anyString(), anyString())
         verify(mockEditor).commit()
         verify(mockEditor, never()).apply()
+    }
+
+    @Test
+    fun savePendingDraftDeletesOverwrittenUnopenedDraftReceiptOnlyWhenOrphaned() = runTest {
+        val store = FinancistoDraftSessionStore(context, UnconfinedTestDispatcher())
+        val orphanFileName = "ports_test_orphan_1.jpg"
+        val savedFileName = "ports_test_saved_2.jpg"
+        val sharedFileName = "ports_test_shared_3.jpg"
+        val orphanFile = PicturesUtil.pictureFile(orphanFileName, false).apply { writeBytes(byteArrayOf(1)) }
+        val savedFile = PicturesUtil.pictureFile(savedFileName, false).apply { writeBytes(byteArrayOf(2)) }
+        val sharedFile = PicturesUtil.pictureFile(sharedFileName, false).apply { writeBytes(byteArrayOf(3)) }
+        try {
+            val draft1 = TransactionDraft(
+                draftId = "draft-unopened-1",
+                mode = TransactionMode.EXPENSE,
+                amountMinor = 1000L,
+                fromAccountId = 1L,
+                dateTimeMillis = 1_700_000_000_000L,
+                stagedReceiptFileName = orphanFileName,
+            )
+            val draft2 = draft1.copy(draftId = "draft-saved-2", stagedReceiptFileName = savedFileName)
+            assertTrue(store.savePendingDraft(draft1))
+            assertTrue(store.savePendingDraft(draft2))
+            assertFalse("Overwritten unopened draft's staged receipt should be deleted", orphanFile.exists())
+            assertTrue(savedFile.exists())
+
+            store.markDraftSaved(draft2.draftId, 77L)
+            assertTrue(store.savePendingDraft(draft2))
+            val draft3 = draft1.copy(draftId = "draft-shared-3", stagedReceiptFileName = sharedFileName)
+            assertTrue(store.savePendingDraft(draft3))
+            assertTrue("Already-saved overwritten draft's receipt must be preserved", savedFile.exists())
+
+            val draft4 = draft1.copy(draftId = "draft-shared-4", stagedReceiptFileName = sharedFileName)
+            assertTrue(store.savePendingDraft(draft4))
+            assertTrue("Receipt reused by replacing draft must be preserved", sharedFile.exists())
+        } finally {
+            orphanFile.delete()
+            savedFile.delete()
+            sharedFile.delete()
+        }
     }
 
     @Test
