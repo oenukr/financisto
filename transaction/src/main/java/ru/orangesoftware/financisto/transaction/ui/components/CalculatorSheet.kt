@@ -100,7 +100,7 @@ fun CalculatorBottomSheet(
 }
 
 @Composable
-private fun CalculatorBottomSheetContent(
+internal fun CalculatorBottomSheetContent(
     target: CalculatorTarget,
     expressionState: TextFieldState,
     errorMsg: String?,

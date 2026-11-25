@@ -48,6 +48,8 @@ Financisto allows users to manage multiple accounts, currencies, budgets, and tr
 - **Run Linting/Formatting:** `./gradlew detekt`
 - **Generate Coverage Report:** `./gradlew koverHtmlReport`
 - **Install Debug App:** `./gradlew app:installDebug`
+- **Update Screenshot Baselines:** `./gradlew :transaction:updateDebugScreenshotTestDefaultTestSuite` (reference PNGs in `transaction/src/screenshotTestDefaultDebug/reference/`)
+- **Run Screenshot Tests:** `./gradlew :transaction:testDebugScreenshotTestDefaultTestSuite` (HTML diff report in `transaction/build/reports/tests/testDebugScreenshotTestDefaultTestSuite/index.html`)
 
 ## 📂 Project Structure
 - `app/src/main/java`: Source code.
