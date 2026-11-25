@@ -94,7 +94,8 @@ internal object EntityNoteReducer {
             state.prefs.isRememberCategory &&
             !form.isSplitMode &&
             form.categoryId == TransactionIds.NO_CATEGORY_ID &&
-            payee.lastCategoryId > 0L
+            payee.lastCategoryId > 0L &&
+            state.catalog.categories.any { it.id == payee.lastCategoryId }
         val nextCategoryId = if (shouldFillCategory) payee.lastCategoryId else form.categoryId
         val nextMode = if (shouldFillCategory) {
             val cat = state.catalog.categories.firstOrNull { it.id == nextCategoryId }

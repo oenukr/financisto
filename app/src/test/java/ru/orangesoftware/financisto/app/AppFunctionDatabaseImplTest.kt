@@ -416,6 +416,87 @@ class AppFunctionDatabaseImplTest : AbstractDbTest() {
         assertEquals(listOf(-2L, -1L), rebalancedDraft.splits.map { it.amountMinor })
     }
 
+    @Test
+    fun testCreateTransactionReviewPendingIntentHandlesSubUnitSplitsWithoutSignFlip() {
+        val jpy = createJpyCurrency()
+        val jpyAccount = AccountBuilder.withDb(db).title("JPY Cash").currency(jpy).create()
+
+        val expenseIntent = Shadows.shadowOf(
+            appDb.createTransactionReviewPendingIntent(
+                sampleAppFunctionDraft("draft-jpy-four-expense", amount = -200L, note = "JPY 4 splits").copy(
+                    fromAccountId = jpyAccount.id,
+                    categoryId = Category.SPLIT_CATEGORY_ID,
+                    splits = List(4) { index ->
+                        TransactionSplit(categoryId = 10L + index, amount = -50L, note = "E$index")
+                    },
+                )
+            )
+        ).savedIntent
+        val expenseDraft =
+            (TransactionEntryRouter.resolveLaunchArgs(expenseIntent) as TransactionLaunchArgs.AiDraft).draft
+        assertEquals(2L, expenseDraft.amountMinor)
+        assertEquals(listOf(-1L, -1L, 0L, 0L), expenseDraft.splits.map { it.amountMinor })
+        assertTrue(expenseDraft.splits.all { it.amountMinor <= 0L })
+
+        val incomeIntent = Shadows.shadowOf(
+            appDb.createTransactionReviewPendingIntent(
+                sampleAppFunctionDraft("draft-jpy-four-income", amount = 200L, note = "JPY 4 income splits").copy(
+                    fromAccountId = jpyAccount.id,
+                    categoryId = Category.SPLIT_CATEGORY_ID,
+                    isIncome = true,
+                    splits = List(4) { index ->
+                        TransactionSplit(categoryId = 10L + index, amount = 50L, note = "I$index")
+                    },
+                )
+            )
+        ).savedIntent
+        val incomeDraft =
+            (TransactionEntryRouter.resolveLaunchArgs(incomeIntent) as TransactionLaunchArgs.AiDraft).draft
+        assertEquals(2L, incomeDraft.amountMinor)
+        assertEquals(listOf(1L, 1L, 0L, 0L), incomeDraft.splits.map { it.amountMinor })
+        assertTrue(incomeDraft.splits.all { it.amountMinor >= 0L })
+    }
+
+    @Test
+    fun testCreateTransactionReviewPendingIntentDistributesRemainderAcrossEligibleSplits() {
+        val jpy = createJpyCurrency()
+        val jpyAccount = AccountBuilder.withDb(db).title("JPY Cash").currency(jpy).create()
+
+        val distributedIntent = Shadows.shadowOf(
+            appDb.createTransactionReviewPendingIntent(
+                sampleAppFunctionDraft("draft-jpy-distribute", amount = -600L, note = "JPY distributed").copy(
+                    fromAccountId = jpyAccount.id,
+                    categoryId = Category.SPLIT_CATEGORY_ID,
+                    splits = List(4) { index ->
+                        TransactionSplit(categoryId = 10L + index, amount = -150L, note = "D$index")
+                    },
+                )
+            )
+        ).savedIntent
+        val distributedDraft =
+            (TransactionEntryRouter.resolveLaunchArgs(distributedIntent) as TransactionLaunchArgs.AiDraft).draft
+        assertEquals(6L, distributedDraft.amountMinor)
+        assertEquals(listOf(-2L, -2L, -1L, -1L), distributedDraft.splits.map { it.amountMinor })
+
+        val revivedIntent = Shadows.shadowOf(
+            appDb.createTransactionReviewPendingIntent(
+                sampleAppFunctionDraft("draft-jpy-revive-zero", amount = -320L, note = "JPY revive zero").copy(
+                    fromAccountId = jpyAccount.id,
+                    categoryId = Category.SPLIT_CATEGORY_ID,
+                    splits = listOf(
+                        TransactionSplit(categoryId = 10L, amount = -40L, note = "Small"),
+                        TransactionSplit(categoryId = 20L, amount = -140L, note = "Med1"),
+                        TransactionSplit(categoryId = 30L, amount = -140L, note = "Med2"),
+                    ),
+                )
+            )
+        ).savedIntent
+        val revivedDraft =
+            (TransactionEntryRouter.resolveLaunchArgs(revivedIntent) as TransactionLaunchArgs.AiDraft).draft
+        assertEquals(3L, revivedDraft.amountMinor)
+        assertEquals(listOf(-1L, -1L, -1L), revivedDraft.splits.map { it.amountMinor })
+    }
+
     private fun createJpyCurrency(): Currency {
         return Currency().apply {
             name = "JPY"

@@ -24,6 +24,7 @@ import ru.orangesoftware.financisto.transaction.TransactionEntryRouter
 import ru.orangesoftware.financisto.transaction.model.DraftSplit
 import ru.orangesoftware.financisto.transaction.model.TransactionDraft
 import ru.orangesoftware.financisto.transaction.model.TransactionMode
+import ru.orangesoftware.financisto.transaction.rescaleSplitMinorUnits
 import ru.orangesoftware.financisto.utils.PicturesUtil
 import timber.log.Timber
 import java.io.File
@@ -207,25 +208,18 @@ class AppFunctionDatabaseImpl(
         fromDecimals: Int,
         signedTotalMinor: Long,
     ): List<DraftSplit> {
-        val scaled = splits.map { split ->
+        val scaledAmounts = rescaleSplitMinorUnits(
+            rawAmounts = splits.map { it.amount },
+            fromDecimals = STORAGE_DECIMALS,
+            toDecimals = fromDecimals,
+            targetTotal = signedTotalMinor,
+        )
+        return splits.mapIndexed { idx, split ->
             DraftSplit(
                 categoryId = split.categoryId,
-                amountMinor = rescaleMinorUnits(split.amount, STORAGE_DECIMALS, fromDecimals),
+                amountMinor = scaledAmounts[idx],
                 note = split.note,
             )
-        }
-        val remainder = if (scaled.isNotEmpty()) signedTotalMinor - scaled.sumOf { it.amountMinor } else 0L
-        return if (remainder == 0L) {
-            scaled
-        } else {
-            val targetIndex = scaled.indices.lastOrNull { idx ->
-                val current = scaled[idx].amountMinor
-                val updated = current + remainder
-                updated != 0L && (current > 0L && updated > 0L || current < 0L && updated < 0L)
-            } ?: scaled.lastIndex
-            scaled.mapIndexed { idx, split ->
-                if (idx == targetIndex) split.copy(amountMinor = split.amountMinor + remainder) else split
-            }
         }
     }
 

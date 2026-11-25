@@ -19,7 +19,7 @@ import timber.log.Timber
 
 internal object FinancistoTransactionMapper {
     internal const val STORAGE_DECIMALS = 2
-    private val POW10 = longArrayOf(1L, 10L, 100L, 1_000L, 10_000L)
+    internal val POW10 = longArrayOf(1L, 10L, 100L, 1_000L, 10_000L)
     private const val RECENT_NOTES_LIMIT = 8
     private val RECENT_NOTES_SQL = """
         SELECT DISTINCT TRIM(${DatabaseHelper.TransactionColumns.note}) AS n
@@ -193,3 +193,72 @@ internal object FinancistoTransactionMapper {
         }
     }
 }
+
+internal fun rescaleSplitMinorUnits(
+    rawAmounts: List<Long>,
+    fromDecimals: Int,
+    toDecimals: Int,
+    targetTotal: Long,
+): List<Long> {
+    if (rawAmounts.isEmpty()) return emptyList()
+    val scaled = LongArray(rawAmounts.size) { idx ->
+        FinancistoTransactionMapper.rescaleMinorUnits(rawAmounts[idx], fromDecimals, toDecimals)
+    }
+    var remaining = targetTotal - scaled.sum()
+    if (remaining != 0L) {
+        val step = if (remaining > 0L) 1L else -1L
+        val maxIdx = FinancistoTransactionMapper.POW10.lastIndex
+        val shift = (fromDecimals.coerceIn(0, maxIdx) - toDecimals.coerceIn(0, maxIdx)).coerceAtLeast(0)
+        val roundModulus = FinancistoTransactionMapper.POW10[shift]
+        remaining = distributeSplitRemainder(scaled, step, remaining) { idx, current, next ->
+            current == 0L && preservesNonZeroSign(rawAmounts[idx], next)
+        }
+        remaining = distributeSplitRemainder(scaled, step, remaining) { idx, _, next ->
+            isRoundedSplit(rawAmounts[idx], roundModulus) && preservesNonZeroSign(rawAmounts[idx], next)
+        }
+        remaining = distributeSplitRemainder(scaled, step, remaining) { idx, _, next ->
+            preservesNonZeroSign(rawAmounts[idx], next)
+        }
+        remaining = distributeSplitRemainder(scaled, step, remaining) { idx, current, next ->
+            isRoundedSplit(rawAmounts[idx], roundModulus) &&
+                reducesToZeroWithoutSignFlip(rawAmounts[idx], current, next)
+        }
+        distributeSplitRemainder(scaled, step, remaining) { idx, current, next ->
+            reducesToZeroWithoutSignFlip(rawAmounts[idx], current, next)
+        }
+    }
+    return scaled.toList()
+}
+
+private inline fun distributeSplitRemainder(
+    scaled: LongArray,
+    step: Long,
+    initialRemaining: Long,
+    canAdjust: (index: Int, current: Long, next: Long) -> Boolean,
+): Long {
+    var remaining = initialRemaining
+    var progressed = true
+    while (remaining != 0L && progressed) {
+        progressed = false
+        for (idx in scaled.indices.reversed()) {
+            if (remaining == 0L) break
+            val current = scaled[idx]
+            val next = current + step
+            if (canAdjust(idx, current, next)) {
+                scaled[idx] = next
+                remaining -= step
+                progressed = true
+            }
+        }
+    }
+    return remaining
+}
+
+private fun preservesNonZeroSign(raw: Long, next: Long): Boolean =
+    (raw > 0L && next > 0L) || (raw < 0L && next < 0L)
+
+private fun reducesToZeroWithoutSignFlip(raw: Long, current: Long, next: Long): Boolean =
+    next == 0L && ((raw > 0L && current > 0L) || (raw < 0L && current < 0L))
+
+private fun isRoundedSplit(raw: Long, roundModulus: Long): Boolean =
+    roundModulus > 1L && raw % roundModulus != 0L

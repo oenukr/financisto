@@ -189,19 +189,34 @@ class FinancistoTransactionRepository(
         command: SaveTransactionCommand,
         parentStatus: TransactionStatus,
     ): List<Transaction>? {
+        val splits = command.splits.takeIf { it.isNotEmpty() } ?: return null
         val fromDecimals = accountDecimals(db, command.fromAccountId)
-        val origDecimals = currencyDecimals(db, command.originalCurrencyId, fromDecimals)
-        return command.splits.takeIf { it.isNotEmpty() }?.map { split ->
+        val rawFromAmounts = splits.map { it.amountMinor }
+        val storedFromAmounts = rescaleSplitMinorUnits(
+            rawAmounts = rawFromAmounts,
+            fromDecimals = fromDecimals,
+            toDecimals = STORAGE_DECIMALS,
+            targetTotal = rescaleMinorUnits(rawFromAmounts.sum(), fromDecimals, STORAGE_DECIMALS),
+        )
+        val storedOrigAmounts = if (command.originalCurrencyId > 0L) {
+            val origDecimals = currencyDecimals(db, command.originalCurrencyId, fromDecimals)
+            val rawOrigAmounts = splits.map { it.originalFromAmountMinor }
+            rescaleSplitMinorUnits(
+                rawAmounts = rawOrigAmounts,
+                fromDecimals = origDecimals,
+                toDecimals = STORAGE_DECIMALS,
+                targetTotal = rescaleMinorUnits(rawOrigAmounts.sum(), origDecimals, STORAGE_DECIMALS),
+            )
+        } else {
+            null
+        }
+        return splits.mapIndexed { idx, split ->
             Transaction().apply {
                 categoryId = split.categoryId
-                fromAmount = rescaleMinorUnits(split.amountMinor, fromDecimals, STORAGE_DECIMALS)
-                if (command.originalCurrencyId > 0L) {
+                fromAmount = storedFromAmounts[idx]
+                if (storedOrigAmounts != null) {
                     originalCurrencyId = command.originalCurrencyId
-                    originalFromAmount = rescaleMinorUnits(
-                        split.originalFromAmountMinor,
-                        origDecimals,
-                        STORAGE_DECIMALS,
-                    )
+                    originalFromAmount = storedOrigAmounts[idx]
                 }
                 note = split.note
                 projectId = split.projectId

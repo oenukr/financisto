@@ -342,6 +342,11 @@ class FinancistoTransactionRepositoryTest : AbstractDbTest() {
     }
 
     @Test
+    fun saveSplitsReconcilesThreeDecimalRoundingAgainstRoundedParent() = runTest {
+        verifyThreeDecimalSplitReconciliation(db, repository, cash.id)
+    }
+
+    @Test
     fun draftSessionStoreSerializesRoundTripAndEnforcesBoundedHistory() = runTest {
         val store = FinancistoDraftSessionStore(context)
         val richDraft = TransactionDraft(
@@ -835,6 +840,86 @@ private suspend fun verifyTransferAndForeignDecimalTransactions(
     val loadedForeignSplit = (repository.loadForEdit(foreignSplitId) as TransactionEditLoadResult.Loaded).record
     assertEquals(-1_500L, loadedForeignSplit.originalFromAmountMinor)
     assertEquals(listOf(600L, 900L), loadedForeignSplit.splits.map { it.amountMinor })
+}
+
+private suspend fun verifyThreeDecimalSplitReconciliation(
+    db: DatabaseAdapter,
+    repository: FinancistoTransactionRepository,
+    usdAccountId: Long,
+) {
+    val kwd = Currency().apply {
+        name = "KWD"
+        title = "Kuwaiti Dinar"
+        symbol = "KD"
+        decimals = 3
+    }.also { db.saveOrUpdate(it) }
+    CurrencyCache.initialize(db)
+    val kwdWallet = AccountBuilder.withDb(db).title("KWD Wallet").currency(kwd).create()
+    val categories = CategoryBuilder.createDefaultHierarchy(db)
+    val catA1 = categories.getValue("A1").id
+    val catA2 = categories.getValue("A2").id
+
+    val twoSplitId = repository.saveTransaction(
+        decimalSaveCommand(
+            fromAccountId = kwdWallet.id,
+            categoryId = TransactionIds.SPLIT_CATEGORY_ID,
+            fromAmountMinor = -30L,
+            splits = listOf(
+                SaveSplitCommand(catA1, -15L, "S1", 0L),
+                SaveSplitCommand(catA2, -15L, "S2", 0L),
+            ),
+        )
+    )
+    assertEquals(-3L, db.getTransaction(twoSplitId).fromAmount)
+    assertEquals(listOf(-2L, -1L), db.getSplitsForTransaction(twoSplitId).map { it.fromAmount })
+    val loadedTwo = (repository.loadForEdit(twoSplitId) as TransactionEditLoadResult.Loaded).record
+    assertEquals(-30L, loadedTwo.fromAmountMinor)
+    assertEquals(listOf(20L, 10L), loadedTwo.splits.map { it.amountMinor })
+
+    val fourSplitId = repository.saveTransaction(
+        decimalSaveCommand(
+            fromAccountId = kwdWallet.id,
+            categoryId = TransactionIds.SPLIT_CATEGORY_ID,
+            fromAmountMinor = -20L,
+            splits = List(4) { idx ->
+                SaveSplitCommand(if (idx % 2 == 0) catA1 else catA2, -5L, "Q$idx", 0L)
+            },
+        )
+    )
+    assertEquals(-2L, db.getTransaction(fourSplitId).fromAmount)
+    val storedFourSplits = db.getSplitsForTransaction(fourSplitId).map { it.fromAmount }
+    assertEquals(listOf(-1L, -1L, 0L, 0L), storedFourSplits)
+    assertTrue(storedFourSplits.all { it <= 0L })
+
+    verifyForeignThreeDecimalSplitReconciliation(db, repository, usdAccountId, kwd.id, catA1, catA2)
+}
+
+private suspend fun verifyForeignThreeDecimalSplitReconciliation(
+    db: DatabaseAdapter,
+    repository: FinancistoTransactionRepository,
+    usdAccountId: Long,
+    kwdCurrencyId: Long,
+    catA1: Long,
+    catA2: Long,
+) {
+    val foreignSplitId = repository.saveTransaction(
+        decimalSaveCommand(
+            fromAccountId = usdAccountId,
+            categoryId = TransactionIds.SPLIT_CATEGORY_ID,
+            fromAmountMinor = -100L,
+            originalCurrencyId = kwdCurrencyId,
+            originalFromAmountMinor = -30L,
+            splits = listOf(
+                SaveSplitCommand(catA1, -50L, "F1", 0L, originalFromAmountMinor = -15L),
+                SaveSplitCommand(catA2, -50L, "F2", 0L, originalFromAmountMinor = -15L),
+            ),
+        )
+    )
+    assertEquals(-100L, db.getTransaction(foreignSplitId).fromAmount)
+    assertEquals(-3L, db.getTransaction(foreignSplitId).originalFromAmount)
+    val foreignSplits = db.getSplitsForTransaction(foreignSplitId)
+    assertEquals(listOf(-50L, -50L), foreignSplits.map { it.fromAmount })
+    assertEquals(listOf(-2L, -1L), foreignSplits.map { it.originalFromAmount })
 }
 
 private fun decimalSaveCommand(

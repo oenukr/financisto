@@ -50,7 +50,8 @@ internal object CurrencyAccountReducer {
             !form.isSplitMode
         val shouldRememberCategory = canRememberCategory &&
             form.categoryId == TransactionIds.NO_CATEGORY_ID &&
-            account.lastCategoryId > 0L
+            account.lastCategoryId > 0L &&
+            state.catalog.categories.any { it.id == account.lastCategoryId }
         val nextCategoryId = if (shouldRememberCategory) account.lastCategoryId else form.categoryId
         val nextMode = resolveRememberedCategoryMode(state, shouldRememberCategory, nextCategoryId)
         val nextToId = resolveRememberedDestination(state, account)
