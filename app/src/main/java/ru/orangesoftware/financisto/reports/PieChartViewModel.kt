@@ -3,34 +3,37 @@ package ru.orangesoftware.financisto.reports
 
 import android.content.Intent
 import android.content.SharedPreferences
+import android.database.sqlite.SQLiteException
 import android.os.Bundle
+import androidx.appstate.transform.transform
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.colorspace.ColorSpaces
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.CreationExtras
-import androidx.lifecycle.viewmodel.initializer
-import androidx.lifecycle.viewmodel.viewModelFactory
+import androidx.savedstate.SavedStateContainer
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ru.orangesoftware.financisto.activity.ReportActivity.Companion.FILTER_INCOME_EXPENSE
 import ru.orangesoftware.financisto.activity.ReportsListActivity
 import ru.orangesoftware.financisto.activity.ReportsListActivity.EXTRA_REPORT_TYPE
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.filter.WhereFilter
-import ru.orangesoftware.financisto.model.Total
+import ru.orangesoftware.financisto.graph.GraphUnit
 import ru.orangesoftware.financisto.report.IncomeExpense
 import ru.orangesoftware.financisto.report.Report
 import ru.orangesoftware.financisto.report.ReportData
-import java.math.BigDecimal
+import timber.log.Timber
 import kotlin.math.abs
 
 data class ChartData(
@@ -39,184 +42,199 @@ data class ChartData(
     val partName: String,
 )
 
+data class PieChartLaunchParams(
+    val reportTypeName: String,
+    val chartTitle: String,
+    val extras: Bundle?,
+    val initialIntentFilter: WhereFilter,
+    val explicitIncomeExpense: IncomeExpense?,
+    val screenDensity: Float,
+) {
+    companion object {
+        fun fromIntent(intent: Intent, screenDensity: Float): PieChartLaunchParams {
+            val reportTypeName = intent.getStringExtra(EXTRA_REPORT_TYPE).orEmpty()
+            val chartTitle = intent.getStringExtra(PieChartActivity.CHART_TITLE)
+                ?: reportTypeName
+            val explicitIncomeExpense = intent.getStringExtra(FILTER_INCOME_EXPENSE)
+                ?.let { raw -> IncomeExpense.entries.firstOrNull { it.name == raw } }
+            return PieChartLaunchParams(
+                reportTypeName = reportTypeName,
+                chartTitle = chartTitle,
+                extras = intent.extras,
+                initialIntentFilter = WhereFilter.fromIntent(intent),
+                explicitIncomeExpense = explicitIncomeExpense,
+                screenDensity = screenDensity,
+            )
+        }
+    }
+}
+
+sealed interface PieChartUiState {
+    data object Loading : PieChartUiState
+
+    data class Empty(val title: String) : PieChartUiState
+
+    data class Success(
+        val title: String,
+        val chartData: List<ChartData>,
+    ) : PieChartUiState
+
+    data class Error(
+        val title: String,
+        val message: String,
+    ) : PieChartUiState
+}
+
+@Suppress("InjectDispatcher")
 class PieChartViewModel(
+    private val launchParams: PieChartLaunchParams,
     private val db: DatabaseAdapter,
     private val preferences: SharedPreferences,
-    private val screenDensity: Float,
-    private val intent: Intent,
+    savedStateHandle: SavedStateHandle,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val transformDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    stateScope: CoroutineScope? = null,
+    private val reportFactory: (DatabaseAdapter, PieChartLaunchParams) -> Report = ::defaultCreatePieReport,
 ) : ViewModel() {
-    private val _currentReport = MutableStateFlow<Report?>(null)
 
-    private val _filter = MutableStateFlow<WhereFilter>(WhereFilter.empty())
+    private val usePrefs: Boolean = launchParams.initialIntentFilter.isEmpty
 
-    private var _incomeExpenseState = MutableStateFlow(IncomeExpense.BOTH)
+    private val initialFilter: WhereFilter = if (usePrefs) {
+        WhereFilter.fromSharedPreferences(preferences)
+    } else {
+        WhereFilter.copyOf(launchParams.initialIntentFilter)
+    }
 
-    private val _pieChartData = MutableStateFlow<List<ChartData>>(emptyList())
-    val pieChartData: StateFlow<List<ChartData>> = _pieChartData
-        .onStart {
-            initiateReport(intent, true, screenDensity)
-        }
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000L),
-            emptyList(),
-        )
-
-    private fun initiateReport(intent: Intent, skipTransfers: Boolean, screenDensity: Float) {
-        createReport(intent.extras, skipTransfers, screenDensity)
-        val intentFilter = WhereFilter.fromIntent(intent)
-        viewModelScope.launch {
-            _filter.emit(intentFilter)
-        }
-        if (intent.hasExtra(FILTER_INCOME_EXPENSE)) {
-            viewModelScope.launch {
-                _incomeExpenseState.emit(
-                    IncomeExpense.valueOf(
-                        intent.getStringExtra(
-                            FILTER_INCOME_EXPENSE
-                        ) ?: IncomeExpense.BOTH.name
-                    )
-                )
-            }
-        }
-        if (_filter.value.isEmpty && intentFilter.isEmpty) {
-            loadPrefsFilter(_currentReport.value?.reportType?.name.orEmpty())
+    private val initialIncomeExpense: IncomeExpense =
+        launchParams.explicitIncomeExpense ?: if (usePrefs) {
+            readPieIncomeExpense(preferences)
+        } else {
+            IncomeExpense.BOTH
         }
 
-        updateReport()
+    private val container = SavedStateContainer().apply {
+        savedStateHandle.get<Bundle>(KEY_TRANSFORM_CONTAINER)?.let(::restoreState)
+    }
 
-        viewModelScope.launch {
-            _pieChartData.emit(calculatePieData())
+    init {
+        savedStateHandle.setSavedStateProvider(KEY_TRANSFORM_CONTAINER) {
+            container.saveState()
         }
     }
 
-    private suspend fun calculatePieData(): List<ChartData> {
-        val report: ReportData = withContext(Dispatchers.IO) {
-            _currentReport.value?.getReportForChart(
-                db,
-                WhereFilter.copyOf(_filter.value),
-            ) ?: ReportData(emptyList(), Total.ZERO)
+    val uiState: State<PieChartUiState> = transform<PieChartUiState>(
+        initialValue = PieChartUiState.Loading,
+        scope = stateScope ?: viewModelScope,
+        container = container,
+        dispatcher = transformDispatcher,
+    ) {
+        var currentState by remember { mutableStateOf<PieChartUiState>(PieChartUiState.Loading) }
+
+        LaunchedEffect(Unit) {
+            try {
+                val chartData = loadChartData()
+                Snapshot.withMutableSnapshot {
+                    currentState = if (chartData.isEmpty()) {
+                        PieChartUiState.Empty(title = launchParams.chartTitle)
+                    } else {
+                        PieChartUiState.Success(
+                            title = launchParams.chartTitle,
+                            chartData = chartData,
+                        )
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: SQLiteException) {
+                Timber.e(e, "Failed to load pie chart %s", launchParams.reportTypeName)
+                Snapshot.withMutableSnapshot {
+                    currentState = PieChartUiState.Error(
+                        title = launchParams.chartTitle,
+                        message = e.localizedMessage ?: DEFAULT_ERROR_MESSAGE,
+                    )
+                }
+            } catch (e: IllegalArgumentException) {
+                Timber.e(e, "Invalid pie chart configuration for %s", launchParams.reportTypeName)
+                Snapshot.withMutableSnapshot {
+                    currentState = PieChartUiState.Error(
+                        title = launchParams.chartTitle,
+                        message = e.localizedMessage ?: DEFAULT_ERROR_MESSAGE,
+                    )
+                }
+            }
         }
-        val chartData = mutableListOf<ChartData>()
-        val colors = generateColors(2 * report.units.size)
-        var index = 0
-        withContext(Dispatchers.Default) {
-            report.units.forEach { unit ->
+
+        currentState
+    }
+
+    private suspend fun loadChartData(): List<ChartData> {
+        val reportData: ReportData? = withContext(ioDispatcher) {
+            val report = reportFactory(db, launchParams)
+            report.setIncomeExpense(initialIncomeExpense)
+            report.getReportForChart(db, WhereFilter.copyOf(initialFilter))
+        }
+        val units = reportData?.units.orEmpty()
+        return withContext(transformDispatcher) {
+            buildChartData(units)
+        }
+    }
+
+    companion object {
+        private const val KEY_TRANSFORM_CONTAINER = "pie_chart_transform_container"
+        private const val DEFAULT_ERROR_MESSAGE = "Failed to load pie chart"
+        private const val FULL_CIRCLE_DEGREES = 360f
+        private const val DEFAULT_SATURATION = 0.75f
+        private const val DEFAULT_VALUE = 0.85f
+
+        private fun buildChartData(units: List<GraphUnit>): List<ChartData> {
+            val colors = generateColors(2 * units.size)
+            val chartData = ArrayList<ChartData>(2 * units.size)
+            var index = 0
+            units.forEach { unit ->
                 chartData.add(
                     ChartData(
                         data = abs(unit.incomeExpense.income.toDouble()),
                         color = colors[index++],
-                        partName = unit.name.plusSign(unit.incomeExpense.income),
-                    )
+                        partName = "${unit.name} ${unit.incomeExpense.income}",
+                    ),
                 )
                 chartData.add(
                     ChartData(
                         data = abs(unit.incomeExpense.expense.toDouble()),
                         color = colors[index++],
-                        partName = unit.name.plusSign(unit.incomeExpense.expense),
-                    )
+                        partName = "${unit.name} ${unit.incomeExpense.expense}",
+                    ),
                 )
             }
-        }
-        return chartData
-    }
-
-    private fun String.plusSign(amount: BigDecimal): String {
-        return if (amount.signum() >= 0) {
-            this.plus(" $amount")
-        } else {
-            this.plus(" $amount")
-        }
-    }
-
-    private fun generateColors(n: Int): List<Color> {
-        var colors = mutableListOf<Color>()
-        if (n == 0) {
-            return colors
+            return chartData
         }
 
-        for (i in 0 until n) {
-            colors.add(
+        private fun generateColors(n: Int): List<Color> {
+            if (n == 0) return emptyList()
+            return List(n) { i ->
                 Color.hsv(
-                    hue = 360 * i.toFloat() / n.toFloat(),
-                    saturation = 0.75f,
-                    value = 0.85f,
+                    hue = FULL_CIRCLE_DEGREES * i.toFloat() / n.toFloat(),
+                    saturation = DEFAULT_SATURATION,
+                    value = DEFAULT_VALUE,
                     colorSpace = ColorSpaces.DisplayP3,
                 )
-            )
-        }
-        return colors
-    }
-
-    private fun loadPrefsFilter(reportName: String) {
-        viewModelScope.launch {
-            _filter.emit(WhereFilter.fromSharedPreferences(preferences))
-            _incomeExpenseState.emit(
-                IncomeExpense.valueOf(
-                    preferences.getString(
-                        FILTER_INCOME_EXPENSE,
-                        IncomeExpense.BOTH.name,
-                    ) ?: IncomeExpense.BOTH.name
-                )
-            )
-        }
-    }
-
-    fun updateReport() {
-        viewModelScope.launch {
-            calculateReport()
-        }
-    }
-
-    private suspend fun calculateReport(): ReportData? {
-        _currentReport.value?.setIncomeExpense(_incomeExpenseState.value)
-        return withContext(Dispatchers.IO) {
-            _currentReport.value?.getReport(db, WhereFilter.copyOf(_filter.value))
-        }
-    }
-
-    fun createReport(extras: Bundle?, skipTransfers: Boolean, screenDensity: Float) {
-        viewModelScope.launch {
-            _currentReport.emit(
-                ReportsListActivity.createReport(
-                    db,
-                    extras,
-                    skipTransfers,
-                    screenDensity
-                )
-            )
-        }
-    }
-
-    fun open() = db.open()
-
-    fun close() = db.close()
-
-    companion object {
-        @JvmField
-        val INTENT_KEY = object : CreationExtras.Key<Intent> {}
-
-        @JvmField
-        val SCREEN_DENTITY_KEY = object : CreationExtras.Key<Float> {}
-
-        val Factory: ViewModelProvider.Factory = viewModelFactory {
-            initializer {
-                val context = requireNotNull(this[APPLICATION_KEY]) { "Context is required" }
-                val intent = requireNotNull(this[INTENT_KEY]) { "Intent is required" }
-                val screenDensity =
-                    requireNotNull(this[SCREEN_DENTITY_KEY]) { "Screen density is required" }
-                val reportName =
-                    requireNotNull(intent.getStringExtra(EXTRA_REPORT_TYPE)) { "Report name is required" }
-                PieChartViewModel(
-                    db = DatabaseAdapter(context),
-                    preferences = context.getSharedPreferences(
-                        "ReportActivity_${reportName}_DEFAULT",
-                        0
-                    ),
-                    screenDensity = screenDensity,
-                    intent = intent,
-                )
             }
         }
+    }
+}
+
+private fun readPieIncomeExpense(preferences: SharedPreferences): IncomeExpense {
+    val raw = preferences.getString(FILTER_INCOME_EXPENSE, IncomeExpense.BOTH.name)
+    return IncomeExpense.entries.firstOrNull { it.name == raw } ?: IncomeExpense.BOTH
+}
+
+private fun defaultCreatePieReport(db: DatabaseAdapter, params: PieChartLaunchParams): Report {
+    val extras = params.extras ?: Bundle().apply {
+        putString(EXTRA_REPORT_TYPE, params.reportTypeName)
+    }
+    return requireNotNull(
+        ReportsListActivity.createReport(db, extras, true, params.screenDensity),
+    ) {
+        "Unsupported report type: ${params.reportTypeName}"
     }
 }

@@ -1,16 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.transaction.mvi
 
+import androidx.appstate.transform.testing.TransformTestScope
+import androidx.appstate.transform.testing.transformTest
 import androidx.lifecycle.SavedStateHandle
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -34,10 +29,8 @@ import ru.orangesoftware.financisto.transaction.mvi.TransactionTestFakes.multiCu
 import ru.orangesoftware.financisto.transaction.mvi.TransactionTestFakes.sampleRecord
 import ru.orangesoftware.financisto.transaction.port.TransactionPorts
 
-@OptIn(ExperimentalCoroutinesApi::class)
 class TransactionViewModelTest {
 
-    private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var repository: FakeTransactionRepository
     private lateinit var draftStore: FakeDraftSessionStore
     private lateinit var mediaPort: FakeReceiptMediaPort
@@ -46,7 +39,6 @@ class TransactionViewModelTest {
 
     @Before
     fun setUp() {
-        Dispatchers.setMain(testDispatcher)
         repository = FakeTransactionRepository(defaultCatalog())
         draftStore = FakeDraftSessionStore()
         mediaPort = FakeReceiptMediaPort()
@@ -54,27 +46,42 @@ class TransactionViewModelTest {
         ports = TransactionTestFakes.createPorts(repository, draftStore, exchangeRatePort, mediaPort)
     }
 
-    @After
-    fun tearDown() {
-        Dispatchers.resetMain()
+    private fun TransformTestScope.advanceAll() {
+        advanceUntilIdle()
+        advance()
+        advanceUntilIdle()
+    }
+
+    private fun TransformTestScope.createViewModel(
+        launchArgs: TransactionLaunchArgs,
+        savedStateHandle: SavedStateHandle = SavedStateHandle(),
+    ): TransactionViewModel = TransactionViewModel(
+        launchArgs = launchArgs,
+        savedStateHandle = savedStateHandle,
+        ports = ports,
+        ioDispatcher = testDispatcher,
+        clock = fixedClock,
+        transformDispatcher = testDispatcher,
+        stateScope = backgroundScope,
+    ).also { advanceAll() }
+
+    private fun TransformTestScope.dispatch(vm: TransactionViewModel, intent: TransactionIntent) {
+        vm.onIntent(intent)
+        advanceAll()
     }
 
     @Test
-    fun blankNewSaveAndSaveAndNewWorkAndUseInjectedClock() = runTest {
-        val vm = TransactionViewModel(
+    fun blankNewSaveAndSaveAndNewWorkAndUseInjectedClock() = transformTest {
+        val vm = createViewModel(
             launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L, initialMode = TransactionMode.EXPENSE),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
         )
         val initial = vm.uiState.value as TransactionUiState.Ready
         assertEquals(1L, initial.form.fromAccountId)
         assertEquals(FIXED_NOW_MILLIS, initial.form.dateTimeMillis)
 
-        vm.onIntent(TransactionIntent.UpdatePrimaryAmount("25.50"))
-        vm.onIntent(TransactionIntent.UpdateNote("Lunch"))
-        vm.onIntent(TransactionIntent.SaveAndNewClicked)
+        dispatch(vm, TransactionIntent.UpdatePrimaryAmount("25.50"))
+        dispatch(vm, TransactionIntent.UpdateNote("Lunch"))
+        dispatch(vm, TransactionIntent.SaveAndNewClicked)
 
         assertEquals(1, repository.savedCommands.size)
         assertEquals(-2550L, repository.savedCommands[0].amountCommandMinor())
@@ -84,33 +91,21 @@ class TransactionViewModelTest {
         assertEquals("", afterReset.form.note)
         assertTrue(vm.effects.first() is TransactionEffect.ShowMessage)
 
-        vm.onIntent(TransactionIntent.UpdatePrimaryAmount("10.00"))
-        vm.onIntent(TransactionIntent.SaveClicked)
+        dispatch(vm, TransactionIntent.UpdatePrimaryAmount("10.00"))
+        dispatch(vm, TransactionIntent.SaveClicked)
         val finishEffect = vm.effects.first()
         assertTrue(finishEffect is TransactionEffect.SavedAndFinish)
         assertEquals(102L, (finishEffect as TransactionEffect.SavedAndFinish).transactionId)
     }
 
     @Test
-    fun editHandlesNotFoundLegacyFallbackAndInactiveEntities() = runTest {
+    fun editHandlesNotFoundLegacyFallbackAndInactiveEntities() = transformTest {
         repository.editResult = TransactionEditLoadResult.NotFound(999L)
-        val notFoundVm = TransactionViewModel(
-            launchArgs = TransactionLaunchArgs.Edit(999L),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
-        )
+        val notFoundVm = createViewModel(launchArgs = TransactionLaunchArgs.Edit(999L))
         assertEquals(TransactionUiState.NotFound(999L), notFoundVm.uiState.value)
 
         repository.editResult = TransactionEditLoadResult.RequiresLegacyFallback(50L, isTransfer = false)
-        val legacyVm = TransactionViewModel(
-            launchArgs = TransactionLaunchArgs.Edit(50L),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
-        )
+        val legacyVm = createViewModel(launchArgs = TransactionLaunchArgs.Edit(50L))
         assertEquals(TransactionUiState.LegacyRedirecting, legacyVm.uiState.value)
         assertTrue(legacyVm.effects.first() is TransactionEffect.OpenLegacyEditor)
 
@@ -133,13 +128,7 @@ class TransactionViewModelTest {
         repository.editResult = TransactionEditLoadResult.Loaded(
             sampleRecord(id = 77L, fromAccountId = 99L, payeeId = 300L, projectId = 400L)
         )
-        val loadedVm = TransactionViewModel(
-            launchArgs = TransactionLaunchArgs.Edit(77L),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
-        )
+        val loadedVm = createViewModel(launchArgs = TransactionLaunchArgs.Edit(77L))
         val ready = loadedVm.uiState.value as TransactionUiState.Ready
         assertEquals(99L, ready.form.fromAccountId)
         assertEquals(300L, ready.form.payeeId)
@@ -148,12 +137,12 @@ class TransactionViewModelTest {
     }
 
     @Test
-    fun aiDraftHandlesConsumedPromptAndStagedReceiptCleanupOnDiscardVsSave() = runTest {
+    fun aiDraftHandlesConsumedPromptAndStagedReceiptCleanupOnDiscardVsSave() = transformTest {
         draftStore.savedByDraftId["draft-consumed"] = 88L
         repository.editResult = TransactionEditLoadResult.Loaded(
             sampleRecord(id = 88L, attachedPicture = "staged_a.jpg")
         )
-        val consumedVm = TransactionViewModel(
+        val consumedVm = createViewModel(
             launchArgs = TransactionLaunchArgs.AiDraft(
                 TransactionDraft(
                     draftId = "draft-consumed",
@@ -164,25 +153,21 @@ class TransactionViewModelTest {
                     stagedReceiptFileName = "staged_a.jpg",
                 )
             ),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
         )
         val consumedState = consumedVm.uiState.value as TransactionUiState.Ready
         assertEquals(ActiveSheet.ConsumedDraftPrompt(88L), consumedState.activeSheet)
         assertFalse(consumedVm.hasUnsavedUserEdits())
 
-        consumedVm.onIntent(TransactionIntent.CancelOrBackClicked)
+        dispatch(consumedVm, TransactionIntent.CancelOrBackClicked)
         assertEquals(
             ActiveSheet.DiscardConfirmation,
             (consumedVm.uiState.value as TransactionUiState.Ready).activeSheet,
         )
-        consumedVm.onIntent(TransactionIntent.ConfirmDiscard)
+        dispatch(consumedVm, TransactionIntent.ConfirmDiscard)
         assertTrue(mediaPort.deletedFiles.isEmpty())
         assertTrue(consumedVm.effects.first() is TransactionEffect.CloseCancelled)
 
-        val saveVm = TransactionViewModel(
+        val saveVm = createViewModel(
             launchArgs = TransactionLaunchArgs.AiDraft(
                 TransactionDraft(
                     draftId = "draft-fresh",
@@ -193,14 +178,10 @@ class TransactionViewModelTest {
                     stagedReceiptFileName = "staged_initial.jpg",
                 )
             ),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
         )
-        saveVm.onIntent(TransactionIntent.AttachCapturedPhotoFile("staged_replacement.jpg"))
+        dispatch(saveVm, TransactionIntent.AttachCapturedPhotoFile("staged_replacement.jpg"))
         assertTrue(saveVm.hasUnsavedUserEdits())
-        saveVm.onIntent(TransactionIntent.SaveClicked)
+        dispatch(saveVm, TransactionIntent.SaveClicked)
 
         assertEquals(listOf("staged_initial.jpg"), mediaPort.deletedFiles)
         assertEquals(101L, draftStore.savedByDraftId["draft-fresh"])
@@ -208,29 +189,25 @@ class TransactionViewModelTest {
     }
 
     @Test
-    fun pinMaskAndSavedStateHandleRestoreWorkAcrossProcessDeath() = runTest {
+    fun pinMaskAndSavedStateHandleRestoreWorkAcrossProcessDeath() = transformTest {
         val handle = SavedStateHandle()
-        val vm1 = TransactionViewModel(
+        val vm1 = createViewModel(
             launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
             savedStateHandle = handle,
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
         )
-        vm1.onIntent(TransactionIntent.UpdatePrimaryAmount("75.25"))
-        vm1.onIntent(TransactionIntent.UpdateNote("Before process death"))
+        dispatch(vm1, TransactionIntent.UpdatePrimaryAmount("75.25"))
+        dispatch(vm1, TransactionIntent.UpdateNote("Before process death"))
 
         vm1.onPinStateChanged(unlocked = false)
+        advanceAll()
         assertEquals(TransactionUiState.PinLockedMask, vm1.uiState.value)
         vm1.onPinStateChanged(unlocked = true)
+        advanceAll()
         assertEquals("Before process death", (vm1.uiState.value as TransactionUiState.Ready).form.note)
 
-        val vm2 = TransactionViewModel(
+        val vm2 = createViewModel(
             launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
             savedStateHandle = handle,
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
         )
         val restored = vm2.uiState.value as TransactionUiState.Ready
         assertEquals(7525L, restored.form.primaryAmountMinor)
@@ -240,11 +217,11 @@ class TransactionViewModelTest {
     }
 
     @Test
-    fun openSavedTransactionUpdatesCurrentLaunchArgsForOpenInLegacy() = runTest {
+    fun openSavedTransactionUpdatesCurrentLaunchArgsForOpenInLegacy() = transformTest {
         draftStore.savedByDraftId["draft-consumed"] = 88L
         repository.editResult = TransactionEditLoadResult.Loaded(sampleRecord(id = 88L))
 
-        val vm = TransactionViewModel(
+        val vm = createViewModel(
             launchArgs = TransactionLaunchArgs.AiDraft(
                 TransactionDraft(
                     draftId = "draft-consumed",
@@ -254,50 +231,42 @@ class TransactionViewModelTest {
                     dateTimeMillis = FIXED_NOW_MILLIS,
                 )
             ),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
         )
 
-        vm.onIntent(TransactionIntent.OpenSavedTransaction(88L))
-        vm.onIntent(TransactionIntent.OpenInLegacyClicked)
+        dispatch(vm, TransactionIntent.OpenSavedTransaction(88L))
+        dispatch(vm, TransactionIntent.OpenInLegacyClicked)
 
         val effect = vm.effects.first()
         assertEquals(TransactionEffect.OpenLegacyEditor(TransactionLaunchArgs.Edit(88L)), effect)
     }
 
     @Test
-    fun cleanupStagedReceiptsDeletesNewlyStagedFilesOnlyAndPreservesPersistedReceipt() = runTest {
+    fun cleanupStagedReceiptsDeletesNewlyStagedFilesOnlyAndPreservesPersistedReceipt() = transformTest {
         repository.editResult = TransactionEditLoadResult.Loaded(
             sampleRecord(id = 77L, attachedPicture = "persisted.jpg")
         )
-        val vm = TransactionViewModel(
-            launchArgs = TransactionLaunchArgs.Edit(77L),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
-        )
+        val vm = createViewModel(launchArgs = TransactionLaunchArgs.Edit(77L))
 
-        vm.onIntent(TransactionIntent.AttachCapturedPhotoFile("temp_1.jpg"))
-        vm.onIntent(TransactionIntent.AttachCapturedPhotoFile("temp_2.jpg"))
+        dispatch(vm, TransactionIntent.AttachCapturedPhotoFile("temp_1.jpg"))
+        dispatch(vm, TransactionIntent.AttachCapturedPhotoFile("temp_2.jpg"))
         assertTrue(vm.hasUnsavedUserEdits())
 
         vm.cleanupStagedReceipts()
+        advanceAll()
         assertEquals(listOf("temp_1.jpg", "temp_2.jpg"), mediaPort.deletedFiles)
         val ready = vm.uiState.value as TransactionUiState.Ready
         assertEquals("persisted.jpg", ready.form.attachedPictureFileName)
         assertTrue(ready.form.newlyStagedPictureFiles.isEmpty())
 
         vm.cleanupStagedReceipts()
+        advanceAll()
         assertEquals(listOf("temp_1.jpg", "temp_2.jpg"), mediaPort.deletedFiles)
     }
 
     @Test
-    fun consumedDraftDiscardPreservesCommittedReceiptAndDeletesReplacement() = runTest {
+    fun consumedDraftDiscardPreservesCommittedReceiptAndDeletesReplacement() = transformTest {
         draftStore.savedByDraftId["draft-consumed-receipt"] = 88L
-        val vm = TransactionViewModel(
+        val vm = createViewModel(
             launchArgs = TransactionLaunchArgs.AiDraft(
                 TransactionDraft(
                     draftId = "draft-consumed-receipt",
@@ -308,26 +277,22 @@ class TransactionViewModelTest {
                     stagedReceiptFileName = "committed_receipt.jpg",
                 )
             ),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
         )
 
         val initial = vm.uiState.value as TransactionUiState.Ready
         assertEquals("committed_receipt.jpg", initial.form.attachedPictureFileName)
         assertTrue(initial.form.newlyStagedPictureFiles.isEmpty())
 
-        vm.onIntent(TransactionIntent.DuplicateDraftAnyway)
-        vm.onIntent(TransactionIntent.AttachCapturedPhotoFile("new_replacement.jpg"))
-        vm.onIntent(TransactionIntent.ConfirmDiscard)
+        dispatch(vm, TransactionIntent.DuplicateDraftAnyway)
+        dispatch(vm, TransactionIntent.AttachCapturedPhotoFile("new_replacement.jpg"))
+        dispatch(vm, TransactionIntent.ConfirmDiscard)
 
         assertEquals(listOf("new_replacement.jpg"), mediaPort.deletedFiles)
         assertEquals(TransactionEffect.CloseCancelled, vm.effects.first())
     }
 
     @Test
-    fun consumedDraftPromptSurvivesProcessDeathAndBlocksSaveUntilConfirmed() = runTest {
+    fun consumedDraftPromptSurvivesProcessDeathAndBlocksSaveUntilConfirmed() = transformTest {
         repository.catalog = multiCurrencyCatalog()
         repository.storedRates[1L to 2L] = 0.9
         draftStore.savedByDraftId["draft-recreated"] = 88L
@@ -342,42 +307,42 @@ class TransactionViewModelTest {
             )
         )
         val handle = SavedStateHandle()
-        val vm1 = TransactionViewModel(draftArgs, handle, ports, testDispatcher, fixedClock)
+        val vm1 = createViewModel(draftArgs, handle)
         assertEquals(
             ActiveSheet.ConsumedDraftPrompt(88L),
             (vm1.uiState.value as TransactionUiState.Ready).activeSheet,
         )
 
-        val vm2 = TransactionViewModel(draftArgs, handle, ports, testDispatcher, fixedClock)
+        val vm2 = createViewModel(draftArgs, handle)
         assertEquals(
             ActiveSheet.ConsumedDraftPrompt(88L),
             (vm2.uiState.value as TransactionUiState.Ready).activeSheet,
         )
 
-        vm2.onIntent(TransactionIntent.DismissSheet)
-        vm2.onIntent(TransactionIntent.SaveClicked)
+        dispatch(vm2, TransactionIntent.DismissSheet)
+        dispatch(vm2, TransactionIntent.SaveClicked)
         assertTrue(repository.savedCommands.isEmpty())
         assertEquals(
             ActiveSheet.ConsumedDraftPrompt(88L),
             (vm2.uiState.value as TransactionUiState.Ready).activeSheet,
         )
 
-        vm2.onIntent(TransactionIntent.DuplicateDraftAnyway)
+        dispatch(vm2, TransactionIntent.DuplicateDraftAnyway)
         assertNull((vm2.uiState.value as TransactionUiState.Ready).activeSheet)
 
-        val vm3 = TransactionViewModel(draftArgs, handle, ports, testDispatcher, fixedClock)
+        val vm3 = createViewModel(draftArgs, handle)
         assertNull((vm3.uiState.value as TransactionUiState.Ready).activeSheet)
-        vm3.onIntent(TransactionIntent.SaveClicked)
+        dispatch(vm3, TransactionIntent.SaveClicked)
         assertEquals(1, repository.savedCommands.size)
         assertEquals(TransactionEffect.SavedAndFinish(101L), vm3.effects.first())
     }
 
     @Test
-    fun postCommitCleanupAndRefreshFailuresNeverReportCommittedSaveAsRetryable() = runTest {
+    fun postCommitCleanupAndRefreshFailuresNeverReportCommittedSaveAsRetryable() = transformTest {
         draftStore.failMarkDraftSavedMessage = "Prefs write failed"
         mediaPort.failDeleteMessage = "FS busy"
 
-        val saveVm = TransactionViewModel(
+        val saveVm = createViewModel(
             launchArgs = TransactionLaunchArgs.AiDraft(
                 TransactionDraft(
                     draftId = "draft-post-commit",
@@ -388,27 +353,17 @@ class TransactionViewModelTest {
                     stagedReceiptFileName = "unused.jpg",
                 )
             ),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
         )
-        saveVm.onIntent(TransactionIntent.RemoveReceipt)
-        saveVm.onIntent(TransactionIntent.SaveClicked)
+        dispatch(saveVm, TransactionIntent.RemoveReceipt)
+        dispatch(saveVm, TransactionIntent.SaveClicked)
 
         assertEquals(1, repository.savedCommands.size)
         assertEquals(TransactionEffect.SavedAndFinish(101L), saveVm.effects.first())
 
-        val saveAndNewVm = TransactionViewModel(
-            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
-        )
+        val saveAndNewVm = createViewModel(launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L))
         repository.failLoadCatalogAfterFirstMessage = "Catalog reload failed"
-        saveAndNewVm.onIntent(TransactionIntent.UpdatePrimaryAmount("15.00"))
-        saveAndNewVm.onIntent(TransactionIntent.SaveAndNewClicked)
+        dispatch(saveAndNewVm, TransactionIntent.UpdatePrimaryAmount("15.00"))
+        dispatch(saveAndNewVm, TransactionIntent.SaveAndNewClicked)
 
         assertEquals(2, repository.savedCommands.size)
         assertTrue(saveAndNewVm.effects.first() is TransactionEffect.ShowMessage)
@@ -416,16 +371,10 @@ class TransactionViewModelTest {
     }
 
     @Test
-    fun externalCategoryCreatedFromSplitHeaderPreservesSplitMode() = runTest {
-        val vm = TransactionViewModel(
-            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
-        )
-        vm.onIntent(TransactionIntent.UpdatePrimaryAmount("50.00"))
-        vm.onIntent(TransactionIntent.ToggleSplitMode)
+    fun externalCategoryCreatedFromSplitHeaderPreservesSplitMode() = transformTest {
+        val vm = createViewModel(launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L))
+        dispatch(vm, TransactionIntent.UpdatePrimaryAmount("50.00"))
+        dispatch(vm, TransactionIntent.ToggleSplitMode)
         val beforeSplits = (vm.uiState.value as TransactionUiState.Ready).form.splits
         assertEquals(1, beforeSplits.size)
 
@@ -439,7 +388,7 @@ class TransactionViewModelTest {
                 isIncome = false,
             )
         )
-        vm.onIntent(TransactionIntent.ExternalEntityCreated(ExternalEntityKind.CATEGORY, 88L))
+        dispatch(vm, TransactionIntent.ExternalEntityCreated(ExternalEntityKind.CATEGORY, 88L))
 
         val ready = vm.uiState.value as TransactionUiState.Ready
         assertTrue(ready.form.isSplitMode)
@@ -449,7 +398,7 @@ class TransactionViewModelTest {
     }
 
     @Test
-    fun processDeathAfterOpenSavedTransactionFromConsumedDraftRestoresEditAndAllowsSave() = runTest {
+    fun processDeathAfterOpenSavedTransactionFromConsumedDraftRestoresEditAndAllowsSave() = transformTest {
         draftStore.savedByDraftId["draft-open-saved"] = 88L
         repository.editResult = TransactionEditLoadResult.Loaded(
             sampleRecord(id = 88L, attachedPicture = "saved_88.jpg")
@@ -465,16 +414,16 @@ class TransactionViewModelTest {
             )
         )
         val handle = SavedStateHandle()
-        val vm1 = TransactionViewModel(draftArgs, handle, ports, testDispatcher, fixedClock)
+        val vm1 = createViewModel(draftArgs, handle)
         assertEquals(
             ActiveSheet.ConsumedDraftPrompt(88L),
             (vm1.uiState.value as TransactionUiState.Ready).activeSheet,
         )
 
-        vm1.onIntent(TransactionIntent.OpenSavedTransaction(88L))
-        vm1.onIntent(TransactionIntent.UpdateNote("Edited saved tx"))
+        dispatch(vm1, TransactionIntent.OpenSavedTransaction(88L))
+        dispatch(vm1, TransactionIntent.UpdateNote("Edited saved tx"))
 
-        val vm2 = TransactionViewModel(draftArgs, handle, ports, testDispatcher, fixedClock)
+        val vm2 = createViewModel(draftArgs, handle)
         val restored = vm2.uiState.value as TransactionUiState.Ready
         assertEquals(88L, restored.form.existingTransactionId)
         assertFalse(restored.form.isAiDraft)
@@ -484,51 +433,45 @@ class TransactionViewModelTest {
         assertNull(restored.consumedDraftTransactionId)
         assertEquals(88L, repository.lastLoadCatalogEditingTransactionId)
 
-        vm2.onIntent(TransactionIntent.OpenInLegacyClicked)
+        dispatch(vm2, TransactionIntent.OpenInLegacyClicked)
         assertEquals(
             TransactionEffect.OpenLegacyEditor(TransactionLaunchArgs.Edit(88L)),
             vm2.effects.first(),
         )
 
-        vm2.onIntent(TransactionIntent.SaveClicked)
+        dispatch(vm2, TransactionIntent.SaveClicked)
         assertEquals(1, repository.savedCommands.size)
         assertEquals(88L, repository.savedCommands.single().existingTransactionId)
         assertEquals(TransactionEffect.SavedAndFinish(101L), vm2.effects.first())
     }
 
     @Test
-    fun loadErrorPublishesRecoverableStateAndRetryLoadRecoversPreservingSavedForm() = runTest {
+    fun loadErrorPublishesRecoverableStateAndRetryLoadRecoversPreservingSavedForm() = transformTest {
         val handle = SavedStateHandle()
-        val initialVm = TransactionViewModel(
+        val initialVm = createViewModel(
             launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
             savedStateHandle = handle,
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
         )
-        initialVm.onIntent(TransactionIntent.UpdateNote("Preserve across retry"))
+        dispatch(initialVm, TransactionIntent.UpdateNote("Preserve across retry"))
 
         repository.failLoadCatalogMessage = "Database locked"
-        val failingVm = TransactionViewModel(
+        val failingVm = createViewModel(
             launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
             savedStateHandle = handle,
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
         )
         assertEquals(TransactionUiState.LoadError("Database locked"), failingVm.uiState.value)
 
-        failingVm.onIntent(TransactionIntent.SaveClicked)
+        dispatch(failingVm, TransactionIntent.SaveClicked)
         assertTrue(repository.savedCommands.isEmpty())
 
         repository.failLoadCatalogMessage = null
-        failingVm.onIntent(TransactionIntent.RetryLoad)
+        dispatch(failingVm, TransactionIntent.RetryLoad)
         val recovered = failingVm.uiState.value as TransactionUiState.Ready
         assertEquals("Preserve across retry", recovered.form.note)
     }
 
     @Test
-    fun reopeningConsumedDraftUsesSavedTransactionReceiptAndNeverDeletedDraftReceipt() = runTest {
+    fun reopeningConsumedDraftUsesSavedTransactionReceiptAndNeverDeletedDraftReceipt() = transformTest {
         draftStore.savedByDraftId["draft-replaced-receipt"] = 88L
         val draftArgs = TransactionLaunchArgs.AiDraft(
             TransactionDraft(
@@ -545,23 +488,23 @@ class TransactionViewModelTest {
             sampleRecord(id = 88L, attachedPicture = "receipt_b_saved.jpg")
         )
 
-        val vmWithReplacement = TransactionViewModel(draftArgs, SavedStateHandle(), ports, testDispatcher, fixedClock)
+        val vmWithReplacement = createViewModel(draftArgs)
         val readyWithB = vmWithReplacement.uiState.value as TransactionUiState.Ready
         assertEquals("receipt_b_saved.jpg", readyWithB.form.attachedPictureFileName)
         assertEquals("receipt_b_saved.jpg", readyWithB.form.initialPersistedPictureFileName)
         assertTrue(readyWithB.form.newlyStagedPictureFiles.isEmpty())
 
         repository.editResult = TransactionEditLoadResult.Loaded(sampleRecord(id = 88L, attachedPicture = null))
-        val vmWithoutReceipt = TransactionViewModel(draftArgs, SavedStateHandle(), ports, testDispatcher, fixedClock)
+        val vmWithoutReceipt = createViewModel(draftArgs)
         assertNull((vmWithoutReceipt.uiState.value as TransactionUiState.Ready).form.attachedPictureFileName)
 
         repository.editResult = TransactionEditLoadResult.NotFound(88L)
-        val vmNotFoundDeleted = TransactionViewModel(draftArgs, SavedStateHandle(), ports, testDispatcher, fixedClock)
+        val vmNotFoundDeleted = createViewModel(draftArgs)
         assertNull((vmNotFoundDeleted.uiState.value as TransactionUiState.Ready).form.attachedPictureFileName)
     }
 
     @Test
-    fun processDeathDuringPendingOpenSavedTransactionResumesEditInsteadOfDraft() = runTest {
+    fun processDeathDuringPendingOpenSavedTransactionResumesEditInsteadOfDraft() = transformTest {
         draftStore.savedByDraftId["draft-mid-edit-load"] = 88L
         val draftArgs = TransactionLaunchArgs.AiDraft(
             TransactionDraft(
@@ -573,7 +516,7 @@ class TransactionViewModelTest {
             )
         )
         val handle = SavedStateHandle()
-        val vm1 = TransactionViewModel(draftArgs, handle, ports, testDispatcher, fixedClock)
+        val vm1 = createViewModel(draftArgs, handle)
         assertEquals(
             ActiveSheet.ConsumedDraftPrompt(88L),
             (vm1.uiState.value as TransactionUiState.Ready).activeSheet,
@@ -581,12 +524,12 @@ class TransactionViewModelTest {
 
         val editGate = CompletableDeferred<TransactionEditLoadResult>()
         repository.pendingEditDeferred = editGate
-        vm1.onIntent(TransactionIntent.OpenSavedTransaction(88L))
+        dispatch(vm1, TransactionIntent.OpenSavedTransaction(88L))
         assertEquals(TransactionUiState.Loading, vm1.uiState.value)
 
         repository.pendingEditDeferred = null
         repository.editResult = TransactionEditLoadResult.Loaded(sampleRecord(id = 88L))
-        val vm2 = TransactionViewModel(draftArgs, handle, ports, testDispatcher, fixedClock)
+        val vm2 = createViewModel(draftArgs, handle)
         val restored = vm2.uiState.value as TransactionUiState.Ready
         assertEquals(88L, restored.form.existingTransactionId)
         assertFalse(restored.form.isAiDraft)
@@ -595,7 +538,7 @@ class TransactionViewModelTest {
     }
 
     @Test
-    fun openSavedTransactionPublishesLoadingAndBlocksDuplicateOrSaveWhilePending() = runTest {
+    fun openSavedTransactionPublishesLoadingAndBlocksDuplicateOrSaveWhilePending() = transformTest {
         draftStore.savedByDraftId["draft-block-pending"] = 88L
         val draftArgs = TransactionLaunchArgs.AiDraft(
             TransactionDraft(
@@ -606,7 +549,7 @@ class TransactionViewModelTest {
                 dateTimeMillis = FIXED_NOW_MILLIS,
             )
         )
-        val vm = TransactionViewModel(draftArgs, SavedStateHandle(), ports, testDispatcher, fixedClock)
+        val vm = createViewModel(draftArgs)
         assertEquals(
             ActiveSheet.ConsumedDraftPrompt(88L),
             (vm.uiState.value as TransactionUiState.Ready).activeSheet,
@@ -614,16 +557,17 @@ class TransactionViewModelTest {
 
         val editGate = CompletableDeferred<TransactionEditLoadResult>()
         repository.pendingEditDeferred = editGate
-        vm.onIntent(TransactionIntent.OpenSavedTransaction(88L))
+        dispatch(vm, TransactionIntent.OpenSavedTransaction(88L))
         assertEquals(TransactionUiState.Loading, vm.uiState.value)
 
-        vm.onIntent(TransactionIntent.DuplicateDraftAnyway)
-        vm.onIntent(TransactionIntent.SaveClicked)
-        vm.onIntent(TransactionIntent.UpdateNote("Stale edit"))
+        dispatch(vm, TransactionIntent.DuplicateDraftAnyway)
+        dispatch(vm, TransactionIntent.SaveClicked)
+        dispatch(vm, TransactionIntent.UpdateNote("Stale edit"))
         assertEquals(TransactionUiState.Loading, vm.uiState.value)
         assertTrue(repository.savedCommands.isEmpty())
 
         editGate.complete(TransactionEditLoadResult.Loaded(sampleRecord(id = 88L)))
+        advanceAll()
         val loaded = vm.uiState.value as TransactionUiState.Ready
         assertEquals(88L, loaded.form.existingTransactionId)
         assertEquals("Legacy note", loaded.form.note)

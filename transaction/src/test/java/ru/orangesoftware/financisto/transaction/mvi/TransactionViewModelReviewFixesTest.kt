@@ -1,17 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.transaction.mvi
 
+import androidx.appstate.transform.testing.TransformTestScope
+import androidx.appstate.transform.testing.transformTest
 import androidx.lifecycle.SavedStateHandle
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -33,10 +28,8 @@ import ru.orangesoftware.financisto.transaction.mvi.TransactionTestFakes.fixedCl
 import ru.orangesoftware.financisto.transaction.mvi.TransactionTestFakes.multiCurrencyCatalog
 import ru.orangesoftware.financisto.transaction.port.TransactionPorts
 
-@OptIn(ExperimentalCoroutinesApi::class)
 class TransactionViewModelReviewFixesTest {
 
-    private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var repository: FakeTransactionRepository
     private lateinit var draftStore: FakeDraftSessionStore
     private lateinit var mediaPort: FakeReceiptMediaPort
@@ -45,7 +38,6 @@ class TransactionViewModelReviewFixesTest {
 
     @Before
     fun setUp() {
-        Dispatchers.setMain(testDispatcher)
         repository = FakeTransactionRepository(defaultCatalog())
         draftStore = FakeDraftSessionStore()
         mediaPort = FakeReceiptMediaPort()
@@ -53,13 +45,32 @@ class TransactionViewModelReviewFixesTest {
         ports = TransactionTestFakes.createPorts(repository, draftStore, exchangeRatePort, mediaPort)
     }
 
-    @After
-    fun tearDown() {
-        Dispatchers.resetMain()
+    private fun TransformTestScope.advanceAll() {
+        advanceUntilIdle()
+        advance()
+        advanceUntilIdle()
+    }
+
+    private fun TransformTestScope.createViewModel(
+        launchArgs: TransactionLaunchArgs,
+        savedStateHandle: SavedStateHandle = SavedStateHandle(),
+    ): TransactionViewModel = TransactionViewModel(
+        launchArgs = launchArgs,
+        savedStateHandle = savedStateHandle,
+        ports = ports,
+        ioDispatcher = testDispatcher,
+        clock = fixedClock,
+        transformDispatcher = testDispatcher,
+        stateScope = backgroundScope,
+    ).also { advanceAll() }
+
+    private fun TransformTestScope.dispatch(vm: TransactionViewModel, intent: TransactionIntent) {
+        vm.onIntent(intent)
+        advanceAll()
     }
 
     @Test
-    fun directAndCalculatorSecondaryAmountEditsCancelPendingLiveRateFetch() = runTest {
+    fun directAndCalculatorSecondaryAmountEditsCancelPendingLiveRateFetch() = transformTest {
         repository.catalog = multiCurrencyCatalog()
         val firstGate = CompletableDeferred<Result<Double>>()
         val secondGate = CompletableDeferred<Result<Double>>()
@@ -67,36 +78,33 @@ class TransactionViewModelReviewFixesTest {
         val queue = ArrayDeque(listOf(firstGate, secondGate, thirdGate))
         exchangeRatePort.handler = { _, _ -> queue.removeFirst().await() }
 
-        val vm = TransactionViewModel(
-            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
-        )
-        vm.onIntent(TransactionIntent.UpdatePrimaryAmount("100.00"))
-        vm.onIntent(TransactionIntent.SelectCurrency(2L))
+        val vm = createViewModel(launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L))
+        dispatch(vm, TransactionIntent.UpdatePrimaryAmount("100.00"))
+        dispatch(vm, TransactionIntent.SelectCurrency(2L))
 
-        vm.onIntent(TransactionIntent.FetchLiveRate)
-        vm.onIntent(TransactionIntent.UpdateSecondaryAmount("90.00"))
+        dispatch(vm, TransactionIntent.FetchLiveRate)
+        dispatch(vm, TransactionIntent.UpdateSecondaryAmount("90.00"))
         assertFalse((vm.uiState.value as TransactionUiState.Ready).isFetchingRate)
         firstGate.complete(Result.success(5.0))
+        advanceAll()
         val afterDirect = vm.uiState.value as TransactionUiState.Ready
         assertEquals(9000L, afterDirect.form.secondaryAmountMinor)
         assertEquals(0.9, afterDirect.form.exchangeRate, 1e-6)
 
-        vm.onIntent(TransactionIntent.FetchLiveRate)
-        vm.onIntent(TransactionIntent.ApplyCalculatorResult(CalculatorTarget.SECONDARY_AMOUNT, 85.0))
+        dispatch(vm, TransactionIntent.FetchLiveRate)
+        dispatch(vm, TransactionIntent.ApplyCalculatorResult(CalculatorTarget.SECONDARY_AMOUNT, 85.0))
         assertFalse((vm.uiState.value as TransactionUiState.Ready).isFetchingRate)
         secondGate.complete(Result.success(4.0))
+        advanceAll()
         val afterCalc = vm.uiState.value as TransactionUiState.Ready
         assertEquals(8500L, afterCalc.form.secondaryAmountMinor)
         assertEquals(0.85, afterCalc.form.exchangeRate, 1e-6)
 
-        vm.onIntent(TransactionIntent.FetchLiveRate)
-        vm.onIntent(TransactionIntent.UpdateNote("Unrelated edit"))
-        vm.onIntent(TransactionIntent.UpdatePrimaryAmount("200.00"))
+        dispatch(vm, TransactionIntent.FetchLiveRate)
+        dispatch(vm, TransactionIntent.UpdateNote("Unrelated edit"))
+        dispatch(vm, TransactionIntent.UpdatePrimaryAmount("200.00"))
         thirdGate.complete(Result.success(1.5))
+        advanceAll()
         val afterApplied = vm.uiState.value as TransactionUiState.Ready
         assertFalse(afterApplied.isFetchingRate)
         assertEquals(1.5, afterApplied.form.exchangeRate, 1e-6)
@@ -105,34 +113,28 @@ class TransactionViewModelReviewFixesTest {
     }
 
     @Test
-    fun externalCategoryCreationStaysBoundToRequestingSplitAcrossSwitchAndDeletion() = runTest {
-        val vm = TransactionViewModel(
-            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
-        )
-        vm.onIntent(TransactionIntent.UpdatePrimaryAmount("100.00"))
-        vm.onIntent(TransactionIntent.ToggleSplitMode)
+    fun externalCategoryCreationStaysBoundToRequestingSplitAcrossSwitchAndDeletion() = transformTest {
+        val vm = createViewModel(launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L))
+        dispatch(vm, TransactionIntent.UpdatePrimaryAmount("100.00"))
+        dispatch(vm, TransactionIntent.ToggleSplitMode)
         val splitAId = (vm.uiState.value as TransactionUiState.Ready).form.splits.single().localId
         val splitB = EditableSplit(localId = -2L, categoryId = 10L, amountMinor = 4000L, isIncome = false)
-        vm.onIntent(TransactionIntent.SaveSplitItem(splitB))
+        dispatch(vm, TransactionIntent.SaveSplitItem(splitB))
 
-        vm.onIntent(TransactionIntent.OpenEditSplitEditor(splitAId))
-        vm.onIntent(TransactionIntent.OpenCategoryBrowser(forSplitLocalId = splitAId))
-        vm.onIntent(TransactionIntent.OpenExternalCategoryCreator)
+        dispatch(vm, TransactionIntent.OpenEditSplitEditor(splitAId))
+        dispatch(vm, TransactionIntent.OpenCategoryBrowser(forSplitLocalId = splitAId))
+        dispatch(vm, TransactionIntent.OpenExternalCategoryCreator)
         assertEquals(TransactionEffect.LaunchExternalCategoryCreator, vm.effects.first())
 
-        vm.onIntent(TransactionIntent.DismissSheet)
-        vm.onIntent(TransactionIntent.DismissSheet)
-        vm.onIntent(TransactionIntent.OpenEditSplitEditor(splitB.localId))
-        vm.onIntent(TransactionIntent.UpdateNote("Unrelated edit"))
+        dispatch(vm, TransactionIntent.DismissSheet)
+        dispatch(vm, TransactionIntent.DismissSheet)
+        dispatch(vm, TransactionIntent.OpenEditSplitEditor(splitB.localId))
+        dispatch(vm, TransactionIntent.UpdateNote("Unrelated edit"))
 
         repository.catalog = defaultCatalog().copy(
             categories = defaultCatalog().categories + incomeCategory(id = 77L, title = "Bonus"),
         )
-        vm.onIntent(TransactionIntent.ExternalEntityCreated(ExternalEntityKind.CATEGORY, 77L))
+        dispatch(vm, TransactionIntent.ExternalEntityCreated(ExternalEntityKind.CATEGORY, 77L))
 
         val afterSwitch = vm.uiState.value as TransactionUiState.Ready
         assertEquals(77L, afterSwitch.form.splits.first { it.localId == splitAId }.categoryId)
@@ -141,18 +143,18 @@ class TransactionViewModelReviewFixesTest {
         assertEquals(10L, afterSwitch.activeSplitEditor?.split?.categoryId)
         assertEquals("Unrelated edit", afterSwitch.form.note)
 
-        vm.onIntent(TransactionIntent.DismissSheet)
-        vm.onIntent(TransactionIntent.OpenEditSplitEditor(splitAId))
-        vm.onIntent(TransactionIntent.OpenExternalCategoryCreator)
+        dispatch(vm, TransactionIntent.DismissSheet)
+        dispatch(vm, TransactionIntent.OpenEditSplitEditor(splitAId))
+        dispatch(vm, TransactionIntent.OpenExternalCategoryCreator)
         assertEquals(TransactionEffect.LaunchExternalCategoryCreator, vm.effects.first())
-        vm.onIntent(TransactionIntent.DismissSheet)
-        vm.onIntent(TransactionIntent.RemoveSplitItem(splitAId))
-        vm.onIntent(TransactionIntent.OpenEditSplitEditor(splitB.localId))
+        dispatch(vm, TransactionIntent.DismissSheet)
+        dispatch(vm, TransactionIntent.RemoveSplitItem(splitAId))
+        dispatch(vm, TransactionIntent.OpenEditSplitEditor(splitB.localId))
 
         repository.catalog = repository.catalog.copy(
             categories = repository.catalog.categories + incomeCategory(id = 78L, title = "Gift"),
         )
-        vm.onIntent(TransactionIntent.ExternalEntityCreated(ExternalEntityKind.CATEGORY, 78L))
+        dispatch(vm, TransactionIntent.ExternalEntityCreated(ExternalEntityKind.CATEGORY, 78L))
         val afterDelete = vm.uiState.value as TransactionUiState.Ready
         assertEquals(10L, afterDelete.activeSplitEditor?.split?.categoryId)
         assertEquals(10L, afterDelete.form.splits.single().categoryId)
@@ -160,35 +162,29 @@ class TransactionViewModelReviewFixesTest {
     }
 
     @Test
-    fun externalCategoryCreationSplitTargetSurvivesProcessDeath() = runTest {
+    fun externalCategoryCreationSplitTargetSurvivesProcessDeath() = transformTest {
         val handle = SavedStateHandle()
-        val vm = TransactionViewModel(
+        val vm = createViewModel(
             launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
             savedStateHandle = handle,
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
         )
-        vm.onIntent(TransactionIntent.UpdatePrimaryAmount("100.00"))
-        vm.onIntent(TransactionIntent.ToggleSplitMode)
+        dispatch(vm, TransactionIntent.UpdatePrimaryAmount("100.00"))
+        dispatch(vm, TransactionIntent.ToggleSplitMode)
         val splitB = EditableSplit(localId = -2L, categoryId = 10L, amountMinor = 4000L, isIncome = false)
-        vm.onIntent(TransactionIntent.SaveSplitItem(splitB))
+        dispatch(vm, TransactionIntent.SaveSplitItem(splitB))
 
-        vm.onIntent(TransactionIntent.OpenEditSplitEditor(splitB.localId))
-        vm.onIntent(TransactionIntent.OpenExternalCategoryCreator)
+        dispatch(vm, TransactionIntent.OpenEditSplitEditor(splitB.localId))
+        dispatch(vm, TransactionIntent.OpenExternalCategoryCreator)
         assertEquals(TransactionEffect.LaunchExternalCategoryCreator, vm.effects.first())
 
-        val recreated = TransactionViewModel(
+        val recreated = createViewModel(
             launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
             savedStateHandle = handle,
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
         )
         repository.catalog = repository.catalog.copy(
             categories = repository.catalog.categories + incomeCategory(id = 79L, title = "Refund"),
         )
-        recreated.onIntent(TransactionIntent.ExternalEntityCreated(ExternalEntityKind.CATEGORY, 79L))
+        dispatch(recreated, TransactionIntent.ExternalEntityCreated(ExternalEntityKind.CATEGORY, 79L))
 
         val afterDeath = recreated.uiState.value as TransactionUiState.Ready
         assertEquals(79L, afterDeath.form.splits.first { it.localId == splitB.localId }.categoryId)
@@ -197,7 +193,7 @@ class TransactionViewModelReviewFixesTest {
     }
 
     @Test
-    fun aiDraftCommitRunsMarkDraftSavedOnMidSaveCancellationAndBlocksDuplicateInsert() = runTest(testDispatcher) {
+    fun aiDraftCommitRunsMarkDraftSavedOnMidSaveCancellationAndBlocksDuplicateInsert() = transformTest {
         val saveGate = CompletableDeferred<Long>()
         repository.pendingSaveDeferred = saveGate
         val draftForm = TransactionFormState(
@@ -219,7 +215,7 @@ class TransactionViewModelReviewFixesTest {
                 as TransactionValidationResult.Valid
             ).command
 
-        val saveJob = launch {
+        val saveJob = launch(testDispatcher) {
             TransactionActionRunner.executeSave(
                 ready = ready,
                 command = command,
@@ -228,6 +224,7 @@ class TransactionViewModelReviewFixesTest {
                 clock = fixedClock,
             )
         }
+        advanceUntilIdle()
         assertEquals(1, repository.savedCommands.size)
         saveJob.cancel()
         saveGate.complete(501L)
@@ -235,7 +232,7 @@ class TransactionViewModelReviewFixesTest {
         assertEquals(501L, draftStore.savedByDraftId["draft-noncancellable"])
 
         repository.pendingSaveDeferred = null
-        val racedVm = TransactionViewModel(
+        val racedVm = createViewModel(
             launchArgs = TransactionLaunchArgs.AiDraft(
                 TransactionDraft(
                     draftId = "draft-raced",
@@ -245,13 +242,9 @@ class TransactionViewModelReviewFixesTest {
                     dateTimeMillis = FIXED_NOW_MILLIS,
                 )
             ),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
         )
         draftStore.savedByDraftId["draft-raced"] = 88L
-        racedVm.onIntent(TransactionIntent.SaveClicked)
+        dispatch(racedVm, TransactionIntent.SaveClicked)
 
         val afterRaced = racedVm.uiState.value as TransactionUiState.Ready
         assertFalse(afterRaced.isSaving)
@@ -260,22 +253,16 @@ class TransactionViewModelReviewFixesTest {
     }
 
     @Test
-    fun receiptStagingNotifiesErrorsForActiveSelectionOnlyAndKeepsLastSelection() = runTest {
-        val vm = TransactionViewModel(
-            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
-        )
+    fun receiptStagingNotifiesErrorsForActiveSelectionOnlyAndKeepsLastSelection() = transformTest {
+        val vm = createViewModel(launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L))
 
         mediaPort.stageHandler = { null }
-        vm.onIntent(TransactionIntent.AttachReceiptFromUri("content://null"))
+        dispatch(vm, TransactionIntent.AttachReceiptFromUri("content://null"))
         assertTrue(vm.effects.first() is TransactionEffect.ShowMessage)
         assertFalse((vm.uiState.value as TransactionUiState.Ready).isStagingReceipt)
 
         mediaPort.stageHandler = { throw IllegalStateException("Storage unreadable") }
-        vm.onIntent(TransactionIntent.AttachReceiptFromUri("content://err"))
+        dispatch(vm, TransactionIntent.AttachReceiptFromUri("content://err"))
         assertEquals(TransactionEffect.ShowMessage("Storage unreadable"), vm.effects.first())
         assertFalse((vm.uiState.value as TransactionUiState.Ready).isStagingReceipt)
 
@@ -287,7 +274,7 @@ class TransactionViewModelReviewFixesTest {
                 "receipt_b.jpg"
             }
         }
-        vm.onIntent(TransactionIntent.AttachReceiptFromUri("content://first"))
+        dispatch(vm, TransactionIntent.AttachReceiptFromUri("content://first"))
 
         val finalReady = vm.uiState.value as TransactionUiState.Ready
         assertFalse(finalReady.isStagingReceipt)
@@ -303,14 +290,14 @@ class TransactionViewModelReviewFixesTest {
                 "receipt_c.jpg"
             }
         }
-        vm.onIntent(TransactionIntent.AttachReceiptFromUri("content://cancelled-fail"))
-        vm.onIntent(TransactionIntent.RequestCameraPhoto)
+        dispatch(vm, TransactionIntent.AttachReceiptFromUri("content://cancelled-fail"))
+        dispatch(vm, TransactionIntent.RequestCameraPhoto)
         assertEquals(TransactionEffect.LaunchCameraCapture, vm.effects.first())
     }
 
     @Test
-    fun untouchedAiDraftWithoutReceiptHasUnsavedChangesAndPromptsOnBack() = runTest {
-        val vm = TransactionViewModel(
+    fun untouchedAiDraftWithoutReceiptHasUnsavedChangesAndPromptsOnBack() = transformTest {
+        val vm = createViewModel(
             launchArgs = TransactionLaunchArgs.AiDraft(
                 TransactionDraft(
                     draftId = "draft-no-receipt",
@@ -321,17 +308,13 @@ class TransactionViewModelReviewFixesTest {
                     stagedReceiptFileName = null,
                 )
             ),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
         )
 
         val ready = vm.uiState.value as TransactionUiState.Ready
         assertTrue(ready.hasUnsavedChanges)
         assertFalse(vm.hasUnsavedUserEdits())
 
-        vm.onIntent(TransactionIntent.CancelOrBackClicked)
+        dispatch(vm, TransactionIntent.CancelOrBackClicked)
         assertEquals(
             ActiveSheet.DiscardConfirmation,
             (vm.uiState.value as TransactionUiState.Ready).activeSheet,
@@ -340,7 +323,7 @@ class TransactionViewModelReviewFixesTest {
     }
 
     @Test
-    fun receiptAttachFailedEmitsMessageOnceOnInitialLoadAndNotOnRestore() = runTest {
+    fun receiptAttachFailedEmitsMessageOnceOnInitialLoadAndNotOnRestore() = transformTest {
         val handle = SavedStateHandle()
         val args = TransactionLaunchArgs.AiDraft(
             TransactionDraft(
@@ -352,21 +335,23 @@ class TransactionViewModelReviewFixesTest {
                 receiptAttachFailed = true,
             )
         )
-        val vm1 = TransactionViewModel(args, handle, ports, testDispatcher, fixedClock)
+        val vm1 = createViewModel(args, handle)
         assertTrue(vm1.uiState.value is TransactionUiState.Ready)
         val vm1Effects = mutableListOf<TransactionEffect>()
         val collect1 = launch(testDispatcher) { vm1.effects.collect { vm1Effects.add(it) } }
+        advance()
         collect1.cancel()
         assertEquals(listOf(TransactionEffect.ShowMessage("Could not attach receipt image.")), vm1Effects)
 
-        val vm2 = TransactionViewModel(args, handle, ports, testDispatcher, fixedClock)
+        val vm2 = createViewModel(args, handle)
         assertTrue(vm2.uiState.value is TransactionUiState.Ready)
         val vm2Effects = mutableListOf<TransactionEffect>()
         val collect2 = launch(testDispatcher) { vm2.effects.collect { vm2Effects.add(it) } }
+        advance()
         collect2.cancel()
         assertTrue(vm2Effects.isEmpty())
 
-        val okVm = TransactionViewModel(
+        val okVm = createViewModel(
             launchArgs = TransactionLaunchArgs.AiDraft(
                 TransactionDraft(
                     draftId = "draft-receipt-attach-ok",
@@ -377,13 +362,10 @@ class TransactionViewModelReviewFixesTest {
                     receiptAttachFailed = false,
                 )
             ),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
         )
         val okEffects = mutableListOf<TransactionEffect>()
         val collectOk = launch(testDispatcher) { okVm.effects.collect { okEffects.add(it) } }
+        advance()
         collectOk.cancel()
         assertTrue(okEffects.isEmpty())
     }

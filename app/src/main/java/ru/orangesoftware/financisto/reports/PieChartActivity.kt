@@ -6,27 +6,28 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.MutableCreationExtras
-import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.koalaplot.core.ChartLayout
 import io.github.koalaplot.core.Symbol
 import io.github.koalaplot.core.legend.FlowLegend
@@ -35,14 +36,19 @@ import io.github.koalaplot.core.pie.CircularLabelPositionProvider
 import io.github.koalaplot.core.pie.PieChart
 import io.github.koalaplot.core.pie.PieLabelPlacement
 import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
+import org.koin.androidx.viewmodel.ext.android.viewModel
+import org.koin.core.parameter.parametersOf
+import ru.orangesoftware.financisto.R
 import ru.orangesoftware.financisto.core.designsystem.theme.FinancistoTheme
-import ru.orangesoftware.financisto.reports.PieChartViewModel.Companion.INTENT_KEY
-import ru.orangesoftware.financisto.reports.PieChartViewModel.Companion.SCREEN_DENTITY_KEY
 import ru.orangesoftware.financisto.utils.MyPreferences
 import ru.orangesoftware.financisto.utils.PinProtection
 import kotlin.math.abs
 
 class PieChartActivity : ComponentActivity() {
+
+    private val pieChartViewModel: PieChartViewModel by viewModel {
+        parametersOf(buildLaunchParams())
+    }
 
     override fun attachBaseContext(newBase: Context?) {
         super.attachBaseContext(MyPreferences.switchLocale(newBase))
@@ -54,94 +60,114 @@ class PieChartActivity : ComponentActivity() {
         setContent {
             val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
             val context = LocalContext.current
-            val screenDensity = LocalDensity.current
-
-            val pieChartViewModel: PieChartViewModel = viewModel(
-                factory = PieChartViewModel.Factory,
-                extras = MutableCreationExtras(defaultViewModelCreationExtras).apply {
-                    set(APPLICATION_KEY, application)
-                    set(SCREEN_DENTITY_KEY, screenDensity.density)
-                    set(INTENT_KEY, intent)
-                },
-            )
 
             DisposableEffect(lifecycleOwner) {
                 val observer = LifecycleEventObserver { _, event ->
                     when (event) {
-                        Lifecycle.Event.ON_START -> pieChartViewModel.open()
                         Lifecycle.Event.ON_PAUSE -> PinProtection.lock(context)
                         Lifecycle.Event.ON_RESUME -> PinProtection.unlock(context)
-                        Lifecycle.Event.ON_STOP -> pieChartViewModel.close()
                         else -> Unit
                     }
                 }
-
-                // Add the observer to the lifecycle
                 lifecycleOwner.lifecycle.addObserver(observer)
-
-                // When the effect leaves the Composition, remove the observer
                 onDispose {
                     lifecycleOwner.lifecycle.removeObserver(observer)
                 }
             }
 
-            val chartData = pieChartViewModel.pieChartData.collectAsStateWithLifecycle()
+            val uiState by pieChartViewModel.uiState
+            val title = when (val state = uiState) {
+                PieChartUiState.Loading -> intent.getStringExtra(CHART_TITLE).orEmpty()
+                is PieChartUiState.Empty -> state.title
+                is PieChartUiState.Success -> state.title
+                is PieChartUiState.Error -> state.title
+            }
+
+            LaunchedEffect(title) {
+                if (title.isNotEmpty()) {
+                    setTitle(title)
+                }
+            }
 
             FinancistoTheme {
-                PieChartContent(chartData = chartData.value)
+                PieChartContent(uiState = uiState)
             }
+        }
+    }
 
-            intent.extras?.let {
-                val chartTitle = it.getString(CHART_TITLE) ?: ""
-                setTitle(chartTitle)
+    private fun buildLaunchParams(): PieChartLaunchParams =
+        PieChartLaunchParams.fromIntent(intent, resources.displayMetrics.density)
+
+    @Composable
+    private fun PieChartContent(uiState: PieChartUiState) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background,
+        ) {
+            when (uiState) {
+                PieChartUiState.Loading -> CenteredContent { CircularProgressIndicator() }
+
+                is PieChartUiState.Empty -> CenteredContent {
+                    Text(
+                        text = stringResource(id = R.string.no_data),
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                }
+
+                is PieChartUiState.Error -> CenteredContent {
+                    Text(
+                        text = uiState.message,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+
+                is PieChartUiState.Success -> PieChartSuccess(chartData = uiState.chartData)
             }
+        }
+    }
+
+    @Composable
+    private fun CenteredContent(content: @Composable () -> Unit) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center,
+        ) {
+            content()
         }
     }
 
     @OptIn(ExperimentalKoalaPlotApi::class)
     @Composable
-    private fun PieChartContent(chartData: List<ChartData>) {
-        Surface(
+    private fun PieChartSuccess(chartData: List<ChartData>) {
+        ChartLayout(
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background,
-        ) {
-            if (chartData.isNotEmpty()) {
-                ChartLayout(
-                    modifier = Modifier.fillMaxSize(),
-                    legend = {
-                        FlowLegend(
-                            itemCount = chartData.size,
-                            symbol = { i ->
-                                Symbol(
-                                    modifier = Modifier.size(2.dp),
-                                    fillBrush = SolidColor(chartData[i].color)
-                                )
-                            },
-                            label = { i ->
-                                Text(chartData[i].partName)
-                            },
-                            modifier = Modifier
-                                .padding(2.dp)
-                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                                .padding(2.dp)
+            legend = {
+                FlowLegend(
+                    itemCount = chartData.size,
+                    symbol = { i ->
+                        Symbol(
+                            modifier = Modifier.size(2.dp),
+                            fillBrush = SolidColor(chartData[i].color),
                         )
                     },
-                    legendLocation = LegendLocation.BOTTOM,
-                ) {
-                    PieChart(
-                        values = chartData.map { abs(it.data.toFloat()) },
-                        labelPositionProvider = CircularLabelPositionProvider(
-                            labelSpacing = 1.0F,
-                            labelPlacement = PieLabelPlacement.External,
-                        ),
-                    )
-                }
-            } else {
-                Text(
-                    text = "No data",
-                    color = MaterialTheme.colorScheme.onBackground,
+                    label = { i ->
+                        Text(chartData[i].partName)
+                    },
+                    modifier = Modifier
+                        .padding(2.dp)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                        .padding(2.dp),
                 )
-            }
+            },
+            legendLocation = LegendLocation.BOTTOM,
+        ) {
+            PieChart(
+                values = chartData.map { abs(it.data.toFloat()) },
+                labelPositionProvider = CircularLabelPositionProvider(
+                    labelSpacing = 1.0F,
+                    labelPlacement = PieLabelPlacement.External,
+                ),
+            )
         }
     }
 

@@ -6,18 +6,31 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-
+import androidx.compose.runtime.getValue
+import org.koin.androidx.viewmodel.ext.android.viewModel
 import ru.orangesoftware.financisto.activity.RequestPermissionActivity.Constants.REQUESTED_PERMISSION
 import ru.orangesoftware.financisto.ui.PermissionsPreferenceContent
+import ru.orangesoftware.financisto.ui.PermissionsViewModel
 import ru.orangesoftware.financisto.utils.MyPreferences
 
 class RequestPermissionActivity : ComponentActivity() {
 
+    private val viewModel: PermissionsViewModel by viewModel()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            PermissionsPreferenceContent()
+            val uiState by viewModel.uiState
+            PermissionsPreferenceContent(
+                uiState = uiState,
+                onBackupFolderSelected = viewModel::onBackupFolderSelected,
+            )
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.refreshPermissions()
     }
 
     override fun attachBaseContext(newBase: Context?) {

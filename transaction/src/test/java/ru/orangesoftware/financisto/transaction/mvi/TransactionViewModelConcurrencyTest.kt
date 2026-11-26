@@ -1,11 +1,18 @@
 // SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.transaction.mvi
 
+import androidx.appstate.transform.testing.TransformTestScope
+import androidx.appstate.transform.testing.transformTest
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.lifecycle.SavedStateHandle
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -13,7 +20,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withContext
-import org.junit.After
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -41,7 +48,6 @@ import java.util.concurrent.atomic.AtomicReference
 @OptIn(ExperimentalCoroutinesApi::class)
 class TransactionViewModelConcurrencyTest {
 
-    private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var repository: FakeTransactionRepository
     private lateinit var draftStore: FakeDraftSessionStore
     private lateinit var mediaPort: FakeReceiptMediaPort
@@ -50,7 +56,6 @@ class TransactionViewModelConcurrencyTest {
 
     @Before
     fun setUp() {
-        Dispatchers.setMain(testDispatcher)
         repository = FakeTransactionRepository(defaultCatalog())
         draftStore = FakeDraftSessionStore()
         mediaPort = FakeReceiptMediaPort()
@@ -58,17 +63,36 @@ class TransactionViewModelConcurrencyTest {
         ports = TransactionTestFakes.createPorts(repository, draftStore, exchangeRatePort, mediaPort)
     }
 
-    @After
-    fun tearDown() {
-        Dispatchers.resetMain()
+    private fun TransformTestScope.advanceAll() {
+        advanceUntilIdle()
+        advance()
+        advanceUntilIdle()
+    }
+
+    private fun TransformTestScope.createViewModel(
+        launchArgs: TransactionLaunchArgs,
+        savedStateHandle: SavedStateHandle = SavedStateHandle(),
+    ): TransactionViewModel = TransactionViewModel(
+        launchArgs = launchArgs,
+        savedStateHandle = savedStateHandle,
+        ports = ports,
+        ioDispatcher = testDispatcher,
+        clock = fixedClock,
+        transformDispatcher = testDispatcher,
+        stateScope = backgroundScope,
+    ).also { advanceAll() }
+
+    private fun TransformTestScope.dispatch(vm: TransactionViewModel, intent: TransactionIntent) {
+        vm.onIntent(intent)
+        advanceAll()
     }
 
     @Test
-    fun crossCurrencyAiTransferDraftTriggersStoredRateLookupInsteadOfFabricatingOne() = runTest {
+    fun crossCurrencyAiTransferDraftTriggersStoredRateLookupInsteadOfFabricatingOne() = transformTest {
         repository.catalog = multiCurrencyCatalog()
         repository.storedRates[1L to 2L] = 0.85
 
-        val vm = TransactionViewModel(
+        val vm = createViewModel(
             launchArgs = TransactionLaunchArgs.AiDraft(
                 TransactionDraft(
                     draftId = "draft-fx-transfer",
@@ -80,10 +104,6 @@ class TransactionViewModelConcurrencyTest {
                     dateTimeMillis = FIXED_NOW_MILLIS,
                 )
             ),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
         )
 
         val ready = vm.uiState.value as TransactionUiState.Ready
@@ -95,20 +115,14 @@ class TransactionViewModelConcurrencyTest {
     }
 
     @Test
-    fun isSavingGuardsAgainstMutationsResavesAndDiscard() = runTest {
+    fun isSavingGuardsAgainstMutationsResavesAndDiscard() = transformTest {
         val saveGate = CompletableDeferred<Long>()
         repository.pendingSaveDeferred = saveGate
 
-        val vm = TransactionViewModel(
-            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
-        )
-        vm.onIntent(TransactionIntent.UpdatePrimaryAmount("30.00"))
-        vm.onIntent(TransactionIntent.AttachCapturedPhotoFile("pending_photo.jpg"))
-        vm.onIntent(TransactionIntent.SaveClicked)
+        val vm = createViewModel(launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L))
+        dispatch(vm, TransactionIntent.UpdatePrimaryAmount("30.00"))
+        dispatch(vm, TransactionIntent.AttachCapturedPhotoFile("pending_photo.jpg"))
+        dispatch(vm, TransactionIntent.SaveClicked)
 
         val whileSaving = vm.uiState.value as TransactionUiState.Ready
         assertTrue(whileSaving.isSaving)
@@ -119,6 +133,7 @@ class TransactionViewModelConcurrencyTest {
         vm.onIntent(TransactionIntent.CancelOrBackClicked)
         vm.onIntent(TransactionIntent.ConfirmDiscard)
         vm.cleanupStagedReceipts()
+        advanceAll()
 
         val stillSaving = vm.uiState.value as TransactionUiState.Ready
         assertTrue(stillSaving.isSaving)
@@ -129,33 +144,29 @@ class TransactionViewModelConcurrencyTest {
         assertEquals(1, repository.savedCommands.size)
 
         saveGate.complete(501L)
+        advanceAll()
         assertEquals(TransactionEffect.SavedAndFinish(501L), vm.effects.first())
     }
 
     @Test
-    fun supersededLiveRateFetchIsCancelledAndStaleCurrencyPairIsRejected() = runTest {
+    fun supersededLiveRateFetchIsCancelledAndStaleCurrencyPairIsRejected() = transformTest {
         repository.catalog = multiCurrencyCatalog()
         val firstFetch = CompletableDeferred<Result<Double>>()
         val secondFetch = CompletableDeferred<Result<Double>>()
         val fetchQueue = ArrayDeque(listOf(firstFetch, secondFetch))
         exchangeRatePort.handler = { _, _ -> fetchQueue.removeFirst().await() }
 
-        val vm = TransactionViewModel(
-            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
-        )
-        vm.onIntent(TransactionIntent.UpdatePrimaryAmount("100.00"))
-        vm.onIntent(TransactionIntent.SelectCurrency(2L))
+        val vm = createViewModel(launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L))
+        dispatch(vm, TransactionIntent.UpdatePrimaryAmount("100.00"))
+        dispatch(vm, TransactionIntent.SelectCurrency(2L))
 
-        vm.onIntent(TransactionIntent.FetchLiveRate)
+        dispatch(vm, TransactionIntent.FetchLiveRate)
         assertTrue((vm.uiState.value as TransactionUiState.Ready).isFetchingRate)
-        vm.onIntent(TransactionIntent.FetchLiveRate)
+        dispatch(vm, TransactionIntent.FetchLiveRate)
 
         secondFetch.complete(Result.success(1.2))
         firstFetch.complete(Result.success(9.99))
+        advanceAll()
 
         val afterSecond = vm.uiState.value as TransactionUiState.Ready
         assertFalse(afterSecond.isFetchingRate)
@@ -164,20 +175,21 @@ class TransactionViewModelConcurrencyTest {
 
         val staleFetch = CompletableDeferred<Result<Double>>()
         exchangeRatePort.handler = { _, _ -> staleFetch.await() }
-        vm.onIntent(TransactionIntent.FetchLiveRate)
+        dispatch(vm, TransactionIntent.FetchLiveRate)
         assertTrue((vm.uiState.value as TransactionUiState.Ready).isFetchingRate)
 
-        vm.onIntent(TransactionIntent.SelectCurrency(3L))
+        dispatch(vm, TransactionIntent.SelectCurrency(3L))
         assertFalse((vm.uiState.value as TransactionUiState.Ready).isFetchingRate)
 
         staleFetch.complete(Result.success(7.77))
+        advanceAll()
         val afterSwitch = vm.uiState.value as TransactionUiState.Ready
         assertEquals(3L, afterSwitch.primaryCurrency?.id)
         assertFalse(afterSwitch.form.exchangeRate == 7.77)
     }
 
     @Test
-    fun nonCancellableStalePairRateResultIsRejectedByPairGuard() = runTest {
+    fun nonCancellableStalePairRateResultIsRejectedByPairGuard() = transformTest {
         repository.catalog = multiCurrencyCatalog()
         lateinit var vm: TransactionViewModel
         exchangeRatePort.handler = { _, _ ->
@@ -185,16 +197,10 @@ class TransactionViewModelConcurrencyTest {
             Result.success(4.2)
         }
 
-        vm = TransactionViewModel(
-            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
-        )
-        vm.onIntent(TransactionIntent.UpdatePrimaryAmount("100.00"))
-        vm.onIntent(TransactionIntent.SelectCurrency(2L))
-        vm.onIntent(TransactionIntent.FetchLiveRate)
+        vm = createViewModel(launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L))
+        dispatch(vm, TransactionIntent.UpdatePrimaryAmount("100.00"))
+        dispatch(vm, TransactionIntent.SelectCurrency(2L))
+        dispatch(vm, TransactionIntent.FetchLiveRate)
 
         val ready = vm.uiState.value as TransactionUiState.Ready
         assertEquals(3L, ready.primaryCurrency?.id)
@@ -203,19 +209,13 @@ class TransactionViewModelConcurrencyTest {
     }
 
     @Test
-    fun externalEntityCreatedAndFailedSaveReduceAgainstLatestState() = runTest {
+    fun externalEntityCreatedAndFailedSaveReduceAgainstLatestState() = transformTest {
         val catalogGate = CompletableDeferred<TransactionCatalog>()
         repository.pendingCatalogDeferred = catalogGate
 
-        val vm = TransactionViewModel(
-            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
-        )
-        vm.onIntent(TransactionIntent.ExternalEntityCreated(ExternalEntityKind.CATEGORY, 55L))
-        vm.onIntent(TransactionIntent.UpdateNote("Keep this note"))
+        val vm = createViewModel(launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L))
+        dispatch(vm, TransactionIntent.ExternalEntityCreated(ExternalEntityKind.CATEGORY, 55L))
+        dispatch(vm, TransactionIntent.UpdateNote("Keep this note"))
 
         val updatedCatalog = defaultCatalog().copy(
             categories = defaultCatalog().categories + CategoryOption(
@@ -228,34 +228,29 @@ class TransactionViewModelConcurrencyTest {
             )
         )
         catalogGate.complete(updatedCatalog)
+        advanceAll()
 
         val afterReload = vm.uiState.value as TransactionUiState.Ready
         assertEquals(55L, afterReload.form.categoryId)
         assertEquals("Keep this note", afterReload.form.note)
 
         repository.failSaveMessage = "Disk full"
-        vm.onIntent(TransactionIntent.SaveClicked)
+        dispatch(vm, TransactionIntent.SaveClicked)
         val afterFail = vm.uiState.value as TransactionUiState.Ready
         assertFalse(afterFail.isSaving)
         assertEquals(TransactionEffect.ShowMessage("Disk full"), vm.effects.first())
     }
 
     @Test
-    fun externalCategoryCreatedInsideSplitBrowserUpdatesSplitDraftAndReturnsToSplitEditor() = runTest {
-        val vm = TransactionViewModel(
-            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
-        )
-        vm.onIntent(TransactionIntent.UpdatePrimaryAmount("50.00"))
-        vm.onIntent(TransactionIntent.ToggleSplitMode)
-        vm.onIntent(TransactionIntent.OpenNewSplitEditor)
+    fun externalCategoryCreatedInsideSplitBrowserUpdatesSplitDraftAndReturnsToSplitEditor() = transformTest {
+        val vm = createViewModel(launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L))
+        dispatch(vm, TransactionIntent.UpdatePrimaryAmount("50.00"))
+        dispatch(vm, TransactionIntent.ToggleSplitMode)
+        dispatch(vm, TransactionIntent.OpenNewSplitEditor)
         val newSplitId = ((vm.uiState.value as TransactionUiState.Ready).activeSheet as ActiveSheet.SplitItemEditor)
             .split
             .localId
-        vm.onIntent(TransactionIntent.OpenCategoryBrowser(forSplitLocalId = newSplitId))
+        dispatch(vm, TransactionIntent.OpenCategoryBrowser(forSplitLocalId = newSplitId))
 
         repository.catalog = defaultCatalog().copy(
             categories = defaultCatalog().categories + CategoryOption(
@@ -267,7 +262,7 @@ class TransactionViewModelConcurrencyTest {
                 isIncome = true,
             )
         )
-        vm.onIntent(TransactionIntent.ExternalEntityCreated(ExternalEntityKind.CATEGORY, 77L))
+        dispatch(vm, TransactionIntent.ExternalEntityCreated(ExternalEntityKind.CATEGORY, 77L))
 
         val ready = vm.uiState.value as TransactionUiState.Ready
         assertTrue(ready.form.isSplitMode)
@@ -283,6 +278,7 @@ class TransactionViewModelConcurrencyTest {
         val mainExecutor = Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "test-main-thread") }
         val dedicatedIo = ioExecutor.asCoroutineDispatcher()
         val dedicatedMain = mainExecutor.asCoroutineDispatcher()
+        val stateScope = CoroutineScope(SupervisorJob() + dedicatedMain)
         val catalogThread = AtomicReference<String>()
         val publishThread = AtomicReference<String>()
         val startCatalogGate = CompletableDeferred<Unit>()
@@ -301,11 +297,13 @@ class TransactionViewModelConcurrencyTest {
                     ports = ports,
                     ioDispatcher = dedicatedIo,
                     clock = fixedClock,
+                    transformDispatcher = dedicatedMain,
+                    stateScope = stateScope,
                 )
             }
-            val collectorJob = launch(testDispatcher) {
-                vm.uiState.collect { state ->
-                    if (state is TransactionUiState.Ready) {
+            val collectorJob = launch(UnconfinedTestDispatcher()) {
+                handle.getStateFlow<TransactionFormState?>("transaction_form_state", null).collect { form ->
+                    if (form != null) {
                         publishThread.set(Thread.currentThread().name)
                         readySignal.complete(Unit)
                     }
@@ -314,12 +312,17 @@ class TransactionViewModelConcurrencyTest {
             startCatalogGate.complete(Unit)
             readySignal.await()
             collectorJob.cancel()
+            withTimeout(3_000L) {
+                Snapshot.sendApplyNotifications()
+                snapshotFlow { vm.uiState.value }.first { it is TransactionUiState.Ready }
+            }
             assertTrue(catalogThread.get().orEmpty().startsWith("test-io-thread"))
             assertTrue(publishThread.get().orEmpty().startsWith("test-main-thread"))
             assertTrue(handle.get<TransactionFormState>("transaction_form_state") != null)
             assertTrue(vm.uiState.value is TransactionUiState.Ready)
         } finally {
-            Dispatchers.setMain(testDispatcher)
+            stateScope.cancel()
+            Dispatchers.resetMain()
             dedicatedIo.close()
             dedicatedMain.close()
             ioExecutor.shutdownNow()
@@ -328,7 +331,7 @@ class TransactionViewModelConcurrencyTest {
     }
 
     @Test
-    fun staleRateResultsForSameCurrencyPairAreRejectedAcrossFormGenerations() = runTest {
+    fun staleRateResultsForSameCurrencyPairAreRejectedAcrossFormGenerations() = transformTest {
         repository.catalog = multiCurrencyCatalog()
         lateinit var vm: TransactionViewModel
         exchangeRatePort.handler = { _, _ ->
@@ -337,16 +340,12 @@ class TransactionViewModelConcurrencyTest {
             Result.success(9.99)
         }
 
-        vm = TransactionViewModel(
+        vm = createViewModel(
             launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L, initialMode = TransactionMode.TRANSFER),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
         )
-        vm.onIntent(TransactionIntent.SelectAccount(2L, isDestination = true))
-        vm.onIntent(TransactionIntent.UpdatePrimaryAmount("100.00"))
-        vm.onIntent(TransactionIntent.FetchLiveRate)
+        dispatch(vm, TransactionIntent.SelectAccount(2L, isDestination = true))
+        dispatch(vm, TransactionIntent.UpdatePrimaryAmount("100.00"))
+        dispatch(vm, TransactionIntent.FetchLiveRate)
 
         val afterClear = vm.uiState.value as TransactionUiState.Ready
         assertEquals(1L, afterClear.primaryCurrency?.id)
@@ -365,8 +364,8 @@ class TransactionViewModelConcurrencyTest {
                 null
             }
         }
-        vm.onIntent(TransactionIntent.SwitchMode(TransactionMode.EXPENSE))
-        vm.onIntent(TransactionIntent.SelectCurrency(2L))
+        dispatch(vm, TransactionIntent.SwitchMode(TransactionMode.EXPENSE))
+        dispatch(vm, TransactionIntent.SelectCurrency(2L))
 
         val afterStoredClear = vm.uiState.value as TransactionUiState.Ready
         assertEquals(2L, afterStoredClear.primaryCurrency?.id)
@@ -375,35 +374,30 @@ class TransactionViewModelConcurrencyTest {
     }
 
     @Test
-    fun receiptStagingBlocksSaveAndDeletesOrphanedFileOnFormResetAndDiscard() = runTest {
+    fun receiptStagingBlocksSaveAndDeletesOrphanedFileOnFormResetAndDiscard() = transformTest {
         val stageGate = CompletableDeferred<String?>()
         mediaPort.stageHandler = { stageGate.await() }
 
-        val vm = TransactionViewModel(
-            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
-        )
-        vm.onIntent(TransactionIntent.UpdatePrimaryAmount("20.00"))
-        vm.onIntent(TransactionIntent.AttachReceiptFromUri("content://gallery/1"))
+        val vm = createViewModel(launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L))
+        dispatch(vm, TransactionIntent.UpdatePrimaryAmount("20.00"))
+        dispatch(vm, TransactionIntent.AttachReceiptFromUri("content://gallery/1"))
         assertTrue((vm.uiState.value as TransactionUiState.Ready).isStagingReceipt)
 
-        vm.onIntent(TransactionIntent.SaveClicked)
+        dispatch(vm, TransactionIntent.SaveClicked)
         assertTrue(repository.savedCommands.isEmpty())
         assertTrue(vm.effects.first() is TransactionEffect.ShowMessage)
 
-        vm.onIntent(TransactionIntent.ClearFormClicked)
+        dispatch(vm, TransactionIntent.ClearFormClicked)
         assertFalse((vm.uiState.value as TransactionUiState.Ready).isStagingReceipt)
         stageGate.complete("late_staged_1.jpg")
+        advanceAll()
         assertNull((vm.uiState.value as TransactionUiState.Ready).form.attachedPictureFileName)
 
         mediaPort.stageHandler = {
             vm.onIntent(TransactionIntent.ClearFormClicked)
             "orphan_on_clear.jpg"
         }
-        vm.onIntent(TransactionIntent.AttachReceiptFromUri("content://gallery/2"))
+        dispatch(vm, TransactionIntent.AttachReceiptFromUri("content://gallery/2"))
         assertNull((vm.uiState.value as TransactionUiState.Ready).form.attachedPictureFileName)
         assertEquals(listOf("orphan_on_clear.jpg"), mediaPort.deletedFiles)
 
@@ -412,7 +406,7 @@ class TransactionViewModelConcurrencyTest {
             vm.onIntent(TransactionIntent.OpenSavedTransaction(77L))
             "orphan_on_open_saved.jpg"
         }
-        vm.onIntent(TransactionIntent.AttachReceiptFromUri("content://gallery/3"))
+        dispatch(vm, TransactionIntent.AttachReceiptFromUri("content://gallery/3"))
         assertEquals(77L, (vm.uiState.value as TransactionUiState.Ready).form.existingTransactionId)
         assertNull((vm.uiState.value as TransactionUiState.Ready).form.attachedPictureFileName)
         assertEquals(listOf("orphan_on_clear.jpg", "orphan_on_open_saved.jpg"), mediaPort.deletedFiles)
@@ -421,7 +415,7 @@ class TransactionViewModelConcurrencyTest {
             vm.onIntent(TransactionIntent.ConfirmDiscard)
             "orphan_on_discard.jpg"
         }
-        vm.onIntent(TransactionIntent.AttachReceiptFromUri("content://gallery/4"))
+        dispatch(vm, TransactionIntent.AttachReceiptFromUri("content://gallery/4"))
         assertEquals(
             listOf("orphan_on_clear.jpg", "orphan_on_open_saved.jpg", "orphan_on_discard.jpg"),
             mediaPort.deletedFiles,
@@ -430,44 +424,34 @@ class TransactionViewModelConcurrencyTest {
     }
 
     @Test
-    fun hasUnsavedUserEditsIsTrueWhileStagingReceiptOrSavingUntouchedEdit() = runTest {
+    fun hasUnsavedUserEditsIsTrueWhileStagingReceiptOrSavingUntouchedEdit() = transformTest {
         val stageGate = CompletableDeferred<String?>()
         mediaPort.stageHandler = { stageGate.await() }
-        val blankVm = TransactionViewModel(
-            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
-        )
+        val blankVm = createViewModel(launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L))
         assertFalse(blankVm.hasUnsavedUserEdits())
-        blankVm.onIntent(TransactionIntent.AttachReceiptFromUri("content://gallery/in-flight"))
+        dispatch(blankVm, TransactionIntent.AttachReceiptFromUri("content://gallery/in-flight"))
         assertTrue((blankVm.uiState.value as TransactionUiState.Ready).isStagingReceipt)
         assertTrue(blankVm.hasUnsavedUserEdits())
         stageGate.complete(null)
+        advanceAll()
         assertFalse((blankVm.uiState.value as TransactionUiState.Ready).isStagingReceipt)
         assertFalse(blankVm.hasUnsavedUserEdits())
 
         val saveGate = CompletableDeferred<Long>()
         repository.editResult = TransactionEditLoadResult.Loaded(sampleRecord(id = 77L))
         repository.pendingSaveDeferred = saveGate
-        val editVm = TransactionViewModel(
-            launchArgs = TransactionLaunchArgs.Edit(77L),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
-        )
+        val editVm = createViewModel(launchArgs = TransactionLaunchArgs.Edit(77L))
         assertFalse(editVm.hasUnsavedUserEdits())
-        editVm.onIntent(TransactionIntent.SaveClicked)
+        dispatch(editVm, TransactionIntent.SaveClicked)
         assertTrue((editVm.uiState.value as TransactionUiState.Ready).isSaving)
         assertTrue(editVm.hasUnsavedUserEdits())
         saveGate.complete(77L)
+        advanceAll()
         assertEquals(TransactionEffect.SavedAndFinish(77L), editVm.effects.first())
     }
 
     @Test
-    fun rateCoordinatorPairGuardRejectsMismatchedPairWithoutInvalidatingRequestId() = runTest(testDispatcher) {
+    fun rateCoordinatorPairGuardRejectsMismatchedPairWithoutInvalidatingRequestId() = transformTest {
         val catalog = multiCurrencyCatalog()
         val initialForm = TransactionFormState(
             mode = TransactionMode.EXPENSE,
@@ -496,6 +480,7 @@ class TransactionViewModelConcurrencyTest {
         val mismatchGate = CompletableDeferred<Result<Double>>()
         exchangeRatePort.handler = { _, _ -> mismatchGate.await() }
         coordinator.fetchLiveRate(currentState)
+        advanceAll()
         assertTrue(currentState.isFetchingRate)
 
         currentState = TransactionReducer.reduce(
@@ -503,6 +488,7 @@ class TransactionViewModelConcurrencyTest {
             TransactionIntent.SelectCurrency(3L),
         ).copy(isFetchingRate = true)
         mismatchGate.complete(Result.success(4.2))
+        advanceAll()
 
         assertEquals(3L, currentState.primaryCurrency?.id)
         assertFalse(currentState.isFetchingRate)
@@ -512,7 +498,9 @@ class TransactionViewModelConcurrencyTest {
         val matchGate = CompletableDeferred<Result<Double>>()
         exchangeRatePort.handler = { _, _ -> matchGate.await() }
         coordinator.fetchLiveRate(currentState)
+        advanceAll()
         matchGate.complete(Result.success(1.25))
+        advanceAll()
 
         assertFalse(currentState.isFetchingRate)
         assertEquals(1.25, currentState.form.exchangeRate, 1e-6)
@@ -521,23 +509,17 @@ class TransactionViewModelConcurrencyTest {
     }
 
     @Test
-    fun saveStartedDuringExternalCategoryReloadWaitsAndSavesNewCategory() = runTest {
+    fun saveStartedDuringExternalCategoryReloadWaitsAndSavesNewCategory() = transformTest {
         val catalogGate = CompletableDeferred<TransactionCatalog>()
         repository.pendingCatalogDeferred = catalogGate
 
-        val vm = TransactionViewModel(
-            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
-        )
-        vm.onIntent(TransactionIntent.UpdatePrimaryAmount("25.00"))
-        vm.onIntent(TransactionIntent.SelectCategory(10L))
-        vm.onIntent(TransactionIntent.UpdateNote("Lunch"))
-        vm.onIntent(TransactionIntent.ExternalEntityCreated(ExternalEntityKind.CATEGORY, 55L))
-        vm.onIntent(TransactionIntent.SaveClicked)
-        vm.onIntent(TransactionIntent.SaveClicked)
+        val vm = createViewModel(launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L))
+        dispatch(vm, TransactionIntent.UpdatePrimaryAmount("25.00"))
+        dispatch(vm, TransactionIntent.SelectCategory(10L))
+        dispatch(vm, TransactionIntent.UpdateNote("Lunch"))
+        dispatch(vm, TransactionIntent.ExternalEntityCreated(ExternalEntityKind.CATEGORY, 55L))
+        dispatch(vm, TransactionIntent.SaveClicked)
+        dispatch(vm, TransactionIntent.SaveClicked)
 
         val whileWaiting = vm.uiState.value as TransactionUiState.Ready
         assertTrue(whileWaiting.isSaving)
@@ -554,6 +536,7 @@ class TransactionViewModelConcurrencyTest {
             )
         )
         catalogGate.complete(updatedCatalog)
+        advanceAll()
 
         assertEquals(1, repository.savedCommands.size)
         val saved = repository.savedCommands.single()
@@ -564,21 +547,15 @@ class TransactionViewModelConcurrencyTest {
     }
 
     @Test
-    fun saveAndNewStartedDuringExternalIncomeCategoryReloadAppliesModeBeforeSaving() = runTest {
+    fun saveAndNewStartedDuringExternalIncomeCategoryReloadAppliesModeBeforeSaving() = transformTest {
         val catalogGate = CompletableDeferred<TransactionCatalog>()
         repository.pendingCatalogDeferred = catalogGate
 
-        val vm = TransactionViewModel(
-            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
-        )
-        vm.onIntent(TransactionIntent.UpdatePrimaryAmount("25.00"))
-        vm.onIntent(TransactionIntent.SelectCategory(10L))
-        vm.onIntent(TransactionIntent.ExternalEntityCreated(ExternalEntityKind.CATEGORY, 77L))
-        vm.onIntent(TransactionIntent.SaveAndNewClicked)
+        val vm = createViewModel(launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L))
+        dispatch(vm, TransactionIntent.UpdatePrimaryAmount("25.00"))
+        dispatch(vm, TransactionIntent.SelectCategory(10L))
+        dispatch(vm, TransactionIntent.ExternalEntityCreated(ExternalEntityKind.CATEGORY, 77L))
+        dispatch(vm, TransactionIntent.SaveAndNewClicked)
 
         assertTrue((vm.uiState.value as TransactionUiState.Ready).isSaving)
         assertTrue(repository.savedCommands.isEmpty())
@@ -595,6 +572,7 @@ class TransactionViewModelConcurrencyTest {
         )
         repository.catalog = updatedCatalog
         catalogGate.complete(updatedCatalog)
+        advanceAll()
 
         assertEquals(1, repository.savedCommands.size)
         val saved = repository.savedCommands.single()
@@ -607,26 +585,21 @@ class TransactionViewModelConcurrencyTest {
     }
 
     @Test
-    fun saveStartedDuringFailedExternalCategoryReloadAbortsAndRestoresEditableState() = runTest {
+    fun saveStartedDuringFailedExternalCategoryReloadAbortsAndRestoresEditableState() = transformTest {
         val catalogGate = CompletableDeferred<TransactionCatalog>()
         repository.pendingCatalogDeferred = catalogGate
 
-        val vm = TransactionViewModel(
-            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
-        )
-        vm.onIntent(TransactionIntent.UpdatePrimaryAmount("25.00"))
-        vm.onIntent(TransactionIntent.SelectCategory(10L))
-        vm.onIntent(TransactionIntent.ExternalEntityCreated(ExternalEntityKind.CATEGORY, 55L))
-        vm.onIntent(TransactionIntent.SaveClicked)
+        val vm = createViewModel(launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L))
+        dispatch(vm, TransactionIntent.UpdatePrimaryAmount("25.00"))
+        dispatch(vm, TransactionIntent.SelectCategory(10L))
+        dispatch(vm, TransactionIntent.ExternalEntityCreated(ExternalEntityKind.CATEGORY, 55L))
+        dispatch(vm, TransactionIntent.SaveClicked)
 
         assertTrue((vm.uiState.value as TransactionUiState.Ready).isSaving)
         assertTrue(repository.savedCommands.isEmpty())
 
         catalogGate.completeExceptionally(IllegalStateException("Catalog DB busy"))
+        advanceAll()
 
         assertTrue(repository.savedCommands.isEmpty())
         val afterFail = vm.uiState.value as TransactionUiState.Ready
@@ -636,11 +609,11 @@ class TransactionViewModelConcurrencyTest {
     }
 
     @Test
-    fun saveStartedDuringExternalCategoryReloadClearsIsSavingOnPostReloadValidationError() = runTest {
+    fun saveStartedDuringExternalCategoryReloadClearsIsSavingOnPostReloadValidationError() = transformTest {
         val catalogGate = CompletableDeferred<TransactionCatalog>()
         repository.pendingCatalogDeferred = catalogGate
 
-        val vm = TransactionViewModel(
+        val vm = createViewModel(
             launchArgs = TransactionLaunchArgs.AiDraft(
                 TransactionDraft(
                     draftId = "draft-invalid-amt",
@@ -650,13 +623,9 @@ class TransactionViewModelConcurrencyTest {
                     dateTimeMillis = FIXED_NOW_MILLIS,
                 )
             ),
-            savedStateHandle = SavedStateHandle(),
-            ports = ports,
-            ioDispatcher = testDispatcher,
-            clock = fixedClock,
         )
-        vm.onIntent(TransactionIntent.ExternalEntityCreated(ExternalEntityKind.CATEGORY, 55L))
-        vm.onIntent(TransactionIntent.SaveClicked)
+        dispatch(vm, TransactionIntent.ExternalEntityCreated(ExternalEntityKind.CATEGORY, 55L))
+        dispatch(vm, TransactionIntent.SaveClicked)
 
         assertTrue((vm.uiState.value as TransactionUiState.Ready).isSaving)
         assertTrue(repository.savedCommands.isEmpty())
@@ -672,6 +641,7 @@ class TransactionViewModelConcurrencyTest {
             )
         )
         catalogGate.complete(updatedCatalog)
+        advanceAll()
 
         assertTrue(repository.savedCommands.isEmpty())
         val afterValidationFail = vm.uiState.value as TransactionUiState.Ready

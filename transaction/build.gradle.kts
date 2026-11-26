@@ -85,6 +85,7 @@ dependencies {
     implementation(libs.lifecycle.runtime.compose)
     implementation(libs.lifecycle.viewmodel.ktx)
     implementation(libs.lifecycle.viewmodel.savedstate)
+    implementation(libs.appstate.transform)
 
     val koinBom = platform(libs.koin.bom)
     implementation(koinBom)
@@ -102,6 +103,7 @@ dependencies {
     testImplementation(libs.test.mockito.core)
     testImplementation(libs.test.mockito.kotlin)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.appstate.transform.testing)
 
     detektPlugins(libs.detekt.formatting)
 }

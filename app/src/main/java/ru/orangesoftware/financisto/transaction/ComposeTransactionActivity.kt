@@ -10,11 +10,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.VisibleForTesting
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.CoroutineDispatcher
@@ -125,14 +126,21 @@ class ComposeTransactionActivity : ComponentActivity() {
         pendingCameraFileName = savedInstanceState?.getString(KEY_PENDING_CAMERA_FILE)
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        syncPinLockState()
+        viewModel.onPinStateChanged(!shouldLockScreen() || PinProtection.isUnlocked())
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.effects.collect(::handleEffect)
             }
         }
         setContent {
-            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+            val uiState by viewModel.uiState
+            val draftSession by draftSessionStore.sessionState
+            LaunchedEffect(draftSession.pendingDraft?.draftId, uiState) {
+                surfacePendingAiDraftIfReady(
+                    pendingDraft = draftSession.pendingDraft,
+                    uiState = uiState,
+                )
+            }
             TransactionScreen(
                 uiState = uiState,
                 resolveReceiptPath = receiptMediaPort::resolveFilePath,
@@ -185,7 +193,7 @@ class ComposeTransactionActivity : ComponentActivity() {
         if (shouldLockScreen()) {
             PinProtection.unlock(this)
         }
-        syncPinLockState()
+        viewModel.onPinStateChanged(!shouldLockScreen() || PinProtection.isUnlocked())
         if (!isFinishing && (!shouldLockScreen() || PinProtection.isUnlocked())) {
             val deferred = deferredIncomingAiDraft
             deferredIncomingAiDraft = null
@@ -195,9 +203,19 @@ class ComposeTransactionActivity : ComponentActivity() {
         }
     }
 
-    private fun syncPinLockState() {
-        val unlocked = !shouldLockScreen() || PinProtection.isUnlocked()
-        viewModel.onPinStateChanged(unlocked)
+    @VisibleForTesting
+    internal fun surfacePendingAiDraftIfReady(
+        pendingDraft: TransactionDraft?,
+        uiState: TransactionUiState,
+        unlocked: Boolean = !shouldLockScreen() || PinProtection.isUnlocked(),
+    ) {
+        val canSurface = unlocked &&
+            uiState !is TransactionUiState.Loading &&
+            uiState !is TransactionUiState.PinLockedMask &&
+            !isFinishing
+        if (pendingDraft != null && canSurface) {
+            handleIncomingAiDraft(pendingDraft)
+        }
     }
 
     private fun shouldLockScreen(): Boolean {
@@ -216,7 +234,7 @@ class ComposeTransactionActivity : ComponentActivity() {
             viewModel.uiState.value is TransactionUiState.Loading -> {
                 deferredIncomingAiDraft = incomingDraft
                 lifecycleScope.launch {
-                    viewModel.uiState.first { it !is TransactionUiState.Loading }
+                    snapshotFlow { viewModel.uiState.value }.first { it !is TransactionUiState.Loading }
                     val deferred = deferredIncomingAiDraft
                     val unlockedNow = !shouldLockScreen() || PinProtection.isUnlocked()
                     if (deferred != null && !isFinishing && unlockedNow) {

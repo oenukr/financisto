@@ -8,6 +8,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
@@ -154,7 +155,7 @@ internal fun dispatchIntentWhenReady(
         var savingForm: TransactionFormState? =
             if (initialState.isSavingReady) (initialState as TransactionUiState.Ready).form else null
         try {
-            val settled = viewModel.uiState.first { state ->
+            val settled = snapshotFlow { viewModel.uiState.value }.first { state ->
                 if (state.isSavingReady) {
                     savingForm = savingForm ?: (state as TransactionUiState.Ready).form
                 }

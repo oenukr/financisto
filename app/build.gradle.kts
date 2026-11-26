@@ -143,6 +143,12 @@ dependencies {
     // Lifecycle extensions
     implementation(libs.lifecycle.runtime.ktx)
     implementation(libs.lifecycle.viewmodel.ktx)
+    implementation(libs.lifecycle.viewmodel.savedstate)
+
+    // AppState
+    implementation(libs.appstate.transform)
+    implementation(libs.appstate.statestore)
+    implementation(libs.appstate.statestore.datastore)
 
     // Timber logging
     implementation(libs.timber)
@@ -191,6 +197,7 @@ dependencies {
     testImplementation(libs.test.mockito.core)
     testImplementation(libs.test.mockito.kotlin)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.appstate.transform.testing)
 
     implementation(project(":appfunctions"))
     implementation(project(":core:designsystem"))

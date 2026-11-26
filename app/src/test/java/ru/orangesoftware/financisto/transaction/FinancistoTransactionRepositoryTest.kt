@@ -6,8 +6,10 @@ import android.content.Context
 import android.content.Intent
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteException
+import androidx.appstate.statestore.StateStore
 import androidx.core.content.edit
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -24,6 +26,7 @@ import org.robolectric.Shadows
 import ru.orangesoftware.financisto.activity.AbstractTransactionActivity
 import ru.orangesoftware.financisto.activity.TransactionActivity
 import ru.orangesoftware.financisto.activity.TransferActivity
+import ru.orangesoftware.financisto.appstate.AiDraftSessionKey
 import ru.orangesoftware.financisto.db.AbstractDbTest
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.model.Account
@@ -348,52 +351,7 @@ class FinancistoTransactionRepositoryTest : AbstractDbTest() {
 
     @Test
     fun draftSessionStoreSerializesRoundTripAndEnforcesBoundedHistory() = runTest {
-        val store = FinancistoDraftSessionStore(context)
-        val richDraft = TransactionDraft(
-            draftId = "draft-full-roundtrip",
-            mode = TransactionMode.TRANSFER,
-            amountMinor = 4250L,
-            fromAccountId = cash.id,
-            toAccountId = card.id,
-            originalCurrencyId = 2L,
-            originalAmountMinor = 3900L,
-            toAmountMinor = 4250L,
-            categoryId = TransactionIds.SPLIT_CATEGORY_ID,
-            payeeId = 7L,
-            pendingPayeeName = "Klarna Store",
-            projectId = 3L,
-            locationId = 4L,
-            dateTimeMillis = 1_700_000_123_456L,
-            status = TransactionStatusOption.CLEARED,
-            note = "Test receipt",
-            isCCardPayment = true,
-            stagedReceiptFileName = "staged_receipt.jpg",
-            splits = listOf(
-                DraftSplit(categoryId = 10L, categoryName = "Food", amountMinor = -2000L, note = "P1", projectId = 1L),
-                DraftSplit(categoryId = 20L, categoryName = "Gifts", amountMinor = -2250L, note = "P2"),
-            ),
-        )
-        store.savePendingDraft(richDraft)
-        assertEquals(richDraft, store.peekPendingAutoOpenDraft())
-        assertEquals(richDraft, store.consumePendingAutoOpenDraft())
-        assertNull(store.consumePendingAutoOpenDraft())
-
-        val rawPrefs = context.getSharedPreferences(FinancistoDraftSessionStore.PREFS_NAME, Context.MODE_PRIVATE)
-        rawPrefs.edit(commit = true) { putString(FinancistoDraftSessionStore.KEY_PENDING_DRAFT, "{corrupt-json") }
-        assertNull(store.consumePendingAutoOpenDraft())
-        assertFalse(rawPrefs.contains(FinancistoDraftSessionStore.KEY_PENDING_DRAFT))
-
-        val totalDrafts = FinancistoDraftSessionStore.MAX_SAVED_DRAFTS + 5
-        for (index in 1..totalDrafts) {
-            store.markDraftSaved("draft-$index", index.toLong() * 10L)
-        }
-        for (evicted in 1..5) {
-            assertNull(store.getSavedTransactionId("draft-$evicted"))
-        }
-        for (retained in 6..totalDrafts) {
-            assertEquals(retained.toLong() * 10L, store.getSavedTransactionId("draft-$retained"))
-        }
-        assertEquals(setOf(FinancistoDraftSessionStore.KEY_SAVED_DRAFTS), rawPrefs.all.keys)
+        verifyDraftSessionStoreRoundTripAndBoundedHistory(context, cash.id, card.id)
     }
 
     @Test
@@ -954,3 +912,69 @@ private fun decimalSaveCommand(
     isCCardPayment = false,
     splits = splits,
 )
+
+private suspend fun verifyDraftSessionStoreRoundTripAndBoundedHistory(
+    context: Context,
+    cashId: Long,
+    cardId: Long,
+) {
+    val rawPrefs = context.getSharedPreferences(FinancistoDraftSessionStore.PREFS_NAME, Context.MODE_PRIVATE)
+    rawPrefs.edit(commit = true) { clear() }
+
+    val stateStore = StateStore()
+    val store = FinancistoDraftSessionStore(context, stateStore)
+    val richDraft = TransactionDraft(
+        draftId = "draft-full-roundtrip",
+        mode = TransactionMode.TRANSFER,
+        amountMinor = 4250L,
+        fromAccountId = cashId,
+        toAccountId = cardId,
+        originalCurrencyId = 2L,
+        originalAmountMinor = 3900L,
+        toAmountMinor = 4250L,
+        categoryId = TransactionIds.SPLIT_CATEGORY_ID,
+        payeeId = 7L,
+        pendingPayeeName = "Klarna Store",
+        projectId = 3L,
+        locationId = 4L,
+        dateTimeMillis = 1_700_000_123_456L,
+        status = TransactionStatusOption.CLEARED,
+        note = "Test receipt",
+        isCCardPayment = true,
+        stagedReceiptFileName = "staged_receipt.jpg",
+        splits = listOf(
+            DraftSplit(categoryId = 10L, categoryName = "Food", amountMinor = -2000L, note = "P1", projectId = 1L),
+            DraftSplit(categoryId = 20L, categoryName = "Gifts", amountMinor = -2250L, note = "P2"),
+        ),
+    )
+    store.savePendingDraft(richDraft)
+    assertEquals(richDraft, stateStore.getState(AiDraftSessionKey).value.pendingDraft)
+    assertEquals(richDraft, store.peekPendingAutoOpenDraft())
+    assertEquals(richDraft, store.consumePendingAutoOpenDraft())
+    assertNull(store.consumePendingAutoOpenDraft())
+    assertNull(stateStore.getState(AiDraftSessionKey).value.pendingDraft)
+
+    rawPrefs.edit(commit = true) { putString(FinancistoDraftSessionStore.KEY_PENDING_DRAFT, "{corrupt-json") }
+    val corruptMigrationStore = FinancistoDraftSessionStore(context, StateStore())
+    assertNull(corruptMigrationStore.consumePendingAutoOpenDraft())
+    assertTrue(rawPrefs.all.isEmpty())
+
+    val totalDrafts = FinancistoDraftSessionStore.MAX_SAVED_DRAFTS + 5
+    for (index in 1..totalDrafts) {
+        store.markDraftSaved("draft-$index", index.toLong() * 10L)
+    }
+    for (evicted in 1..5) {
+        assertNull(store.getSavedTransactionId("draft-$evicted"))
+    }
+    for (retained in 6..totalDrafts) {
+        assertEquals(retained.toLong() * 10L, store.getSavedTransactionId("draft-$retained"))
+    }
+    store.savePendingDraft(richDraft)
+
+    val persistedState = stateStore.getState(AiDraftSessionKey).value
+    assertEquals(FinancistoDraftSessionStore.MAX_SAVED_DRAFTS, persistedState.savedHistory.size)
+    val encoded = Json.encodeToString(AiDraftSessionKey.serializer, persistedState)
+    val decoded = Json.decodeFromString(AiDraftSessionKey.serializer, encoded)
+    assertEquals(persistedState, decoded)
+    assertTrue(rawPrefs.all.isEmpty())
+}
