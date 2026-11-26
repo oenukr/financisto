@@ -153,6 +153,7 @@ val transactionPortsModule = module {
             stateStore = get(),
             ioDispatcher = get(),
             persistSessionState = { state -> syncController.persistKey(AiDraftSessionKey, state) },
+            awaitSessionRestore = { syncController.ensureKeyRestored(AiDraftSessionKey) },
         )
     } bind DraftSessionStore::class
     singleOf(::FinancistoExchangeRatePort) { bind<ExchangeRatePort>() }

@@ -34,6 +34,7 @@ import ru.orangesoftware.financisto.transaction.domain.TransactionValidator
 import ru.orangesoftware.financisto.transaction.model.TransactionLaunchArgs
 import ru.orangesoftware.financisto.transaction.port.TransactionPorts
 import timber.log.Timber
+import java.io.IOException
 import kotlin.time.Clock
 
 class TransactionViewModel(
@@ -301,7 +302,13 @@ class TransactionViewModel(
         scope.launch {
             withContext(NonCancellable) {
                 TransactionActionRunner.runOn(ioDispatcher) {
-                    draftId?.let { ports.draftSessionStore.clearPendingDraft(it) }
+                    draftId?.let { id ->
+                        try {
+                            ports.draftSessionStore.clearPendingDraft(id)
+                        } catch (e: IOException) {
+                            Timber.w(e, "Failed to clear pending AI draft on discard: %s", id)
+                        }
+                    }
                     TransactionLoader.deleteUnusedStagedFiles(ports, stagedFiles, keepFileName = keepFile)
                 }
             }

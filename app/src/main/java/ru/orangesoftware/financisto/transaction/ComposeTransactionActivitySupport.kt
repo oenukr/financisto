@@ -97,7 +97,7 @@ internal fun ComposeTransactionActivity.trySwitchToPendingAiDraft(
     draft: TransactionDraft,
     draftSessionStore: FinancistoDraftSessionStore,
 ): Boolean {
-    if ((viewModel.uiState.value as? TransactionUiState.Ready)?.isSaving == true) {
+    if ((viewModel.currentEditorState.value as? TransactionUiState.Ready)?.isSaving == true) {
         return false
     }
     pendingAiDraftPrompt = null
@@ -121,8 +121,12 @@ internal fun ComposeTransactionActivity.dismissPendingAiDraft(
         stagedFile == currentForm?.initialPersistedPictureFileName
     if (!matchesActiveReceipt) {
         lifecycleScope.launch {
-            if (draftSessionStore.getSavedTransactionId(draft.draftId) == null) {
-                receiptMediaPort.deleteStagedFile(stagedFile)
+            try {
+                if (draftSessionStore.getSavedTransactionId(draft.draftId) == null) {
+                    receiptMediaPort.deleteStagedFile(stagedFile)
+                }
+            } catch (e: IOException) {
+                Timber.w(e, "Failed to verify saved status for dismissed AI draft: %s", draft.draftId)
             }
         }
     }

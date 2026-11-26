@@ -10,16 +10,21 @@ import androidx.appstate.datastore.syncToDataStore
 import androidx.appstate.statestore.StateStore
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.core.content.edit
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
@@ -345,5 +350,103 @@ class FinancistoTransactionPortsTest : AbstractDbTest() {
             firstReceipt.delete()
             replacementReceipt.delete()
         }
+    }
+
+    @Test
+    fun legacySavedHistoryMigrationFailurePropagatesAndRetriesWithoutReturningDefaultNull() = runTest {
+        clearLegacyDraftPrefs()
+        val legacyPrefs = context.getSharedPreferences(FinancistoDraftSessionStore.PREFS_NAME, Context.MODE_PRIVATE)
+        val json = kotlinx.serialization.json.Json { encodeDefaults = true }
+        val legacyHistory = listOf(SavedDraftEntry(draftId = "legacy-tx-1", transactionId = 42L))
+        legacyPrefs.edit(commit = true) {
+            putString(FinancistoDraftSessionStore.KEY_SAVED_DRAFTS, json.encodeToString(legacyHistory))
+        }
+
+        var shouldFail = true
+        val persistedStates = mutableListOf<AiDraftSessionState>()
+        val store = FinancistoDraftSessionStore(
+            context = context,
+            stateStore = StateStore(),
+            ioDispatcher = UnconfinedTestDispatcher(),
+            persistSessionState = { state ->
+                if (shouldFail) {
+                    throw IOException("Simulated DataStore write failure")
+                }
+                persistedStates += state
+            },
+        )
+
+        val failure = runCatching { store.getSavedTransactionId("legacy-tx-1") }.exceptionOrNull()
+        assertTrue(failure is IOException)
+        assertTrue(legacyPrefs.contains(FinancistoDraftSessionStore.KEY_SAVED_DRAFTS))
+
+        shouldFail = false
+        assertEquals(42L, store.getSavedTransactionId("legacy-tx-1"))
+        assertFalse(legacyPrefs.contains(FinancistoDraftSessionStore.KEY_SAVED_DRAFTS))
+        assertEquals(1, persistedStates.size)
+        assertEquals(legacyHistory, persistedStates.single().savedHistory)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun getSavedTransactionIdWaitsForInitialAppStateRestoreBeforeReadingHistory() = runTest {
+        clearLegacyDraftPrefs()
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val stateStore = StateStore()
+        val restoreGate = CompletableDeferred<Unit>()
+        val store = FinancistoDraftSessionStore(
+            context = context,
+            stateStore = stateStore,
+            ioDispatcher = dispatcher,
+            awaitSessionRestore = {
+                restoreGate.await()
+                Snapshot.withMutableSnapshot {
+                    stateStore.setState(
+                        AiDraftSessionKey,
+                        AiDraftSessionState(
+                            savedHistory = listOf(SavedDraftEntry("draft-gated", 888L)),
+                        ),
+                    )
+                }
+            },
+        )
+
+        val lookup = async { store.getSavedTransactionId("draft-gated") }
+        runCurrent()
+        assertFalse(lookup.isCompleted)
+
+        restoreGate.complete(Unit)
+        advanceUntilIdle()
+        assertEquals(888L, lookup.await())
+    }
+
+    @Test
+    fun markDraftSavedPersistsDurablyRetainsBookkeepingOnFailureAndPreventsDuplicateSaveOnRetry() = runTest {
+        clearLegacyDraftPrefs()
+        var shouldFail = true
+        val persistedStates = mutableListOf<AiDraftSessionState>()
+        val store = FinancistoDraftSessionStore(
+            context = context,
+            stateStore = StateStore(),
+            ioDispatcher = UnconfinedTestDispatcher(),
+            persistSessionState = { state ->
+                if (shouldFail) {
+                    throw IOException("Simulated DataStore write failure")
+                }
+                persistedStates += state
+            },
+        )
+
+        val failure = runCatching { store.markDraftSaved("draft-dup-guard", 702L) }.exceptionOrNull()
+        assertTrue(failure is IOException)
+        assertEquals(702L, store.getSavedTransactionId("draft-dup-guard"))
+
+        shouldFail = false
+        store.markDraftSaved("draft-dup-guard", 702L)
+        assertEquals(702L, store.getSavedTransactionId("draft-dup-guard"))
+        assertEquals(
+            listOf(SavedDraftEntry("draft-dup-guard", 702L)),
+            persistedStates.last().savedHistory,
+        )
     }
 }

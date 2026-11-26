@@ -329,6 +329,57 @@ class ComposeTransactionActivityBehaviorTest : AbstractDbTest() {
     }
 
     @Test
+    fun trySwitchToPendingAiDraftUsesAuthoritativeEditorStateWhenUiStateLags() {
+        val draftOne = sampleDraft("draft-switch-lag-1", amountMinor = 1500L, note = "Coffee")
+        val draftTwo = sampleDraft("draft-switch-lag-2", amountMinor = 4200L, note = "Dinner")
+        val saveGate = CompletableDeferred<Long>()
+        val catalogGate = CompletableDeferred<Unit>().apply { complete(Unit) }
+        val lagDispatcher = ManualQueueDispatcher()
+        val koin = GlobalContext.get()
+        val draftStore = FinancistoDraftSessionStore(context, koin.get<StateStore>())
+        val portsOverride = module {
+            single<CoroutineDispatcher>(TRANSFORM_DISPATCHER) { lagDispatcher }
+            single { fakePorts(catalogGate, FakeReceiptMediaPort(), saveGate = saveGate, accountId = account.id) }
+        }
+        koin.loadModules(listOf(portsOverride), allowOverride = true)
+        try {
+            val controller = Robolectric.buildActivity(
+                ComposeTransactionActivity::class.java,
+                TransactionEntryRouter.createAiDraftIntent(context, draftOne),
+            ).setup()
+            val activity = controller.get()
+            val readyDeadline = System.currentTimeMillis() + 3_000L
+            while (activity.viewModel.uiState.value !is TransactionUiState.Ready &&
+                System.currentTimeMillis() < readyDeadline
+            ) {
+                lagDispatcher.runAll()
+                flushAppStateAndLooper()
+                Thread.sleep(10L)
+            }
+            assertTrue(activity.viewModel.uiState.value is TransactionUiState.Ready)
+            assertTrue(activity.viewModel.onIntent(TransactionIntent.SaveClicked))
+            assertTrue((activity.viewModel.currentEditorState.value as TransactionUiState.Ready).isSaving)
+            assertFalse((activity.viewModel.uiState.value as TransactionUiState.Ready).isSaving)
+            assertFalse(activity.trySwitchToPendingAiDraft(draftTwo, draftStore))
+            assertFalse(activity.isFinishing)
+
+            saveGate.completeExceptionally(IllegalStateException("Save error"))
+            val idleDeadline = System.currentTimeMillis() + 3_000L
+            while ((activity.viewModel.currentEditorState.value as? TransactionUiState.Ready)?.isSaving == true &&
+                System.currentTimeMillis() < idleDeadline
+            ) {
+                flushAppStateAndLooper()
+                Thread.sleep(10L)
+            }
+            assertTrue(activity.trySwitchToPendingAiDraft(draftTwo, draftStore))
+            assertTrue(activity.isFinishing)
+            controller.destroy()
+        } finally {
+            koin.unloadModules(listOf(portsOverride))
+        }
+    }
+
+    @Test
     fun pendingCameraFileNameSurvivesSaveAndRestoreInstanceState() {
         val controller = Robolectric.buildActivity(
             ComposeTransactionActivity::class.java,
@@ -684,90 +735,90 @@ class ComposeTransactionActivityBehaviorTest : AbstractDbTest() {
             dateTimeMillis = 1_700_000_000_000L,
         )
     }
+}
 
-    private fun fakePorts(
-        catalogGate: CompletableDeferred<Unit>,
-        mediaPort: ReceiptMediaPort,
-        includeAccount: Boolean = true,
-        saveGate: CompletableDeferred<Long>? = null,
-        accountId: Long = 1L,
-    ): TransactionPorts {
-        val accounts = if (includeAccount) {
-            listOf(
-                AccountOption(
-                    id = accountId,
-                    title = "Cash",
-                    typeLabel = "CASH",
-                    currencyId = 1L,
-                    currencyCode = "USD",
-                    currencySymbol = "$",
-                    currencyDecimals = 2,
-                    balanceMinor = 0L,
-                )
+private fun fakePorts(
+    catalogGate: CompletableDeferred<Unit>,
+    mediaPort: ReceiptMediaPort,
+    includeAccount: Boolean = true,
+    saveGate: CompletableDeferred<Long>? = null,
+    accountId: Long = 1L,
+): TransactionPorts {
+    val accounts = if (includeAccount) {
+        listOf(
+            AccountOption(
+                id = accountId,
+                title = "Cash",
+                typeLabel = "CASH",
+                currencyId = 1L,
+                currencyCode = "USD",
+                currencySymbol = "$",
+                currencyDecimals = 2,
+                balanceMinor = 0L,
             )
-        } else {
-            emptyList()
-        }
-        val catalog = TransactionCatalog(
-            accounts = accounts,
-            currencies = listOf(CurrencyOption(id = 1L, code = "USD", symbol = "$", decimals = 2)),
         )
-        return TransactionPorts(
-            repository = object : TransactionRepository {
-                override suspend fun loadCatalog(editingTransactionId: Long?): TransactionCatalog {
-                    catalogGate.await()
-                    return catalog
-                }
-
-                override suspend fun loadForEdit(transactionId: Long): TransactionEditLoadResult =
-                    TransactionEditLoadResult.NotFound(transactionId)
-
-                override suspend fun getLatestExchangeRate(fromCurrencyId: Long, toCurrencyId: Long): Double? = null
-
-                override suspend fun saveTransaction(command: SaveTransactionCommand): Long =
-                    saveGate?.await() ?: 1L
-            },
-            preferencesPort = object : TransactionPreferencesPort {
-                override fun readFormPreferences(): TransactionFormPreferences = TransactionFormPreferences()
-            },
-            draftSessionStore = object : DraftSessionStore {
-                override suspend fun getSavedTransactionId(draftId: String): Long? = null
-                override suspend fun markDraftSaved(draftId: String, transactionId: Long) = Unit
-                override suspend fun acknowledgeDraftOpened(draftId: String) = Unit
-                override suspend fun clearPendingDraft(draftId: String) = Unit
-            },
-            exchangeRatePort = object : ExchangeRatePort {
-                override suspend fun fetchLiveRate(fromCurrencyId: Long, toCurrencyId: Long): Result<Double> =
-                    Result.failure(IllegalStateException("unused"))
-            },
-            receiptMediaPort = mediaPort,
-        )
+    } else {
+        emptyList()
     }
-
-    private class FakeReceiptMediaPort : ReceiptMediaPort {
-        val deletedFiles = mutableListOf<String>()
-        override suspend fun stageFromUri(uriString: String): String? = null
-        override fun resolveFilePath(fileName: String): String? = null
-        override suspend fun deleteStagedFile(fileName: String) {
-            deletedFiles.add(fileName)
-        }
-    }
-
-    private class FixedClock(private val epochMillis: Long) : Clock {
-        override fun now(): Instant = Instant.fromEpochMilliseconds(epochMillis)
-    }
-
-    private class ManualQueueDispatcher : CoroutineDispatcher() {
-        private val queue = ArrayDeque<Runnable>()
-
-        override fun dispatch(context: CoroutineContext, block: Runnable) {
-            queue.addLast(block)
-        }
-
-        fun runAll() {
-            while (queue.isNotEmpty()) {
-                queue.removeFirst().run()
+    val catalog = TransactionCatalog(
+        accounts = accounts,
+        currencies = listOf(CurrencyOption(id = 1L, code = "USD", symbol = "$", decimals = 2)),
+    )
+    return TransactionPorts(
+        repository = object : TransactionRepository {
+            override suspend fun loadCatalog(editingTransactionId: Long?): TransactionCatalog {
+                catalogGate.await()
+                return catalog
             }
+
+            override suspend fun loadForEdit(transactionId: Long): TransactionEditLoadResult =
+                TransactionEditLoadResult.NotFound(transactionId)
+
+            override suspend fun getLatestExchangeRate(fromCurrencyId: Long, toCurrencyId: Long): Double? = null
+
+            override suspend fun saveTransaction(command: SaveTransactionCommand): Long =
+                saveGate?.await() ?: 1L
+        },
+        preferencesPort = object : TransactionPreferencesPort {
+            override fun readFormPreferences(): TransactionFormPreferences = TransactionFormPreferences()
+        },
+        draftSessionStore = object : DraftSessionStore {
+            override suspend fun getSavedTransactionId(draftId: String): Long? = null
+            override suspend fun markDraftSaved(draftId: String, transactionId: Long) = Unit
+            override suspend fun acknowledgeDraftOpened(draftId: String) = Unit
+            override suspend fun clearPendingDraft(draftId: String) = Unit
+        },
+        exchangeRatePort = object : ExchangeRatePort {
+            override suspend fun fetchLiveRate(fromCurrencyId: Long, toCurrencyId: Long): Result<Double> =
+                Result.failure(IllegalStateException("unused"))
+        },
+        receiptMediaPort = mediaPort,
+    )
+}
+
+private class FakeReceiptMediaPort : ReceiptMediaPort {
+    val deletedFiles = mutableListOf<String>()
+    override suspend fun stageFromUri(uriString: String): String? = null
+    override fun resolveFilePath(fileName: String): String? = null
+    override suspend fun deleteStagedFile(fileName: String) {
+        deletedFiles.add(fileName)
+    }
+}
+
+private class FixedClock(private val epochMillis: Long) : Clock {
+    override fun now(): Instant = Instant.fromEpochMilliseconds(epochMillis)
+}
+
+private class ManualQueueDispatcher : CoroutineDispatcher() {
+    private val queue = ArrayDeque<Runnable>()
+
+    override fun dispatch(context: CoroutineContext, block: Runnable) {
+        queue.addLast(block)
+    }
+
+    fun runAll() {
+        while (queue.isNotEmpty()) {
+            queue.removeFirst().run()
         }
     }
 }

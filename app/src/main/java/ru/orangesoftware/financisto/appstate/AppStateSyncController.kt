@@ -8,6 +8,7 @@ import androidx.appstate.datastore.StateStoreSerializer
 import androidx.appstate.datastore.syncToDataStore
 import androidx.appstate.statestore.StateStore
 import androidx.appstate.statestore.StateStoreKey
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.datastore.core.CorruptionException
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.DataStoreFactory
@@ -22,7 +23,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import okio.Buffer
@@ -40,8 +45,11 @@ class AppStateSyncController(
     private val dataStoreFactory: ((CoroutineScope) -> DataStore<StateStorePreferences>)? = null,
     private val syncRunner: (suspend (StateStore, DataStore<StateStorePreferences>) -> Unit)? = null,
     private val retryDelayMs: Long? = null,
+    private val maxRetryDelayMs: Long? = null,
 ) {
     private val lock = Any()
+    private val restoreMutex = Mutex()
+    private val restoredKeys = HashSet<String>()
     private var syncJob: Job? = null
     private var dataStoreScope: CoroutineScope? = null
     private var activeDataStore: DataStore<StateStorePreferences>? = null
@@ -50,8 +58,28 @@ class AppStateSyncController(
         synchronized(lock) {
             if (syncJob?.isActive == true) return
             val dataStore = getOrCreateDataStoreLocked()
-            syncJob = applicationScope.launch {
+            syncJob = applicationScope.launch(ioDispatcher) {
                 runSyncLoop(dataStore)
+            }
+        }
+    }
+
+    suspend fun <T, K> ensureKeyRestored(key: K)
+    where K : StateStoreKey<T>, K : PersistToDataStore<T> {
+        val alreadyRestored = synchronized(lock) { key.name in restoredKeys }
+        if (!alreadyRestored) {
+            withContext(ioDispatcher) {
+                restoreMutex.withLock {
+                    val dataStore = synchronized(lock) {
+                        if (key.name in restoredKeys) null else getOrCreateDataStoreLocked()
+                    }
+                    if (dataStore != null) {
+                        restoreKeyFromDataStore(dataStore, key)
+                        synchronized(lock) {
+                            restoredKeys.add(key.name)
+                        }
+                    }
+                }
             }
         }
     }
@@ -75,6 +103,9 @@ class AppStateSyncController(
             val nextBuffer = Buffer().writeUtf8(json.encodeToString(updatedMap))
             StateStoreSerializer.readFrom(nextBuffer)
         }
+        synchronized(lock) {
+            restoredKeys.add(key.name)
+        }
     }
 
     fun stop() {
@@ -84,6 +115,7 @@ class AppStateSyncController(
             dataStoreScope?.cancel()
             dataStoreScope = null
             activeDataStore = null
+            restoredKeys.clear()
         }
     }
 
@@ -108,12 +140,48 @@ class AppStateSyncController(
         )
     }
 
+    private suspend fun <T, K> restoreKeyFromDataStore(
+        dataStore: DataStore<StateStorePreferences>,
+        key: K,
+    ) where K : StateStoreKey<T>, K : PersistToDataStore<T> {
+        stateStore.getState(key)
+        val currentPrefs = dataStore.data.first()
+        val buffer = Buffer()
+        StateStoreSerializer.writeTo(currentPrefs, buffer)
+        val raw = buffer.readUtf8()
+        val storedJson = if (raw.isBlank()) {
+            null
+        } else {
+            json.decodeFromString<Map<String, String>>(raw)[key.name]
+        }
+        if (storedJson != null) {
+            try {
+                val decoded = json.decodeFromString(key.serializer, storedJson)
+                Snapshot.withMutableSnapshot {
+                    if (stateStore.getState(key).value == key.defaultValue) {
+                        stateStore.setState(key, decoded)
+                    }
+                }
+            } catch (e: SerializationException) {
+                Timber.w(e, "Failed to decode persisted AppState key: %s", key.name)
+            }
+        }
+    }
+
     private suspend fun runSyncLoop(dataStore: DataStore<StateStorePreferences>) {
         var consecutiveFailures = 0
-        val delayMs = retryDelayMs ?: RETRY_DELAY_MS
-        while (consecutiveFailures < MAX_CONSECUTIVE_FAILURES) {
+        val baseDelayMs = retryDelayMs ?: INITIAL_RETRY_DELAY_MS
+        val capDelayMs = maxRetryDelayMs ?: MAX_RETRY_DELAY_MS
+        while (true) {
             val recoveryNeeded = try {
-                syncRunner?.invoke(stateStore, dataStore) ?: stateStore.syncToDataStore(dataStore)
+                val runner = syncRunner
+                if (runner != null) {
+                    runner.invoke(stateStore, dataStore)
+                } else {
+                    ensureKeyRestored(AiDraftSessionKey)
+                    ensureKeyRestored(BackupFolderUriKey)
+                    stateStore.syncToDataStore(dataStore)
+                }
                 consecutiveFailures = 0
                 false
             } catch (e: CancellationException) {
@@ -134,8 +202,9 @@ class AppStateSyncController(
                 true
             }
             if (!recoveryNeeded) break
-            if (consecutiveFailures < MAX_CONSECUTIVE_FAILURES && delayMs > 0L) {
-                delay(delayMs)
+            val backoffMs = computeBackoffDelayMs(consecutiveFailures, baseDelayMs, capDelayMs)
+            if (backoffMs > 0L) {
+                delay(backoffMs)
             }
         }
     }
@@ -154,8 +223,19 @@ class AppStateSyncController(
 
     private companion object {
         const val DATA_STORE_FILE_NAME = "financisto_app_state.json"
-        const val MAX_CONSECUTIVE_FAILURES = 5
-        const val RETRY_DELAY_MS = 250L
+        const val INITIAL_RETRY_DELAY_MS = 250L
+        const val MAX_RETRY_DELAY_MS = 16_000L
+        const val MAX_BACKOFF_SHIFT = 6
         val json = Json
+
+        fun computeBackoffDelayMs(
+            consecutiveFailures: Int,
+            baseDelayMs: Long,
+            maxDelayMs: Long,
+        ): Long {
+            if (baseDelayMs <= 0L || consecutiveFailures <= 0) return 0L
+            val shift = (consecutiveFailures - 1).coerceAtMost(MAX_BACKOFF_SHIFT)
+            return (baseDelayMs shl shift).coerceAtMost(maxOf(baseDelayMs, maxDelayMs))
+        }
     }
 }
