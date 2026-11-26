@@ -5,10 +5,16 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.view.Choreographer
 import androidx.appstate.statestore.StateStore
 import androidx.appstate.transform.testing.TransformTestScope
 import androidx.appstate.transform.testing.transformTest
 import androidx.compose.runtime.snapshots.Snapshot
+import androidx.compose.ui.InternalComposeUiApi
+import androidx.compose.ui.platform.AndroidUiFrameClock
+import androidx.compose.ui.platform.WindowRecomposerFactory
+import androidx.compose.ui.platform.WindowRecomposerPolicy
+import androidx.compose.ui.platform.createLifecycleAwareWindowRecomposer
 import androidx.core.content.edit
 import androidx.lifecycle.SavedStateHandle
 import kotlinx.coroutines.CancellationException
@@ -66,6 +72,7 @@ import ru.orangesoftware.financisto.transaction.port.TransactionPreferencesPort
 import ru.orangesoftware.financisto.transaction.port.TransactionRepository
 import ru.orangesoftware.financisto.utils.CurrencyCache
 import java.io.File
+import java.util.concurrent.TimeUnit
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -147,35 +154,75 @@ class ComposeTransactionActivityBehaviorTest : AbstractDbTest() {
         controller.destroy()
     }
 
+    @OptIn(InternalComposeUiApi::class)
     @Test
     fun inProcessPendingDraftSurfacesReactivelyWhenEditorIsReady() {
         val draftOne = sampleDraft("draft-reactive-1", amountMinor = 1500L, note = "Coffee")
         val draftTwo = sampleDraft("draft-reactive-2", amountMinor = 4200L, note = "Dinner")
         val koinDraftStore = GlobalContext.get().get<FinancistoDraftSessionStore>()
+        val factory = WindowRecomposerFactory { rootView ->
+            rootView.createLifecycleAwareWindowRecomposer(
+                coroutineContext = Dispatchers.Main.immediate + AndroidUiFrameClock(Choreographer.getInstance()),
+            )
+        }
 
-        val controller = Robolectric.buildActivity(
-            ComposeTransactionActivity::class.java,
-            TransactionEntryRouter.createAiDraftIntent(context, draftOne),
-        ).setup()
-        val activity = controller.get()
-        awaitReady(activity)
+        WindowRecomposerPolicy.withFactory(factory) {
+            val controller = Robolectric.buildActivity(
+                ComposeTransactionActivity::class.java,
+                TransactionEntryRouter.createAiDraftIntent(context, draftOne),
+            ).setup()
+            try {
+                val activity = controller.get()
+                awaitReady(activity)
+                ShadowLooper.idleMainLooper(32, TimeUnit.MILLISECONDS)
 
-        koinDraftStore.savePendingDraft(draftTwo)
-        val observedDraft = koinDraftStore.sessionState.value.pendingDraft
-        assertEquals(draftTwo, observedDraft)
+                assertTrue(koinDraftStore.savePendingDraft(draftTwo))
+                repeat(4) {
+                    Snapshot.sendApplyNotifications()
+                    ShadowLooper.idleMainLooper(32, TimeUnit.MILLISECONDS)
+                }
 
-        activity.surfacePendingAiDraftIfReady(observedDraft, TransactionUiState.Loading, unlocked = true)
-        assertNull(activity.pendingAiDraftPrompt)
+                assertFalse(activity.isFinishing)
+                assertEquals(draftTwo, activity.pendingAiDraftPrompt)
+            } finally {
+                controller.destroy()
+            }
+        }
+    }
 
-        activity.surfacePendingAiDraftIfReady(observedDraft, TransactionUiState.PinLockedMask, unlocked = false)
-        assertNull(activity.pendingAiDraftPrompt)
+    @Test
+    fun surfacePendingAiDraftIfReadyGuardsLoadingLockedAndAlreadySavedDrafts() {
+        runBlocking {
+            val draftOne = sampleDraft("draft-guard-1", amountMinor = 1500L, note = "Coffee")
+            val draftTwo = sampleDraft("draft-guard-2", amountMinor = 4200L, note = "Dinner")
+            val savedDraft = sampleDraft("draft-guard-saved", amountMinor = 5300L, note = "Lunch")
+            val koinDraftStore = GlobalContext.get().get<FinancistoDraftSessionStore>()
+            val stateStore = GlobalContext.get().get<StateStore>()
 
-        activity.surfacePendingAiDraftIfReady(observedDraft, activity.viewModel.uiState.value, unlocked = true)
-        flushAppStateAndLooper()
+            val controller = Robolectric.buildActivity(
+                ComposeTransactionActivity::class.java,
+                TransactionEntryRouter.createAiDraftIntent(context, draftOne),
+            ).setup()
+            val activity = controller.get()
+            awaitReady(activity)
 
-        assertFalse(activity.isFinishing)
-        assertEquals(draftTwo, activity.pendingAiDraftPrompt)
-        controller.destroy()
+            activity.surfacePendingAiDraftIfReady(draftTwo, TransactionUiState.Loading, unlocked = true)
+            assertNull(activity.pendingAiDraftPrompt)
+
+            activity.surfacePendingAiDraftIfReady(draftTwo, TransactionUiState.PinLockedMask, unlocked = false)
+            assertNull(activity.pendingAiDraftPrompt)
+
+            koinDraftStore.markDraftSaved(savedDraft.draftId, 88L)
+            Snapshot.withMutableSnapshot {
+                stateStore.updateState(AiDraftSessionKey) { it.copy(pendingDraft = savedDraft) }
+            }
+            activity.surfacePendingAiDraftIfReady(savedDraft, activity.viewModel.uiState.value, unlocked = true)
+            flushAppStateAndLooper()
+
+            assertNull(activity.pendingAiDraftPrompt)
+            assertNull(koinDraftStore.sessionState.value.pendingDraft)
+            controller.destroy()
+        }
     }
 
     @Test

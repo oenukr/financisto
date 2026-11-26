@@ -11,11 +11,13 @@ import androidx.appstate.statestore.StateStore
 import androidx.compose.runtime.State
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.core.net.toUri
+import androidx.datastore.core.CorruptionException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -96,41 +98,120 @@ private object DraftSessionCodec {
         }
     }
 
-    fun migrateFromLegacyIfNeeded(legacyPrefs: SharedPreferences?, stateStore: StateStore) {
+    data class SavePendingDraftResult(
+        val persisted: Boolean,
+        val orphanReceiptFile: String? = null,
+    )
+
+    fun migrateFromLegacyIfNeeded(
+        legacyPrefs: SharedPreferences?,
+        stateStore: StateStore,
+        persistSessionState: (suspend (AiDraftSessionState) -> Unit)?,
+    ): Boolean {
         val legacyPendingRaw = legacyPrefs?.getString(FinancistoDraftSessionStore.KEY_PENDING_DRAFT, null)
         val legacySavedRaw = legacyPrefs?.getString(FinancistoDraftSessionStore.KEY_SAVED_DRAFTS, null)
-        if (legacyPrefs != null && (legacyPendingRaw != null || legacySavedRaw != null)) {
-            val currentState = stateStore.getState(AiDraftSessionKey).value
-            val isStoreAtDefault = currentState.pendingDraft == null && currentState.savedHistory.isEmpty()
-            if (isStoreAtDefault) {
-                val legacyPending = legacyPendingRaw?.let(::decodeDraft)
-                val deduplicatedHistory = LinkedHashMap<String, SavedDraftEntry>()
-                legacySavedRaw?.let(::decodeHistory)
-                    .orEmpty()
-                    .asSequence()
-                    .filter { it.transactionId > 0L }
-                    .forEach { entry ->
-                        deduplicatedHistory.remove(entry.draftId)
-                        deduplicatedHistory[entry.draftId] = entry
-                    }
-                val legacyHistory = deduplicatedHistory.values.toList()
-                    .takeLast(FinancistoDraftSessionStore.MAX_SAVED_DRAFTS)
-                if (legacyPending != null || legacyHistory.isNotEmpty()) {
-                    Snapshot.withMutableSnapshot {
-                        stateStore.setState(
-                            AiDraftSessionKey,
-                            AiDraftSessionState(
-                                pendingDraft = legacyPending,
-                                savedHistory = legacyHistory,
-                            ),
-                        )
-                    }
+        if (legacyPrefs == null || (legacyPendingRaw == null && legacySavedRaw == null)) {
+            return true
+        }
+        val migratedState = buildMigratedStateIfNeeded(
+            currentState = stateStore.getState(AiDraftSessionKey).value,
+            legacyPendingRaw = legacyPendingRaw,
+            legacySavedRaw = legacySavedRaw,
+        )
+        val persisted = migratedState == null || persistState(persistSessionState, migratedState)
+        if (persisted) {
+            if (migratedState != null) {
+                Snapshot.withMutableSnapshot {
+                    stateStore.setState(AiDraftSessionKey, migratedState)
                 }
             }
-            legacyPrefs.edit()?.run {
+            val cleared = legacyPrefs.edit()?.run {
                 clear()
                 commit()
+            } ?: true
+            if (!cleared) {
+                Timber.w("Failed to clear legacy AI draft preferences after migration")
             }
+        }
+        return persisted
+    }
+
+    private fun buildMigratedStateIfNeeded(
+        currentState: AiDraftSessionState,
+        legacyPendingRaw: String?,
+        legacySavedRaw: String?,
+    ): AiDraftSessionState? {
+        val isStoreAtDefault = currentState.pendingDraft == null && currentState.savedHistory.isEmpty()
+        if (!isStoreAtDefault) return null
+        val legacyPending = legacyPendingRaw?.let(::decodeDraft)
+        val deduplicatedHistory = LinkedHashMap<String, SavedDraftEntry>()
+        legacySavedRaw?.let(::decodeHistory)
+            .orEmpty()
+            .asSequence()
+            .filter { it.transactionId > 0L }
+            .forEach { entry ->
+                deduplicatedHistory.remove(entry.draftId)
+                deduplicatedHistory[entry.draftId] = entry
+            }
+        val legacyHistory = deduplicatedHistory.values.toList()
+            .takeLast(FinancistoDraftSessionStore.MAX_SAVED_DRAFTS)
+        return if (legacyPending != null || legacyHistory.isNotEmpty()) {
+            AiDraftSessionState(
+                pendingDraft = legacyPending,
+                savedHistory = legacyHistory,
+            )
+        } else {
+            null
+        }
+    }
+
+    fun savePendingDraftLocked(
+        stateStore: StateStore,
+        draft: TransactionDraft,
+        persistSessionState: (suspend (AiDraftSessionState) -> Unit)?,
+    ): SavePendingDraftResult {
+        val current = stateStore.getState(AiDraftSessionKey).value
+        val previous = current.pendingDraft
+        val previousId = previous?.draftId
+        val candidateOrphan = previous
+            ?.takeIf { it.draftId != draft.draftId }
+            ?.stagedReceiptFileName
+            ?.takeIf { it.isNotBlank() && it != draft.stagedReceiptFileName }
+        val alreadySaved = previousId != null && candidateOrphan != null &&
+            current.savedHistory.any { it.draftId == previousId && it.transactionId > 0L }
+        val orphanReceiptFile = candidateOrphan.takeUnless { alreadySaved }
+        val nextState = current.copy(pendingDraft = draft)
+        if (!persistState(persistSessionState, nextState)) {
+            return SavePendingDraftResult(persisted = false)
+        }
+        Snapshot.withMutableSnapshot {
+            stateStore.setState(AiDraftSessionKey, nextState)
+        }
+        return SavePendingDraftResult(
+            persisted = true,
+            orphanReceiptFile = orphanReceiptFile,
+        )
+    }
+
+    private fun persistState(
+        persistSessionState: (suspend (AiDraftSessionState) -> Unit)?,
+        state: AiDraftSessionState,
+    ): Boolean {
+        val writer = persistSessionState ?: return true
+        return try {
+            runBlocking {
+                writer(state)
+            }
+            true
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist AI draft session state to DataStore")
+            false
+        } catch (e: CorruptionException) {
+            Timber.e(e, "AppState DataStore corrupted while persisting AI draft session state")
+            false
+        } catch (e: SerializationException) {
+            Timber.e(e, "Failed to serialize AI draft session state for DataStore")
+            false
         }
     }
 
@@ -148,6 +229,7 @@ class FinancistoDraftSessionStore(
     private val stateStore: StateStore = StateStore(),
     @Suppress("InjectDispatcher")
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val persistSessionState: (suspend (AiDraftSessionState) -> Unit)? = null,
 ) : DraftSessionStore {
     @Suppress("InjectDispatcher")
     constructor(
@@ -213,27 +295,20 @@ class FinancistoDraftSessionStore(
 
     fun savePendingDraft(draft: TransactionDraft): Boolean {
         var orphanReceiptFile: String? = null
-        synchronized(lock) {
+        val persisted = synchronized(lock) {
             ensureMigratedFromLegacyLocked()
-            Snapshot.withMutableSnapshot {
-                stateStore.updateState(AiDraftSessionKey) { current ->
-                    val previous = current.pendingDraft
-                    val previousId = previous?.draftId
-                    val candidateOrphan = previous
-                        ?.takeIf { it.draftId != draft.draftId }
-                        ?.stagedReceiptFileName
-                        ?.takeIf { it.isNotBlank() && it != draft.stagedReceiptFileName }
-                    val alreadySaved = previousId != null && candidateOrphan != null &&
-                        current.savedHistory.any { it.draftId == previousId && it.transactionId > 0L }
-                    if (candidateOrphan != null && !alreadySaved) {
-                        orphanReceiptFile = candidateOrphan
-                    }
-                    current.copy(pendingDraft = draft)
-                }
-            }
+            val result = DraftSessionCodec.savePendingDraftLocked(
+                stateStore = stateStore,
+                draft = draft,
+                persistSessionState = persistSessionState,
+            )
+            orphanReceiptFile = result.orphanReceiptFile
+            result.persisted
         }
-        orphanReceiptFile?.let(deleteStagedReceipt)
-        return true
+        if (persisted) {
+            orphanReceiptFile?.let(deleteStagedReceipt)
+        }
+        return persisted
     }
 
     fun peekPendingAutoOpenDraft(currentDraftId: String? = null): TransactionDraft? =
@@ -256,8 +331,15 @@ class FinancistoDraftSessionStore(
     }
 
     private fun ensureMigratedFromLegacyLocked() {
-        if (migratedFromLegacy.compareAndSet(false, true)) {
-            DraftSessionCodec.migrateFromLegacyIfNeeded(prefs, stateStore)
+        if (!migratedFromLegacy.get()) {
+            val succeeded = DraftSessionCodec.migrateFromLegacyIfNeeded(
+                legacyPrefs = prefs,
+                stateStore = stateStore,
+                persistSessionState = persistSessionState,
+            )
+            if (succeeded) {
+                migratedFromLegacy.set(true)
+            }
         }
     }
 

@@ -4,6 +4,7 @@ package ru.orangesoftware.financisto.persistance
 import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
+import androidx.annotation.VisibleForTesting
 import androidx.appstate.statestore.StateStore
 import androidx.compose.runtime.State
 import androidx.compose.runtime.snapshots.Snapshot
@@ -32,6 +33,10 @@ class PreferencesStore(
 ) {
     private val Context.dataStoreRx: RxDataStore<Preferences> by rxPreferencesDataStore(name = "settings")
     private val seededFromLegacy = AtomicBoolean(false)
+    private val writeLock = Any()
+
+    @VisibleForTesting
+    internal var legacyFolderWriter: ((String) -> String)? = null
 
     private object PreferencesKeys {
         val BACKUP_FOLDER_URI = stringPreferencesKey("backup_folder_uri")
@@ -81,14 +86,24 @@ class PreferencesStore(
     @OptIn(ExperimentalCoroutinesApi::class)
     fun updateBackupFolderUri(folder: Uri) {
         val uriString = folder.toString()
-        Snapshot.withMutableSnapshot {
-            stateStore.setState(BackupFolderUriKey, uriString)
+        synchronized(writeLock) {
+            val committedUri = legacyFolderWriter?.invoke(uriString)
+                ?: writeLegacyBackupFolderUri(uriString)
+            Snapshot.withMutableSnapshot {
+                stateStore.setState(BackupFolderUriKey, committedUri)
+            }
         }
-        context.dataStoreRx.updateDataAsync { preferences ->
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun writeLegacyBackupFolderUri(uriString: String): String {
+        val notification = context.dataStoreRx.updateDataAsync { preferences ->
             val mutablePreferences = preferences.toMutablePreferences()
             mutablePreferences[BACKUP_FOLDER_URI] = uriString
             Single.just(mutablePreferences)
-        }
+        }.materialize().blockingGet()
+        notification.error?.let { throw it }
+        return notification.value?.get(BACKUP_FOLDER_URI) ?: uriString
     }
 }
 

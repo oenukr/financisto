@@ -135,7 +135,7 @@ class ComposeTransactionActivity : ComponentActivity() {
         setContent {
             val uiState by viewModel.uiState
             val draftSession by draftSessionStore.sessionState
-            LaunchedEffect(draftSession.pendingDraft?.draftId, uiState) {
+            LaunchedEffect(draftSession.pendingDraft?.draftId, draftSession.savedHistory, uiState) {
                 surfacePendingAiDraftIfReady(
                     pendingDraft = draftSession.pendingDraft,
                     uiState = uiState,
@@ -144,7 +144,7 @@ class ComposeTransactionActivity : ComponentActivity() {
             TransactionScreen(
                 uiState = uiState,
                 resolveReceiptPath = receiptMediaPort::resolveFilePath,
-                onIntent = viewModel::onIntent,
+                onIntent = { viewModel.onIntent(it) },
                 onCloseRequested = {
                     if ((viewModel.uiState.value as? TransactionUiState.Ready)?.isSaving != true) {
                         setResult(RESULT_CANCELED)
@@ -214,7 +214,12 @@ class ComposeTransactionActivity : ComponentActivity() {
             uiState !is TransactionUiState.PinLockedMask &&
             !isFinishing
         if (pendingDraft != null && canSurface) {
-            handleIncomingAiDraft(pendingDraft)
+            val currentDraftId = activeAiDraftId(uiState, launchArgs)
+            val eligibleDraft = draftSessionStore.peekPendingAutoOpenDraft(currentDraftId)
+                ?.takeIf { it.draftId == pendingDraft.draftId }
+            if (eligibleDraft != null) {
+                handleIncomingAiDraft(eligibleDraft)
+            }
         }
     }
 

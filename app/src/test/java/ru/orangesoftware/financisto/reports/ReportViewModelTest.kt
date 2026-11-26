@@ -348,11 +348,66 @@ class ReportViewModelTest {
         advanceUntilIdle()
         advance()
 
+        assertTrue(viewModel.uiState.value.isLoading.not())
         val pieIntent = viewModel.createPieChartIntent(context)
         assertEquals(ReportType.BY_CATEGORY.name, pieIntent.getStringExtra(EXTRA_REPORT_TYPE))
         assertEquals(ReportType.BY_CATEGORY.name, pieIntent.getStringExtra(PieChartActivity.CHART_TITLE))
         assertEquals(IncomeExpense.EXPENSE.name, pieIntent.getStringExtra(FILTER_INCOME_EXPENSE))
         assertEquals("11", WhereFilter.fromIntent(pieIntent).get("category_id")?.stringValue)
+    }
+
+    @Test
+    fun savedStateHandleRestoresFilterAndIncomeExpenseAfterProcessRecreationBeforeLaunchDefaults() = transformTest {
+        val report = mock(Report::class.java)
+        whenever(report.getReport(eq(db), any())).thenReturn(ReportData(emptyList(), Total.ZERO))
+
+        val initialFilter = WhereFilter.empty().eq("category_id", "11")
+        val launchParams = defaultLaunchParams(
+            reportTypeName = ReportType.BY_CATEGORY.name,
+            initialIntentFilter = initialFilter,
+            explicitIncomeExpense = IncomeExpense.EXPENSE,
+        )
+        val savedStateHandle = SavedStateHandle()
+        val firstViewModel = ReportViewModel(
+            launchParams = launchParams,
+            db = db,
+            preferences = preferences,
+            savedStateHandle = savedStateHandle,
+            ioDispatcher = testDispatcher,
+            transformDispatcher = testDispatcher,
+            stateScope = backgroundScope,
+            reportFactory = { _, _ -> report },
+        )
+        advance()
+        advanceUntilIdle()
+        advance()
+
+        val updatedFilter = WhereFilter.empty().eq("category_id", "99")
+        val resultIntent = Intent().apply { updatedFilter.toIntent(this) }
+        firstViewModel.updateFilter(RESULT_OK, resultIntent)
+        firstViewModel.toggleIncomeExpense() // EXPENSE -> INCOME
+        advance()
+        advanceUntilIdle()
+        advance()
+
+        val recreatedViewModel = ReportViewModel(
+            launchParams = launchParams,
+            db = db,
+            preferences = preferences,
+            savedStateHandle = savedStateHandle,
+            ioDispatcher = testDispatcher,
+            transformDispatcher = testDispatcher,
+            stateScope = backgroundScope,
+            reportFactory = { _, _ -> report },
+        )
+        advance()
+        advanceUntilIdle()
+        advance()
+
+        val recreatedState = recreatedViewModel.uiState.value
+        assertEquals(IncomeExpense.INCOME, recreatedState.incomeExpense)
+        assertEquals("99", recreatedState.filter.get("category_id")?.stringValue)
+        assertFalse(recreatedState.filter.isEmpty)
     }
 
     private fun defaultLaunchParams(

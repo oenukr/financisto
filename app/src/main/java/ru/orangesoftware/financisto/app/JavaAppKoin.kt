@@ -32,6 +32,7 @@ import ru.orangesoftware.financisto.BuildConfig
 import ru.orangesoftware.financisto.activity.MonthlyViewViewModel
 import ru.orangesoftware.financisto.activity.PlannerViewModel
 import ru.orangesoftware.financisto.appfunctions.AppFunctionDatabase
+import ru.orangesoftware.financisto.appstate.AiDraftSessionKey
 import ru.orangesoftware.financisto.appstate.AppStateSyncController
 import ru.orangesoftware.financisto.bus.GreenRobotBus
 import ru.orangesoftware.financisto.db.DatabaseAdapter
@@ -134,7 +135,7 @@ val coroutineModule = module {
 
 val appStateModule = module {
     single { StateStore() }
-    single { AppStateSyncController(androidContext(), get(), get()) }
+    single { AppStateSyncController(androidContext(), get(), get(), get()) }
 }
 
 val viewModelModule = module {
@@ -146,7 +147,13 @@ val transactionPortsModule = module {
     singleOf(::FinancistoTransactionRepository) { bind<TransactionRepository>() }
     singleOf(::FinancistoTransactionPreferencesPort) { bind<TransactionPreferencesPort>() }
     single<FinancistoDraftSessionStore> {
-        FinancistoDraftSessionStore(androidContext(), get(), get())
+        val syncController: AppStateSyncController = get()
+        FinancistoDraftSessionStore(
+            context = androidContext(),
+            stateStore = get(),
+            ioDispatcher = get(),
+            persistSessionState = { state -> syncController.persistKey(AiDraftSessionKey, state) },
+        )
     } bind DraftSessionStore::class
     singleOf(::FinancistoExchangeRatePort) { bind<ExchangeRatePort>() }
     singleOf(::FinancistoReceiptMediaPort) { bind<ReceiptMediaPort>() }

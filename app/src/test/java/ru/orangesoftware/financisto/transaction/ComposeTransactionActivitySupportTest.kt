@@ -4,10 +4,12 @@ package ru.orangesoftware.financisto.transaction
 import androidx.appstate.transform.testing.TransformTestScope
 import androidx.appstate.transform.testing.transformTest
 import androidx.lifecycle.SavedStateHandle
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -134,9 +136,89 @@ class ComposeTransactionActivitySupportTest {
         assertEquals(listOf("abandoned_on_error.jpg"), mediaPort.deletedFiles)
     }
 
+    @Test
+    fun dispatchIntentWhenReadyDeliversPhotoAfterFailedSaveWhenUiStateLags() = transformTest {
+        val mediaPort = RecordingMediaPort()
+        val pendingSave = CompletableDeferred<Long>()
+        val ports = portsWithFlakyLoad(failAttempts = 0, mediaPort = mediaPort) { pendingSave.await() }
+        val viewModel = TransactionViewModel(
+            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
+            savedStateHandle = SavedStateHandle(),
+            ports = ports,
+            ioDispatcher = testDispatcher,
+            clock = FixedClock(1_700_000_000_000L),
+            transformDispatcher = testDispatcher,
+            stateScope = backgroundScope,
+        )
+        advanceAll()
+        assertTrue(viewModel.uiState.value is TransactionUiState.Ready)
+        assertTrue(viewModel.onIntent(TransactionIntent.UpdatePrimaryAmount("15")))
+        advanceAll()
+
+        assertTrue(viewModel.onIntent(TransactionIntent.SaveClicked))
+        assertTrue((viewModel.currentEditorState.value as TransactionUiState.Ready).isSaving)
+        assertFalse((viewModel.uiState.value as TransactionUiState.Ready).isSaving)
+        assertFalse(viewModel.onIntent(TransactionIntent.AttachCapturedPhotoFile("rejected_directly.jpg")))
+
+        dispatchIntentWhenReady(
+            scope = backgroundScope,
+            viewModel = viewModel,
+            receiptMediaPort = mediaPort,
+            intent = TransactionIntent.AttachCapturedPhotoFile("delivered_after_failed_save.jpg"),
+        )
+        advanceAll()
+        assertTrue(mediaPort.deletedFiles.isEmpty())
+
+        pendingSave.completeExceptionally(IllegalStateException("Save error"))
+        advanceAll()
+
+        val readyAfterError = viewModel.uiState.value as TransactionUiState.Ready
+        assertFalse(readyAfterError.isSaving)
+        assertEquals("delivered_after_failed_save.jpg", readyAfterError.form.attachedPictureFileName)
+        assertTrue(mediaPort.deletedFiles.isEmpty())
+    }
+
+    @Test
+    fun dispatchIntentWhenReadyDeletesPhotoAfterSaveAndNewResetsFormWhenUiStateLags() = transformTest {
+        val mediaPort = RecordingMediaPort()
+        val pendingSave = CompletableDeferred<Long>()
+        val ports = portsWithFlakyLoad(failAttempts = 0, mediaPort = mediaPort) { pendingSave.await() }
+        val viewModel = TransactionViewModel(
+            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
+            savedStateHandle = SavedStateHandle(),
+            ports = ports,
+            ioDispatcher = testDispatcher,
+            clock = FixedClock(1_700_000_000_000L),
+            transformDispatcher = testDispatcher,
+            stateScope = backgroundScope,
+        )
+        advanceAll()
+        assertTrue(viewModel.onIntent(TransactionIntent.UpdatePrimaryAmount("15")))
+        advanceAll()
+
+        assertTrue(viewModel.onIntent(TransactionIntent.SaveAndNewClicked))
+        assertTrue((viewModel.currentEditorState.value as TransactionUiState.Ready).isSaving)
+        assertFalse((viewModel.uiState.value as TransactionUiState.Ready).isSaving)
+
+        dispatchIntentWhenReady(
+            scope = backgroundScope,
+            viewModel = viewModel,
+            receiptMediaPort = mediaPort,
+            intent = TransactionIntent.AttachCapturedPhotoFile("orphan_after_save_and_new.jpg"),
+        )
+        advanceAll()
+
+        pendingSave.complete(99L)
+        advanceAll()
+
+        assertEquals(listOf("orphan_after_save_and_new.jpg"), mediaPort.deletedFiles)
+        assertNull((viewModel.uiState.value as TransactionUiState.Ready).form.attachedPictureFileName)
+    }
+
     private fun portsWithFlakyLoad(
         failAttempts: Int,
         mediaPort: ReceiptMediaPort,
+        onSave: (suspend () -> Long)? = null,
     ): TransactionPorts {
         var remainingFailures = failAttempts
         val catalog = TransactionCatalog(
@@ -169,7 +251,8 @@ class ComposeTransactionActivitySupportTest {
 
                 override suspend fun getLatestExchangeRate(fromCurrencyId: Long, toCurrencyId: Long): Double? = null
 
-                override suspend fun saveTransaction(command: SaveTransactionCommand): Long = 1L
+                override suspend fun saveTransaction(command: SaveTransactionCommand): Long =
+                    onSave?.invoke() ?: 1L
             },
             preferencesPort = object : TransactionPreferencesPort {
                 override fun readFormPreferences(): TransactionFormPreferences = TransactionFormPreferences()

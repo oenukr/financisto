@@ -98,7 +98,10 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
                 val observer = LifecycleEventObserver { _, event ->
                     when (event) {
                         Lifecycle.Event.ON_PAUSE -> PinProtection.lock(context)
-                        Lifecycle.Event.ON_RESUME -> PinProtection.unlock(context)
+                        Lifecycle.Event.ON_RESUME -> {
+                            PinProtection.unlock(context)
+                            reportsViewModel.refresh()
+                        }
                         else -> Unit
                     }
                 }

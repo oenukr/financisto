@@ -77,7 +77,7 @@ class ReportViewModel(
     private val launchParams: ReportLaunchParams,
     private val db: DatabaseAdapter,
     private val preferences: SharedPreferences,
-    savedStateHandle: SavedStateHandle,
+    private val savedStateHandle: SavedStateHandle,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val transformDispatcher: CoroutineDispatcher = Dispatchers.Default,
     stateScope: CoroutineScope? = null,
@@ -87,7 +87,7 @@ class ReportViewModel(
     private val saveFilter: Boolean = launchParams.initialIntentFilter.isEmpty
 
     private val filterState = mutableStateOf(
-        if (saveFilter) {
+        restoreFilterFromSavedState(savedStateHandle) ?: if (saveFilter) {
             WhereFilter.fromSharedPreferences(preferences)
         } else {
             WhereFilter.copyOf(launchParams.initialIntentFilter)
@@ -95,11 +95,13 @@ class ReportViewModel(
     )
 
     private val incomeExpenseState = mutableStateOf(
-        launchParams.explicitIncomeExpense ?: if (saveFilter) {
-            readIncomeExpense(preferences)
-        } else {
-            IncomeExpense.BOTH
-        },
+        restoreIncomeExpenseFromSavedState(savedStateHandle)
+            ?: launchParams.explicitIncomeExpense
+            ?: if (saveFilter) {
+                readIncomeExpense(preferences)
+            } else {
+                IncomeExpense.BOTH
+            },
     )
 
     private val refreshNonce = mutableIntStateOf(0)
@@ -109,6 +111,7 @@ class ReportViewModel(
     }
 
     init {
+        persistSelectionToSavedState(filterState.value, incomeExpenseState.value)
         savedStateHandle.setSavedStateProvider(KEY_TRANSFORM_CONTAINER) {
             container.saveState()
         }
@@ -195,6 +198,7 @@ class ReportViewModel(
         Snapshot.withMutableSnapshot {
             filterState.value = updatedFilter
         }
+        persistSelectionToSavedState(updatedFilter, incomeExpenseState.value)
         persistFilterIfEnabled(updatedFilter, incomeExpenseState.value)
     }
 
@@ -205,6 +209,7 @@ class ReportViewModel(
         Snapshot.withMutableSnapshot {
             incomeExpenseState.value = nextIncomeExpense
         }
+        persistSelectionToSavedState(filterState.value, nextIncomeExpense)
         persistFilterIfEnabled(filterState.value, nextIncomeExpense)
     }
 
@@ -234,6 +239,13 @@ class ReportViewModel(
         }
     }
 
+    private fun persistSelectionToSavedState(filter: WhereFilter, incomeExpense: IncomeExpense) {
+        val filterBundle = Bundle()
+        filter.toBundle(filterBundle)
+        savedStateHandle[KEY_SAVED_FILTER] = filterBundle
+        savedStateHandle[KEY_SAVED_INCOME_EXPENSE] = incomeExpense.name
+    }
+
     private fun persistFilterIfEnabled(filter: WhereFilter, incomeExpense: IncomeExpense) {
         if (!saveFilter) return
         filter.toSharedPreferences(preferences)
@@ -244,7 +256,19 @@ class ReportViewModel(
 
     companion object {
         private const val KEY_TRANSFORM_CONTAINER = "report_transform_container"
+        private const val KEY_SAVED_FILTER = "report_saved_filter"
+        private const val KEY_SAVED_INCOME_EXPENSE = "report_saved_income_expense"
         private const val DEFAULT_ERROR_MESSAGE = "Failed to load report"
+
+        private fun restoreFilterFromSavedState(savedStateHandle: SavedStateHandle): WhereFilter? {
+            val bundle = savedStateHandle.get<Bundle>(KEY_SAVED_FILTER) ?: return null
+            return WhereFilter.fromBundle(bundle)
+        }
+
+        private fun restoreIncomeExpenseFromSavedState(savedStateHandle: SavedStateHandle): IncomeExpense? {
+            val raw = savedStateHandle.get<String>(KEY_SAVED_INCOME_EXPENSE) ?: return null
+            return IncomeExpense.entries.firstOrNull { it.name == raw }
+        }
     }
 }
 

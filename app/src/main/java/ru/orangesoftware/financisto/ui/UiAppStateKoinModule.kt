@@ -26,6 +26,7 @@ val uiAppStateModule = module {
             hasPersistedUriPermission = hasPersistedUriPermission,
             ioDispatcher = get(),
             transformDispatcher = get(TRANSFORM_DISPATCHER),
+            applicationScope = get(),
         )
     }
 }

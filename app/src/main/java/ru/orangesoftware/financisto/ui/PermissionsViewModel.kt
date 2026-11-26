@@ -14,12 +14,15 @@ import androidx.compose.runtime.snapshots.Snapshot
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ru.orangesoftware.financisto.persistance.PreferencesStore
+import timber.log.Timber
+import java.io.IOException
 
 data class PermissionsUiState(
     val backupFolderUri: Uri,
@@ -33,6 +36,7 @@ class PermissionsViewModel(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     transformDispatcher: CoroutineDispatcher = Dispatchers.Default,
     stateScope: CoroutineScope? = null,
+    private val applicationScope: CoroutineScope? = null,
 ) : ViewModel() {
 
     private val scope: CoroutineScope = stateScope ?: viewModelScope
@@ -65,8 +69,18 @@ class PermissionsViewModel(
     }
 
     fun onBackupFolderSelected(uri: Uri) {
+        val writeScope = applicationScope ?: scope
+        val writeJob = writeScope.launch(ioDispatcher) {
+            try {
+                preferencesStore.updateBackupFolderUri(uri)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: IOException) {
+                Timber.e(e, "Failed to persist backup folder URI: %s", uri)
+            }
+        }
         scope.launch(ioDispatcher) {
-            preferencesStore.updateBackupFolderUri(uri)
+            writeJob.join()
             Snapshot.withMutableSnapshot {
                 refreshNonce.intValue += 1
             }

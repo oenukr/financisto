@@ -46,6 +46,7 @@ import ru.orangesoftware.financisto.transaction.model.TransactionMode
 import ru.orangesoftware.financisto.utils.CurrencyCache
 import ru.orangesoftware.financisto.utils.PicturesUtil
 import java.io.File
+import java.io.IOException
 import java.nio.file.Files
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -269,6 +270,80 @@ class FinancistoTransactionPortsTest : AbstractDbTest() {
                     putString("exchange_rate_provider", previous)
                 }
             }
+        }
+    }
+
+    @Test
+    fun legacyMigrationKeepsPrefsIntactOnPersistFailureAndRetriesOnNextCall() = runTest {
+        clearLegacyDraftPrefs()
+        val legacyPrefs = context.getSharedPreferences(FinancistoDraftSessionStore.PREFS_NAME, Context.MODE_PRIVATE)
+        val json = kotlinx.serialization.json.Json { encodeDefaults = true }
+        val legacyDraft = sampleDraft("draft-legacy-retry", amountMinor = 1900L)
+        legacyPrefs.edit(commit = true) {
+            putString(FinancistoDraftSessionStore.KEY_PENDING_DRAFT, json.encodeToString(legacyDraft))
+        }
+
+        var shouldFail = true
+        val persistedStates = mutableListOf<AiDraftSessionState>()
+        val store = FinancistoDraftSessionStore(
+            context = context,
+            stateStore = StateStore(),
+            ioDispatcher = UnconfinedTestDispatcher(),
+            persistSessionState = { state ->
+                if (shouldFail) {
+                    throw IOException("Simulated DataStore write failure")
+                }
+                persistedStates += state
+            },
+        )
+
+        assertNull(store.peekPendingAutoOpenDraft())
+        assertTrue(legacyPrefs.contains(FinancistoDraftSessionStore.KEY_PENDING_DRAFT))
+
+        shouldFail = false
+        val migrated = store.peekPendingAutoOpenDraft()
+        assertEquals(legacyDraft, migrated)
+        assertFalse(legacyPrefs.contains(FinancistoDraftSessionStore.KEY_PENDING_DRAFT))
+        assertEquals(1, persistedStates.size)
+        assertEquals(legacyDraft, persistedStates.single().pendingDraft)
+    }
+
+    @Test
+    fun savePendingDraftRetainsPreviousDraftAndOrphanReceiptWhenPersistFails() = runTest {
+        clearLegacyDraftPrefs()
+        var shouldFail = false
+        val store = FinancistoDraftSessionStore(
+            context = context,
+            stateStore = StateStore(),
+            ioDispatcher = UnconfinedTestDispatcher(),
+            persistSessionState = {
+                if (shouldFail) {
+                    throw IOException("Simulated write failure")
+                }
+            },
+        )
+        val firstReceiptName = "ports_test_keep_on_fail_1.jpg"
+        val replacementReceiptName = "ports_test_keep_on_fail_2.jpg"
+        val firstReceipt = PicturesUtil.pictureFile(firstReceiptName, false).apply { writeBytes(byteArrayOf(1)) }
+        val replacementReceipt = PicturesUtil.pictureFile(replacementReceiptName, false).apply {
+            writeBytes(byteArrayOf(2))
+        }
+        try {
+            val firstDraft = sampleDraft("draft-keep-1", amountMinor = 1100L, stagedReceiptFileName = firstReceiptName)
+            val replacementDraft = sampleDraft(
+                "draft-replace-2",
+                amountMinor = 2200L,
+                stagedReceiptFileName = replacementReceiptName,
+            )
+            assertTrue(store.savePendingDraft(firstDraft))
+
+            shouldFail = true
+            assertFalse(store.savePendingDraft(replacementDraft))
+            assertEquals(firstDraft, store.peekPendingAutoOpenDraft())
+            assertTrue("Previous receipt must not be deleted if replacement fails to persist", firstReceipt.exists())
+        } finally {
+            firstReceipt.delete()
+            replacementReceipt.delete()
         }
     }
 }

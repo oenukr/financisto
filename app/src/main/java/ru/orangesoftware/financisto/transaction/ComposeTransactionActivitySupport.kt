@@ -145,9 +145,15 @@ internal fun dispatchIntentWhenReady(
     receiptMediaPort: ReceiptMediaPort,
     intent: TransactionIntent,
 ) {
-    val initialState = viewModel.uiState.value
+    val initialState = viewModel.currentEditorState.value
     if (initialState.isIdleReady) {
-        viewModel.onIntent(intent)
+        if (!viewModel.onIntent(intent) && intent is TransactionIntent.AttachCapturedPhotoFile) {
+            scope.launch {
+                withContext(NonCancellable) {
+                    receiptMediaPort.deleteStagedFile(intent.fileName)
+                }
+            }
+        }
         return
     }
     scope.launch {
@@ -155,7 +161,7 @@ internal fun dispatchIntentWhenReady(
         var savingForm: TransactionFormState? =
             if (initialState.isSavingReady) (initialState as TransactionUiState.Ready).form else null
         try {
-            val settled = snapshotFlow { viewModel.uiState.value }.first { state ->
+            val settled = snapshotFlow { viewModel.currentEditorState.value }.first { state ->
                 if (state.isSavingReady) {
                     savingForm = savingForm ?: (state as TransactionUiState.Ready).form
                 }
@@ -164,8 +170,7 @@ internal fun dispatchIntentWhenReady(
             val shouldDispatch = settled is TransactionUiState.Ready &&
                 (savingForm == null || settled.form == savingForm)
             if (shouldDispatch) {
-                viewModel.onIntent(intent)
-                dispatched = true
+                dispatched = viewModel.onIntent(intent)
             }
         } finally {
             if (!dispatched && intent is TransactionIntent.AttachCapturedPhotoFile) {
