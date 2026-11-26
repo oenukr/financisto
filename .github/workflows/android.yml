@@ -34,7 +34,7 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: Build, Test & Lint
-        run: ./gradlew assembleDebug koverXmlReport detekt --build-cache --parallel
+        run: ./gradlew assembleDebug koverXmlReport :transaction:testDebugScreenshotTestDefaultTestSuite detekt --build-cache --parallel
 
       - name: Add coverage report to PR
         if: github.event_name == 'pull_request'

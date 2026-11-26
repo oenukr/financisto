@@ -29,6 +29,17 @@ android {
             isReturnDefaultValues = true
             isIncludeAndroidResources = true
         }
+
+        screenshotTests.create("screenshotTest") {
+            engineVersion = libs.versions.screenshot.testing.get()
+            imageDifferenceThreshold = 0.005f
+            targetVariants.add("debug")
+
+            dependencies {
+                implementation(compose.ui.tooling)
+                implementation(libs.screenshot.validation.api)
+            }
+        }
     }
 }
 
@@ -36,6 +47,13 @@ detekt {
     buildUponDefaultConfig = true
     allRules = false
     config.setFrom(rootProject.file("config/detekt.yml"))
+    source.setFrom(
+        "src/main/java",
+        "src/main/kotlin",
+        "src/test/java",
+        "src/test/kotlin",
+        "src/screenshotTest/kotlin",
+    )
 }
 
 tasks.withType<Detekt>().configureEach {
@@ -99,6 +117,32 @@ kotlin {
     jvmToolchain(21)
 }
 
-tasks.withType<Test> {
+abstract class LibraryScreenshotRJarArgumentProvider : CommandLineArgumentProvider {
+    @get:Classpath
+    abstract val classpathEntries: ConfigurableFileCollection
+
+    override fun asArguments(): Iterable<String> = listOf(
+        "-DPreviewScreenshotTestEngineInput.Renderer.mainAllClassPath=${classpathEntries.asPath}",
+    )
+}
+
+tasks.withType<Test>().configureEach {
     jvmArgs("-XX:+EnableDynamicAgentLoading")
+    if (name.contains("ScreenshotTest", ignoreCase = true)) {
+        maxHeapSize = "2g"
+        systemProperty("user.timezone", "UTC")
+        systemProperty("user.language", "en")
+        systemProperty("user.country", "US")
+        jvmArgumentProviders.add(
+            objects.newInstance<LibraryScreenshotRJarArgumentProvider>().apply {
+                classpathEntries.from(
+                    layout.buildDirectory.dir("intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes"),
+                    layout.buildDirectory.dir("intermediates/javac/debug/compileDebugJavaWithJavac/classes"),
+                    layout.buildDirectory.file(
+                        "intermediates/compile_and_runtime_r_class_jar/debugScreenshotTest/processDebugScreenshotTestResources/R.jar",
+                    ),
+                )
+            },
+        )
+    }
 }

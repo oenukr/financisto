@@ -23,6 +23,7 @@ ktor = "3.6.1"
 lifecycle = "2.11.0"
 lib-recur = "0.17.1"
 navigationevent = "1.2.0"
+screenshot-testing = "0.0.1-alpha16"
 test-core = "1.7.0"
 test-hamcrest = "3.0"
 test-junit = "4.13.2"
@@ -83,6 +84,7 @@ rxjava2-rxjava = { module = "io.reactivex.rxjava2:rxjava", version = "2.2.21"}
 rxjava3-bridge = { module = "com.github.akarnokd:rxjava3-bridge", version = "3.0.2" }
 rxjava3-rxandroid = { module = "io.reactivex.rxjava3:rxandroid", version = "3.0.2" }
 rxjava3-rxjava = { module = "io.reactivex.rxjava3:rxjava", version = "3.1.12" }
+screenshot-validation-api = { module = "com.android.tools.screenshot:screenshot-validation-api", version.ref = "screenshot-testing" }
 sqlite-ktx = { module = "androidx.sqlite:sqlite-ktx", version = "2.7.1" }
 test-core = { module = "androidx.test:core", version.ref = "test-core" }
 test-hamcrest = { module = "org.hamcrest:hamcrest", version.ref = "test-hamcrest" }
