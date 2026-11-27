@@ -4,8 +4,8 @@ package ru.orangesoftware.financisto.app
 import android.app.Application
 import android.content.Context
 import android.content.res.Configuration
+import org.koin.core.context.GlobalContext
 import org.koin.core.context.stopKoin
-
 import ru.orangesoftware.financisto.bus.GreenRobotBus
 import ru.orangesoftware.financisto.export.drive.GoogleDriveClient
 import ru.orangesoftware.financisto.utils.MyPreferences
@@ -25,6 +25,8 @@ class FinancistoApp : Application() {
         bus = dependencies.greenRobotBus
         driveClient = dependencies.googleDriveClient
         bus.register(driveClient)
+        dependencies.appStateSyncController.start()
+        dependencies.preferencesStore.seedFromLegacyIfNeeded()
     }
 
     override fun attachBaseContext(base: Context?) {
@@ -39,6 +41,9 @@ class FinancistoApp : Application() {
 
     override fun onTerminate() {
         super.onTerminate()
+        if (GlobalContext.getOrNull() != null) {
+            DependenciesHolder().appStateSyncController.stop()
+        }
         stopKoin()
     }
 }

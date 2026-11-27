@@ -4,6 +4,7 @@ package ru.orangesoftware.financisto.app
 import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.appstate.statestore.StateStore
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.cio.CIO
@@ -13,6 +14,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.serialization.json.Json
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
@@ -22,12 +24,16 @@ import org.koin.core.context.startKoin
 import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
+import org.koin.core.qualifier.named
+import org.koin.dsl.bind
 import org.koin.dsl.module
 import org.koin.dsl.onClose
 import ru.orangesoftware.financisto.BuildConfig
 import ru.orangesoftware.financisto.activity.MonthlyViewViewModel
 import ru.orangesoftware.financisto.activity.PlannerViewModel
 import ru.orangesoftware.financisto.appfunctions.AppFunctionDatabase
+import ru.orangesoftware.financisto.appstate.AiDraftSessionKey
+import ru.orangesoftware.financisto.appstate.AppStateSyncController
 import ru.orangesoftware.financisto.bus.GreenRobotBus
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.db.DatabaseHelper
@@ -37,6 +43,7 @@ import ru.orangesoftware.financisto.persistance.PreferencesStore
 import ru.orangesoftware.financisto.rates.FreeCurrencyRateDownloader
 import ru.orangesoftware.financisto.rates.OpenExchangeRatesDownloader
 import ru.orangesoftware.financisto.rates.WebserviceXConversionRateDownloader
+import ru.orangesoftware.financisto.reports.reportsAppStateModule
 import ru.orangesoftware.financisto.transaction.FinancistoDraftSessionStore
 import ru.orangesoftware.financisto.transaction.FinancistoExchangeRatePort
 import ru.orangesoftware.financisto.transaction.FinancistoReceiptMediaPort
@@ -48,18 +55,25 @@ import ru.orangesoftware.financisto.transaction.port.ExchangeRatePort
 import ru.orangesoftware.financisto.transaction.port.ReceiptMediaPort
 import ru.orangesoftware.financisto.transaction.port.TransactionPreferencesPort
 import ru.orangesoftware.financisto.transaction.port.TransactionRepository
+import ru.orangesoftware.financisto.ui.uiAppStateModule
 import ru.orangesoftware.financisto.utils.Logger
 import ru.orangesoftware.financisto.utils.TimberLogger
 import ru.orangesoftware.financisto.utils.TimberTree
 import timber.log.Timber
 import kotlin.time.Clock as KotlinXClock
 
+@Suppress("TopLevelPropertyNaming")
+const val TRANSFORM_DISPATCHER_NAME = "transformDispatcher"
+
+@Suppress("TopLevelPropertyNaming")
+val TRANSFORM_DISPATCHER = named(TRANSFORM_DISPATCHER_NAME)
+
 // A module with Kotlin and Java components
 val storage = module {
     single<SharedPreferences> {
         androidContext().getSharedPreferences("${androidContext().packageName}_preferences", Context.MODE_PRIVATE)
     }
-    singleOf(::PreferencesStore) { bind<PreferencesStore>() }
+    single { PreferencesStore(androidContext(), get(), get()) }
 }
 
 val eventBus = module {
@@ -114,8 +128,14 @@ val exchangeRates = module {
 
 @Suppress("InjectDispatcher")
 val coroutineModule = module {
-    single<CoroutineScope> { CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate) }
+    single<CoroutineScope> { CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate) } onClose { it?.cancel() }
     single<CoroutineDispatcher> { Dispatchers.IO }
+    single<CoroutineDispatcher>(TRANSFORM_DISPATCHER) { Dispatchers.Default }
+}
+
+val appStateModule = module {
+    single { StateStore() }
+    single { AppStateSyncController(androidContext(), get(), get(), get()) }
 }
 
 val viewModelModule = module {
@@ -126,7 +146,16 @@ val viewModelModule = module {
 val transactionPortsModule = module {
     singleOf(::FinancistoTransactionRepository) { bind<TransactionRepository>() }
     singleOf(::FinancistoTransactionPreferencesPort) { bind<TransactionPreferencesPort>() }
-    singleOf(::FinancistoDraftSessionStore) { bind<DraftSessionStore>() }
+    single<FinancistoDraftSessionStore> {
+        val syncController: AppStateSyncController = get()
+        FinancistoDraftSessionStore(
+            context = androidContext(),
+            stateStore = get(),
+            ioDispatcher = get(),
+            persistSessionState = { state -> syncController.persistKey(AiDraftSessionKey, state) },
+            awaitSessionRestore = { syncController.ensureKeyRestored(AiDraftSessionKey) },
+        )
+    } bind DraftSessionStore::class
     singleOf(::FinancistoExchangeRatePort) { bind<ExchangeRatePort>() }
     singleOf(::FinancistoReceiptMediaPort) { bind<ReceiptMediaPort>() }
 }
@@ -141,6 +170,9 @@ val modules = listOf(
     httpClient,
     exchangeRates,
     coroutineModule,
+    appStateModule,
+    reportsAppStateModule,
+    uiAppStateModule,
     viewModelModule,
     transactionPortsModule,
     transactionModule,
@@ -175,4 +207,6 @@ class DependenciesHolder : KoinComponent {
     //Inject the logger
     val logger: Logger by inject()
     val applicationScope: CoroutineScope by inject()
+    val appStateSyncController: AppStateSyncController by inject()
+    val stateStore: StateStore by inject()
 }

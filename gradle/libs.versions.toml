@@ -5,6 +5,7 @@ android_tools = "9.5.2"
 androidannotations = "4.8.0"
 appcompat = "1.8.0"
 appfunctions = "1.0.0-rc01"
+appstate = "1.0.0-alpha03"
 biometric = "1.1.0"
 collection-ktx = "1.7.0"
 commons-io = "2.22.0"
@@ -40,6 +41,10 @@ androidannotations-api = { module = "org.androidannotations:androidannotations-a
 appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
 appfunctions-core = { module = "androidx.appfunctions:appfunctions", version.ref = "appfunctions" }
 appfunctions-compiler = { module = "androidx.appfunctions:appfunctions-compiler", version.ref = "appfunctions" }
+appstate-statestore = { module = "androidx.appstate.statestore:statestore", version.ref = "appstate" }
+appstate-statestore-datastore = { module = "androidx.appstate.statestore:statestore-datastore", version.ref = "appstate" }
+appstate-transform = { module = "androidx.appstate.transform:transform", version.ref = "appstate" }
+appstate-transform-testing = { module = "androidx.appstate.transform:transform-testing", version.ref = "appstate" }
 biometric = { module = "androidx.biometric:biometric", version.ref = "biometric" }
 collection-ktx = { module = "androidx.collection:collection-ktx", version.ref = "collection-ktx" }
 commons-io = { module = "commons-io:commons-io", version.ref = "commons-io" }

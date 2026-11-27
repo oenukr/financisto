@@ -16,20 +16,25 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import com.google.accompanist.web.WebView
 import com.google.accompanist.web.rememberWebViewState
+import org.koin.androidx.viewmodel.ext.android.viewModel
+import org.koin.core.parameter.parametersOf
 import ru.orangesoftware.financisto.R
 import ru.orangesoftware.financisto.core.designsystem.theme.FinancistoTheme
 import ru.orangesoftware.financisto.utils.MyPreferences
 import ru.orangesoftware.financisto.utils.Utils
 
 class AboutActivity : ComponentActivity() {
+
+    private val viewModel: AboutViewModel by viewModel {
+        parametersOf(getAppVersion(this))
+    }
+
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(MyPreferences.switchLocale(base))
     }
@@ -37,93 +42,58 @@ class AboutActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
+            val uiState by viewModel.uiState
             FinancistoTheme {
-                AboutScreen()
+                AboutScreen(
+                    uiState = uiState,
+                    onTabSelected = viewModel::selectTab,
+                )
             }
         }
     }
 
     @Composable
-    fun AboutScreen() {
-        var state by remember { mutableIntStateOf(0) }
-        val titles = listOf(
-            R.string.whats_new,
-            R.string.privacy_policy,
-            R.string.license,
-            R.string.about,
-        )
-
+    fun AboutScreen(
+        uiState: AboutUiState,
+        onTabSelected: (AboutTab) -> Unit,
+    ) {
+        val selectedIndex = uiState.tabs.indexOf(uiState.selectedTab).coerceAtLeast(0)
         Scaffold(
             topBar = {
-                TopAppBar(title = { Text("Financisto (${getAppVersion(this)})") })
+                TopAppBar(title = { Text("Financisto (${uiState.appVersion})") })
             }
         ) { paddingValues ->
             Column(modifier = Modifier.padding(paddingValues)) {
-                TabRow(selectedTabIndex = state) {
-                    titles.forEachIndexed { index, title ->
+                TabRow(selectedTabIndex = selectedIndex) {
+                    uiState.tabs.forEach { tab ->
+                        val isSelected = uiState.selectedTab == tab
                         Tab(
-                            text = { Text(stringResource(id = title)) },
-                            selected = state == index,
-                            onClick = { state = index },
+                            text = { Text(stringResource(id = tab.titleRes)) },
+                            selected = isSelected,
+                            onClick = { onTabSelected(tab) },
                             icon = {
                                 Icon(
                                     painter = painterResource(
-                                        if (state == index) {
+                                        if (isSelected) {
                                             R.drawable.ic_tab_android_active
                                         } else {
                                             R.drawable.ic_tab_android_inactive
                                         }
                                     ),
-                                    contentDescription = null
+                                    contentDescription = null,
                                 )
                             },
                         )
                     }
                 }
-                when (state) {
-                    TAB_WHATS_NEW -> WhatsNewContent()
-                    TAB_PRIVACY_POLICY -> PrivacyPolicyContent()
-                    TAB_LICENSE -> LicenseContent()
-                    TAB_ABOUT -> AboutContent()
+                key(uiState.selectedTab) {
+                    WebView(rememberWebViewState(url = uiState.selectedTab.url))
                 }
             }
         }
     }
 
-    @Composable
-    fun WhatsNewContent() {
-        val url = "file:///android_asset/whatsnew.htm"
-        val state = rememberWebViewState(url = url)
-        WebView(state)
-    }
-
-    @Composable
-    fun PrivacyPolicyContent() {
-        val url = "https://financisto.com/privacy.html"
-        val state = rememberWebViewState(url = url)
-        WebView(state)
-    }
-
-    @Composable
-    fun LicenseContent() {
-        val url = "file:///android_asset/gpl-2.0-standalone.htm"
-        val state = rememberWebViewState(url = url)
-        WebView(state)
-    }
-
-    @Composable
-    fun AboutContent() {
-        val url = "file:///android_asset/about.htm"
-        val state = rememberWebViewState(url = url)
-        WebView(state)
-    }
-
     companion object {
-        private const val TAB_WHATS_NEW = 0
-        private const val TAB_PRIVACY_POLICY = 1
-        private const val TAB_LICENSE = 2
-        private const val TAB_ABOUT = 3
-
         fun getAppVersion(context: Context): String {
             return try {
                 "v. " + Utils.getPackageInfo(context)?.versionName.orEmpty()

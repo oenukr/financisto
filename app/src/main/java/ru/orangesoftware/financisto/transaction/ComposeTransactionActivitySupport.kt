@@ -8,6 +8,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
@@ -96,7 +97,7 @@ internal fun ComposeTransactionActivity.trySwitchToPendingAiDraft(
     draft: TransactionDraft,
     draftSessionStore: FinancistoDraftSessionStore,
 ): Boolean {
-    if ((viewModel.uiState.value as? TransactionUiState.Ready)?.isSaving == true) {
+    if ((viewModel.currentEditorState.value as? TransactionUiState.Ready)?.isSaving == true) {
         return false
     }
     pendingAiDraftPrompt = null
@@ -120,8 +121,12 @@ internal fun ComposeTransactionActivity.dismissPendingAiDraft(
         stagedFile == currentForm?.initialPersistedPictureFileName
     if (!matchesActiveReceipt) {
         lifecycleScope.launch {
-            if (draftSessionStore.getSavedTransactionId(draft.draftId) == null) {
-                receiptMediaPort.deleteStagedFile(stagedFile)
+            try {
+                if (draftSessionStore.getSavedTransactionId(draft.draftId) == null) {
+                    receiptMediaPort.deleteStagedFile(stagedFile)
+                }
+            } catch (e: IOException) {
+                Timber.w(e, "Failed to verify saved status for dismissed AI draft: %s", draft.draftId)
             }
         }
     }
@@ -144,9 +149,15 @@ internal fun dispatchIntentWhenReady(
     receiptMediaPort: ReceiptMediaPort,
     intent: TransactionIntent,
 ) {
-    val initialState = viewModel.uiState.value
+    val initialState = viewModel.currentEditorState.value
     if (initialState.isIdleReady) {
-        viewModel.onIntent(intent)
+        if (!viewModel.onIntent(intent) && intent is TransactionIntent.AttachCapturedPhotoFile) {
+            scope.launch {
+                withContext(NonCancellable) {
+                    receiptMediaPort.deleteStagedFile(intent.fileName)
+                }
+            }
+        }
         return
     }
     scope.launch {
@@ -154,7 +165,7 @@ internal fun dispatchIntentWhenReady(
         var savingForm: TransactionFormState? =
             if (initialState.isSavingReady) (initialState as TransactionUiState.Ready).form else null
         try {
-            val settled = viewModel.uiState.first { state ->
+            val settled = snapshotFlow { viewModel.currentEditorState.value }.first { state ->
                 if (state.isSavingReady) {
                     savingForm = savingForm ?: (state as TransactionUiState.Ready).form
                 }
@@ -163,8 +174,7 @@ internal fun dispatchIntentWhenReady(
             val shouldDispatch = settled is TransactionUiState.Ready &&
                 (savingForm == null || settled.form == savingForm)
             if (shouldDispatch) {
-                viewModel.onIntent(intent)
-                dispatched = true
+                dispatched = viewModel.onIntent(intent)
             }
         } finally {
             if (!dispatched && intent is TransactionIntent.AttachCapturedPhotoFile) {

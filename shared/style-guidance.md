@@ -13,7 +13,7 @@ It is based on canonical Kotlin guidelines and aligned with the project's modern
 ## Architecture & Development Conventions
 - **Language:** Use Kotlin for all new code. Avoid writing new Java code.
 - **UI Paradigm:** Use Jetpack Compose for all new UI components. Modify legacy XML layouts only when fixing bugs in existing screens.
-- **Architecture & State:** Follow Unidirectional Data Flow (MVI/MVVM). Expose UI state from ViewModels using `StateFlow`.
+- **Architecture & State:** Follow Unidirectional Data Flow (MVI/MVVM). For Compose screens, use Jetpack AppState: `androidx.appstate.transform` exposing Compose `State<T>` with `SavedStateContainer` bridged to `SavedStateHandle`, `Snapshot.withMutableSnapshot` for atomic state writes, `androidx.appstate.statestore` with `PersistToDataStore` / `syncToDataStore` for shared cross-component state, and `transformTest` for ViewModel unit tests. Retain `StateFlow` for legacy XML ViewModels (`MonthlyViewViewModel`, `PlannerViewModel`) and `Channel`/`Flow` for one-shot effects.
 - **Asynchronous Code:** Use Kotlin Coroutines instead of legacy `AsyncTask`, raw threads, or `GlobalScope`, selecting the coroutine scope based on work ownership: use `viewModelScope` for ViewModel-owned work, `lifecycleScope` for `LifecycleOwner`-bound work, and an appropriate longer-lived scope such as `applicationScope` (provided via Koin) for app-level work that must outlive a screen.
 - **Dependency Injection:** Use Koin for DI. Register new dependencies in `JavaAppKoin.kt` or feature Koin modules. Prefer constructor injection over manual service location (`DependenciesHolder`).
 - **Database:** Database schema and migrations are located in `app/src/main/assets/database`. Do not alter SQL scripts without architectural review.
@@ -33,7 +33,7 @@ It is based on canonical Kotlin guidelines and aligned with the project's modern
 
 ## Error Handling
 - **Specific Exceptions:** Avoid catching broad exceptions like `Exception` or `Throwable`.
-- **Graceful Failures:** Expose errors to UI state (e.g. sealed error states in `StateFlow`) rather than crashing or swallowing errors silently.
+- **Graceful Failures:** Expose errors to UI state (e.g. sealed error states in Compose `State<T>` via `androidx.appstate.transform`, or `StateFlow` in legacy XML ViewModels) rather than crashing or swallowing errors silently.
 
 ## Comments & Documentation
 - **Explain "Why", Not "What":** Write clear and concise comments explaining the intent and reasoning behind non-trivial code.

@@ -1,18 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0-only
 package ru.orangesoftware.financisto.transaction
 
+import androidx.appstate.transform.testing.TransformTestScope
+import androidx.appstate.transform.testing.transformTest
 import androidx.lifecycle.SavedStateHandle
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.advanceUntilIdle
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -37,118 +34,191 @@ import ru.orangesoftware.financisto.transaction.port.TransactionRepository
 import kotlin.time.Clock
 import kotlin.time.Instant
 
-@OptIn(ExperimentalCoroutinesApi::class)
 class ComposeTransactionActivitySupportTest {
 
-    @Test
-    fun loadErrorReplacesIncomingDraftImmediatelyAndHasNullActiveDraftId() = runTest {
-        val dispatcher = StandardTestDispatcher(testScheduler)
-        Dispatchers.setMain(dispatcher)
-        try {
-            val args = TransactionLaunchArgs.AiDraft(
-                TransactionDraft(
-                    draftId = "failed-draft-1",
-                    mode = TransactionMode.EXPENSE,
-                    amountMinor = 1000L,
-                    fromAccountId = 1L,
-                    dateTimeMillis = 1_700_000_000_000L,
-                )
-            )
-            val viewModel = TransactionViewModel(
-                launchArgs = args,
-                savedStateHandle = SavedStateHandle(),
-                ports = portsWithFlakyLoad(failAttempts = 1, mediaPort = RecordingMediaPort()),
-                ioDispatcher = dispatcher,
-                clock = FixedClock(1_700_000_000_000L),
-            )
-            advanceUntilIdle()
-
-            val state = viewModel.uiState.value
-            assertTrue(state is TransactionUiState.LoadError)
-            assertNull(activeAiDraftId(state, args))
-            assertEquals(
-                ComposeTransactionActivity.IncomingDraftResolution.REPLACE_IMMEDIATELY,
-                resolveIncomingDraftAction("new-draft-2", viewModel, args),
-            )
-        } finally {
-            Dispatchers.resetMain()
-        }
+    private fun TransformTestScope.advanceAll() {
+        advanceUntilIdle()
+        advance()
+        advanceUntilIdle()
     }
 
     @Test
-    fun dispatchIntentWhenReadyWaitsThroughLoadErrorAndDispatchesAfterRetry() = runTest {
-        val dispatcher = StandardTestDispatcher(testScheduler)
-        Dispatchers.setMain(dispatcher)
-        try {
-            val mediaPort = RecordingMediaPort()
-            val viewModel = TransactionViewModel(
-                launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
-                savedStateHandle = SavedStateHandle(),
-                ports = portsWithFlakyLoad(failAttempts = 1, mediaPort = mediaPort),
-                ioDispatcher = dispatcher,
-                clock = FixedClock(1_700_000_000_000L),
+    fun loadErrorReplacesIncomingDraftImmediatelyAndHasNullActiveDraftId() = transformTest {
+        val args = TransactionLaunchArgs.AiDraft(
+            TransactionDraft(
+                draftId = "failed-draft-1",
+                mode = TransactionMode.EXPENSE,
+                amountMinor = 1000L,
+                fromAccountId = 1L,
+                dateTimeMillis = 1_700_000_000_000L,
             )
-            advanceUntilIdle()
-            assertTrue(viewModel.uiState.value is TransactionUiState.LoadError)
+        )
+        val viewModel = TransactionViewModel(
+            launchArgs = args,
+            savedStateHandle = SavedStateHandle(),
+            ports = portsWithFlakyLoad(failAttempts = 1, mediaPort = RecordingMediaPort()),
+            ioDispatcher = testDispatcher,
+            clock = FixedClock(1_700_000_000_000L),
+            transformDispatcher = testDispatcher,
+            stateScope = backgroundScope,
+        )
+        advanceAll()
 
-            dispatchIntentWhenReady(
-                scope = this,
-                viewModel = viewModel,
-                receiptMediaPort = mediaPort,
-                intent = TransactionIntent.AttachCapturedPhotoFile("retry_recovered.jpg"),
-            )
-            advanceUntilIdle()
-            assertTrue(mediaPort.deletedFiles.isEmpty())
-
-            viewModel.onIntent(TransactionIntent.RetryLoad)
-            advanceUntilIdle()
-
-            val ready = viewModel.uiState.value as TransactionUiState.Ready
-            assertEquals("retry_recovered.jpg", ready.form.attachedPictureFileName)
-            assertTrue(mediaPort.deletedFiles.isEmpty())
-        } finally {
-            Dispatchers.resetMain()
-        }
+        val state = viewModel.uiState.value
+        assertTrue(state is TransactionUiState.LoadError)
+        assertNull(activeAiDraftId(state, args))
+        assertEquals(
+            ComposeTransactionActivity.IncomingDraftResolution.REPLACE_IMMEDIATELY,
+            resolveIncomingDraftAction("new-draft-2", viewModel, args),
+        )
     }
 
     @Test
-    fun dispatchIntentWhenReadyDeletesQueuedPhotoWhenClosedDuringLoadError() = runTest {
-        val dispatcher = StandardTestDispatcher(testScheduler)
-        Dispatchers.setMain(dispatcher)
-        try {
-            val mediaPort = RecordingMediaPort()
-            val viewModel = TransactionViewModel(
-                launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
-                savedStateHandle = SavedStateHandle(),
-                ports = portsWithFlakyLoad(failAttempts = 2, mediaPort = mediaPort),
-                ioDispatcher = dispatcher,
-                clock = FixedClock(1_700_000_000_000L),
-            )
-            advanceUntilIdle()
-            assertTrue(viewModel.uiState.value is TransactionUiState.LoadError)
+    fun dispatchIntentWhenReadyWaitsThroughLoadErrorAndDispatchesAfterRetry() = transformTest {
+        val mediaPort = RecordingMediaPort()
+        val viewModel = TransactionViewModel(
+            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
+            savedStateHandle = SavedStateHandle(),
+            ports = portsWithFlakyLoad(failAttempts = 1, mediaPort = mediaPort),
+            ioDispatcher = testDispatcher,
+            clock = FixedClock(1_700_000_000_000L),
+            transformDispatcher = testDispatcher,
+            stateScope = backgroundScope,
+        )
+        advanceAll()
+        assertTrue(viewModel.uiState.value is TransactionUiState.LoadError)
 
-            val activityScope = CoroutineScope(Job() + dispatcher)
-            dispatchIntentWhenReady(
-                scope = activityScope,
-                viewModel = viewModel,
-                receiptMediaPort = mediaPort,
-                intent = TransactionIntent.AttachCapturedPhotoFile("abandoned_on_error.jpg"),
-            )
-            advanceUntilIdle()
-            assertTrue(mediaPort.deletedFiles.isEmpty())
+        dispatchIntentWhenReady(
+            scope = backgroundScope,
+            viewModel = viewModel,
+            receiptMediaPort = mediaPort,
+            intent = TransactionIntent.AttachCapturedPhotoFile("retry_recovered.jpg"),
+        )
+        advanceAll()
+        assertTrue(mediaPort.deletedFiles.isEmpty())
 
-            activityScope.cancel()
-            advanceUntilIdle()
+        viewModel.onIntent(TransactionIntent.RetryLoad)
+        advanceAll()
 
-            assertEquals(listOf("abandoned_on_error.jpg"), mediaPort.deletedFiles)
-        } finally {
-            Dispatchers.resetMain()
-        }
+        val ready = viewModel.uiState.value as TransactionUiState.Ready
+        assertEquals("retry_recovered.jpg", ready.form.attachedPictureFileName)
+        assertTrue(mediaPort.deletedFiles.isEmpty())
+    }
+
+    @Test
+    fun dispatchIntentWhenReadyDeletesQueuedPhotoWhenClosedDuringLoadError() = transformTest {
+        val mediaPort = RecordingMediaPort()
+        val viewModel = TransactionViewModel(
+            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
+            savedStateHandle = SavedStateHandle(),
+            ports = portsWithFlakyLoad(failAttempts = 2, mediaPort = mediaPort),
+            ioDispatcher = testDispatcher,
+            clock = FixedClock(1_700_000_000_000L),
+            transformDispatcher = testDispatcher,
+            stateScope = backgroundScope,
+        )
+        advanceAll()
+        assertTrue(viewModel.uiState.value is TransactionUiState.LoadError)
+
+        val activityScope = CoroutineScope(Job() + testDispatcher)
+        dispatchIntentWhenReady(
+            scope = activityScope,
+            viewModel = viewModel,
+            receiptMediaPort = mediaPort,
+            intent = TransactionIntent.AttachCapturedPhotoFile("abandoned_on_error.jpg"),
+        )
+        advanceAll()
+        assertTrue(mediaPort.deletedFiles.isEmpty())
+
+        activityScope.cancel()
+        advanceAll()
+
+        assertEquals(listOf("abandoned_on_error.jpg"), mediaPort.deletedFiles)
+    }
+
+    @Test
+    fun dispatchIntentWhenReadyDeliversPhotoAfterFailedSaveWhenUiStateLags() = transformTest {
+        val mediaPort = RecordingMediaPort()
+        val pendingSave = CompletableDeferred<Long>()
+        val ports = portsWithFlakyLoad(failAttempts = 0, mediaPort = mediaPort) { pendingSave.await() }
+        val viewModel = TransactionViewModel(
+            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
+            savedStateHandle = SavedStateHandle(),
+            ports = ports,
+            ioDispatcher = testDispatcher,
+            clock = FixedClock(1_700_000_000_000L),
+            transformDispatcher = testDispatcher,
+            stateScope = backgroundScope,
+        )
+        advanceAll()
+        assertTrue(viewModel.uiState.value is TransactionUiState.Ready)
+        assertTrue(viewModel.onIntent(TransactionIntent.UpdatePrimaryAmount("15")))
+        advanceAll()
+
+        assertTrue(viewModel.onIntent(TransactionIntent.SaveClicked))
+        assertTrue((viewModel.currentEditorState.value as TransactionUiState.Ready).isSaving)
+        assertFalse((viewModel.uiState.value as TransactionUiState.Ready).isSaving)
+        assertFalse(viewModel.onIntent(TransactionIntent.AttachCapturedPhotoFile("rejected_directly.jpg")))
+
+        dispatchIntentWhenReady(
+            scope = backgroundScope,
+            viewModel = viewModel,
+            receiptMediaPort = mediaPort,
+            intent = TransactionIntent.AttachCapturedPhotoFile("delivered_after_failed_save.jpg"),
+        )
+        advanceAll()
+        assertTrue(mediaPort.deletedFiles.isEmpty())
+
+        pendingSave.completeExceptionally(IllegalStateException("Save error"))
+        advanceAll()
+
+        val readyAfterError = viewModel.uiState.value as TransactionUiState.Ready
+        assertFalse(readyAfterError.isSaving)
+        assertEquals("delivered_after_failed_save.jpg", readyAfterError.form.attachedPictureFileName)
+        assertTrue(mediaPort.deletedFiles.isEmpty())
+    }
+
+    @Test
+    fun dispatchIntentWhenReadyDeletesPhotoAfterSaveAndNewResetsFormWhenUiStateLags() = transformTest {
+        val mediaPort = RecordingMediaPort()
+        val pendingSave = CompletableDeferred<Long>()
+        val ports = portsWithFlakyLoad(failAttempts = 0, mediaPort = mediaPort) { pendingSave.await() }
+        val viewModel = TransactionViewModel(
+            launchArgs = TransactionLaunchArgs.BlankNew(accountId = 1L),
+            savedStateHandle = SavedStateHandle(),
+            ports = ports,
+            ioDispatcher = testDispatcher,
+            clock = FixedClock(1_700_000_000_000L),
+            transformDispatcher = testDispatcher,
+            stateScope = backgroundScope,
+        )
+        advanceAll()
+        assertTrue(viewModel.onIntent(TransactionIntent.UpdatePrimaryAmount("15")))
+        advanceAll()
+
+        assertTrue(viewModel.onIntent(TransactionIntent.SaveAndNewClicked))
+        assertTrue((viewModel.currentEditorState.value as TransactionUiState.Ready).isSaving)
+        assertFalse((viewModel.uiState.value as TransactionUiState.Ready).isSaving)
+
+        dispatchIntentWhenReady(
+            scope = backgroundScope,
+            viewModel = viewModel,
+            receiptMediaPort = mediaPort,
+            intent = TransactionIntent.AttachCapturedPhotoFile("orphan_after_save_and_new.jpg"),
+        )
+        advanceAll()
+
+        pendingSave.complete(99L)
+        advanceAll()
+
+        assertEquals(listOf("orphan_after_save_and_new.jpg"), mediaPort.deletedFiles)
+        assertNull((viewModel.uiState.value as TransactionUiState.Ready).form.attachedPictureFileName)
     }
 
     private fun portsWithFlakyLoad(
         failAttempts: Int,
         mediaPort: ReceiptMediaPort,
+        onSave: (suspend () -> Long)? = null,
     ): TransactionPorts {
         var remainingFailures = failAttempts
         val catalog = TransactionCatalog(
@@ -181,7 +251,8 @@ class ComposeTransactionActivitySupportTest {
 
                 override suspend fun getLatestExchangeRate(fromCurrencyId: Long, toCurrencyId: Long): Double? = null
 
-                override suspend fun saveTransaction(command: SaveTransactionCommand): Long = 1L
+                override suspend fun saveTransaction(command: SaveTransactionCommand): Long =
+                    onSave?.invoke() ?: 1L
             },
             preferencesPort = object : TransactionPreferencesPort {
                 override fun readFormPreferences(): TransactionFormPreferences = TransactionFormPreferences()

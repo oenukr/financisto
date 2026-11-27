@@ -8,7 +8,7 @@
 - **Architecture:** We are transitioning from a legacy multi-activity architecture to MVI with unidirectional data flow. Apply the modern approach to all new features.
 - **Dependency Injection:** Use Koin. Refer to `JavaAppKoin.kt` for existing module configurations.
 - **Database:** We use legacy SQLite with SQL scripts in `assets/database`. Do not modify any SQL as of now.
-- **State Management:** Use StateFlow in ViewModels to expose UI state to Compose.
+- **State Management:** For Compose screens, use Jetpack AppState (`androidx.appstate.transform` exposing Compose `State<T>` with `SavedStateContainer` bridged to `SavedStateHandle`, `Snapshot.withMutableSnapshot` for atomic writes, `androidx.appstate.statestore` + DataStore persistence for shared cross-component state, and `transformTest` for ViewModel unit tests). Keep `StateFlow` for legacy XML ViewModels (`MonthlyViewViewModel`, `PlannerViewModel`) and `Channel`/`Flow` for one-shot effects.
 - **Verification:** After modifying code, always verify changes by running relevant unit tests (`./gradlew :app:testDebugUnitTest`) and static analysis (`./gradlew detekt`).
 - **Ambiguity Protocol:** If a user request conflicts with core architectural guidelines (e.g. asking for new Java code or legacy XML layouts), clarify with the user before proceeding.
 
@@ -37,9 +37,10 @@ Financisto allows users to manage multiple accounts, currencies, budgets, and tr
 - **Dependency Injection:** [Koin](https://insert-koin.io/).
 - **Networking:** [Ktor](https://ktor.io/) (CIO engine).
 - **Logging:** [Timber](https://github.com/JakeWharton/timber).
-- **Data Persistence:** SQLite (legacy transactions/accounts) and DataStore (preferences).
+- **State Management:** Jetpack AppState (`androidx.appstate.transform`, `androidx.appstate.statestore` + DataStore persistence) for Compose screens; `StateFlow` for legacy XML ViewModels; `Channel`/`Flow` for one-shot effects.
+- **Data Persistence:** SQLite (legacy transactions/accounts), Jetpack AppState `StateStore` (`PersistToDataStore` / `syncToDataStore`), and DataStore (preferences).
 - **Static Analysis:** [Detekt](https://detekt.dev/) - Handles both linting and automatic code formatting.
-- **Testing:** JUnit 4, mockito. Code coverage via [Kover](https://github.com/Kotlin/kotlinx-kover).
+- **Testing:** JUnit 4, mockito, `androidx.appstate.transform:transform-testing` (`transformTest`). Code coverage via [Kover](https://github.com/Kotlin/kotlinx-kover).
 
 ## 🚀 Building and Running
 - **Clean:** `./gradlew clean`

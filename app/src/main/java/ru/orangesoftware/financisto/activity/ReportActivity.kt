@@ -18,6 +18,7 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -37,15 +38,12 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -57,23 +55,22 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.MutableCreationExtras
-import androidx.lifecycle.viewmodel.compose.viewModel
+import org.koin.androidx.viewmodel.ext.android.viewModel
+import org.koin.core.parameter.parametersOf
 import ru.orangesoftware.financisto.R
 import ru.orangesoftware.financisto.core.designsystem.theme.FinancistoTheme
 import ru.orangesoftware.financisto.db.DatabaseHelper.ReportColumns
 import ru.orangesoftware.financisto.filter.Criteria
 import ru.orangesoftware.financisto.filter.WhereFilter
 import ru.orangesoftware.financisto.graph.GraphComposable
+import ru.orangesoftware.financisto.graph.GraphUnit
 import ru.orangesoftware.financisto.model.Total
 import ru.orangesoftware.financisto.report.PeriodReport
 import ru.orangesoftware.financisto.report.Report
+import ru.orangesoftware.financisto.reports.ReportLaunchParams
+import ru.orangesoftware.financisto.reports.ReportUiState
 import ru.orangesoftware.financisto.reports.ReportViewModel
-import ru.orangesoftware.financisto.reports.ReportViewModel.Companion.INTENT_KEY
-import ru.orangesoftware.financisto.reports.ReportViewModel.Companion.SCREEN_DENSITY_KEY
 import ru.orangesoftware.financisto.utils.MyPreferences
 import ru.orangesoftware.financisto.utils.PinProtection
 import ru.orangesoftware.financisto.utils.Utils
@@ -81,10 +78,10 @@ import kotlin.math.abs
 
 class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
 
-    companion object {
-        const val FILTER_INCOME_EXPENSE: String = "FILTER_INCOME_EXPENSE"
+    private val reportsViewModel: ReportViewModel by viewModel {
+        parametersOf(ReportLaunchParams.fromIntent(intent, resources.displayMetrics.density))
     }
-    
+
     override fun attachBaseContext(newBase: Context?) {
         super.attachBaseContext(MyPreferences.switchLocale(newBase))
     }
@@ -95,138 +92,143 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
         requestWindowFeature(Window.FEATURE_INDETERMINATE_PROGRESS)
         setContent {
             val lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
-            val snackbarHostState = remember { SnackbarHostState() }
             val context = LocalContext.current
-            val screenDensity = LocalDensity.current
-
-            val reportsViewModel: ReportViewModel = viewModel(
-                factory = ReportViewModel.Factory,
-                extras = MutableCreationExtras(defaultViewModelCreationExtras).apply {
-                    set(APPLICATION_KEY, application)
-//                    set(REPORT_NAME_KEY, intent.getStringExtra(EXTRA_REPORT_TYPE).orEmpty())
-                    set(SCREEN_DENSITY_KEY, screenDensity.density)
-                    set(INTENT_KEY, intent)
-                },
-            )
 
             DisposableEffect(lifecycleOwner) {
                 val observer = LifecycleEventObserver { _, event ->
                     when (event) {
-                        Lifecycle.Event.ON_START -> reportsViewModel.open()
                         Lifecycle.Event.ON_PAUSE -> PinProtection.lock(context)
-                        Lifecycle.Event.ON_RESUME -> PinProtection.unlock(context)
-                        Lifecycle.Event.ON_STOP -> reportsViewModel.close()
+                        Lifecycle.Event.ON_RESUME -> {
+                            PinProtection.unlock(context)
+                            reportsViewModel.refresh()
+                        }
                         else -> Unit
                     }
                 }
-
-                // Add the observer to the lifecycle
                 lifecycleOwner.lifecycle.addObserver(observer)
-
-                // When the effect leaves the Composition, remove the observer
                 onDispose {
                     lifecycleOwner.lifecycle.removeObserver(observer)
                 }
             }
 
-            val incomeExpense by reportsViewModel.incomeExpenseState.collectAsStateWithLifecycle()
-            val incomeExpenseIcon by remember(incomeExpense) { mutableIntStateOf(incomeExpense.iconId) }
-            val incomeExpenseTitle by remember(incomeExpense) { mutableIntStateOf(incomeExpense.titleId) }
-            val units by reportsViewModel.graphUnits.collectAsStateWithLifecycle()
-            val currentReport by reportsViewModel.currentReport.collectAsStateWithLifecycle()
-            val currentFilter by reportsViewModel.filter.collectAsStateWithLifecycle()
-            val total by reportsViewModel.reportTotal.collectAsStateWithLifecycle()
-            val titleText = remember(currentFilter) {
-                val criteria: Criteria? = currentFilter.get(ReportColumns.DATETIME)
-                if (criteria != null) {
-                            DateUtils.formatDateRange(
-                                context,
-                                criteria.longValue1,
-                                criteria.longValue2,
-                                DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_TIME or DateUtils.FORMAT_ABBREV_MONTH
-                            )
-                } else {
-                    ContextCompat.getString(context, R.string.no_filter)
-                }
-            }
-
-            var maxAmount by remember { mutableLongStateOf(0L) }
-            var maxAmountWidth by remember { mutableLongStateOf(0L) }
+            val uiState by reportsViewModel.uiState
 
             FinancistoTheme {
-                Scaffold(
-                    snackbarHost = {
-                        SnackbarHost(hostState = snackbarHostState)
+                ReportScreen(uiState = uiState)
+            }
+        }
+    }
+
+    @Composable
+    private fun ReportScreen(uiState: ReportUiState) {
+        val context = LocalContext.current
+        val snackbarHostState = remember { SnackbarHostState() }
+        val currentFilter = uiState.filter
+        val currentReport = uiState.currentReport
+        val incomeExpense = uiState.incomeExpense
+
+        LaunchedEffect(uiState.errorMessage) {
+            uiState.errorMessage?.let { message ->
+                snackbarHostState.showSnackbar(message)
+            }
+        }
+
+        val titleText = remember(currentFilter) {
+            val criteria: Criteria? = currentFilter.get(ReportColumns.DATETIME)
+            if (criteria != null) {
+                DateUtils.formatDateRange(
+                    context,
+                    criteria.longValue1,
+                    criteria.longValue2,
+                    DateUtils.FORMAT_SHOW_DATE or
+                        DateUtils.FORMAT_SHOW_TIME or
+                        DateUtils.FORMAT_ABBREV_MONTH,
+                )
+            } else {
+                ContextCompat.getString(context, R.string.no_filter)
+            }
+        }
+
+        Scaffold(
+            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+            topBar = {
+                ReportTopBar(
+                    titleText = if (currentReport != null && currentReport !is PeriodReport) titleText else null,
+                )
+            },
+            bottomBar = {
+                ReportBottomBar(
+                    incomeExpenseTitleId = incomeExpense.titleId,
+                    currentFilter = currentFilter,
+                    currentReport = currentReport,
+                    onActivityResult = { result ->
+                        reportsViewModel.updateFilter(result.resultCode, result.data)
                     },
-                    topBar = {
-                        ReportTopBar(
-                            titleText = if (currentReport != null && currentReport !is PeriodReport) titleText else null,
-                        )
+                    onToggleIncomeExpense = { reportsViewModel.toggleIncomeExpense() },
+                    incomeExpenseIcon = incomeExpense.iconId,
+                    incomeExpenseTitle = incomeExpense.titleId,
+                    shouldDisplayTotal = currentReport?.shouldDisplayTotal() == true,
+                    total = uiState.total,
+                    onPieButtonClick = {
+                        context.startActivity(reportsViewModel.createPieChartIntent(context))
                     },
-                    bottomBar = {
-                        ReportBottomBar(
-                            incomeExpenseTitleId = incomeExpense.titleId,
-                            currentFilter = currentFilter,
-                            currentReport = currentReport,
-                            onActivityResult = { result ->
-                                reportsViewModel.updateFilter(
-                                    result.resultCode,
-                                    result.data,
-                                )
-                            },
-                            onToggleIncomeExpense = {
-                                reportsViewModel.toggleIncomeExpense(/*context*/)
-                            },
-                            incomeExpenseIcon = incomeExpenseIcon,
-                            incomeExpenseTitle = incomeExpenseTitle,
-                            shouldDisplayTotal = currentReport?.shouldDisplayTotal() == true,
-                            total = total,
-                            onPieButtonClick = { reportsViewModel.showPieChart(this) },
-                        )
-                    }
-                ) { innerPadding ->
-                    LazyColumn(
-                        modifier = Modifier.consumeWindowInsets(innerPadding),
-                        contentPadding = innerPadding,
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        val rect = Rect()
-                        units?.forEach { unit ->
-                            unit.forEach { amount ->
-                                val amountText = amount.getAmountText()
-                                unit.style.amountPaint.getTextBounds(
-                                    amountText,
-                                    0,
-                                    amountText.length,
-                                    rect
-                                )
-                                unit.style.namePaint.color = resources.getColor(
-                                    R.color.colorPrimary,
-                                    context.theme,
-                                )
-                                amount.amountTextWidth = rect.width()
-                                amount.amountTextHeight = rect.height()
-                                maxAmount = maxAmount.coerceAtLeast(abs(amount.amount))
-                                maxAmountWidth =
-                                    maxAmountWidth.coerceAtLeast(amount.amountTextWidth.toLong())
-                            }
-                        }
-                        units?.let {
-                            items(it) { item ->
-                                GraphComposable(
-                                    modifier = Modifier
-                                        .fillParentMaxWidth()
-                                        .padding(5.dp, 10.dp, 5.dp, 5.dp),
-                                    unit = item,
-                                    maxAmount = maxAmount,
-                                    maxAmountWidth = maxAmountWidth,
-                                    onItemClick = { id ->
-                                        reportsViewModel.onGraphRowClicked(id, context)
-                                    },
-                                )
-                            }
-                        } ?: item { CircularProgressIndicator() }
-                    }
+                )
+            },
+        ) { innerPadding ->
+            ReportGraphList(
+                isLoading = uiState.isLoading,
+                graphUnits = uiState.graphUnits,
+                innerPadding = innerPadding,
+            )
+        }
+    }
+
+    @Composable
+    private fun ReportGraphList(
+        isLoading: Boolean,
+        graphUnits: List<GraphUnit>,
+        innerPadding: PaddingValues,
+    ) {
+        val context = LocalContext.current
+        val (maxAmount, maxAmountWidth) = remember(graphUnits) {
+            val rect = Rect()
+            var maxAmt = 0L
+            var maxAmtWidth = 0L
+            val primaryColor = ContextCompat.getColor(context, R.color.colorPrimary)
+            graphUnits.forEach { unit ->
+                unit.style.namePaint.color = primaryColor
+                unit.forEach { amount ->
+                    val amountText = amount.getAmountText()
+                    unit.style.amountPaint.getTextBounds(amountText, 0, amountText.length, rect)
+                    amount.amountTextWidth = rect.width()
+                    amount.amountTextHeight = rect.height()
+                    maxAmt = maxAmt.coerceAtLeast(abs(amount.amount))
+                    maxAmtWidth = maxAmtWidth.coerceAtLeast(amount.amountTextWidth.toLong())
+                }
+            }
+            maxAmt to maxAmtWidth
+        }
+
+        LazyColumn(
+            modifier = Modifier.consumeWindowInsets(innerPadding),
+            contentPadding = innerPadding,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            if (isLoading) {
+                item { CircularProgressIndicator() }
+            } else {
+                items(graphUnits) { item ->
+                    GraphComposable(
+                        modifier = Modifier
+                            .fillParentMaxWidth()
+                            .padding(5.dp, 10.dp, 5.dp, 5.dp),
+                        unit = item,
+                        maxAmount = maxAmount,
+                        maxAmountWidth = maxAmountWidth,
+                        onItemClick = { id ->
+                            reportsViewModel.createRowClickIntent(id, context)?.let(context::startActivity)
+                        },
+                    )
                 }
             }
         }
@@ -247,7 +249,7 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
                 IconButton(onClick = { (context as Activity).finish() }) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Localized description"
+                        contentDescription = "Localized description",
                     )
                 }
             },
@@ -271,9 +273,12 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
         Column(
             modifier = modifier
                 .fillMaxWidth()
-                .background(color = MaterialTheme.colorScheme.background)
+                .background(color = MaterialTheme.colorScheme.background),
         ) {
-            Text(modifier = Modifier.align(Alignment.CenterHorizontally), text = stringResource(id = incomeExpenseTitleId))
+            Text(
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+                text = stringResource(id = incomeExpenseTitleId),
+            )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
@@ -283,129 +288,97 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
                     currentReport = currentReport,
                     onActivityResult = onActivityResult,
                 )
-                IncomeExpenseIconButton(
-                    currentReport = currentReport,
-                    incomeExpenseIcon = incomeExpenseIcon,
-                    incomeExpenseTitle = incomeExpenseTitle,
-                    onToggleIncomeExpense = onToggleIncomeExpense,
-                )
-                PieChartIconButton(
-                    onPieButtonClick = onPieButtonClick,
-                )
-                if (shouldDisplayTotal == true) {
-                    Row(modifier = Modifier.align(Alignment.CenterVertically)) {
-                        if (total.isError) {
-                            Text(text = resources.getString(R.string.not_available))
-                            Icon(
-                                painter = painterResource(id = R.drawable.total_error),
-                                contentDescription = resources.getString(R.string.not_available),
-                            )
-                        } else {
-                            if (total.showAmount) {
-                                val annotatedString = buildAnnotatedString {
-                                    withStyle(style = total.amount.toTextStyle()) {
-                                        append(
-                                            Utils.amountToString(
-                                                total.currency,
-                                                total.amount,
-                                                false
-                                            )
-                                        )
-                                    }
-                                    append(" | ")
-                                    withStyle(style = total.balance.toTextStyle()) {
-                                        append(
-                                            Utils.amountToString(
-                                                total.currency,
-                                                total.balance,
-                                                false
-                                            )
-                                        )
-                                    }
-                                }
-                                Text(text = annotatedString)
-                            } else if (total.showIncomeExpense) {
-                                val annotatedString = buildAnnotatedString {
-                                    withStyle(style = total.income.toTextStyle()) {
-                                        append(
-                                            Utils.amountToString(
-                                                total.currency,
-                                                total.income,
-                                                false
-                                            )
-                                        )
-                                    }
-                                    append(" | ")
-                                    withStyle(style = total.expenses.toTextStyle()) {
-                                        append(
-                                            Utils.amountToString(
-                                                total.currency,
-                                                total.expenses,
-                                                false
-                                            )
-                                        )
-                                    }
-                                }
-                                Text(text = annotatedString)
-                            } else {
-                                Text(
-                                    text = Utils.amountToString(
-                                        StringBuilder(),
-                                        total.currency,
-                                        total.balance,
-                                        false
-                                    ).toString(),
-                                    color = if (total.balance == 0L) {
-                                        MaterialTheme.colorScheme.secondary
-                                    } else if (total.balance > 0) {
-                                        colorResource(R.color.positive_amount)
-                                    } else {
-                                        colorResource(R.color.negative_amount)
-                                    },
-                                )
-                            }
-                        }
-                    }
+                IconButton(
+                    onClick = onToggleIncomeExpense,
+                    enabled = currentReport !is PeriodReport,
+                ) {
+                    Icon(
+                        painter = painterResource(id = incomeExpenseIcon),
+                        tint = null,
+                        contentDescription = stringResource(id = incomeExpenseTitle),
+                    )
+                }
+                IconButton(onClick = onPieButtonClick) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_tab_budgets_selected),
+                        tint = null,
+                        contentDescription = "Pie chart",
+                    )
+                }
+                if (shouldDisplayTotal) {
+                    ReportTotalRow(
+                        modifier = Modifier.align(Alignment.CenterVertically),
+                        total = total,
+                    )
                 }
             }
         }
     }
 
     @Composable
-    private fun PieChartIconButton(
+    private fun ReportTotalRow(
         modifier: Modifier = Modifier,
-        onPieButtonClick: () -> Unit,
+        total: Total,
     ) {
-        IconButton(
-            modifier = modifier,
-            onClick = onPieButtonClick,
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_tab_budgets_selected),
-                tint = null,
-                contentDescription = "Pie chart",
-            )
+        val colorForAmount: @Composable (Long) -> Int = { amount ->
+            when {
+                amount == 0L -> R.color.holo_gray_bright
+                amount > 0 -> R.color.positive_amount
+                else -> R.color.negative_amount
+            }
         }
-    }
+        Row(modifier = modifier) {
+            when {
+                total.isError -> {
+                    Text(text = stringResource(id = R.string.not_available))
+                    Icon(
+                        painter = painterResource(id = R.drawable.total_error),
+                        contentDescription = stringResource(id = R.string.not_available),
+                    )
+                }
 
-    @Composable
-    private fun IncomeExpenseIconButton(
-        modifier: Modifier = Modifier,
-        currentReport: Report?,
-        @DrawableRes incomeExpenseIcon: Int,
-        @StringRes incomeExpenseTitle: Int,
-        onToggleIncomeExpense: () -> Unit,
-    ) {
-        IconButton(
-            modifier = modifier,
-            onClick = onToggleIncomeExpense,
-            enabled = currentReport !is PeriodReport,
-        ) {
-            Icon(
-                painter = painterResource(id = incomeExpenseIcon),
-                tint = null,
-                contentDescription = stringResource(id = incomeExpenseTitle),
-            )
+                total.showAmount -> {
+                    val annotatedString = buildAnnotatedString {
+                        withStyle(SpanStyle(color = colorResource(colorForAmount(total.amount)))) {
+                            append(Utils.amountToString(total.currency, total.amount, false))
+                        }
+                        append(" | ")
+                        withStyle(SpanStyle(color = colorResource(colorForAmount(total.balance)))) {
+                            append(Utils.amountToString(total.currency, total.balance, false))
+                        }
+                    }
+                    Text(text = annotatedString)
+                }
+
+                total.showIncomeExpense -> {
+                    val annotatedString = buildAnnotatedString {
+                        withStyle(SpanStyle(color = colorResource(colorForAmount(total.income)))) {
+                            append(Utils.amountToString(total.currency, total.income, false))
+                        }
+                        append(" | ")
+                        withStyle(SpanStyle(color = colorResource(colorForAmount(total.expenses)))) {
+                            append(Utils.amountToString(total.currency, total.expenses, false))
+                        }
+                    }
+                    Text(text = annotatedString)
+                }
+
+                else -> {
+                    Text(
+                        text = Utils.amountToString(
+                            StringBuilder(),
+                            total.currency,
+                            total.balance,
+                            false,
+                        ).toString(),
+                        color = when {
+                            total.balance == 0L -> MaterialTheme.colorScheme.secondary
+                            total.balance > 0 -> colorResource(R.color.positive_amount)
+                            else -> colorResource(R.color.negative_amount)
+                        },
+                    )
+                }
+            }
         }
     }
 
@@ -419,7 +392,7 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
         val context = LocalContext.current
 
         val launcher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.StartActivityForResult()
+            contract = ActivityResultContracts.StartActivityForResult(),
         ) { result ->
             onActivityResult(result)
         }
@@ -427,38 +400,28 @@ class ReportActivity : ComponentActivity(), RefreshSupportedActivity {
         IconButton(
             modifier = modifier,
             onClick = {
-                val intent =
-                    Intent(context, ReportFilterActivity::class.java)
+                val intent = Intent(context, ReportFilterActivity::class.java)
                 currentFilter.toIntent(intent)
                 launcher.launch(intent)
             },
             enabled = currentReport !is PeriodReport,
         ) {
+            val tintId = if (currentFilter.isEmpty) R.color.bottom_bar_tint else R.color.holo_blue_dark
             Icon(
                 painter = painterResource(id = R.drawable.actionbar_filter),
                 contentDescription = "Filter",
-                tint = colorResource(id = if (currentFilter.isEmpty) R.color.bottom_bar_tint else R.color.holo_blue_dark)
+                tint = colorResource(id = tintId),
             )
         }
     }
 
-    @Composable
-    private fun Long.toTextStyle(): SpanStyle = SpanStyle(
-        color = colorResource(
-            if (this == 0L) {
-                R.color.holo_gray_bright
-            } else if (this > 0) {
-                R.color.positive_amount
-            } else {
-                R.color.negative_amount
-            }
-        )
-    )
-
     override fun recreateCursor() {
-//        selectReport()
-        // TODO: react to changes in database
+        reportsViewModel.refresh()
     }
 
     override fun integrityCheck() = Unit
+
+    companion object {
+        const val FILTER_INCOME_EXPENSE: String = "FILTER_INCOME_EXPENSE"
+    }
 }

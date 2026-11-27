@@ -3,21 +3,29 @@ package ru.orangesoftware.financisto.transaction
 
 import android.content.ContentResolver
 import android.content.Context
+import android.content.SharedPreferences
 import android.database.sqlite.SQLiteException
 import android.net.Uri
 import androidx.annotation.VisibleForTesting
-import androidx.core.content.edit
+import androidx.appstate.statestore.StateStore
+import androidx.compose.runtime.State
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.core.net.toUri
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import org.json.JSONException
+import ru.orangesoftware.financisto.appstate.AiDraftSessionKey
+import ru.orangesoftware.financisto.appstate.AiDraftSessionState
+import ru.orangesoftware.financisto.appstate.SavedDraftEntry
 import ru.orangesoftware.financisto.datetime.DateUtils
 import ru.orangesoftware.financisto.db.DatabaseAdapter
 import ru.orangesoftware.financisto.transaction.model.TransactionDraft
@@ -34,6 +42,7 @@ import java.io.File
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.CoroutineContext
 
@@ -60,19 +69,11 @@ class FinancistoTransactionPreferencesPort(
     }
 }
 
-@Serializable
-private data class SavedDraftEntry(
-    val draftId: String,
-    val transactionId: Long,
-)
-
 private object DraftSessionCodec {
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
     }
-
-    fun encodeDraft(draft: TransactionDraft): String = json.encodeToString(draft)
 
     fun decodeDraft(raw: String): TransactionDraft? {
         return try {
@@ -86,8 +87,6 @@ private object DraftSessionCodec {
         }
     }
 
-    fun encodeHistory(entries: List<SavedDraftEntry>): String = json.encodeToString(entries)
-
     fun decodeHistory(raw: String): List<SavedDraftEntry> {
         return try {
             json.decodeFromString<List<SavedDraftEntry>>(raw)
@@ -99,133 +98,439 @@ private object DraftSessionCodec {
             emptyList()
         }
     }
+
+    data class SavePendingDraftResult(
+        val persisted: Boolean,
+        val orphanReceiptFile: String? = null,
+    )
+
+    suspend fun migrateFromLegacyIfNeeded(
+        legacyPrefs: SharedPreferences?,
+        stateStore: StateStore,
+        persistSessionState: (suspend (AiDraftSessionState) -> Unit)?,
+    ): Boolean {
+        val legacyPendingRaw = legacyPrefs?.getString(FinancistoDraftSessionStore.KEY_PENDING_DRAFT, null)
+        val legacySavedRaw = legacyPrefs?.getString(FinancistoDraftSessionStore.KEY_SAVED_DRAFTS, null)
+        if (legacyPrefs == null || (legacyPendingRaw == null && legacySavedRaw == null)) {
+            return true
+        }
+        val migratedState = buildMigratedStateIfNeeded(
+            currentState = stateStore.getState(AiDraftSessionKey).value,
+            legacyPendingRaw = legacyPendingRaw,
+            legacySavedRaw = legacySavedRaw,
+        )
+        val persisted = migratedState == null || persistState(persistSessionState, migratedState)
+        if (persisted) {
+            if (migratedState != null) {
+                Snapshot.withMutableSnapshot {
+                    stateStore.setState(AiDraftSessionKey, migratedState)
+                }
+            }
+            val cleared = legacyPrefs.edit()?.run {
+                clear()
+                commit()
+            } ?: true
+            if (!cleared) {
+                Timber.w("Failed to clear legacy AI draft preferences after migration")
+            }
+        }
+        return persisted
+    }
+
+    private fun buildMigratedStateIfNeeded(
+        currentState: AiDraftSessionState,
+        legacyPendingRaw: String?,
+        legacySavedRaw: String?,
+    ): AiDraftSessionState? {
+        val isStoreAtDefault = currentState.pendingDraft == null && currentState.savedHistory.isEmpty()
+        if (!isStoreAtDefault) return null
+        val legacyPending = legacyPendingRaw?.let(::decodeDraft)
+        val deduplicatedHistory = LinkedHashMap<String, SavedDraftEntry>()
+        legacySavedRaw?.let(::decodeHistory)
+            .orEmpty()
+            .asSequence()
+            .filter { it.transactionId > 0L }
+            .forEach { entry ->
+                deduplicatedHistory.remove(entry.draftId)
+                deduplicatedHistory[entry.draftId] = entry
+            }
+        val legacyHistory = deduplicatedHistory.values.toList()
+            .takeLast(FinancistoDraftSessionStore.MAX_SAVED_DRAFTS)
+        return if (legacyPending != null || legacyHistory.isNotEmpty()) {
+            AiDraftSessionState(
+                pendingDraft = legacyPending,
+                savedHistory = legacyHistory,
+            )
+        } else {
+            null
+        }
+    }
+
+    suspend fun savePendingDraftLocked(
+        stateStore: StateStore,
+        pendingBookkeeping: MutableMap<String, Long>,
+        draft: TransactionDraft,
+        persistSessionState: (suspend (AiDraftSessionState) -> Unit)?,
+    ): SavePendingDraftResult {
+        val current = stateStore.getState(AiDraftSessionKey).value
+        val mergedHistory = DraftBookkeepingHelper.mergeBookkeepingIntoHistory(
+            history = current.savedHistory,
+            pendingBookkeeping = pendingBookkeeping,
+        )
+        val previous = current.pendingDraft
+        val previousId = previous?.draftId
+        val candidateOrphan = previous
+            ?.takeIf { it.draftId != draft.draftId }
+            ?.stagedReceiptFileName
+            ?.takeIf { it.isNotBlank() && it != draft.stagedReceiptFileName }
+        val alreadySaved = previousId != null && candidateOrphan != null &&
+            mergedHistory.any { it.draftId == previousId && it.transactionId > 0L }
+        val orphanReceiptFile = candidateOrphan.takeUnless { alreadySaved }
+        val nextState = current.copy(pendingDraft = draft, savedHistory = mergedHistory)
+        if (!persistState(persistSessionState, nextState)) {
+            return SavePendingDraftResult(persisted = false)
+        }
+        pendingBookkeeping.clear()
+        Snapshot.withMutableSnapshot {
+            stateStore.setState(AiDraftSessionKey, nextState)
+        }
+        return SavePendingDraftResult(
+            persisted = true,
+            orphanReceiptFile = orphanReceiptFile,
+        )
+    }
+
+    suspend fun persistState(
+        persistSessionState: (suspend (AiDraftSessionState) -> Unit)?,
+        state: AiDraftSessionState,
+    ): Boolean {
+        val writer = persistSessionState ?: return true
+        return try {
+            writer(state)
+            true
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: IOException) {
+            Timber.e(e, "Failed to persist AI draft session state to DataStore")
+            false
+        } catch (e: SerializationException) {
+            Timber.e(e, "Failed to serialize AI draft session state for DataStore")
+            false
+        }
+    }
+
+    fun removePendingIfMatching(stateStore: StateStore, draftId: String) {
+        if (stateStore.getState(AiDraftSessionKey).value.pendingDraft?.draftId == draftId) {
+            Snapshot.withMutableSnapshot {
+                stateStore.updateState(AiDraftSessionKey) { it.copy(pendingDraft = null) }
+            }
+        }
+    }
+}
+
+private object DraftBookkeepingHelper {
+    fun recordPending(
+        pendingBookkeeping: LinkedHashMap<String, Long>,
+        draftId: String,
+        transactionId: Long,
+    ) {
+        if (transactionId > 0L) {
+            pendingBookkeeping.remove(draftId)
+            pendingBookkeeping[draftId] = transactionId
+            while (pendingBookkeeping.size > FinancistoDraftSessionStore.MAX_SAVED_DRAFTS) {
+                val eldestKey = pendingBookkeeping.entries.firstOrNull()?.key ?: break
+                pendingBookkeeping.remove(eldestKey)
+            }
+        }
+    }
+
+    fun mergeBookkeepingIntoHistory(
+        history: List<SavedDraftEntry>,
+        pendingBookkeeping: Map<String, Long>,
+    ): List<SavedDraftEntry> {
+        if (pendingBookkeeping.isEmpty()) return history
+        val deduplicated = LinkedHashMap<String, Long>()
+        history.forEach { entry ->
+            if (entry.transactionId > 0L) {
+                deduplicated.remove(entry.draftId)
+                deduplicated[entry.draftId] = entry.transactionId
+            }
+        }
+        pendingBookkeeping.forEach { (draftId, txId) ->
+            if (txId > 0L) {
+                deduplicated.remove(draftId)
+                deduplicated[draftId] = txId
+            }
+        }
+        return deduplicated.entries
+            .map { (draftId, txId) -> SavedDraftEntry(draftId = draftId, transactionId = txId) }
+            .takeLast(FinancistoDraftSessionStore.MAX_SAVED_DRAFTS)
+    }
+
+    suspend fun awaitRestoreSafely(awaitSessionRestore: (suspend () -> Unit)?): Boolean {
+        return awaitSessionRestore?.let { restore ->
+            try {
+                restore()
+                true
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: IOException) {
+                Timber.e(e, "Failed to restore AppState AI draft session from DataStore")
+                false
+            } catch (e: SerializationException) {
+                Timber.e(e, "Failed to decode restored AppState AI draft session")
+                false
+            }
+        } ?: true
+    }
+
+    suspend fun applyAndPersistSaved(
+        stateStore: StateStore,
+        pendingBookkeeping: MutableMap<String, Long>,
+        draftId: String,
+        transactionId: Long,
+        persistSessionState: (suspend (AiDraftSessionState) -> Unit)?,
+    ): Boolean {
+        val current = stateStore.getState(AiDraftSessionKey).value
+        val toMerge = if (transactionId > 0L) {
+            LinkedHashMap(pendingBookkeeping).apply {
+                remove(draftId)
+                put(draftId, transactionId)
+            }
+        } else {
+            pendingBookkeeping
+        }
+        val nextState = current.copy(
+            pendingDraft = current.pendingDraft?.takeUnless {
+                it.draftId == draftId || it.draftId in pendingBookkeeping
+            },
+            savedHistory = mergeBookkeepingIntoHistory(current.savedHistory, toMerge),
+        )
+        Snapshot.withMutableSnapshot {
+            stateStore.setState(AiDraftSessionKey, nextState)
+        }
+        val persisted = DraftSessionCodec.persistState(persistSessionState, nextState)
+        if (persisted) {
+            pendingBookkeeping.clear()
+        }
+        return persisted
+    }
+
+    suspend fun flushPendingIfAny(
+        stateStore: StateStore,
+        pendingBookkeeping: MutableMap<String, Long>,
+        persistSessionState: (suspend (AiDraftSessionState) -> Unit)?,
+    ): Boolean {
+        if (pendingBookkeeping.isEmpty()) return true
+        val current = stateStore.getState(AiDraftSessionKey).value
+        val nextState = current.copy(
+            pendingDraft = current.pendingDraft?.takeUnless { it.draftId in pendingBookkeeping },
+            savedHistory = mergeBookkeepingIntoHistory(current.savedHistory, pendingBookkeeping),
+        )
+        Snapshot.withMutableSnapshot {
+            stateStore.setState(AiDraftSessionKey, nextState)
+        }
+        val persisted = DraftSessionCodec.persistState(persistSessionState, nextState)
+        if (persisted) {
+            pendingBookkeeping.clear()
+        }
+        return persisted
+    }
+
+    suspend fun clearPendingAndFlush(
+        stateStore: StateStore,
+        pendingBookkeeping: MutableMap<String, Long>,
+        draftId: String,
+        persistSessionState: (suspend (AiDraftSessionState) -> Unit)?,
+    ) {
+        val current = stateStore.getState(AiDraftSessionKey).value
+        val nextPending = current.pendingDraft?.takeUnless {
+            it.draftId == draftId || it.draftId in pendingBookkeeping
+        }
+        val nextHistory = mergeBookkeepingIntoHistory(current.savedHistory, pendingBookkeeping)
+        val nextState = current.copy(pendingDraft = nextPending, savedHistory = nextHistory)
+        if (nextState != current || pendingBookkeeping.isNotEmpty()) {
+            Snapshot.withMutableSnapshot {
+                stateStore.setState(AiDraftSessionKey, nextState)
+            }
+            if (DraftSessionCodec.persistState(persistSessionState, nextState)) {
+                pendingBookkeeping.clear()
+            }
+        }
+    }
 }
 
 class FinancistoDraftSessionStore(
     context: Context,
+    private val stateStore: StateStore = StateStore(),
     @Suppress("InjectDispatcher")
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val persistSessionState: (suspend (AiDraftSessionState) -> Unit)? = null,
+    private val awaitSessionRestore: (suspend () -> Unit)? = null,
 ) : DraftSessionStore {
-    private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    private val lock = Any()
+    @Suppress("InjectDispatcher")
+    constructor(
+        context: Context,
+        ioDispatcher: CoroutineDispatcher,
+    ) : this(context = context, stateStore = StateStore(), ioDispatcher = ioDispatcher)
+
+    private val prefs: SharedPreferences? = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val mutex = Mutex()
+    private val migratedFromLegacy = AtomicBoolean(false)
+    private val pendingSavedBookkeeping = LinkedHashMap<String, Long>()
+
+    val sessionState: State<AiDraftSessionState> = stateStore.getState(AiDraftSessionKey)
 
     @VisibleForTesting
     internal var deleteStagedReceipt: (String) -> Unit = ::deleteStagedReceiptQuietly
 
     override suspend fun getSavedTransactionId(draftId: String): Long? = withContext(ioDispatcher) {
-        synchronized(lock) {
-            val raw = prefs.getString(KEY_SAVED_DRAFTS, null) ?: return@synchronized null
-            DraftSessionCodec.decodeHistory(raw)
-                .lastOrNull { it.draftId == draftId }
-                ?.transactionId
-                ?.takeIf { it > 0L }
+        mutex.withLock {
+            val retainedId = pendingSavedBookkeeping[draftId]?.takeIf { it > 0L }
+            val ready = DraftBookkeepingHelper.awaitRestoreSafely(awaitSessionRestore) &&
+                ensureMigratedFromLegacyLocked()
+            when {
+                !ready -> retainedId ?: throw IOException("Failed to initialize AI draft session state")
+                else -> {
+                    DraftBookkeepingHelper.flushPendingIfAny(
+                        stateStore = stateStore,
+                        pendingBookkeeping = pendingSavedBookkeeping,
+                        persistSessionState = persistSessionState,
+                    )
+                    retainedId ?: sessionState.value.savedHistory
+                        .lastOrNull { it.draftId == draftId }
+                        ?.transactionId
+                        ?.takeIf { it > 0L }
+                }
+            }
         }
     }
 
     override suspend fun markDraftSaved(draftId: String, transactionId: Long) {
         withContext(ioDispatcher) {
-            synchronized(lock) {
-                val editor = prefs.edit()
-                var hasChanges = false
-                if (transactionId > 0L) {
-                    val existing = prefs.getString(KEY_SAVED_DRAFTS, null)
-                        ?.let(DraftSessionCodec::decodeHistory)
-                        .orEmpty()
-                    val retained = existing.filterNot { it.draftId == draftId }
-                    val updated = (retained + SavedDraftEntry(draftId = draftId, transactionId = transactionId))
-                        .takeLast(MAX_SAVED_DRAFTS)
-                    editor.putString(KEY_SAVED_DRAFTS, DraftSessionCodec.encodeHistory(updated))
-                    hasChanges = true
-                }
-                val shouldClearPending = prefs.getString(KEY_PENDING_DRAFT, null)?.let { pendingRaw ->
-                    val pending = DraftSessionCodec.decodeDraft(pendingRaw)
-                    pending == null || pending.draftId == draftId
-                } == true
-                if (shouldClearPending) {
-                    editor.remove(KEY_PENDING_DRAFT)
-                    hasChanges = true
-                }
-                if (hasChanges && !editor.commit()) {
-                    Timber.e(
-                        "Failed to persist saved state for AI draft %s (transaction %d)",
-                        draftId,
-                        transactionId,
-                    )
+            mutex.withLock {
+                DraftBookkeepingHelper.recordPending(pendingSavedBookkeeping, draftId, transactionId)
+                val ready = DraftBookkeepingHelper.awaitRestoreSafely(awaitSessionRestore) &&
+                    ensureMigratedFromLegacyLocked()
+                val persisted = ready && DraftBookkeepingHelper.applyAndPersistSaved(
+                    stateStore = stateStore,
+                    pendingBookkeeping = pendingSavedBookkeeping,
+                    draftId = draftId,
+                    transactionId = transactionId,
+                    persistSessionState = persistSessionState,
+                )
+                if (!persisted) {
+                    throw IOException("Failed to durably persist saved AI draft bookkeeping for $draftId")
                 }
             }
         }
     }
 
     override suspend fun acknowledgeDraftOpened(draftId: String) {
-        withContext(ioDispatcher) {
-            synchronized(lock) { removePendingIfMatchingLocked(draftId) }
-        }
+        clearPendingDraft(draftId)
     }
 
     override suspend fun clearPendingDraft(draftId: String) {
         withContext(ioDispatcher) {
-            synchronized(lock) { removePendingIfMatchingLocked(draftId) }
+            mutex.withLock {
+                val ready = DraftBookkeepingHelper.awaitRestoreSafely(awaitSessionRestore) &&
+                    ensureMigratedFromLegacyLocked()
+                if (!ready) {
+                    throw IOException("Failed to initialize AI draft session state")
+                }
+                DraftBookkeepingHelper.clearPendingAndFlush(
+                    stateStore = stateStore,
+                    pendingBookkeeping = pendingSavedBookkeeping,
+                    draftId = draftId,
+                    persistSessionState = persistSessionState,
+                )
+            }
         }
     }
 
     fun savePendingDraft(draft: TransactionDraft): Boolean {
         var orphanReceiptFile: String? = null
-        val committed = synchronized(lock) {
-            val previous = prefs.getString(KEY_PENDING_DRAFT, null)?.let(DraftSessionCodec::decodeDraft)
-            val previousId = previous?.draftId
-            val candidateOrphan = previous
-                ?.takeIf { it.draftId != draft.draftId }
-                ?.stagedReceiptFileName
-                ?.takeIf { it.isNotBlank() && it != draft.stagedReceiptFileName }
-            val alreadySaved = previousId != null && candidateOrphan != null && prefs.getString(KEY_SAVED_DRAFTS, null)
-                ?.let(DraftSessionCodec::decodeHistory)
-                .orEmpty()
-                .any { it.draftId == previousId && it.transactionId > 0L }
-            val result = prefs.edit()
-                .putString(KEY_PENDING_DRAFT, DraftSessionCodec.encodeDraft(draft))
-                .commit()
-            if (!result) {
-                Timber.e("Failed to persist pending AI transaction draft: %s", draft.draftId)
-            } else if (candidateOrphan != null && !alreadySaved) {
-                orphanReceiptFile = candidateOrphan
+        val persisted = runBlocking {
+            mutex.withLock {
+                val ready = DraftBookkeepingHelper.awaitRestoreSafely(awaitSessionRestore) &&
+                    ensureMigratedFromLegacyLocked()
+                if (ready) {
+                    val result = DraftSessionCodec.savePendingDraftLocked(
+                        stateStore = stateStore,
+                        pendingBookkeeping = pendingSavedBookkeeping,
+                        draft = draft,
+                        persistSessionState = persistSessionState,
+                    )
+                    orphanReceiptFile = result.orphanReceiptFile
+                    result.persisted
+                } else {
+                    false
+                }
             }
-            result
         }
-        orphanReceiptFile?.let(deleteStagedReceipt)
-        return committed
+        if (persisted) {
+            orphanReceiptFile?.let(deleteStagedReceipt)
+        }
+        return persisted
     }
 
     fun peekPendingAutoOpenDraft(currentDraftId: String? = null): TransactionDraft? =
-        synchronized(lock) { resolvePendingDraftLocked(currentDraftId, removeOnMatch = false) }
+        runBlocking {
+            mutex.withLock {
+                val ready = DraftBookkeepingHelper.awaitRestoreSafely(awaitSessionRestore) &&
+                    ensureMigratedFromLegacyLocked()
+                if (ready) resolvePendingDraftLocked(currentDraftId, removeOnMatch = false) else null
+            }
+        }
 
     fun consumePendingAutoOpenDraft(currentDraftId: String? = null): TransactionDraft? =
-        synchronized(lock) { resolvePendingDraftLocked(currentDraftId, removeOnMatch = true) }
+        runBlocking {
+            mutex.withLock {
+                val ready = DraftBookkeepingHelper.awaitRestoreSafely(awaitSessionRestore) &&
+                    ensureMigratedFromLegacyLocked()
+                if (ready) resolvePendingDraftLocked(currentDraftId, removeOnMatch = true) else null
+            }
+        }
 
     fun clearPendingAutoOpenDraft(draftId: String) {
-        synchronized(lock) { removePendingIfMatchingLocked(draftId) }
+        runBlocking {
+            mutex.withLock {
+                val ready = DraftBookkeepingHelper.awaitRestoreSafely(awaitSessionRestore) &&
+                    ensureMigratedFromLegacyLocked()
+                if (ready) {
+                    DraftSessionCodec.removePendingIfMatching(stateStore, draftId)
+                }
+            }
+        }
+    }
+
+    private suspend fun ensureMigratedFromLegacyLocked(): Boolean {
+        if (!migratedFromLegacy.get()) {
+            val succeeded = DraftSessionCodec.migrateFromLegacyIfNeeded(
+                legacyPrefs = prefs,
+                stateStore = stateStore,
+                persistSessionState = persistSessionState,
+            )
+            if (succeeded) {
+                migratedFromLegacy.set(true)
+            }
+        }
+        return migratedFromLegacy.get()
     }
 
     private fun resolvePendingDraftLocked(currentDraftId: String?, removeOnMatch: Boolean): TransactionDraft? {
-        val raw = prefs.getString(KEY_PENDING_DRAFT, null) ?: return null
-        val draft = DraftSessionCodec.decodeDraft(raw)
-        val savedHistory = prefs.getString(KEY_SAVED_DRAFTS, null)
-            ?.let(DraftSessionCodec::decodeHistory)
-            .orEmpty()
-        val alreadySaved = draft != null && savedHistory.any { it.draftId == draft.draftId && it.transactionId > 0L }
-        val isCurrentDraft = currentDraftId != null && draft?.draftId == currentDraftId
-        val shouldDrop = draft == null || alreadySaved || isCurrentDraft
+        val current = sessionState.value
+        val draft = current.pendingDraft ?: return null
+        val alreadySaved = draft.draftId in pendingSavedBookkeeping ||
+            current.savedHistory.any { it.draftId == draft.draftId && it.transactionId > 0L }
+        val isCurrentDraft = currentDraftId != null && draft.draftId == currentDraftId
+        val shouldDrop = alreadySaved || isCurrentDraft
         if (shouldDrop || removeOnMatch) {
-            prefs.edit { remove(KEY_PENDING_DRAFT) }
+            Snapshot.withMutableSnapshot {
+                stateStore.updateState(AiDraftSessionKey) { it.copy(pendingDraft = null) }
+            }
         }
         return if (shouldDrop) null else draft
-    }
-
-    private fun removePendingIfMatchingLocked(draftId: String) {
-        val raw = prefs.getString(KEY_PENDING_DRAFT, null) ?: return
-        val pending = DraftSessionCodec.decodeDraft(raw)
-        if (pending == null || pending.draftId == draftId) {
-            prefs.edit { remove(KEY_PENDING_DRAFT) }
-        }
     }
 
     internal companion object {

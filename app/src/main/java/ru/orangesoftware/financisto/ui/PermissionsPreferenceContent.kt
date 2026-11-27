@@ -2,6 +2,7 @@
 package ru.orangesoftware.financisto.ui
 
 import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -27,41 +28,35 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import org.koin.androidx.compose.KoinAndroidContext
-import org.koin.core.annotation.KoinExperimentalAPI
 import ru.orangesoftware.financisto.R
-import ru.orangesoftware.financisto.app.DependenciesHolder
 import ru.orangesoftware.financisto.core.designsystem.theme.FinancistoTheme
-import ru.orangesoftware.financisto.persistance.PreferencesStore
+import timber.log.Timber
 
-private val logger = DependenciesHolder().logger
-
-@OptIn(KoinExperimentalAPI::class)
 @Composable
-fun PermissionsPreferenceContent() {
-//    val preferencesStore = PreferencesStore(LocalContext.current)
-
+fun PermissionsPreferenceContent(
+    uiState: PermissionsUiState,
+    onBackupFolderSelected: (Uri) -> Unit,
+) {
     FinancistoTheme {
-        // A surface container using the 'background' color from the theme
         Surface(color = MaterialTheme.colorScheme.background) {
-            KoinAndroidContext {
-                Content()
-            }
+            Content(
+                uiState = uiState,
+                onBackupFolderSelected = onBackupFolderSelected,
+            )
         }
     }
 }
 
 @Composable
-private fun Content(preferencesStore: PreferencesStore = DependenciesHolder().preferencesStore/*koinInject()*/) {
-    val scrollableState = rememberScrollableState {
-        it
-    }
+private fun Content(
+    uiState: PermissionsUiState,
+    onBackupFolderSelected: (Uri) -> Unit,
+) {
+    val scrollableState = rememberScrollableState { it }
     Column(
         modifier = Modifier
             .scrollable(
@@ -74,7 +69,10 @@ private fun Content(preferencesStore: PreferencesStore = DependenciesHolder().pr
         Spacer(modifier = Modifier.size(10.dp))
         Description()
         Spacer(modifier = Modifier.size(10.dp))
-        Storage(preferencesStore)
+        Storage(
+            uiState = uiState,
+            onBackupFolderSelected = onBackupFolderSelected,
+        )
         Contacts()
         Camera()
         Sms()
@@ -99,53 +97,33 @@ private fun Description() {
     )
 }
 
-@OptIn(ExperimentalPermissionsApi::class)
 @Composable
-private fun Storage(preferencesStore: PreferencesStore) {
+private fun Storage(
+    uiState: PermissionsUiState,
+    onBackupFolderSelected: (Uri) -> Unit,
+) {
     val context = LocalContext.current
-
-    val latestFolder = preferencesStore.backupPreferencesRx.blockingFirst()//backupPreferencesFlow.collectAsState(initial = null)
-    var permissionGranted = latestFolder.let {
-        context.contentResolver.persistedUriPermissions.any { permission ->
-            permission.uri == it.folder
-        }
-    } ?: false
     val pickFolderLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
         if (uri != null) {
-            // Update the state with the Uri
-            permissionGranted = true
             context.contentResolver.takePersistableUriPermission(
                 uri,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
             )
             Toast.makeText(context, "Permission granted: $uri", Toast.LENGTH_LONG).show()
-            logger.d("Permission granted: $uri")
-            CoroutineScope(Dispatchers.IO).launch {
-                preferencesStore.updateBackupFolderUri(uri)
-            }
-        } else {
-            permissionGranted = false
+            Timber.d("Permission granted: %s", uri)
+            onBackupFolderSelected(uri)
         }
     }
     PermissionBlock(
         title = stringResource(R.string.request_permissions_storage_title),
         description = stringResource(R.string.request_permissions_storage_description),
-        isSwitchChecked = permissionGranted,//storagePermissionState.status.isGranted,
-        isSwitchDisabled = permissionGranted,//storagePermissionState.status.isGranted,
-//        isSwitchDisabled = storagePermissionState.status.isGranted || (!storagePermissionState.status.isGranted && !storagePermissionState.status.shouldShowRationale),
+        isSwitchChecked = uiState.isStoragePermissionGranted,
+        isSwitchDisabled = uiState.isStoragePermissionGranted,
         onSwitch = {
-//            storagePermissionState.launchPermissionRequest()
-
-// In your button's click
-            pickFolderLauncher.launch(latestFolder.folder)
+            pickFolderLauncher.launch(uiState.backupFolderUri)
         },
-//        onSwitch = { if (storagePermissionState.status.shouldShowRationale) {
-//            Toast.makeText(context, "Show rationale", Toast.LENGTH_LONG).show()
-//        } else {
-//            storagePermissionState.launchPermissionRequest()
-//        } },
     )
 }
 
@@ -235,5 +213,11 @@ private fun PermissionBlock(
     device = Devices.PIXEL_7_PRO,
 )
 private fun Preview() {
-    PermissionsPreferenceContent()
+    PermissionsPreferenceContent(
+        uiState = PermissionsUiState(
+            backupFolderUri = "content://com.android.externalstorage.documents/tree/primary%3ADocuments".toUri(),
+            isStoragePermissionGranted = true,
+        ),
+        onBackupFolderSelected = {},
+    )
 }
