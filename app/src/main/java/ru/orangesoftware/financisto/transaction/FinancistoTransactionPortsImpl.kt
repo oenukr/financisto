@@ -477,29 +477,27 @@ class FinancistoDraftSessionStore(
     fun peekPendingAutoOpenDraft(currentDraftId: String? = null): TransactionDraft? =
         runBlocking {
             mutex.withLock {
-                if (ensureMigratedFromLegacyLocked()) {
-                    resolvePendingDraftLocked(currentDraftId, removeOnMatch = false)
-                } else {
-                    null
-                }
+                val ready = DraftBookkeepingHelper.awaitRestoreSafely(awaitSessionRestore) &&
+                    ensureMigratedFromLegacyLocked()
+                if (ready) resolvePendingDraftLocked(currentDraftId, removeOnMatch = false) else null
             }
         }
 
     fun consumePendingAutoOpenDraft(currentDraftId: String? = null): TransactionDraft? =
         runBlocking {
             mutex.withLock {
-                if (ensureMigratedFromLegacyLocked()) {
-                    resolvePendingDraftLocked(currentDraftId, removeOnMatch = true)
-                } else {
-                    null
-                }
+                val ready = DraftBookkeepingHelper.awaitRestoreSafely(awaitSessionRestore) &&
+                    ensureMigratedFromLegacyLocked()
+                if (ready) resolvePendingDraftLocked(currentDraftId, removeOnMatch = true) else null
             }
         }
 
     fun clearPendingAutoOpenDraft(draftId: String) {
         runBlocking {
             mutex.withLock {
-                if (ensureMigratedFromLegacyLocked()) {
+                val ready = DraftBookkeepingHelper.awaitRestoreSafely(awaitSessionRestore) &&
+                    ensureMigratedFromLegacyLocked()
+                if (ready) {
                     DraftSessionCodec.removePendingIfMatching(stateStore, draftId)
                 }
             }

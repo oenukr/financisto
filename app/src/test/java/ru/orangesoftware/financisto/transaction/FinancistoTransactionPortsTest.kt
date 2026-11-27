@@ -449,4 +449,84 @@ class FinancistoTransactionPortsTest : AbstractDbTest() {
             persistedStates.last().savedHistory,
         )
     }
+
+    @Test
+    fun autoOpenDraftHelpersLeaveLegacyPrefsIntactOnRestoreFailureAndMigrateWhenNoModernStateExists() = runTest {
+        clearLegacyDraftPrefs()
+        val legacyPrefs = context.getSharedPreferences(FinancistoDraftSessionStore.PREFS_NAME, Context.MODE_PRIVATE)
+        val json = kotlinx.serialization.json.Json { encodeDefaults = true }
+        val legacyDraft = sampleDraft("draft-auto-legacy", amountMinor = 2100L)
+        val legacyHistory = listOf(SavedDraftEntry("saved-auto-legacy", 64L))
+        legacyPrefs.edit(commit = true) {
+            putString(FinancistoDraftSessionStore.KEY_PENDING_DRAFT, json.encodeToString(legacyDraft))
+            putString(FinancistoDraftSessionStore.KEY_SAVED_DRAFTS, json.encodeToString(legacyHistory))
+        }
+
+        var shouldFailRestore = true
+        val persistedStates = mutableListOf<AiDraftSessionState>()
+        val store = FinancistoDraftSessionStore(
+            context = context,
+            stateStore = StateStore(),
+            ioDispatcher = UnconfinedTestDispatcher(),
+            persistSessionState = { persistedStates += it },
+            awaitSessionRestore = {
+                if (shouldFailRestore) throw IOException("Simulated cold restore failure")
+            },
+        )
+
+        assertNull(store.peekPendingAutoOpenDraft())
+        assertNull(store.consumePendingAutoOpenDraft())
+        store.clearPendingAutoOpenDraft(legacyDraft.draftId)
+        assertTrue(legacyPrefs.contains(FinancistoDraftSessionStore.KEY_PENDING_DRAFT))
+        assertTrue(legacyPrefs.contains(FinancistoDraftSessionStore.KEY_SAVED_DRAFTS))
+        assertTrue(persistedStates.isEmpty())
+
+        shouldFailRestore = false
+        assertEquals(legacyDraft, store.peekPendingAutoOpenDraft())
+        assertFalse(legacyPrefs.contains(FinancistoDraftSessionStore.KEY_PENDING_DRAFT))
+        assertFalse(legacyPrefs.contains(FinancistoDraftSessionStore.KEY_SAVED_DRAFTS))
+        assertEquals(64L, store.getSavedTransactionId("saved-auto-legacy"))
+        assertEquals(legacyDraft, store.consumePendingAutoOpenDraft())
+        assertNull(store.peekPendingAutoOpenDraft())
+    }
+
+    @Test
+    fun autoOpenDraftHelpersAwaitModernRestoreBeforeLegacyMigration() = runTest {
+        clearLegacyDraftPrefs()
+        val legacyPrefs = context.getSharedPreferences(FinancistoDraftSessionStore.PREFS_NAME, Context.MODE_PRIVATE)
+        val json = kotlinx.serialization.json.Json { encodeDefaults = true }
+        val staleLegacyDraft = sampleDraft("draft-stale-legacy", amountMinor = 1000L)
+        val modernDraft = sampleDraft("draft-modern-restored", amountMinor = 3500L)
+        legacyPrefs.edit(commit = true) {
+            putString(FinancistoDraftSessionStore.KEY_PENDING_DRAFT, json.encodeToString(staleLegacyDraft))
+        }
+
+        val stateStore = StateStore()
+        var restoredOnce = false
+        val store = FinancistoDraftSessionStore(
+            context = context,
+            stateStore = stateStore,
+            ioDispatcher = UnconfinedTestDispatcher(),
+            awaitSessionRestore = {
+                if (!restoredOnce) {
+                    restoredOnce = true
+                    Snapshot.withMutableSnapshot {
+                        stateStore.setState(
+                            AiDraftSessionKey,
+                            AiDraftSessionState(
+                                pendingDraft = modernDraft,
+                                savedHistory = listOf(SavedDraftEntry("modern-saved", 91L)),
+                            ),
+                        )
+                    }
+                }
+            },
+        )
+
+        assertEquals(modernDraft, store.peekPendingAutoOpenDraft())
+        assertEquals(91L, store.getSavedTransactionId("modern-saved"))
+        assertFalse(legacyPrefs.contains(FinancistoDraftSessionStore.KEY_PENDING_DRAFT))
+        store.clearPendingAutoOpenDraft(modernDraft.draftId)
+        assertNull(store.peekPendingAutoOpenDraft())
+    }
 }
